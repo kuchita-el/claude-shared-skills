@@ -46,13 +46,6 @@ cp defaults/dor/definition.md /path/to/your-project/.claude/dor/definition.md
 | fix-review | `/fix-review` | PRレビュー指摘の修正→検証→コミットを自動化するフィックスパイプライン |
 | pr-comment | `/pr-comment 123` | レビュー結果をGitHubのPRにインラインコメントとして投稿 |
 
-### インシデント対応
-
-| スキル | コマンド | 説明 |
-|---|---|---|
-| incident-triage | `/incident-triage [エラーメッセージ]` | エラーの重大度・影響範囲を判断し、対応優先度の決定を支援 |
-| incident-investigate | `/incident-investigate [エラーメッセージ]` | エラーの発生箇所を詳細に調査し、根本原因の特定を支援 |
-
 ### その他
 
 | スキル | コマンド | 説明 |
@@ -77,6 +70,7 @@ cp defaults/dor/definition.md /path/to/your-project/.claude/dor/definition.md
 以下のスキルはプロジェクト固有の依存があるため、本リポジトリには含まれていません:
 
 - **daily-prep**: 複雑性が高くプロジェクトごとにルールが異なるため、汎用化の方針を検討後に再対応予定
+- **incident-triage / incident-investigate**: エラー種別やスタックトレースのパターンがアーキテクチャ固有のため、汎用化の方針を検討後に再対応予定
 - **dep-check**: シェルスクリプトがパッケージマネージャに依存しているため、PM抽象化と合わせて後続対応予定
 
 ## ライセンス
