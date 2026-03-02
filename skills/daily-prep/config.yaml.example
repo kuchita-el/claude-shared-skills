@@ -1,0 +1,17 @@
+# /daily-prep スキル設定ファイル
+# このファイルがない場合、全項目がデフォルト値で動作します
+
+# --- 課題管理システム ---
+# 複数のトラッカーを設定可能。現在はgithubのみサポート。
+# Jira対応は別Issueで実装予定（#127）。
+issueTrackers:
+  - type: github
+  # - type: jira
+  #   baseUrl: https://xxx.atlassian.net
+  #   projects:
+  #     - PROJECT_A
+  #     - PROJECT_B
+
+# --- ブロッカー閾値 ---
+blockers:
+  reviewPendingThresholdHours: 24
