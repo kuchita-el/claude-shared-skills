@@ -7,6 +7,7 @@ allowed-tools:
   - Read
   - Glob
   - Grep
+  - AskUserQuestion
 ---
 
 # Issue作成スキル
@@ -48,7 +49,9 @@ allowed-tools:
 
 ### 3. プレビュー・確認
 
-作成するIssueの内容をプレビュー表示し、確認を求める:
+作成するIssueの内容をプレビュー表示し、**AskUserQuestion ツール**で確認を取る:
+
+まずプレビューを出力する:
 
 ```markdown
 ---プレビュー---
@@ -63,10 +66,23 @@ allowed-tools:
 プレビュー終わり---
 ```
 
-ユーザーに確認:
+続けてAskUserQuestionを呼び出す:
 
-- この内容でよいか？
-- 修正したい箇所はあるか？
+```
+AskUserQuestion:
+  question: "この内容でIssueを作成しますか？"
+  header: "確認"
+  options:
+    - label: "作成する"
+      description: "この内容でGitHub Issueを作成"
+    - label: "修正する"
+      description: "内容を修正してから再度確認"
+```
+
+> **AskUserQuestion が利用できない場合**: プレビューを出力し、ユーザーの明示的な指示を待ってください。
+
+- **「作成する」が選択された場合**: Step 4に進む
+- **「修正する」が選択された場合**: ユーザーの指示に従い修正後、再度Step 3を実行する
 
 ### 4. Issue作成
 
