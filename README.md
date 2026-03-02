@@ -27,14 +27,6 @@ cp defaults/dor/definition.md /path/to/your-project/.claude/dor/definition.md
 # 必要に応じて編集
 ```
 
-### 3. daily-prepの設定（オプション）
-
-`/daily-prep` を使う場合、設定ファイルをコピーして編集してください:
-
-```bash
-cp skills/daily-prep/config.yaml.example /path/to/your-project/.claude/skills/daily-prep/config.yaml
-```
-
 ## スキル一覧
 
 ### Issue管理
@@ -53,12 +45,6 @@ cp skills/daily-prep/config.yaml.example /path/to/your-project/.claude/skills/da
 |---|---|---|
 | fix-review | `/fix-review` | PRレビュー指摘の修正→検証→コミットを自動化するフィックスパイプライン |
 | pr-comment | `/pr-comment 123` | レビュー結果をGitHubのPRにインラインコメントとして投稿 |
-
-### スプリント管理
-
-| スキル | コマンド | 説明 |
-|---|---|---|
-| daily-prep | `/daily-prep` | デイリースクラム前のIssue/PR状況一覧表示 |
 
 ### インシデント対応
 
@@ -86,21 +72,11 @@ cp skills/daily-prep/config.yaml.example /path/to/your-project/.claude/skills/da
 
 プロジェクトに合わせたチェック項目にカスタマイズする場合は、`.claude/dor/definition.md` を作成してください。
 
-### daily-prep設定
-
-`/daily-prep` は `.claude/skills/daily-prep/config.yaml` で設定をカスタマイズできます。
-
-| 設定キー | デフォルト値 | 説明 |
-|---|---|---|
-| `issueTrackers` | `[{type: github}]` | 課題管理システム（現在はGitHubのみサポート） |
-| `blockers.reviewPendingThresholdHours` | `24` | レビュー待ち放置と判定する閾値（時間） |
-
-設定ファイルがない場合はデフォルト値で動作します。
-
 ## 対象外スキル
 
 以下のスキルはプロジェクト固有の依存があるため、本リポジトリには含まれていません:
 
+- **daily-prep**: 複雑性が高くプロジェクトごとにルールが異なるため、汎用化の方針を検討後に再対応予定
 - **dep-check**: シェルスクリプトがパッケージマネージャに依存しているため、PM抽象化と合わせて後続対応予定
 
 ## ライセンス
