@@ -6,26 +6,25 @@ Claude Code向けの汎用スキル集です。プロジェクト固有の依存
 
 ### 1. スキルのコピー
 
-使いたいスキルを `.claude/skills/` にコピーしてください:
+使いたいスキルを `.claude/skills/` にコピーしてください。`/refine-issue`、`/ready-check`、`/refine-all-issues` を使う場合は `defaults/` ディレクトリも合わせてコピーしてください:
 
 ```bash
-# 例: 全スキルをコピー
+# 例: 全スキルとデフォルト定義をコピー
 cp -r skills/* /path/to/your-project/.claude/skills/
+cp -r defaults /path/to/your-project/.claude/skills/
 
 # 例: 特定のスキルのみコピー
 cp -r skills/fix-review /path/to/your-project/.claude/skills/
 ```
 
-### 2. DoR定義の配置（オプション）
+### 2. DoR定義のカスタマイズ（オプション）
 
-`/refine-issue`、`/ready-check`、`/refine-all-issues` を使う場合、DoR定義が必要です。
-
-- **デフォルト定義を使う場合**: `defaults/dor/definition.md` を `.claude/dor/definition.md` にコピー
-- **カスタマイズする場合**: デフォルト定義をベースに、プロジェクトに合わせて編集
+`/refine-issue`、`/ready-check`、`/refine-all-issues` はDoR定義を参照します。デフォルト定義（`defaults/dor/definition.md`）がそのまま使われますが、プロジェクトに合わせてカスタマイズする場合は `.claude/dor/definition.md` を配置してください:
 
 ```bash
 mkdir -p /path/to/your-project/.claude/dor
 cp defaults/dor/definition.md /path/to/your-project/.claude/dor/definition.md
+# 必要に応じて編集
 ```
 
 ### 3. daily-prepの設定（オプション）
@@ -55,6 +54,12 @@ cp skills/daily-prep/config.yaml.example /path/to/your-project/.claude/skills/da
 | fix-review | `/fix-review` | PRレビュー指摘の修正→検証→コミットを自動化するフィックスパイプライン |
 | pr-comment | `/pr-comment 123` | レビュー結果をGitHubのPRにインラインコメントとして投稿 |
 
+### スプリント管理
+
+| スキル | コマンド | 説明 |
+|---|---|---|
+| daily-prep | `/daily-prep` | デイリースクラム前のIssue/PR状況一覧表示 |
+
 ### インシデント対応
 
 | スキル | コマンド | 説明 |
@@ -66,7 +71,6 @@ cp skills/daily-prep/config.yaml.example /path/to/your-project/.claude/skills/da
 
 | スキル | コマンド | 説明 |
 |---|---|---|
-| daily-prep | `/daily-prep` | デイリースクラム前のIssue/PR状況一覧表示 |
 | adr-create | `/adr-create` | ADR（Architecture Decision Record）の作成を対話形式で支援 |
 
 ## カスタマイズポイント
@@ -78,7 +82,7 @@ cp skills/daily-prep/config.yaml.example /path/to/your-project/.claude/skills/da
 **読み込み優先順位:**
 
 1. `{プロジェクトルート}/.claude/dor/definition.md`（プロジェクト固有）
-2. 本リポジトリの `defaults/dor/definition.md`（デフォルト）
+2. スキルファイルからの相対パス `../../defaults/dor/definition.md`（デフォルト）
 
 プロジェクトに合わせたチェック項目にカスタマイズする場合は、`.claude/dor/definition.md` を作成してください。
 

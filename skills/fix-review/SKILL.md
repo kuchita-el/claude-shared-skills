@@ -7,9 +7,6 @@ allowed-tools:
   - Glob
   - Edit
   - Write
-  # テスト・lint
-  - Bash(* test*)
-  - Bash(* lint*)
   # git操作
   - Bash(git status*)
   - Bash(git diff*)
@@ -74,7 +71,7 @@ Phase 5: 打ち切り報告
 
 #### Step 2: テスト実行
 
-プロジェクトのテストコマンドを実行する（`package.json` の scripts を確認して適切なコマンドを使用）。
+プロジェクトのテストコマンドを実行する（プロジェクトの設定ファイルを確認して適切なコマンドを使用）。
 
 - **成功**: Step 3へ進む
 - **失敗**: 以下のリトライ手順を実行（最大3回）
@@ -85,7 +82,7 @@ Phase 5: 打ち切り報告
 
 #### Step 3: Lint実行
 
-プロジェクトのlintコマンドを実行する（`package.json` の scripts を確認して適切なコマンドを使用）。
+プロジェクトのlintコマンドを実行する（プロジェクトの設定ファイルを確認して適切なコマンドを使用）。
 
 - **成功**: Step 4へ進む
 - **失敗**: 以下の手順を実行
@@ -211,6 +208,7 @@ gh pr comment {pr_number} --body-file /tmp/fix-review-incomplete-{timestamp}.md
 
 ## 注意事項
 
+- **テスト・lintコマンドの実行許可**: テスト・lintコマンドは `allowed-tools` に含まれていないため、実行時に都度ユーザーの許可が必要です。頻繁に使用する場合は `settings.json` の `allowedTools` でプロジェクトごとに許可設定することを推奨します
 - **全ステップパスまでコミットしない**: テストまたはlintが失敗している状態でコミットしない
 - **lint:fix後のステージング忘れ防止**: lint:fix実行後は必ず `git status` で差分を確認し、ステージングする
 - **ファイル単位のステージング**: `git add -A` や `git add .` は使わず、対象ファイルを明示的に指定する
