@@ -24,15 +24,9 @@ allowed-tools:
 
 #### 1.1 ファイルパス・行番号・シンボル名の抽出
 
-以下のパターンでスタックトレースからファイルパスと行番号を抽出する:
+エラーメッセージからファイルパス・行番号・シンボル名（関数名・クラス名等）を抽出する。プロジェクト外のファイルはスキップし、プロジェクト内のフレームのみ対象とする。
 
-| パターン                | 形式                              | 例                                                        |
-| ----------------------- | --------------------------------- | --------------------------------------------------------- |
-| Node.jsスタックトレース | `at FunctionName (file.ts:行:列)` | `at DatabaseClient.connect (src/infra/database.ts:45:10)` |
-| TypeScriptコンパイラ    | `file.ts(行,列): error TS番号`    | `src/domain/customer.ts(23,5): error TS2345`              |
-| シンプル参照            | `file.ts:行`                      | `src/infra/database.ts:45`                                |
-
-複数のスタックフレームが存在する場合は、すべて抽出してリスト化する。プロジェクト外のパス（`node_modules/` など）はスキップし、プロジェクト内のフレームのみ対象とする。
+複数のスタックフレームが存在する場合は、すべて抽出してリスト化する。
 
 #### 1.2 エラー種別の判定
 
@@ -43,7 +37,7 @@ allowed-tools:
 | ドメインエラー         | `DomainError`, `NotFoundError`, `ValidationError`, `BusinessRule` 等 |
 | データベースエラー     | `connection refused`, `ECONNREFUSED`, `database`, `query failed` 等  |
 | APIフレームワークエラー | HTTPステータスコード、フレームワーク固有のエラーコード 等            |
-| TypeScriptエラー       | `TS[0-9]+`, `Type.*is not assignable`, `Property.*does not exist`    |
+| 型/コンパイルエラー    | コンパイラ固有のエラーコード、型不一致、未定義プロパティ 等               |
 | ランタイムエラー       | `ReferenceError`, `TypeError`, `SyntaxError`, `RangeError`           |
 | その他                 | 上記に該当しないもの                                                 |
 

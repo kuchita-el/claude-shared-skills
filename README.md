@@ -82,7 +82,7 @@ cp skills/daily-prep/config.yaml.example /path/to/your-project/.claude/skills/da
 **読み込み優先順位:**
 
 1. `{プロジェクトルート}/.claude/dor/definition.md`（プロジェクト固有）
-2. スキルファイルからの相対パス `../../defaults/dor/definition.md`（デフォルト）
+2. `{プロジェクトルート}/.claude/skills/defaults/dor/definition.md`（デフォルト）
 
 プロジェクトに合わせたチェック項目にカスタマイズする場合は、`.claude/dor/definition.md` を作成してください。
 
