@@ -65,6 +65,16 @@ cp defaults/dor/definition.md /path/to/your-project/.claude/dor/definition.md
 
 プロジェクトに合わせたチェック項目にカスタマイズする場合は、`.claude/dor/definition.md` を作成してください。
 
+## 開発者向け: このリポジトリでスキルを使う
+
+このリポジトリ内で開発中のスキルを試すには、セットアップスクリプトを実行してください:
+
+```bash
+./setup-local.sh
+```
+
+`.claude/skills/` 内に各スキルと `defaults/` へのシンボリックリンクが作成され、`/create-issue` などのスキルコマンドがそのまま使えるようになります。スキルを新規追加した場合も再実行すればリンクが追加されます。
+
 ## 対象外スキル
 
 以下のスキルはプロジェクト固有の依存があるため、本リポジトリには含まれていません:
