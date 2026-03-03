@@ -91,9 +91,7 @@ DoR定義の読み込み優先順位:
 1. {プロジェクトルート}/.claude/dor/definition.md（存在すれば優先）
 2. {プロジェクトルート}/.claude/skills/defaults/dor/definition.md
 
-サイズ判定:
-- ラベル優先: size:small / size:medium / size:large
-- ラベルがない場合は本文から推定（詳細は DoR 定義を参照）
+サイズ判定はDoR定義の「サイズ判定ロジック」セクションに従ってください。
 
 精査観点（詳細は /refine-issue スキルを参照）:
 1. DoRチェック（サイズに応じたチェック項目を評価）

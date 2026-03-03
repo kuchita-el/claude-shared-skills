@@ -42,19 +42,7 @@ gh issue view {issue_number} --json number,title,body,labels,milestone,assignees
 
 ### 3. サイズ判定
 
-DoR定義に基づいてIssueのサイズを判定する:
-
-#### ラベル優先
-
-- `size:small` → Small
-- `size:medium` → Medium
-- `size:large` → Large
-
-#### 本文解析（ラベルがない場合）
-
-- **Small**: 「バグ」「bug」「typo」「軽微」を含む、または本文500文字未満かつAC2項目以下
-- **Large**: 「アーキテクチャ」「設計変更」「大規模」を含む、または子Issue参照が3つ以上
-- **Medium**: 上記以外
+DoR定義の「サイズ判定ロジック」セクションに従ってIssueのサイズを判定する。
 
 ### 4. 精査観点
 
