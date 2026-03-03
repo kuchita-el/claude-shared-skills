@@ -249,7 +249,6 @@ _精査実施: Claude Code_
 
 | スキル               | 目的                          |
 | -------------------- | ----------------------------- |
-| `/ready-check`       | 単一IssueのDoR簡易判定        |
 | `/refine-issue`      | 単一Issueの詳細精査と改善提案 |
 | `/refine-all-issues` | 全Issueの一括精査（本スキル） |
 
