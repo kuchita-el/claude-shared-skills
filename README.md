@@ -6,24 +6,23 @@ Claude Code向けの汎用スキル集です。プロジェクト固有の依存
 
 ### 1. スキルのコピー
 
-使いたいスキルを `.claude/skills/` にコピーしてください。`/refine-issue`、`/refine-all-issues` を使う場合は `defaults/` ディレクトリも合わせてコピーしてください:
+使いたいスキルを `.claude/skills/` にコピーしてください:
 
 ```bash
-# 例: 全スキルとデフォルト定義をコピー
+# 例: 全スキルをコピー
 cp -r skills/* /path/to/your-project/.claude/skills/
-cp -r defaults /path/to/your-project/.claude/skills/
 
-# 例: 特定のスキルのみコピー
+# 例: 特定のスキルのみコピー（refine-issue/refine-all-issuesはdefaultsも必要）
 cp -r skills/fix-review /path/to/your-project/.claude/skills/
 ```
 
 ### 2. DoR定義のカスタマイズ（オプション）
 
-`/refine-issue`、`/refine-all-issues` はDoR定義を参照します。デフォルト定義（`defaults/dor/definition.md`）がそのまま使われますが、プロジェクトに合わせてカスタマイズする場合は `.claude/dor/definition.md` を配置してください:
+`/refine-issue`、`/refine-all-issues` はDoR定義を参照します。デフォルト定義（`skills/defaults/dor/definition.md`）がそのまま使われますが、プロジェクトに合わせてカスタマイズする場合は `.claude/dor/definition.md` を配置してください:
 
 ```bash
 mkdir -p /path/to/your-project/.claude/dor
-cp defaults/dor/definition.md /path/to/your-project/.claude/dor/definition.md
+cp skills/defaults/dor/definition.md /path/to/your-project/.claude/dor/definition.md
 # 必要に応じて編集
 ```
 
@@ -35,7 +34,6 @@ cp defaults/dor/definition.md /path/to/your-project/.claude/dor/definition.md
 |---|---|---|
 | refine-issue | `/refine-issue 123` | 作業開始前にIssueを精査し、不明点の洗い出し・分割提案を行う |
 | refine-all-issues | `/refine-all-issues` | 全オープンIssueを一括精査し、確認事項をコメント投稿・ラベル付与 |
-| create-issue | `/create-issue` | 議論内容からGitHub Issueを作成（コード編集制限付き） |
 
 ### PR・レビュー
 
@@ -65,7 +63,7 @@ cp defaults/dor/definition.md /path/to/your-project/.claude/dor/definition.md
 ./setup-local.sh
 ```
 
-`.claude/skills/` 内に各スキルと `defaults/` へのシンボリックリンクが作成され、`/create-issue` などのスキルコマンドがそのまま使えるようになります。スキルを新規追加した場合も再実行すればリンクが追加されます。
+`.claude/skills/` 内に各スキルと `defaults/` へのシンボリックリンクが作成され、スキルコマンドがそのまま使えるようになります。スキルを新規追加した場合も再実行すればリンクが追加されます。
 
 ## ライセンス
 

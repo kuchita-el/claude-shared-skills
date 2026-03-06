@@ -5,19 +5,14 @@ cd "$(dirname "$0")"
 
 mkdir -p .claude/skills
 
-# skills/ 内の各スキルディレクトリをリンク
-for skill in skills/*/; do
-  name=$(basename "$skill")
+# skills/ 内の各ディレクトリをリンク（スキル + defaults）
+for dir in skills/*/; do
+  name=$(basename "$dir")
   target=".claude/skills/$name"
   if [ ! -e "$target" ]; then
     ln -s "../../skills/$name" "$target"
   fi
 done
-
-# defaults をリンク
-if [ ! -e .claude/skills/defaults ]; then
-  ln -s ../../defaults .claude/skills/defaults
-fi
 
 echo "Done. Linked skills:"
 ls -la .claude/skills/
