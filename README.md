@@ -1,1 +1,70 @@
 # claude-shared-skills
+
+Claude Code向けの汎用スキル集です。プロジェクト固有の依存を排除し、どのプロジェクトでも利用できるようにしています。
+
+## 導入方法
+
+### 1. スキルのコピー
+
+使いたいスキルを `.claude/skills/` にコピーしてください:
+
+```bash
+# 例: 全スキルをコピー
+cp -r skills/* /path/to/your-project/.claude/skills/
+
+# 例: 特定のスキルのみコピー（refine-issue/refine-all-issuesはdefaultsも必要）
+cp -r skills/fix-review /path/to/your-project/.claude/skills/
+```
+
+### 2. DoR定義のカスタマイズ（オプション）
+
+`/refine-issue`、`/refine-all-issues` はDoR定義を参照します。デフォルト定義（`skills/defaults/dor/definition.md`）がそのまま使われますが、プロジェクトに合わせてカスタマイズする場合は `.claude/dor/definition.md` を配置してください:
+
+```bash
+mkdir -p /path/to/your-project/.claude/dor
+cp skills/defaults/dor/definition.md /path/to/your-project/.claude/dor/definition.md
+# 必要に応じて編集
+```
+
+## スキル一覧
+
+### Issue管理
+
+| スキル | コマンド | 説明 |
+|---|---|---|
+| refine-issue | `/refine-issue 123` | 作業開始前にIssueを精査し、不明点の洗い出し・分割提案を行う |
+| refine-all-issues | `/refine-all-issues` | 全オープンIssueを一括精査し、確認事項をコメント投稿・ラベル付与 |
+
+### PR・レビュー
+
+| スキル | コマンド | 説明 |
+|---|---|---|
+| fix-review | `/fix-review` | PRレビュー指摘の修正→検証→コミットを自動化するフィックスパイプライン |
+| pr-comment | `/pr-comment 123` | レビュー結果をGitHubのPRにインラインコメントとして投稿 |
+
+## カスタマイズポイント
+
+### DoR定義
+
+`/refine-issue`、`/refine-all-issues` はDoR（Definition of Ready）定義を参照します。
+
+**読み込み優先順位:**
+
+1. `{プロジェクトルート}/.claude/dor/definition.md`（プロジェクト固有）
+2. `{プロジェクトルート}/.claude/skills/defaults/dor/definition.md`（デフォルト）
+
+プロジェクトに合わせたチェック項目にカスタマイズする場合は、`.claude/dor/definition.md` を作成してください。
+
+## 開発者向け: このリポジトリでスキルを使う
+
+このリポジトリ内で開発中のスキルを試すには、セットアップスクリプトを実行してください:
+
+```bash
+./setup-local.sh
+```
+
+`.claude/skills/` 内に各スキルと `defaults/` へのシンボリックリンクが作成され、スキルコマンドがそのまま使えるようになります。スキルを新規追加した場合も再実行すればリンクが追加されます。
+
+## ライセンス
+
+プロジェクト内で自由にご利用ください。
