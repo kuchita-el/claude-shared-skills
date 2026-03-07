@@ -42,6 +42,12 @@ cp skills/defaults/dor/definition.md /path/to/your-project/.claude/dor/definitio
 | fix-review | `/fix-review` | PRレビュー指摘の修正→検証→コミットを自動化するフィックスパイプライン |
 | pr-comment | `/pr-comment 123` | レビュー結果をGitHubのPRにインラインコメントとして投稿 |
 
+### 依存関係
+
+| スキル | コマンド | 説明 |
+|---|---|---|
+| dep-check | `/dep-check react` | 依存パッケージ更新の影響分析を6段階パイプラインで自動化 |
+
 ## カスタマイズポイント
 
 ### DoR定義

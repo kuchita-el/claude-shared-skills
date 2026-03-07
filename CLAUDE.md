@@ -48,6 +48,7 @@ allowed-tools:
 |---|---|
 | Issue管理 | `refine-issue`, `refine-all-issues` |
 | PR・レビュー | `fix-review`, `pr-comment` |
+| 依存関係 | `dep-check` |
 
 ### DoR Framework
 
