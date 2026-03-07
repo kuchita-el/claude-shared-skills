@@ -46,7 +46,7 @@ cp skills/defaults/dor/definition.md /path/to/your-project/.claude/dor/definitio
 
 | スキル | コマンド | 説明 |
 |---|---|---|
-| dep-check | `/dep-check react` | 依存パッケージ更新の影響分析を6段階パイプラインで自動化 |
+| dep-check | `/dep-check react` | 依存パッケージ更新のBreaking Changes・互換性・コード影響を自動分析 |
 
 ## カスタマイズポイント
 
