@@ -47,7 +47,8 @@ allowed-tools:
 | カテゴリ | スキル |
 |---|---|
 | Issue管理 | `refine-issue`, `refine-all-issues` |
-| PR・レビュー | `fix-review`, `pr-comment` |
+| 開発ループ | `dev-loop` |
+| PR・レビュー | `pr-comment` |
 | 依存関係 | `dep-check` |
 
 ### DoR Framework
@@ -63,6 +64,7 @@ Issueサイズ（Small/Medium/Large）に応じてチェック項目が段階的
 
 - ドキュメントおよびスキル内のコメントは日本語で記述する
 - スキルはGitHub CLI (`gh`) のみに依存し、プロジェクト固有のツールには依存しない
+- 複数行コンテンツをCLIに渡す際は Write ツールで一時ファイル（`/tmp/filename-{timestamp}.md`）に書き出してから `--body-file` 等で渡す（`allowed-tools` のBashパターンがヒアドキュメント等の複雑なコマンドにマッチしないため）
 - スキルの出力形式（テーブル、レポートなど）は各SKILL.md内に明示的に定義する
 
 ## Rules

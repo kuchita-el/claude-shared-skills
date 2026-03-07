@@ -13,7 +13,7 @@ Claude Code向けの汎用スキル集です。プロジェクト固有の依存
 cp -r skills/* /path/to/your-project/.claude/skills/
 
 # 例: 特定のスキルのみコピー（refine-issue/refine-all-issuesはdefaultsも必要）
-cp -r skills/fix-review /path/to/your-project/.claude/skills/
+cp -r skills/dev-loop /path/to/your-project/.claude/skills/
 ```
 
 ### 2. DoR定義のカスタマイズ（オプション）
@@ -35,11 +35,16 @@ cp skills/defaults/dor/definition.md /path/to/your-project/.claude/dor/definitio
 | refine-issue | `/refine-issue 123` | 作業開始前にIssueを精査し、不明点の洗い出し・分割提案を行う |
 | refine-all-issues | `/refine-all-issues` | 全オープンIssueを一括精査し、確認事項をコメント投稿・ラベル付与 |
 
+### 開発ループ
+
+| スキル | コマンド | 説明 |
+|---|---|---|
+| dev-loop | `/dev-loop 10` | Issue・計画・レビュー指摘を起点に、実装→セルフレビュー→修正→PR作成を自動化する汎用開発ループ |
+
 ### PR・レビュー
 
 | スキル | コマンド | 説明 |
 |---|---|---|
-| fix-review | `/fix-review` | PRレビュー指摘の修正→検証→コミットを自動化するフィックスパイプライン |
 | pr-comment | `/pr-comment 123` | レビュー結果をGitHubのPRにインラインコメントとして投稿 |
 
 ### 依存関係
