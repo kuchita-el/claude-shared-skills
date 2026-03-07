@@ -2,5 +2,18 @@
   "enabledPlugins": {
     "pr-review-toolkit@claude-plugins-official": true,
     "skill-creator@claude-plugins-official": true
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git commit *)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/validate-skills.sh"
+          }
+        ]
+      }
+    ]
   }
 }

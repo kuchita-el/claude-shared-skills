@@ -48,6 +48,7 @@ allowed-tools:
 |---|---|
 | Issue管理 | `refine-issue`, `refine-all-issues` |
 | PR・レビュー | `fix-review`, `pr-comment` |
+| 依存関係 | `dep-check` |
 
 ### DoR Framework
 
@@ -63,6 +64,12 @@ Issueサイズ（Small/Medium/Large）に応じてチェック項目が段階的
 - ドキュメントおよびスキル内のコメントは日本語で記述する
 - スキルはGitHub CLI (`gh`) のみに依存し、プロジェクト固有のツールには依存しない
 - スキルの出力形式（テーブル、レポートなど）は各SKILL.md内に明示的に定義する
+
+## Rules
+
+- 議論・評価・設計を求められた場合、ファイルの編集を始めない。明示的な承認を得てから編集すること
+- スキル定義（SKILL.md）は最小限に保つ。冗長なコメント・不要なツール権限を追加しない。特に `AskUserQuestion` はスキル内に対話パスが存在する場合のみ許可する
+- 計画や設計の議論中にユーザーが決定を下したら、即座に計画ドキュメントに反映する。古い前提のまま進めない
 
 ## Adding a New Skill
 
