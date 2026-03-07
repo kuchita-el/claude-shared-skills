@@ -47,7 +47,8 @@ allowed-tools:
 | カテゴリ | スキル |
 |---|---|
 | Issue管理 | `refine-issue`, `refine-all-issues` |
-| PR・レビュー | `fix-review`, `pr-comment` |
+| 開発ループ | `dev-loop` |
+| PR・レビュー | `pr-comment` |
 | 依存関係 | `dep-check` |
 
 ### DoR Framework
