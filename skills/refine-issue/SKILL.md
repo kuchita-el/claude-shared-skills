@@ -131,8 +131,6 @@ Issueに関連するコードを Grep/Glob で探索し、以下を把握する:
 
 ### コメント投稿
 
-Write ツールで `/tmp/issue-comment-{issue_number}-{timestamp}.md` に内容を書き出し、`--body-file` で投稿する。
-
 **確認事項がある場合:**
 
 ```markdown
@@ -162,7 +160,7 @@ _精査実施: Claude Code_
 ```
 
 ```bash
-gh issue comment {issue_number} --body-file /tmp/issue-comment-{issue_number}-{timestamp}.md
+gh issue comment {issue_number} --body "..."
 gh issue edit {issue_number} --add-label "needs-clarification"
 gh issue edit {issue_number} --remove-label "ready-for-work"
 ```
@@ -180,15 +178,13 @@ _精査実施: Claude Code_
 ```
 
 ```bash
-gh issue comment {issue_number} --body-file /tmp/issue-comment-{issue_number}-{timestamp}.md
+gh issue comment {issue_number} --body "..."
 gh issue edit {issue_number} --add-label "ready-for-work"
 gh issue edit {issue_number} --remove-label "needs-clarification"
 ```
 
 ### 子Issue作成
 
-Write ツールで `/tmp/issue-body-{issue_number}-{timestamp}.md` にIssue本文を書き出し、`--body-file` で作成する:
-
 ```bash
-gh issue create --title "[親Issue名] - [サブタスク名]" --body-file /tmp/issue-body-{issue_number}-{timestamp}.md
+gh issue create --title "[親Issue名] - [サブタスク名]" --body "..."
 ```
