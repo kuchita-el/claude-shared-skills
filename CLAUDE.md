@@ -62,7 +62,6 @@ Issueサイズ（Small/Medium/Large）に応じてチェック項目が段階的
 
 - ドキュメントおよびスキル内のコメントは日本語で記述する
 - スキルはGitHub CLI (`gh`) のみに依存し、プロジェクト固有のツールには依存しない
-- 複数行コンテンツをAPIに渡す際は `/tmp/filename-{timestamp}.md` に一時ファイルとして書き出す
 - スキルの出力形式（テーブル、レポートなど）は各SKILL.md内に明示的に定義する
 
 ## Adding a New Skill

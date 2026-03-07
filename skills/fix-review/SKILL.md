@@ -129,4 +129,3 @@ _自動投稿: Claude Code (`/fix-review`)_
 ## 注意事項
 
 - **テスト・lint・pushコマンドの実行許可**: プロジェクトごとに異なるため `allowed-tools` には含めていない。`settings.json` の `allowedTools` でプロジェクトごとに許可設定すること（例: `Bash(npm test*)`, `Bash(npm run lint*)`, `Bash(git push*)`）
-- **PRコメント投稿**: 複数行のコメントは Write ツールで一時ファイル（`/tmp/fix-review-{timestamp}.md`）に書き出してから `gh pr comment --body-file` で投稿する（allowed-tools の制約回避）
