@@ -1,11 +1,10 @@
 ---
-description: 依存パッケージ更新のBreaking Changes・互換性・コード影響を自動分析する
+description: 依存パッケージ更新のBreaking Changes・互換性・コード影響を自動分析する。パッケージのバージョンを上げたい・更新影響を調べたい・アップデートのリスクを知りたいときに使用
 allowed-tools:
   - Read
   - Grep
   - Glob
   - WebFetch
-  - AskUserQuestion
 ---
 
 # 依存パッケージ更新 影響分析パイプライン
@@ -37,7 +36,7 @@ PM別コマンド対応表:
 | レジストリ情報取得 | `npm info {pkg}` | `pnpm info {pkg}` | `yarn npm info {pkg}` | `npm info {pkg}` |
 | 依存元特定 | `npm explain {pkg}` | `pnpm why {pkg}` | `yarn why {pkg}` | `bun pm ls` |
 
-検出できない場合はAskUserQuestionでユーザーに確認する。
+検出できない場合はエラーメッセージを出力して終了する。
 
 ### Phase 1: バージョン解決
 
@@ -83,7 +82,7 @@ PM別コマンド対応表:
 以下の形式で分析結果を提示する。該当しないセクションは省略してよい。
 
 ```markdown
-## dep-check: {パッケージ名}
+## {パッケージ名}
 
 | 項目 | 結果 |
 |---|---|

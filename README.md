@@ -50,7 +50,7 @@ cp skills/refine-issue/references/dor-default.md /path/to/your-project/.claude/d
 
 | スキル | コマンド | 説明 |
 |---|---|---|
-| dep-check | `/dep-check react` | 依存パッケージ更新のBreaking Changes・互換性・コード影響を自動分析 |
+| dependency-check | `/dependency-check react` | 依存パッケージ更新のBreaking Changes・互換性・コード影響を自動分析 |
 
 ## カスタマイズポイント
 
