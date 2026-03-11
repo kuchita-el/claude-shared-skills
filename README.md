@@ -12,17 +12,17 @@ Claude Code向けの汎用スキル集です。プロジェクト固有の依存
 # 例: 全スキルをコピー
 cp -r skills/* /path/to/your-project/.claude/skills/
 
-# 例: 特定のスキルのみコピー（refine-issue/refine-all-issuesはdefaultsも必要）
+# 例: 特定のスキルのみコピー
 cp -r skills/dev-loop /path/to/your-project/.claude/skills/
 ```
 
 ### 2. DoR定義のカスタマイズ（オプション）
 
-`/refine-issue`、`/refine-all-issues` はDoR定義を参照します。デフォルト定義（`skills/defaults/dor/definition.md`）がそのまま使われますが、プロジェクトに合わせてカスタマイズする場合は `.claude/dor/definition.md` を配置してください:
+`/refine-issue` はDoR定義を参照します。スキル同梱のデフォルト定義（`skills/refine-issue/references/dor-default.md`）がそのまま使われますが、プロジェクトに合わせてカスタマイズする場合は `.claude/dor/definition.md` を配置してください:
 
 ```bash
 mkdir -p /path/to/your-project/.claude/dor
-cp skills/defaults/dor/definition.md /path/to/your-project/.claude/dor/definition.md
+cp skills/refine-issue/references/dor-default.md /path/to/your-project/.claude/dor/definition.md
 # 必要に応じて編集
 ```
 
@@ -32,8 +32,7 @@ cp skills/defaults/dor/definition.md /path/to/your-project/.claude/dor/definitio
 
 | スキル | コマンド | 説明 |
 |---|---|---|
-| refine-issue | `/refine-issue 123` | 作業開始前にIssueを精査し、不明点の洗い出し・分割提案を行う |
-| refine-all-issues | `/refine-all-issues` | 全オープンIssueを一括精査し、確認事項をコメント投稿・ラベル付与 |
+| refine-issue | `/refine-issue 123` | Issueの準備状態を精査しレポート（1件精査・全件一括精査の両方に対応） |
 
 ### 開発ループ
 
@@ -57,12 +56,12 @@ cp skills/defaults/dor/definition.md /path/to/your-project/.claude/dor/definitio
 
 ### DoR定義
 
-`/refine-issue`、`/refine-all-issues` はDoR（Definition of Ready）定義を参照します。
+`/refine-issue` はDoR（Definition of Ready）定義を参照します。
 
 **読み込み優先順位:**
 
 1. `{プロジェクトルート}/.claude/dor/definition.md`（プロジェクト固有）
-2. `{プロジェクトルート}/.claude/skills/defaults/dor/definition.md`（デフォルト）
+2. スキル同梱のデフォルト（`skills/refine-issue/references/dor-default.md`）
 
 プロジェクトに合わせたチェック項目にカスタマイズする場合は、`.claude/dor/definition.md` を作成してください。
 
@@ -74,7 +73,7 @@ cp skills/defaults/dor/definition.md /path/to/your-project/.claude/dor/definitio
 ./setup-local.sh
 ```
 
-`.claude/skills/` 内に各スキルと `defaults/` へのシンボリックリンクが作成され、スキルコマンドがそのまま使えるようになります。スキルを新規追加した場合も再実行すればリンクが追加されます。
+`.claude/skills/` 内に各スキルへのシンボリックリンクが作成され、スキルコマンドがそのまま使えるようになります。スキルを新規追加した場合も再実行すればリンクが追加されます。壊れたリンクは自動的に清掃されます。
 
 ## ライセンス
 

@@ -19,7 +19,7 @@ Claude Code向けの汎用スキルライブラリ。プロジェクト固有の
 ### Repository Structure
 
 - `skills/{skill-name}/SKILL.md` — 各スキルの定義ファイル（本体）
-- `skills/defaults/dor/definition.md` — DoR（Definition of Ready）のデフォルトテンプレート
+- `skills/{skill-name}/references/` — スキルが参照する補助ファイル（テンプレート、デフォルト定義等）
 - `setup-local.sh` — ローカル開発用シンボリックリンク作成スクリプト
 
 ### Skill Definition Format
@@ -46,17 +46,17 @@ allowed-tools:
 
 | カテゴリ | スキル |
 |---|---|
-| Issue管理 | `refine-issue`, `refine-all-issues` |
+| Issue管理 | `refine-issue` |
 | 開発ループ | `dev-loop` |
 | PR・レビュー | `pr-comment` |
 | 依存関係 | `dep-check` |
 
 ### DoR Framework
 
-`refine-issue`, `refine-all-issues` はDoR定義を参照する。読み込み優先順位:
+`refine-issue` はDoR定義を参照する。読み込み優先順位:
 
 1. `{project}/.claude/dor/definition.md`（プロジェクト固有）
-2. `{project}/.claude/skills/defaults/dor/definition.md`（デフォルト。`skills/defaults/` から配置）
+2. `skills/refine-issue/references/dor-default.md`（スキル同梱のデフォルト）
 
 Issueサイズ（Small/Medium/Large）に応じてチェック項目が段階的に増える。
 
