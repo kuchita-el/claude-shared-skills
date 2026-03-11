@@ -1,78 +1,102 @@
 ---
-description: 作業開始前にIssueを精査し、不明点の洗い出し・分割提案を行う
+description: Issueの準備状態を精査し、不足項目・確認事項・分割提案をレポートする。作業開始前のIssue品質チェック、全オープンIssueの一括棚卸し、Issue精査・レビューに使用
 allowed-tools:
   - Bash(gh issue list*)
   - Bash(gh issue view*)
-  - Bash(gh issue comment*)
-  - Bash(gh issue create*)
-  - Bash(gh issue edit*)
-  - Bash(gh label create*)
+  - Agent
   - Read
   - Grep
   - Glob
-  - Write
-  - AskUserQuestion
 ---
 
 # Issue精査（Refine Issue）
 
-作業開始前にIssueを精査し、開発者が迷いなく作業に着手できる状態かを判定する。
-DoR（Definition of Ready）に基づいて不足項目を特定し、改善提案を行う。
+Issueの準備状態をDoR（Definition of Ready）に基づいて精査し、結果をレポートする。
+1件の詳細精査と全件一括精査の両方に対応。精査はサブエージェントで実行し、メインコンテキストを消費しない。
 
 ## 引数
 
-- `$ARGUMENTS`: Issue番号またはURL（例: `123` または `https://github.com/owner/repo/issues/123`）
+- `$ARGUMENTS`: オプション
+  - Issue番号またはURL（例: `123`, `https://github.com/owner/repo/issues/123`）→ 1件モード
+  - 省略 → 全件モード
+  - `--label <name>`: 特定ラベルのIssueのみ対象（全件モード）
+  - `--repo <owner/repo>`: 対象リポジトリ（省略時はカレントリポジトリ）
+  - `--limit <n>`: 取得するIssue数の上限（デフォルト: 100、全件モード）
+
+引数にGitHub URLが含まれる場合、`owner/repo` と Issue番号を抽出する。
 
 ## 手順
 
-### 1. DoR定義の読み込み
+### 1. 引数の解析とモード判定
 
-以下の優先順位でDoR定義を読み込む:
+- **Issue番号あり** → 1件モード
+- **Issue番号なし** → 全件モード
+- `--label`, `--repo`, `--limit` の解析
 
-1. **プロジェクト固有**: `{プロジェクトルート}/.claude/dor/definition.md`（存在すれば優先）
-2. **デフォルト**: `{プロジェクトルート}/.claude/skills/defaults/dor/definition.md`
+`--repo` がある場合、以降の全 `gh` コマンドに `--repo <owner/repo>` を付与する。
 
-読み込んだDoR定義からサイズ別のチェック項目を把握する。
+### 2. DoR定義の読み込み
 
-### 2. Issue情報の取得
+以下の優先順位でDoR定義をReadツールで読み込む:
+
+1. **プロジェクト固有**: `{プロジェクトルート}/.claude/dor/definition.md`
+2. **デフォルト**: このスキルの `references/dor-default.md`
+
+### 3. Issue情報の取得
+
+**1件モード:**
 
 ```bash
-gh issue view {issue_number} --json number,title,body,labels,milestone,assignees,comments
+gh issue view {issue_number} --json number,title,body,labels,comments
 ```
 
-既存コメントにも目を通す。過去の議論や回答が、これから確認しようとしていた疑問を既に解消している場合がある。
+**全件モード:**
 
-### 3. サイズ判定
+```bash
+gh issue list --state open --json number,title,body,labels,updatedAt,comments --limit {limit}
+```
 
-DoR定義の「サイズ判定ロジック」セクションに従ってIssueのサイズを判定する。
+`--label` オプションがあれば `--label <name>` を追加する。
 
-### 4. 精査
+### 4. サブエージェントによる精査
 
-DoRチェック項目を評価した上で、以下の観点で分析する。サイズに応じて深さを調整する（Smallは軽く確認、Largeは網羅的に分析）。
+`references/refine-prompt.md` をReadで読み込み、DoR定義・Issue情報と組み合わせてサブエージェントプロンプトを構築する。
 
-**目標**: 「このIssueを渡された開発者が、追加の質問なしに作業を始められるか？」を判断すること。
+**プロンプト構築:**
 
-主な観点:
+```
+{refine-prompt.md の内容}
 
-- **仕様の明確さ**: 曖昧な表現（「〜など」「適切に」）、複数解釈可能な箇所はないか
-- **決定事項の有無**: 設計上の選択肢がある場合、選択肢と推奨案を整理
-- **スコープの妥当性**: 1PR（1-2日）で完了できるか、分割が必要か
-- **受け入れ条件**: 何をもって完了とするか判断できるか
-- **依存関係**: 先に解決すべき問題や影響を受ける既存コードはないか
+## DoR（Definition of Ready）定義
 
-### 5. コードベースの確認
+{DoR定義の全文}
 
-Issueに関連するコードを Grep/Glob で探索し、以下を把握する:
+## 精査対象Issue
 
-- 変更対象となりそうなファイル・モジュール
-- 既存の実装パターン・規約
-- テストの有無と追加が必要な箇所
+{Issue情報をJSON形式で埋め込み}
 
-### 6. 出力
+実行した全てのBashコマンドとツール呼び出しを、実行順に「実行ログ」セクションとして最終出力に含めること。
+```
 
-以下の形式で精査結果を提示する。該当しないセクションは省略してよい。
+出力形式指定（`{OUTPUT_FORMAT}` プレースホルダを置換）:
 
-```markdown
+- **1件モード**: 詳細形式（後述）
+- **全件モード**: 構造化形式（後述）
+
+**サブエージェントの起動:**
+
+- **1件モード**: Agent tool 1回（モデル: 親と同じ）
+- **全件モード**: 10-15件/バッチ、最大3並列（モデル: `sonnet`）
+
+### 5. 出力
+
+#### 1件精査: 詳細形式
+
+サブエージェントへの出力形式指定:
+
+```
+以下の形式で精査結果を出力してください。該当しないセクションは省略してよい。
+
 ## Issue精査結果: #{issue_number}
 
 ### 概要
@@ -117,78 +141,40 @@ Issueに関連するコードを Grep/Glob で探索し、以下を把握する:
 2. [次にやるべきこと]
 ```
 
-## アクション選択
+#### 全件精査: サマリー形式
 
-精査完了後、**AskUserQuestion ツール**で次のアクションを選択させ、そのまま実行する。選択肢は精査結果に応じて調整する:
+サブエージェントへの出力形式指定:
 
-- 確認事項がある場合: 「Issueコメントに投稿」を推奨（ラベル: `needs-clarification`）
-- 確認事項がない場合: 「作業開始」を推奨（ラベル: `ready-for-work`）
-- 分割が必要な場合: 「Issue分割（子Issue作成）」を選択肢に含める
+```
+各Issueについて以下の形式で結果を返してください:
+- number: Issue番号
+- title: タイトル
+- size: Small / Medium / Large
+- is_ready: true / false
+- clarification_items: 確認事項のリスト（なければ空配列）
+```
 
-> AskUserQuestion が利用できない場合: 精査結果と推奨アクションを出力し、ユーザーの指示を待つ。
-
-## アクション実行
-
-### コメント投稿
-
-Write ツールで `/tmp/issue-comment-{issue_number}-{timestamp}.md` にコメント内容を書き出し、`--body-file` で投稿する。
-
-**確認事項がある場合:**
+サブエージェントの結果を集約し、以下の形式で出力する:
 
 ```markdown
-## 精査結果
+## Issue精査サマリー
 
-### 概要
+| # | タイトル | サイズ | Ready | 確認事項 |
+|---|---------|--------|-------|---------|
+| 1 | 機能追加 | Medium | ❌    | 2件     |
+| 3 | バグ修正 | Small  | ✅    | なし    |
+| 5 | 設計変更 | -      | -     | error   |
 
-[Issueの要約]
+### 統計
 
-### 確認事項
+- 精査対象: {total}件
+- 作業可能（Ready）: {ready}件
+- 確認事項あり（Not Ready）: {not_ready}件
 
-以下の点について確認・決定が必要です:
+### 次のアクション
 
-- [ ] [確認事項1]
-- [ ] [確認事項2]
-
-### 決定が必要な事項
-
-| 項目 | 選択肢 | 推奨 | 理由 |
-| ---- | ------ | ---- | ---- |
-| ...  | ...    | ...  | ...  |
-
----
-
-_確認事項に回答後、`/refine-issue {issue_number}` で再精査してください_
-_精査実施: Claude Code_
+- Not ReadyのIssueは確認事項を解消後、`/refine-issue {number}` で個別に再精査
+- ReadyのIssueは作業開始可能
 ```
 
-```bash
-gh issue comment {issue_number} --body-file /tmp/issue-comment-{issue_number}-{timestamp}.md
-gh issue edit {issue_number} --add-label "needs-clarification"
-gh issue edit {issue_number} --remove-label "ready-for-work"
-```
-
-**確認事項がない場合:**
-
-```markdown
-## 精査完了
-
-作業開始可能です。
-
----
-
-_精査実施: Claude Code_
-```
-
-```bash
-gh issue comment {issue_number} --body-file /tmp/issue-comment-{issue_number}-{timestamp}.md
-gh issue edit {issue_number} --add-label "ready-for-work"
-gh issue edit {issue_number} --remove-label "needs-clarification"
-```
-
-### 子Issue作成
-
-Write ツールで `/tmp/issue-body-{issue_number}-{timestamp}.md` にIssue本文を書き出し、`--body-file` で作成する:
-
-```bash
-gh issue create --title "[親Issue名] - [サブタスク名]" --body-file /tmp/issue-body-{issue_number}-{timestamp}.md
-```
+**エラーハンドリング**: サブエージェントが失敗した場合、該当Issueはサマリーテーブル内に `error` ステータスで表示し、エラー詳細をテーブル直後に補足する。

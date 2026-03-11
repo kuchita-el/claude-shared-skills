@@ -5,7 +5,14 @@ cd "$(dirname "$0")"
 
 mkdir -p .claude/skills
 
-# skills/ 内の各ディレクトリをリンク（スキル + defaults）
+# 壊れたシンボリックリンクを削除
+for link in .claude/skills/*; do
+  if [ -L "$link" ] && [ ! -e "$link" ]; then
+    rm "$link"
+  fi
+done
+
+# skills/ 内の各ディレクトリをリンク
 for dir in skills/*/; do
   name=$(basename "$dir")
   target=".claude/skills/$name"
