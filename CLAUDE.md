@@ -48,7 +48,7 @@ allowed-tools:
 |---|---|
 | Issue管理 | `refine-issue` |
 | 開発ループ | `dev-loop` |
-| PR・レビュー | `pr-comment` |
+| PR・レビュー | `pr-review-api-pitfalls` |
 | 依存関係 | `dependency-check` |
 
 ### DoR Framework

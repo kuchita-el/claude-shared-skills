@@ -44,7 +44,7 @@ cp skills/refine-issue/references/dor-default.md /path/to/your-project/.claude/d
 
 | スキル | コマンド | 説明 |
 |---|---|---|
-| pr-comment | `/pr-comment 123` | レビュー結果をGitHubのPRにインラインコメントとして投稿 |
+| pr-review-api-pitfalls | （自動参照） | GitHub PR Reviews APIの落とし穴と回避策 |
 
 ### 依存関係
 
