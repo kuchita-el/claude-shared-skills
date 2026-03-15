@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # .claude/skills/ のシンボリックリンクの整合性をチェックするスクリプト
-
-cd /home/kuchita/Development/claude-shared-skills
+set -euo pipefail
+cd "$(dirname "$0")/.."
 
 count=0
 broken=0
@@ -24,4 +24,5 @@ echo "チェック完了: $count リンク中 $broken 件が壊れています"
 
 if [ $broken -gt 0 ]; then
   echo "壊れたリンクを修復するには ./setup-local.sh を実行してください"
+  exit 1
 fi
