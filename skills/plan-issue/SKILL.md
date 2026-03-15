@@ -2,6 +2,8 @@
 description: IssueからPlanサブエージェントで実装プランを作成し、レビュー基準に基づくセルフレビューと要確認事項の質問までを自動化する。Issue実装プランの作成、技術設計とタスク分解の計画立案に使用
 allowed-tools:
   - Read
+  - Grep
+  - Glob
   - Edit
   - Write
   - Bash(gh issue view*)
