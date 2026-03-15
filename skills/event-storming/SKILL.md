@@ -21,7 +21,8 @@ Big Picture（システム全体俯瞰）とDesign Level（単一ドメイン深
   - **ドメイン名あり** → Design Levelから直接開始
     - 例: `order`, `在庫管理`, `注文 ECサイトの注文ドメイン`
     - ドメイン名はディレクトリ名としても使用する
-  - `--auto`: Autoモードで実行（後述）
+  - `--auto` のみ → Big Picture + Autoモード
+  - `ドメイン名 --auto` → Design Level + Autoモード
 
 ## モード
 
@@ -47,11 +48,11 @@ Big Picture（システム全体俯瞰）とDesign Level（単一ドメイン深
 
 ### Big Picture（引数なしで起動）
 
-システム全体を俯瞰し、ドメインイベントの洗い出し → イベントフロー整理 → バウンデッドコンテキスト発見 → コンテキストマップ作成を行う。
+システム全体を俯瞰し、ドメインイベントの洗い出し → イベントフロー整理 → バウンデッドコンテキスト発見 → コンテキスト間の依存方向整理を行う。
 
 **詳細手順:** `references/big-picture-flow.md` を参照
 
-**出力:** `docs/context-map.md`
+**出力:** `docs/big-picture.md`
 
 ### Design Level（ドメイン名指定で起動）
 
@@ -70,8 +71,8 @@ Big Picture（システム全体俯瞰）とDesign Level（単一ドメイン深
 
 ## Big Picture ↔ Design Level の整合性ルール
 
-- **Design Level実施時**: `docs/context-map.md` が存在する場合、そのコンテキスト境界を尊重する（矛盾する集約の分割やイベントの再定義をしない）
-- **Big Picture実施時**: `docs/context-map.md` を更新した場合、影響を受けるコンテキストの既存Design Level文書（`docs/{domain}/event-storming.md`）を確認し、修正が必要な箇所をユーザーに案内する
+- **Design Level実施時**: `docs/big-picture.md` が存在する場合、そのコンテキスト境界を尊重する（矛盾する集約の分割やイベントの再定義をしない）
+- **Big Picture実施時**: `docs/big-picture.md` を更新した場合、影響を受けるコンテキストの既存Design Level文書（`docs/{domain}/event-storming.md`）を確認し、修正が必要な箇所をユーザーに案内する
 
 ## 注意事項
 
