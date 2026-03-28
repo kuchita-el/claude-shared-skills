@@ -20,6 +20,7 @@ Claude Code向けの汎用スキルライブラリ。プロジェクト固有の
 
 - `skills/{skill-name}/SKILL.md` — 各スキルの定義ファイル（本体）
 - `skills/{skill-name}/references/` — スキルが参照する補助ファイル（テンプレート、デフォルト定義等）
+- `skills/{skill-name}/agents/` — サブエージェント定義ファイル（プロンプトテンプレート）
 - `setup-local.sh` — ローカル開発用シンボリックリンク作成スクリプト
 
 ### Skill Definition Format
