@@ -297,7 +297,7 @@ Sprint開始
 └─ 振り返り → 新Issue起票 / 必要ならADR更新 / ドメイン構造へのフィードバック
 ```
 
-Epic・Sprint・ロードマップの管理にはGitHub Projects（またはJira等の外部ツール）を使用する。ツール選定はプロジェクトに委ねる。
+Epic・Sprint・ロードマップの管理にはGitHub Projects（またはJira等の外部ツール）を使用する。ツール選定はプロジェクトに委ねる。ツール別の運用モデルケースは [Sprint運用のモデルケース](references/sprint-management-examples.md) を参照。
 
 ### 3.9 変更パターン別の運用フロー
 
