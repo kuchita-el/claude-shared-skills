@@ -1,6 +1,6 @@
 # Sprint運用のモデルケース
 
-workflow-design.md 3.8「Sprint運用」のリファレンス。ツール別の運用例を示す。
+[Sprint運用](../workflow-design.md#sprint-ops)のリファレンス。ツール別の運用例を示す。
 
 ---
 
@@ -75,4 +75,4 @@ JiraのStoryとGitHubのIssueを二重管理しない。以下のいずれかに
 
 ### Confluenceとの連携
 
-Discovery成果物のうち、Confluenceに原本を置くものとリポジトリに転記するものの使い分けは workflow-design.md 4.3「外部ツールとの連携」を参照。
+Discovery成果物のうち、Confluenceに原本を置くものとリポジトリに転記するものの使い分けは [外部ツールとの連携](../workflow-design.md#external-tools)を参照。
