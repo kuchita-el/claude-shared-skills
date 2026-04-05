@@ -1,8 +1,3 @@
----
-description: GitHub Pull Request Reviews APIの落とし穴と回避策（line/side指定、diff hunk制約、自己PRレビュー制限、複数行コメント）。gh apiでPRにレビューコメントやインラインコメントを投稿するとき、PRレビュー投稿でAPIエラーが発生したときに参照。
-user-invocable: false
----
-
 ## PRレビューコメント投稿の落とし穴
 
 ### line + side を使う（position は使わない）

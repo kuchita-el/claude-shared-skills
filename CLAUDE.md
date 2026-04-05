@@ -9,10 +9,8 @@ Claude Code向けの汎用スキルライブラリ。プロジェクト固有の
 ## Local Development Setup
 
 ```bash
-./setup-local.sh   # .claude/skills/ にシンボリックリンクを作成
+./setup-local.sh   # claude --plugin-dir . でプラグインとして起動
 ```
-
-新しいスキルを追加した場合も再実行すればリンクが追加される。
 
 ## Architecture
 
@@ -21,7 +19,7 @@ Claude Code向けの汎用スキルライブラリ。プロジェクト固有の
 - `skills/{skill-name}/SKILL.md` — 各スキルの定義ファイル（本体）
 - `skills/{skill-name}/references/` — スキルが参照する補助ファイル（テンプレート、デフォルト定義等）
 - `skills/{skill-name}/agents/` — サブエージェント定義ファイル（プロンプトテンプレート）
-- `setup-local.sh` — ローカル開発用シンボリックリンク作成スクリプト
+- `setup-local.sh` — ローカル開発用起動スクリプト（`claude --plugin-dir .` のラッパー）
 
 ### Skill Definition Format
 
@@ -48,8 +46,9 @@ allowed-tools:
 | カテゴリ | スキル |
 |---|---|
 | Issue管理 | `refine-issue` |
+| 計画 | `plan-issue` |
 | 開発ループ | `dev-loop` |
-| PR・レビュー | `pr-review-api-pitfalls` |
+| ドメイン設計 | `event-storming` |
 | 依存関係 | `dependency-check` |
 
 ### DoR Framework
@@ -77,5 +76,4 @@ Issueサイズ（Small/Medium/Large）に応じてチェック項目が段階的
 ## Adding a New Skill
 
 1. `skills/{skill-name}/SKILL.md` を作成（YAMLフロントマター + 実装仕様）
-2. `./setup-local.sh` を再実行してシンボリックリンクを更新
-3. Claude Codeで `/{skill-name}` として動作確認
+2. `./setup-local.sh` で起動して動作確認（`/dev-workflow:{skill-name}` でスコープ付き呼び出し）

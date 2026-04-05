@@ -50,7 +50,7 @@ Big Picture（システム全体俯瞰）とDesign Level（単一ドメイン深
 
 システム全体を俯瞰し、ドメインイベントの洗い出し → イベントフロー整理 → バウンデッドコンテキスト発見 → コンテキスト間の依存方向整理を行う。
 
-**詳細手順:** `references/big-picture-flow.md` を参照
+**詳細手順:** `${CLAUDE_SKILL_DIR}/references/big-picture-flow.md` を参照
 
 **出力:** `docs/big-picture.md`
 
@@ -58,7 +58,7 @@ Big Picture（システム全体俯瞰）とDesign Level（単一ドメイン深
 
 単一ドメインを深掘りし、イベント・コマンド・アクター・集約・状態遷移を詳細に分析する。
 
-**詳細手順:** `references/design-level-flow.md` を参照
+**詳細手順:** `${CLAUDE_SKILL_DIR}/references/design-level-flow.md` を参照
 
 **出力:** `docs/{domain}/event-storming.md`
 
