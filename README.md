@@ -67,7 +67,7 @@ cp skills/refine-issue/references/dor-default.md /path/to/your-project/.claude/d
 ./setup-local.sh
 ```
 
-`.claude/skills/` 内に各スキルへのシンボリックリンクが作成され、スキルコマンドがそのまま使えるようになります。スキルを新規追加した場合も再実行すればリンクが追加されます。壊れたリンクは自動的に清掃されます。
+`claude --plugin-dir .` でプラグインとして読み込んだClaude Codeが起動します。各スキルは `/dev-workflow:{skill-name}` のスコープ付き呼び出しで利用できます。
 
 ## ライセンス
 
