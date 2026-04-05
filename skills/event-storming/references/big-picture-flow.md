@@ -146,6 +146,6 @@ Phase 1-5の結果を `docs/big-picture.md` に出力する。
 **進め方:**
 
 1. `docs/` ディレクトリの存在を確認し、なければ `mkdir -p` で作成する
-2. `references/big-picture-template.md` を読み込み、テンプレートに従って出力する
+2. `${CLAUDE_SKILL_DIR}/references/big-picture-template.md` を読み込み、テンプレートに従って出力する
 3. 生成後、ファイルパスを報告し、内容の過不足がないかユーザーに確認する
 4. 発見した各コンテキストについて、「`/event-storming {コンテキスト名}` で詳細なDesign Levelの分析ができます」とテキスト案内する
