@@ -48,8 +48,9 @@ allowed-tools:
 | カテゴリ | スキル |
 |---|---|
 | Issue管理 | `refine-issue` |
+| 計画 | `plan-issue` |
 | 開発ループ | `dev-loop` |
-| PR・レビュー | `pr-review-api-pitfalls` |
+| ドメイン設計 | `event-storming` |
 | 依存関係 | `dependency-check` |
 
 ### DoR Framework
