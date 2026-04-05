@@ -1,0 +1,5 @@
+{
+  "name": "dev-workflow",
+  "version": "0.1.0",
+  "description": "Claude Code向けの汎用開発ワークフロースキル集。Issue管理・開発ループ・PR レビュー・依存関係チェック等を提供する。"
+}

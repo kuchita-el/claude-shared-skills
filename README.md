@@ -40,12 +40,6 @@ cp skills/refine-issue/references/dor-default.md /path/to/your-project/.claude/d
 |---|---|---|
 | dev-loop | `/dev-loop 10` | Issue・計画・レビュー指摘を起点に、実装→セルフレビュー→修正→PR作成を自動化する汎用開発ループ |
 
-### PR・レビュー
-
-| スキル | コマンド | 説明 |
-|---|---|---|
-| pr-review-api-pitfalls | （自動参照） | GitHub PR Reviews APIの落とし穴と回避策 |
-
 ### 依存関係
 
 | スキル | コマンド | 説明 |
