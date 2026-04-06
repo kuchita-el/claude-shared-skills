@@ -81,7 +81,7 @@ gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'
 {plan-prompt.md の内容}
 ```
 
-`{OUTPUT_FORMAT}` プレースホルダを本スキルの「出力フォーマット」セクションのMarkdownテンプレートで置換する。
+`{OUTPUT_FORMAT}` プレースホルダを `${CLAUDE_SKILL_DIR}/references/plan-output-format.md` の内容で置換する。
 
 その後、以下を追加する:
 
