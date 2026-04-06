@@ -1,0 +1,12 @@
+{
+  "name": "dev-workflow",
+  "owner": {
+    "name": "Kuchita El"
+  },
+  "plugins": [
+    {
+      "name": "dev-workflow",
+      "source": "./"
+    }
+  ]
+}

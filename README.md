@@ -4,7 +4,27 @@ Claude Code向けの汎用スキル集です。プロジェクト固有の依存
 
 ## 導入方法
 
-### 1. スキルのコピー
+### 方法1: プラグインとしてインストール（推奨）
+
+マーケットプレイス経由でインストールできます:
+
+```bash
+# マーケットプレイスを登録
+/plugin marketplace add kuchita-el/claude-shared-skills
+
+# プラグインをインストール
+/plugin install dev-workflow@dev-workflow
+```
+
+スコープを指定してインストール先を選択できます:
+
+| スコープ | 保存先 | 共有範囲 |
+|---|---|---|
+| `--scope user` | `~/.claude/settings.json` | 全プロジェクト共通 |
+| `--scope project` | `.claude/settings.json` | チーム全員（リポジトリにコミット） |
+| `--scope local` | `.claude/settings.local.json` | 自分のみ |
+
+### 方法2: スキルのコピー
 
 使いたいスキルを `.claude/skills/` にコピーしてください:
 
@@ -16,7 +36,7 @@ cp -r skills/* /path/to/your-project/.claude/skills/
 cp -r skills/dev-loop /path/to/your-project/.claude/skills/
 ```
 
-### 2. DoR定義のカスタマイズ（オプション）
+### DoR定義のカスタマイズ（オプション）
 
 `/refine-issue` はDoR定義を参照します。スキル同梱のデフォルト定義（`skills/refine-issue/references/dor-default.md`）がそのまま使われますが、プロジェクトに合わせてカスタマイズする場合は `.claude/dor/definition.md` を配置してください:
 
