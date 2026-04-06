@@ -13,7 +13,7 @@ Claude Code向けの汎用スキル集です。プロジェクト固有の依存
 /plugin marketplace add kuchita-el/claude-shared-skills
 
 # プラグインをインストール
-/plugin install dev-workflow@dev-workflow
+/plugin install dev-workflow@claude-shared-skills
 ```
 
 スコープを指定してインストール先を選択できます:
