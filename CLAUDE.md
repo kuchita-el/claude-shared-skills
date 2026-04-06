@@ -16,6 +16,8 @@ Claude Code向けの汎用スキルライブラリ。プロジェクト固有の
 
 ### Repository Structure
 
+- `.claude-plugin/plugin.json` — プラグイン定義（名前・バージョン・説明）
+- `.claude-plugin/marketplace.json` — マーケットプレイス定義（プラグイン配布用カタログ）
 - `skills/{skill-name}/SKILL.md` — 各スキルの定義ファイル（本体）
 - `skills/{skill-name}/references/` — スキルが参照する補助ファイル（テンプレート、デフォルト定義等）
 - `skills/{skill-name}/agents/` — サブエージェント定義ファイル（プロンプトテンプレート）
