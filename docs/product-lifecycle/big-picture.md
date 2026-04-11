@@ -90,7 +90,7 @@ graph TB
         E13[ロールバックが実行された]
         E9 --> E10
         E10 --> E11
-        E9 --> E12
+        E10 --> E12
     end
 
     subgraph Observation[観測]
