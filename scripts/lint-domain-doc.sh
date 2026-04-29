@@ -42,9 +42,61 @@ done
 # 違反カウンタ
 violations=0
 
-# 各ファイルを処理（Task 2/3 で本実装）
+# 1ファイルを行単位で走査して禁止記号を検出
+lint_file() {
+    local file="$1"
+    local in_mermaid=0
+    local line_num=0
+    local line label
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        line_num=$((line_num + 1))
+
+        # コードブロック開閉判定（行頭3バックティック）
+        if [[ "${line:0:3}" == '```' ]]; then
+            if [ "$in_mermaid" -eq 1 ]; then
+                in_mermaid=0
+            else
+                label="${line:3}"
+                label="${label%%[[:space:]]*}"
+                if [ "$label" = "mermaid" ]; then
+                    in_mermaid=1
+                fi
+            fi
+        fi
+
+        # 禁止記号検出（Mermaidブロック内は除外）
+        if [ "$in_mermaid" -eq 0 ]; then
+            if [[ "${line:0:9}" == '```fsharp' ]]; then
+                printf '%s:%d: 禁止記号: ```fsharp\n' "$file" "$line_num"
+                violations=$((violations + 1))
+            fi
+            if [[ "$line" =~ ^type([[:space:]]|$) ]]; then
+                printf '%s:%d: 禁止記号: ^type\n' "$file" "$line_num"
+                violations=$((violations + 1))
+            fi
+            if [[ "$line" == *'->'* ]]; then
+                printf '%s:%d: 禁止記号: ->\n' "$file" "$line_num"
+                violations=$((violations + 1))
+            fi
+            if [[ "$line" == *'=>'* ]]; then
+                printf '%s:%d: 禁止記号: =>\n' "$file" "$line_num"
+                violations=$((violations + 1))
+            fi
+            if [[ "$line" == *'<>'* ]]; then
+                printf '%s:%d: 禁止記号: <>\n' "$file" "$line_num"
+                violations=$((violations + 1))
+            fi
+            if [[ "$line" == *'Result<'* ]]; then
+                printf '%s:%d: 禁止記号: Result<\n' "$file" "$line_num"
+                violations=$((violations + 1))
+            fi
+        fi
+    done < "$file"
+}
+
 for file in "${files[@]}"; do
-    : "$file"
+    lint_file "$file"
 done
 
 if [ "$violations" -gt 0 ]; then
