@@ -116,6 +116,11 @@ check_naming() {
 
     case "$section" in
         コマンド)
+            # `=` を含む行は型定義行（例: `〜失敗理由 =`）。コマンド名検査の対象外
+            # （廃止記法 `〜失敗理由 =` は check_failure_reason_type で別途検出）
+            if [[ "$line" == *=* ]]; then
+                return
+            fi
             # う段9文字終止形（う/く/ぐ/す/つ/ぬ/ぶ/む/る）のショートサーキット連結
             if [[ "$name" != *う && "$name" != *く && "$name" != *ぐ \
                && "$name" != *す && "$name" != *つ && "$name" != *ぬ \
