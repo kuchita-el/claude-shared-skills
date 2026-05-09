@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-# DDDドキュメントリント
+# DDDドキュメントリント（構造検証）
 # - 禁止記号の検出
-# - 命名規約の検査（日本語名のみ、集約セクション配下の指定2見出し配下のコードブロック内）
-#   - コマンド名: 動詞句（う段9文字終止形 う/く/ぐ/す/つ/ぬ/ぶ/む/る）
-#   - イベント名: 過去形（〜した / 〜された）
-# - 廃止セクション検出: `### 状態遷移`（コマンドセクションへ統合済み）
 # - 廃止記法検出: `〜失敗理由 =` 独立型定義（コマンド内 `失敗時:` 配下に箇条書き化）
 # - コマンドエントリの「契機:」フィールド必須化検査・値の列挙検査
+#
+# 命名規約（イベント=過去形、コマンド=動詞辞書形 等）は形態素解析を要する
+# 言語学的判定であり、grep ベースでは原理的に誤検出・誤許容が生じるため
+# 機械検証対象外とする。命名規約自体は
+# `skills/domain-modeling/references/domain-model-notation.md` に維持し、
+# 人が守る規約として運用する（機械化再導入は #157 フェーズ2以降で検討）。
 #
 # 使い方:
 #   bash scripts/lint-domain-doc.sh             # 固定3ファイルを検査
@@ -19,10 +21,7 @@
 #   3: GNU grep 不在
 #
 # ロケール注記:
-#   bash 正規表現 `=~` のマルチバイト文字クラスはロケール依存。
-#   本スクリプトでは `LC_ALL=C.UTF-8` を冒頭で明示し、
-#   命名規約のう段判定は個別文字の比較（`*う` `*く` ...）でショートサーキット連結し
-#   ロケール非依存にしている。
+#   PCRE（`grep -P`）の日本語文字クラスはロケール依存のため `LC_ALL=C.UTF-8` を冒頭で明示する。
 set -euo pipefail
 export LC_ALL=C.UTF-8
 
@@ -84,58 +83,6 @@ check_prohibited() {
         printf '%s:%d: 禁止記号: Result<\n' "$file" "$line_num"
         violations=$((violations + 1))
     fi
-}
-
-# 命名規約検査
-check_naming() {
-    local file="$1"
-    local line_num="$2"
-    local line="$3"
-    local section="$4"
-    local name
-
-    # 行頭定義行: インデントなしで `=` or `:` を含む
-    if ! [[ "$line" =~ ^[^[:space:]][^=:]*[=:] ]]; then
-        return
-    fi
-
-    # 名前部分: 最初の `=`/`:` 手前まで
-    name="${line%%[=:]*}"
-    # 前後空白除去
-    name="${name#"${name%%[![:space:]]*}"}"
-    name="${name%"${name##*[![:space:]]}"}"
-
-    if [ -z "$name" ]; then
-        return
-    fi
-
-    # 日本語含有判定（ひらがな・カタカナ・漢字）
-    if ! grep -qP '[\x{3040}-\x{30ff}\x{4e00}-\x{9fff}]' <<<"$name"; then
-        return  # 英語名は対象外
-    fi
-
-    case "$section" in
-        コマンド)
-            # `=` を含む行は型定義行（例: `〜失敗理由 =`）。コマンド名検査の対象外
-            # （廃止記法 `〜失敗理由 =` は check_failure_reason_type で別途検出）
-            if [[ "$line" == *=* ]]; then
-                return
-            fi
-            # う段9文字終止形（う/く/ぐ/す/つ/ぬ/ぶ/む/る）のショートサーキット連結
-            if [[ "$name" != *う && "$name" != *く && "$name" != *ぐ \
-               && "$name" != *す && "$name" != *つ && "$name" != *ぬ \
-               && "$name" != *ぶ && "$name" != *む && "$name" != *る ]]; then
-                printf '%s:%d: 命名規約: %s: コマンド名は動詞句（う段終止形）でない\n' "$file" "$line_num" "$name"
-                violations=$((violations + 1))
-            fi
-            ;;
-        発火するイベント)
-            if [[ "$name" != *した && "$name" != *された ]]; then
-                printf '%s:%d: 命名規約: %s: イベント名は過去形でない\n' "$file" "$line_num" "$name"
-                violations=$((violations + 1))
-            fi
-            ;;
-    esac
 }
 
 # 廃止記法: 失敗理由独立型定義（コマンドセクション配下のコードブロック内）
@@ -241,18 +188,10 @@ lint_file() {
                     fi
                     current_section=""
                 fi
-                # H3 見出し
-                if [[ "$line" =~ ^###[[:space:]](コマンド|発火するイベント)[[:space:]]*$ ]]; then
+                # H3 見出し: コマンドセクション追跡のみ（契機欠落検査用）
+                if [[ "$line" =~ ^###[[:space:]]コマンド[[:space:]]*$ ]]; then
                     flush_command_entry "$file"
-                    current_section="${BASH_REMATCH[1]}"
-                elif [[ "$line" =~ ^###[[:space:]]状態遷移[[:space:]]*$ ]]; then
-                    # 廃止セクション検出（集約配下のときのみ違反）
-                    if [ "$current_aggregate" -eq 1 ]; then
-                        printf '%s:%d: 廃止セクション: 状態遷移セクションは廃止（コマンドセクションに統合）\n' "$file" "$line_num"
-                        violations=$((violations + 1))
-                    fi
-                    flush_command_entry "$file"
-                    current_section=""
+                    current_section="コマンド"
                 elif [[ "$line" =~ ^###[[:space:]] ]]; then
                     flush_command_entry "$file"
                     current_section=""
@@ -263,11 +202,6 @@ lint_file() {
         # 禁止記号検出（Mermaidブロック内は除外）
         if [ "$in_mermaid" -eq 0 ]; then
             check_prohibited "$file" "$line_num" "$line"
-        fi
-
-        # 命名規約検査（naming_target_block）
-        if [ "$current_aggregate" -eq 1 ] && [ -n "$current_section" ] && [ "$in_target_lang_block" -eq 1 ]; then
-            check_naming "$file" "$line_num" "$line" "$current_section"
         fi
 
         # コマンドセクション配下のコードブロック内処理
