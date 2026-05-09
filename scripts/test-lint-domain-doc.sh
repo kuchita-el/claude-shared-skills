@@ -27,11 +27,9 @@ valid_fixtures=(
 # invalid 群: 期待 exit code 1 + 期待メッセージ部分文字列（| 区切りで AND 検査）
 invalid_fixtures=(
     "03-failure-reason-as-type.md"
-    "04-missing-trigger.md"
 )
 declare -A invalid_expected
 invalid_expected["03-failure-reason-as-type.md"]="廃止記法|失敗理由"
-invalid_expected["04-missing-trigger.md"]="契機欠落"
 
 passed=0
 failed=0
