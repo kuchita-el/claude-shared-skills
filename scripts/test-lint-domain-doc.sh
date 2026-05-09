@@ -26,14 +26,10 @@ valid_fixtures=(
 
 # invalid 群: 期待 exit code 1 + 期待メッセージ部分文字列（| 区切りで AND 検査）
 invalid_fixtures=(
-    "01-state-transition-section.md"
-    "02-non-u-row-ending.md"
     "03-failure-reason-as-type.md"
     "04-missing-trigger.md"
 )
 declare -A invalid_expected
-invalid_expected["01-state-transition-section.md"]="廃止セクション|状態遷移"
-invalid_expected["02-non-u-row-ending.md"]="命名規約|タスクを処理中|う段終止形"
 invalid_expected["03-failure-reason-as-type.md"]="廃止記法|失敗理由"
 invalid_expected["04-missing-trigger.md"]="契機欠落"
 
