@@ -20,7 +20,7 @@ FIXTURES_DIR="$REPO_ROOT/scripts/fixtures/lint-domain-doc"
 valid_fixtures=(
     "01-command-only.md"
     "02-command-with-policy.md"
-    "03-u-row-verbs.md"
+    "03-multiple-commands.md"
     "04-mermaid-and-symbols.md"
 )
 
