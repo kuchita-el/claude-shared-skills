@@ -17,8 +17,7 @@
   - `0`: 違反0件
   - `1`: 違反検出
   - `2`: 入力ファイル不存在
-  - `3`: GNU grep（`grep -P` 対応）不在
-- **依存**: `bash` ≥ 4.x、GNU grep（Linux または `brew install grep` 済みの macOS）
+- **依存**: `bash` ≥ 4.x
 
 ## 基本実行例
 
@@ -104,11 +103,10 @@ jobs:
         run: bash scripts/lint-domain-doc.sh
 ```
 
-`ubuntu-latest` は GNU grep を含むため追加セットアップ不要。違反検出時は exit code 1 でジョブが失敗する。
+`ubuntu-latest` 標準環境で追加セットアップ不要。違反検出時は exit code 1 でジョブが失敗する。
 
 ## 既知の制約
 
-- **GNU grep 依存**: 日本語文字判定に `grep -P`（PCRE）を使用。BSD grep / macOS デフォルト grep では動作しない（exit 3 でエラー終了）。macOS では `brew install grep` 後に PATH 上で GNU grep が優先されるよう設定する。
 - **自動テスト**: `scripts/test-lint-domain-doc.sh` で fixture（`scripts/fixtures/lint-domain-doc/{valid,invalid}/*.md`）に対する exit code とメッセージ部分一致をアサートする。CI 連携は未導入（ローカル実行のみ）。
 - **命名規約は機械検証対象外**: イベント=過去形、コマンド=動詞句〔う段終止形〕等の命名規約はLinterの機械検証から撤退済（背景: `domain-model-notation.md` の「Linter による機械検証の撤退について」）。命名遵守は規約参照と人間レビューで補完する。
 - **失敗理由独立型は違反**: `〜失敗理由 =` のような独立型定義は廃止記法として違反検出される。Either.Left 系の同期失敗はコマンドの `失敗時:` 配下に箇条書きで記述する（空なら省略）。ドメインイベント系失敗（`〜が失敗した` 等、境界を超えて他者が観測する事実）は `イベント:` 配下に発火イベントとして列挙する（`失敗時:` 配下への混入は意味境界違反だが、本リントは意味境界の機械検査は行わない。レビューで補完すること）。
@@ -120,3 +118,4 @@ jobs:
 - 2026-04-30: 記法刷新（#168）に伴い、検査ロジックを更新（う段9文字終止形・状態遷移廃止検出・失敗理由独立型廃止検出・契機フィールド必須化）。fixture テストランナー `scripts/test-lint-domain-doc.sh` を導入し、valid 4件 + invalid 4件で全パスを確認。
 - 2026-05-09: 命名規約検査（イベント名・コマンド名・状態遷移名）と廃止セクション存在検査を削除（#192）。Linter は構造検証（禁止記号・廃止記法独立型定義・契機フィールド必須化）に専念。fixture を valid 4件 + invalid 2件に再編し全パスを確認。
 - 2026-05-09: 契機フィールド検査削除（#187）。Linter は禁止記号検査・廃止記法検出（失敗理由独立型）の2系統に絞り込み。fixture を valid 4件 + invalid 1件に再編し全パスを確認。
+- 2026-05-09: GNU grep / `LC_ALL` 依存撤去（#195）。lint 本体から PCRE 対応性検査と `LC_ALL=C.UTF-8` 明示を削除し、運用ガイドから macOS セットアップ手順を削除。fixture テスト 5/5 パス・既定3ファイル違反0件を確認（macOS 実機確認は別Issueでマトリクス化検討）。
