@@ -4,7 +4,7 @@
 # - 廃止記法検出: `〜失敗理由 =` 独立型定義（コマンド内 `失敗時:` 配下に箇条書き化）
 #
 # 命名規約（イベント=過去形、コマンド=動詞辞書形 等）は形態素解析を要する
-# 言語学的判定であり、grep ベースでは原理的に誤検出・誤許容が生じるため
+# 言語学的判定であり、機械的判定では原理的に誤検出・誤許容が生じるため
 # 機械検証対象外とする。命名規約自体は
 # `skills/domain-modeling/references/domain-model-notation.md` に維持し、
 # 人が守る規約として運用する（機械化再導入は #157 フェーズ2以降で検討）。
@@ -17,18 +17,7 @@
 #   0: 違反0件
 #   1: 違反検出
 #   2: 入力ファイル不存在
-#   3: GNU grep 不在
-#
-# ロケール注記:
-#   PCRE（`grep -P`）の日本語文字クラスはロケール依存のため `LC_ALL=C.UTF-8` を冒頭で明示する。
 set -euo pipefail
-export LC_ALL=C.UTF-8
-
-# 環境前提検証: GNU grep（grep -P 対応）が必要
-if ! grep -P -q . <<<"x" 2>/dev/null; then
-    echo "エラー: GNU grep（grep -P 対応）が必要です。Linux を使うか、macOS では 'brew install grep' を実行してください。" >&2
-    exit 3
-fi
 
 # 対象ファイルの決定
 if [ "$#" -eq 0 ]; then
