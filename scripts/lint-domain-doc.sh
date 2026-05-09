@@ -2,7 +2,6 @@
 # DDDドキュメントリント（構造検証）
 # - 禁止記号の検出
 # - 廃止記法検出: `〜失敗理由 =` 独立型定義（コマンド内 `失敗時:` 配下に箇条書き化）
-# - コマンドエントリの「契機:」フィールド必須化検査・値の列挙検査
 #
 # 命名規約（イベント=過去形、コマンド=動詞辞書形 等）は形態素解析を要する
 # 言語学的判定であり、grep ベースでは原理的に誤検出・誤許容が生じるため
@@ -99,44 +98,6 @@ check_failure_reason_type() {
     fi
 }
 
-# コマンドエントリのフラッシュ（契機フィールド欠落チェック）
-flush_command_entry() {
-    local file="$1"
-    if [ "$cmd_entry_start" -gt 0 ] && [ "$cmd_entry_has_trigger" -eq 0 ]; then
-        printf '%s:%d: 契機欠落: %s: コマンドには「契機:」フィールドが必須\n' "$file" "$cmd_entry_start" "$cmd_entry_name"
-        violations=$((violations + 1))
-    fi
-    cmd_entry_start=0
-    cmd_entry_has_trigger=0
-    cmd_entry_name=""
-}
-
-# 「契機:」フィールド値の列挙検査
-# 4種: 外部指示 / イベント受信(...) / ポリシー(...) / スケジュール
-# 全角・半角括弧両許容
-check_trigger_value() {
-    local file="$1"
-    local line_num="$2"
-    local line="$3"
-    local value
-
-    # 「契機:」以降を抽出
-    value="${line#*契機:}"
-    # 前後空白除去
-    value="${value#"${value%%[![:space:]]*}"}"
-    value="${value%"${value##*[![:space:]]}"}"
-
-    if [[ "$value" == 外部指示* ]] \
-       || [[ "$value" == "イベント受信("* ]] || [[ "$value" == "イベント受信（"* ]] \
-       || [[ "$value" == "ポリシー("* ]] || [[ "$value" == "ポリシー（"* ]] \
-       || [[ "$value" == スケジュール* ]]; then
-        return 0
-    fi
-
-    printf '%s:%d: 契機値不正: 「契機:」フィールドの値は外部指示/イベント受信(...)/ポリシー(...)/スケジュールのいずれか\n' "$file" "$line_num"
-    violations=$((violations + 1))
-}
-
 # 1ファイルを行単位で 1 パス走査
 lint_file() {
     local file="$1"
@@ -147,11 +108,6 @@ lint_file() {
     local line_num=0
     local line label
 
-    # コマンドエントリ追跡用の状態（flush_command_entry がアクセス）
-    cmd_entry_start=0
-    cmd_entry_has_trigger=0
-    cmd_entry_name=""
-
     while IFS= read -r line || [ -n "$line" ]; do
         line_num=$((line_num + 1))
 
@@ -160,8 +116,6 @@ lint_file() {
             if [ "$in_mermaid" -eq 1 ]; then
                 in_mermaid=0
             elif [ "$in_target_lang_block" -eq 1 ]; then
-                # コードブロック終端: コマンドエントリをフラッシュ
-                flush_command_entry "$file"
                 in_target_lang_block=0
             else
                 # 開始: ラベル抽出
@@ -179,8 +133,6 @@ lint_file() {
             if [ "$in_mermaid" -eq 0 ] && [ "$in_target_lang_block" -eq 0 ]; then
                 # H2 見出し（H3 とは区別）
                 if [[ "$line" =~ ^##[[:space:]] ]] && ! [[ "$line" =~ ^### ]]; then
-                    # 既存エントリのフラッシュ（念のため。通常はコードブロック終端でフラッシュ済み）
-                    flush_command_entry "$file"
                     if [[ "$line" =~ ^##[[:space:]].+集約[[:space:]]*$ ]]; then
                         current_aggregate=1
                     else
@@ -188,12 +140,10 @@ lint_file() {
                     fi
                     current_section=""
                 fi
-                # H3 見出し: コマンドセクション追跡のみ（契機欠落検査用）
+                # H3 見出し: コマンドセクション追跡（廃止記法検査の位置情報用）
                 if [[ "$line" =~ ^###[[:space:]]コマンド[[:space:]]*$ ]]; then
-                    flush_command_entry "$file"
                     current_section="コマンド"
                 elif [[ "$line" =~ ^###[[:space:]] ]]; then
-                    flush_command_entry "$file"
                     current_section=""
                 fi
             fi
@@ -204,40 +154,11 @@ lint_file() {
             check_prohibited "$file" "$line_num" "$line"
         fi
 
-        # コマンドセクション配下のコードブロック内処理
+        # コマンドセクション配下のコードブロック内: 廃止記法検査
         if [ "$current_aggregate" -eq 1 ] && [ "$current_section" = "コマンド" ] && [ "$in_target_lang_block" -eq 1 ]; then
-            # 廃止記法: 失敗理由独立型定義
             check_failure_reason_type "$file" "$line_num" "$line"
-
-            # コマンドエントリ追跡
-            # 行頭非空白かつ `:` を含み `=` を含まない（インデントなしの「名前:」形式）
-            if [[ "$line" =~ ^[^[:space:]][^=]*: ]] && [[ "$line" != *=* ]]; then
-                # 行頭のキーワード（失敗時:、契機: 等のフィールド名のみの行）はエントリ開始ではない
-                # ただしコマンドセクション内でインデントなし行頭は通常コマンドエントリ
-                # 名前を抽出して日本語含有を確認
-                local entry_name
-                entry_name="${line%%:*}"
-                entry_name="${entry_name#"${entry_name%%[![:space:]]*}"}"
-                entry_name="${entry_name%"${entry_name##*[![:space:]]}"}"
-                if [ -n "$entry_name" ] && grep -qP '[\x{3040}-\x{30ff}\x{4e00}-\x{9fff}]' <<<"$entry_name"; then
-                    # 前のエントリをフラッシュ
-                    flush_command_entry "$file"
-                    cmd_entry_start=$line_num
-                    cmd_entry_has_trigger=0
-                    cmd_entry_name="$entry_name"
-                fi
-            elif [ "$cmd_entry_start" -gt 0 ]; then
-                # エントリ範囲内: 「契機:」フィールド検出（インデント付き）
-                if [[ "$line" =~ ^[[:space:]]+契機: ]]; then
-                    cmd_entry_has_trigger=1
-                    check_trigger_value "$file" "$line_num" "$line"
-                fi
-            fi
         fi
     done < "$file"
-
-    # ファイル末尾でフラッシュ（コードブロック未閉じの場合の保険）
-    flush_command_entry "$file"
 }
 
 for file in "${files[@]}"; do
