@@ -144,7 +144,13 @@ gh issue list --state open --json number,title,body,labels,updatedAt,comments --
 
 1. [最初にやるべきこと]
 2. [次にやるべきこと]
+
+---
+
+精査実施: Claude Code
 ```
+
+`精査実施: Claude Code` フッタは再精査検出の識別子として必須。`refine-prompt.md` の「再精査時の注意」が依拠する。
 
 #### 全件精査: サマリー形式
 
