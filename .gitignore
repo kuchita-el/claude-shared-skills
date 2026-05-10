@@ -1,3 +1,5 @@
 # Skill evaluation workspaces
 *-workspace/
 
+# Git worktrees placed inside the repo
+.claude/worktree/
