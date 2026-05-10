@@ -924,6 +924,8 @@ Superseded =
 
 状態遷移は Proposed → Accepted（必須起点）、Accepted → Deprecated、Accepted → Superseded の3通り。即承認のケースは「提案 → 承認」の連続実行として運用ルール上で表現する（Proposed スキップは構造的に不可）。
 
+状態名は ADR 業界慣例（Nygard ADR / MADR）に倣い英文表記（`Proposed / Accepted / Deprecated / Superseded`）で確定する。他集約の状態名（和文表記）と命名規則が揃わないが、集約の実体（ADR 形式の Markdown ファイル）の Status 欄表記と一致させ、業界慣例との整合を優先した意図的選択。コマンド名・イベント名・集約名・アクター名は和文を維持する。詳細な選択理由・代替案・却下理由は対応するDL（`event-storming.md` 設計判断「技術的意思決定集約の状態名を英文表記とする」）に記録する。
+
 ### コマンド
 
 ```
