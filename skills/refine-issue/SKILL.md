@@ -68,10 +68,17 @@ gh issue list --state open --json number,title,body,labels,updatedAt,comments --
 
 `${CLAUDE_SKILL_DIR}/references/refine-prompt.md` をReadで読み込み、DoR定義・Issue情報と組み合わせてサブエージェントプロンプトを構築する。
 
+`refine-prompt.md` の `{OUTPUT_FORMAT}` プレースホルダは、モードに応じて以下のファイル内容で置換する。
+
+- **1件モード**: `${CLAUDE_SKILL_DIR}/references/output-format-single.md`
+- **全件モード**: `${CLAUDE_SKILL_DIR}/references/output-format-batch-subagent.md`
+
+全件モードのサブエージェントは構造化データ（YAML/JSON等）を返し、スキル側で集約して最終出力する。スキル側の集約後出力形式は `${CLAUDE_SKILL_DIR}/references/output-format-batch.md` を参照（手順5）。
+
 **プロンプト構築:**
 
 ```
-{refine-prompt.md の内容}
+{refine-prompt.md の内容（{OUTPUT_FORMAT} を上記ファイル内容で置換済み）}
 
 ## DoR（Definition of Ready）定義
 
@@ -84,11 +91,6 @@ gh issue list --state open --json number,title,body,labels,updatedAt,comments --
 実行した全てのBashコマンドとツール呼び出しを、実行順に「実行ログ」セクションとして最終出力に含めること。
 ```
 
-出力形式指定（`{OUTPUT_FORMAT}` プレースホルダを置換）:
-
-- **1件モード**: 詳細形式（後述）
-- **全件モード**: 構造化形式（後述）
-
 **サブエージェントの起動:**
 
 - **1件モード**: Agent tool 1回（モデル: 親と同じ）
@@ -96,96 +98,7 @@ gh issue list --state open --json number,title,body,labels,updatedAt,comments --
 
 ### 5. 出力
 
-#### 1件精査: 詳細形式
+サブエージェントの結果を以下の通り取り扱う。
 
-サブエージェントへの出力形式指定:
-
-```
-以下の形式で精査結果を出力してください。該当しないセクションは省略してよい。
-
-## Issue精査結果: #{issue_number}
-
-### 概要
-
-[Issueの要約を1-2文で]
-
-### DoRチェック結果
-
-**サイズ**: Small / Medium / Large
-**Ready判定**: Ready / Not Ready
-
-| 項目             | 結果  | 備考   |
-| ---------------- | ----- | ------ |
-| 課題が明確       | ✅/❌ | [備考] |
-| ...              | ...   | ...    |
-
-### 確認事項
-
-- [ ] [確認が必要な項目1]
-- [ ] [確認が必要な項目2]
-
-### 決定が必要な事項
-
-決定論点が存在しない場合は本セクション自体を省略する（空テーブルは出力しない）。
-振り分け列は `リファイン段階` または `実装段階` のいずれかを記入する。
-
-| 項目     | 選択肢    | 推奨 | 振り分け     | 理由   |
-| -------- | --------- | ---- | ------------ | ------ |
-| [項目名] | A / B / C | A    | リファイン段階 | [理由] |
-
-### スコープ評価
-
-- **規模**: 適切 / 要分割
-- **分割案**（該当する場合）:
-  1. [サブタスク1の概要]
-  2. [サブタスク2の概要]
-
-### 次のアクション
-
-1. [最初にやるべきこと]
-2. [次にやるべきこと]
-
----
-
-精査実施: Claude Code
-```
-
-`精査実施: Claude Code` フッタは再精査検出の識別子として必須。`refine-prompt.md` の「再精査時の注意」が依拠する。
-
-#### 全件精査: サマリー形式
-
-サブエージェントへの出力形式指定:
-
-```
-各Issueについて以下の形式で結果を返してください:
-- number: Issue番号
-- title: タイトル
-- size: Small / Medium / Large
-- is_ready: true / false
-- clarification_items: 確認事項のリスト（なければ空配列）
-```
-
-サブエージェントの結果を集約し、以下の形式で出力する:
-
-```markdown
-## Issue精査サマリー
-
-| # | タイトル | サイズ | Ready | 確認事項 |
-|---|---------|--------|-------|---------|
-| 1 | 機能追加 | Medium | ❌    | 2件     |
-| 3 | バグ修正 | Small  | ✅    | なし    |
-| 5 | 設計変更 | -      | -     | error   |
-
-### 統計
-
-- 精査対象: {total}件
-- 作業可能（Ready）: {ready}件
-- 確認事項あり（Not Ready）: {not_ready}件
-
-### 次のアクション
-
-- Not ReadyのIssueは確認事項を解消後、`/refine-issue {number}` で個別に再精査
-- ReadyのIssueは作業開始可能
-```
-
-**エラーハンドリング**: サブエージェントが失敗した場合、該当Issueはサマリーテーブル内に `error` ステータスで表示し、エラー詳細をテーブル直後に補足する。
+- **1件モード**: サブエージェントの出力をそのまま表示する。出力形式は `${CLAUDE_SKILL_DIR}/references/output-format-single.md` を参照。
+- **全件モード**: サブエージェントの出力を集約し、`${CLAUDE_SKILL_DIR}/references/output-format-batch.md` に定義された最終形式で出力する。エラーハンドリング（サブエージェント失敗時の `error` ステータス表示）も同ファイルを参照。
