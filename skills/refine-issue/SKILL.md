@@ -71,7 +71,9 @@ gh issue list --state open --json number,title,body,labels,updatedAt,comments --
 `refine-prompt.md` の `{OUTPUT_FORMAT}` プレースホルダは、モードに応じて以下のファイル内容で置換する。
 
 - **1件モード**: `${CLAUDE_SKILL_DIR}/references/output-format-single.md`
-- **全件モード**: `${CLAUDE_SKILL_DIR}/references/output-format-batch.md`
+- **全件モード**: `${CLAUDE_SKILL_DIR}/references/output-format-batch-subagent.md`
+
+全件モードのサブエージェントは構造化データ（YAML/JSON等）を返し、スキル側で集約して最終出力する。スキル側の集約後出力形式は `${CLAUDE_SKILL_DIR}/references/output-format-batch.md` を参照（手順5）。
 
 **プロンプト構築:**
 
