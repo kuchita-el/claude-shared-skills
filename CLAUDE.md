@@ -75,6 +75,12 @@ Issueサイズ（Small/Medium/Large）に応じてチェック項目が段階的
 - スキル定義（SKILL.md）は最小限に保つ。冗長なコメント・不要なツール権限を追加しない。特に `AskUserQuestion` はスキル内に対話パスが存在する場合のみ許可する
 - 計画や設計の議論中にユーザーが決定を下したら、即座に計画ドキュメントに反映する。古い前提のまま進めない
 
+### ADR（設計判断の記録）
+
+- 設計議論を始める前に `docs/adr/` 配下のADR一覧を確認する
+- 設計判断を行ったら、`docs/adr/README.md` の粒度判定基準（4項目チェックリスト）に照らして ADR 化要否を判定する
+- 既存ADRと矛盾する設計判断を行う場合は、新ADRを起票し旧ADRに `Superseded by: <新ADR識別子>` を追記して旧ADRを Superseded 状態に更新する
+
 ## Adding a New Skill
 
 1. `skills/{skill-name}/SKILL.md` を作成（YAMLフロントマター + 実装仕様）
