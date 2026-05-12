@@ -9,7 +9,7 @@
 
 ## Status
 
-<Proposed | Accepted | Deprecated | Superseded のいずれかを選択。Superseded の場合は "Superseded by: ADR-YYYYMMDD[-N]-<slug>" を併記>
+<Proposed | Accepted | Deprecated | Superseded のいずれかを選択。Superseded の場合は "Superseded by: ADR-YYYYMMDD[-N]-<slug>" を併記し、`## 関連ADR` にも同じ識別子を記載する。詳細手順は `docs/adr/README.md`「廃止・上書き手順」参照>
 
 ## Context
 
