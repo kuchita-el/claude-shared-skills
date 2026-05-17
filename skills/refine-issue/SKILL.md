@@ -2,7 +2,7 @@
 description: Issueの準備状態を精査し、不足項目・確認事項・分割提案をレポートする。作業開始前のIssue品質チェック、全オープンIssueの一括棚卸し、Issue精査・レビューに使用
 allowed-tools:
   - Bash(gh issue view*)
-  - Bash(bash *prepare-issues.sh*)
+  - Bash(bash *skills/refine-issue/scripts/prepare-issues.sh*)
   - Agent
   - Read
 ---

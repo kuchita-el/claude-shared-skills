@@ -24,21 +24,32 @@ repo=""
 label=""
 limit=100
 
+require_value() {
+  if [ "$#" -lt 2 ]; then
+    echo "error: missing value for $1" >&2
+    exit 2
+  fi
+}
+
 while [ $# -gt 0 ]; do
   case "$1" in
     --output-dir)
+      require_value "$@"
       output_dir="$2"
       shift 2
       ;;
     --repo)
+      require_value "$@"
       repo="$2"
       shift 2
       ;;
     --label)
+      require_value "$@"
       label="$2"
       shift 2
       ;;
     --limit)
+      require_value "$@"
       limit="$2"
       shift 2
       ;;
@@ -60,6 +71,7 @@ if [ -z "$output_dir" ]; then
   output_dir="$(mktemp -d -t refine-issue-XXXXXXXX)"
 else
   mkdir -p "$output_dir"
+  output_dir="$(cd "$output_dir" && pwd)"
 fi
 
 gh_args=(issue list --state open --json number,title,body,labels,updatedAt,comments --limit "$limit")
