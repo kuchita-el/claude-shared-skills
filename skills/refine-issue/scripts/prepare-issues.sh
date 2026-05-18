@@ -15,6 +15,10 @@
 #   stdout 2行目以降: Issue 番号（1行1番号、降順）
 #   stderr: 件数等の進捗情報（ログ用）
 #
+# 注意:
+#   --output-dir 明示時、当該ディレクトリ内の既存 issue-*.json と _issues.json は
+#   gh 実行直前に削除される（前回実行の残骸混入を防ぐため）。
+#
 # 依存: bash, gh, jq
 
 set -euo pipefail
@@ -81,6 +85,8 @@ fi
 if [ -n "$label" ]; then
   gh_args+=(--label "$label")
 fi
+
+rm -f "$output_dir"/issue-*.json "$output_dir/_issues.json"
 
 echo "fetching issues (limit=$limit${repo:+, repo=$repo}${label:+, label=$label})..." >&2
 
