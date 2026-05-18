@@ -72,7 +72,7 @@ for cmd in gh jq; do
 done
 
 if [ -z "$output_dir" ]; then
-  output_dir="$(mktemp -d -t refine-issue-XXXXXXXX)"
+  output_dir="$(mktemp -d "${TMPDIR:-/tmp}/refine-issue-XXXXXXXX")"
 else
   mkdir -p "$output_dir"
   output_dir="$(cd "$output_dir" && pwd)"
