@@ -20,7 +20,7 @@ Claude Code向けの汎用スキルライブラリ。プロジェクト固有の
 - `.claude-plugin/marketplace.json` — マーケットプレイス定義（プラグイン配布用カタログ）
 - `skills/{skill-name}/SKILL.md` — 各スキルの定義ファイル（本体）
 - `skills/{skill-name}/references/` — スキルが参照する補助ファイル（テンプレート、デフォルト定義等）
-- `skills/{skill-name}/agents/` — サブエージェント定義ファイル（プロンプトテンプレート）
+- `agents/{agent-name}.md` — サブエージェント定義（プラグインルートに集約、自動検出される。詳細は ADR-20260525-2）
 - `setup-local.sh` — ローカル開発用起動スクリプト（`claude --plugin-dir .` のラッパー）
 
 ### Skill Definition Format
