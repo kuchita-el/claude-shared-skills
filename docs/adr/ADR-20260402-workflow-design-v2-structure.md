@@ -48,6 +48,8 @@ Accepted
 
 ## 関連ADR
 
+Amended by: ADR-20260531-2-workflow-design-rationale-hub（責務定義 facet を改訂。本ADRは Accepted 維持・残り5決定は有効）
+
 Related: ADR-20260511-technical-decision-aggregate-foundation（ADR採番方式は本ADRの旧記述を上書き）
 
 関連Issue: PR #89（workflow-design.md v2 改訂本体）、#94（Delivery→Discovery フィードバックループ）、#95（spec.md ライフサイクル）、#100（AIエラー時の再開・引き継ぎ）

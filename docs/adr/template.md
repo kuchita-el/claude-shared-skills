@@ -27,8 +27,10 @@
 
 <!--
 表記規約:
-- Supersedes: ADR-YYYYMMDD[-N]-<slug>   （本ADRが旧ADRを上書きする場合）
-- Superseded by: ADR-YYYYMMDD[-N]-<slug> （本ADRが後継ADRに上書きされた場合）
+- Supersedes: ADR-YYYYMMDD[-N]-<slug>   （本ADRが旧ADRを全体上書きする場合）
+- Superseded by: ADR-YYYYMMDD[-N]-<slug> （本ADRが後継ADRに全体上書きされた場合）
+- Amends: ADR-YYYYMMDD[-N]-<slug>（facet） （本ADRが旧ADRの一部の決定のみ改訂する場合。旧ADRはAccepted維持）
+- Amended by: ADR-YYYYMMDD[-N]-<slug>（facet） （本ADRの一部の決定が後続ADRに改訂された場合。Status維持）
 - Related: ADR-YYYYMMDD[-N]-<slug>       （直接の上書き関係はない関連ADR）
 該当なしの場合は「該当なし」と記述。関連Issueも併記可（例: 関連Issue: #130, #169）
 -->
