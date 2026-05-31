@@ -106,4 +106,4 @@ JiraのStoryとGitHubのIssueを二重管理しない。以下のいずれかに
 
 ### Confluenceとの連携
 
-Discovery成果物のうち、Confluenceに原本を置くものとリポジトリに転記するものの使い分けは [外部ツールとの連携](../../CLAUDE.md#external-tools)を参照。
+Discovery成果物のうち、Confluenceに原本を置くものとリポジトリに転記するものの使い分けは [外部ツールとの連携](documentation-structure-examples.md#external-tools)を参照。
