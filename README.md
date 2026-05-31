@@ -54,11 +54,24 @@ cp skills/refine-issue/references/dor-default.md /path/to/your-project/.claude/d
 |---|---|---|
 | refine-issue | `/refine-issue 123` | Issueの準備状態を精査しレポート（1件精査・全件一括精査の両方に対応） |
 
+### 計画
+
+| スキル | コマンド | 説明 |
+|---|---|---|
+| plan-issue | `/plan-issue 123` | Issueから実装プランを作成し、独立レビュアーによるレビューと要確認事項の質問までを自動化 |
+
 ### 開発ループ
 
 | スキル | コマンド | 説明 |
 |---|---|---|
 | dev-loop | `/dev-loop 10` | Issue・計画・レビュー指摘を起点に、実装→セルフレビュー→修正→PR作成を自動化する汎用開発ループ |
+
+### ドメイン設計
+
+| スキル | コマンド | 説明 |
+|---|---|---|
+| event-storming | `/event-storming 注文` | ドメイン名を起点にイベントストーミングを対話的に実施し、集約・コマンド・イベント・状態遷移を洗い出す（引数なしでBig Pictureモード） |
+| domain-modeling | `/domain-modeling 注文` | データ型・状態・コマンド・イベント・ワークフローを擬似言語で定義し、関数型ドメインモデル文書を生成（event-stormingの後続フェーズ） |
 
 ### 依存関係
 
