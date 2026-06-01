@@ -3,11 +3,11 @@
 
 ---
 
-本書は AI エージェントと人間の協働による開発ワークフローの**根拠・哲学**を扱う Explanation 文書（根拠ハブ）である。構造（集約・状態・ポリシー）の唯一の情報源は `docs/development/event-storming.md` とドメインモデル、具体的な手順は各 `SKILL.md`、個別の技術的意思決定は `docs/adr/` が持つ。本書はこれらを再記述せず一方向に参照する（根拠 → 構造/操作）。文書類型の役割分担は ADR-20260531-2 を参照。
+本書は AI エージェントと人間の協働による開発ワークフローの**根拠・哲学**を扱う Explanation 文書（根拠ハブ）である。構造（集約・状態・ポリシー）の唯一の情報源は `docs/development/event-storming.md` とドメインモデル、具体的な手順は各 `SKILL.md`、個別の技術的意思決定は `docs/adr/` が持つ。本書はこれらを再記述せず一方向に参照する（根拠 → 構造/操作）。文書類型の役割分担は [ADR-20260602](adr/ADR-20260602-principles-rationale-hub.md) を参照。
 
 ## スコープと位置づけ
 
-**対象 = build スライス（Discovery→Delivery）。** 本書が深く扱うのは「何を作るか」を固める Discovery と、それを継続的に届ける Delivery。ライフサイクル全体の広さ（企画〜運用保守）は [`docs/big-picture.md`](big-picture.md) が持つため、本書では再記述せずリンクで委譲する。
+**深く扱うフェーズの広さ = build スライス（Discovery→Delivery）。** 本書が深く扱うのは「何を作るか」を固める Discovery と、それを継続的に届ける Delivery。ライフサイクル全体の広さ（企画〜運用保守＝どのフェーズが存在し各々何をするか）は [`docs/big-picture.md`](big-picture.md) が持つため、本書では**広さを再記述せず**リンクで委譲する。ただしこれは扱う**フェーズの広さ**への制約であって、**原則の射程**への制約ではない。原則（検証ギャップ・再帰性／自動化バイアス等の横断的根拠を含む）は build を越えてライフサイクル全体に効いてよい。「広さ（列挙）」と「原則の射程」の切り分けは [ADR-20260602](adr/ADR-20260602-principles-rationale-hub.md) を参照。
 
 **ワークフローの骨格。** Discovery で 問題定義（`docs/problem-statement.md`：誰のどんな問題か・成功指標・スコープ外）→ ドメイン構造（`event-storming` / `domain-modeling`）→ デリバリーアイテム定義（ユースケース仕様 `spec.md` + Issue）を固め、Delivery で 技術設計+タスク分解（`plan-issue`）→ 実装+セルフレビュー+PR（`dev-loop`）→ 自動AIレビュー → 人間レビュー → マージ と進める。各フェーズの担い手スキル・入出力・状態は [スキルとフェーズの対応](references/skill-phase-mapping.md) を参照。Discovery から Delivery への移行可否は、問題定義・主要ドメインのドメイン構造・最初のデリバリーアイテムのユースケース仕様が揃っているかで判断する。
 

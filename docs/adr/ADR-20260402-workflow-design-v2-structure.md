@@ -48,7 +48,7 @@ Accepted
 
 ## 関連ADR
 
-Amended by: ADR-20260531-2-workflow-design-rationale-hub（責務定義 facet を改訂。本ADRは Accepted 維持・残り5決定は有効）
+Amended by: ADR-20260602-principles-rationale-hub（責務定義 facet を改訂。本ADRは Accepted 維持・残り5決定は有効。初版 amend は ADR-20260531-2 だが同 ADR は ADR-20260602 に Superseded されたため、現行の amend 元は ADR-20260602）
 
 Related: ADR-20260511-technical-decision-aggregate-foundation（ADR採番方式は本ADRの旧記述を上書き）
 
