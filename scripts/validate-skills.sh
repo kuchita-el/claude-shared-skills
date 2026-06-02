@@ -5,7 +5,7 @@ set -euo pipefail
 
 errors=0
 
-for skill_file in skills/*/SKILL.md; do
+for skill_file in plugins/dev-workflow/skills/*/SKILL.md; do
   [ -f "$skill_file" ] || continue
   skill_name=$(basename "$(dirname "$skill_file")")
 

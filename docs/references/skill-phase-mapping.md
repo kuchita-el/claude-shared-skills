@@ -11,4 +11,4 @@
 
 **委譲先 superpowers スキル**: 計画骨格 `writing-plans`、実装メカニクス `test-driven-development` / `executing-plans` / `requesting-code-review` / `subagent-driven-development` / `using-git-worktrees` / `finishing-a-development-branch`。
 
-各スキルの内部フェーズ・サブエージェント構成の詳細は、各 `skills/{skill-name}/SKILL.md` を参照。全スキルの一覧は [README.md「スキル一覧」](../../README.md#スキル一覧) を参照。
+各スキルの内部フェーズ・サブエージェント構成の詳細は、各 `plugins/dev-workflow/skills/{skill-name}/SKILL.md` を参照。全スキルの一覧は [README.md「スキル一覧」](../../README.md#スキル一覧) を参照。

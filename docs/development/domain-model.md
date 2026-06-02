@@ -1,6 +1,6 @@
 # 開発コンテキスト 関数型ドメインモデル
 
-開発コンテキスト（プランニング開始からビルド成果物公開まで）の関数型ドメインモデル。Design Level 文書 `docs/development/event-storming.md` で定義された集約・コマンド・イベント・ポリシー・運用ルールを、記法ガイド `skills/domain-modeling/references/domain-model-notation.md` に準拠した擬似コードで形式化する。
+開発コンテキスト（プランニング開始からビルド成果物公開まで）の関数型ドメインモデル。Design Level 文書 `docs/development/event-storming.md` で定義された集約・コマンド・イベント・ポリシー・運用ルールを、記法ガイド `plugins/dev-workflow/skills/domain-modeling/references/domain-model-notation.md` に準拠した擬似コードで形式化する。
 
 ## スコープ
 
@@ -1272,7 +1272,7 @@ flowchart LR
 ## 参考文献
 
 - `docs/development/event-storming.md` — 開発コンテキスト Design Level（本ドキュメントの主要入力源）
-- `skills/domain-modeling/references/domain-model-notation.md` — 関数型ドメインモデル記法ガイド（準拠対象、Issue #140 でマージ済み。Issue #57 で `docs/references/` から `skills/domain-modeling/references/` へ移設）
+- `plugins/dev-workflow/skills/domain-modeling/references/domain-model-notation.md` — 関数型ドメインモデル記法ガイド（準拠対象、Issue #140 でマージ済み。Issue #57 で `docs/references/` から `skills/domain-modeling/references/` へ、Issue #249 で `plugins/dev-workflow/skills/domain-modeling/references/` へ移設）
 - `docs/big-picture.md` — Big Picture（コンテキスト境界の上位文書、外部コンテキスト名の出典）
 - [PR #141（クローズ済み）](https://github.com/kuchita-el/claude-shared-skills/pull/141) — 前任のドメインモデル化試行。本ドキュメントは記法・骨格・論点記述のみ参照し、ゼロベースで再構築（差分適用ではない）
 - [Issue #130（解消反映）](https://github.com/kuchita-el/claude-shared-skills/issues/130) — 技術的意思決定集約（旧「技術方針（仮称）」）の正式モデル化Issue。本ドキュメントの集約定義・状態型・コマンド/イベント・アクター解像度（提案者/承認者）の根拠

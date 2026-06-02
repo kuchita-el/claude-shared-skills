@@ -6,7 +6,7 @@
 # 命名規約（イベント=過去形、コマンド=動詞辞書形 等）は形態素解析を要する
 # 言語学的判定であり、機械的判定では原理的に誤検出・誤許容が生じるため
 # 機械検証対象外とする。命名規約自体は
-# `skills/domain-modeling/references/domain-model-notation.md` に維持し、
+# `plugins/dev-workflow/skills/domain-modeling/references/domain-model-notation.md` に維持し、
 # 人が守る規約として運用する（機械化再導入は #157 フェーズ2以降で検討）。
 #
 # 使い方:
