@@ -30,19 +30,19 @@ Claude Code向けの汎用スキル集です。プロジェクト固有の依存
 
 ```bash
 # 例: 全スキルをコピー
-cp -r skills/* /path/to/your-project/.claude/skills/
+cp -r plugins/dev-workflow/skills/* /path/to/your-project/.claude/skills/
 
 # 例: 特定のスキルのみコピー
-cp -r skills/dev-loop /path/to/your-project/.claude/skills/
+cp -r plugins/dev-workflow/skills/dev-loop /path/to/your-project/.claude/skills/
 ```
 
 ### DoR定義のカスタマイズ（オプション）
 
-`/refine-issue` はDoR定義を参照します。スキル同梱のデフォルト定義（`skills/refine-issue/references/dor-default.md`）がそのまま使われますが、プロジェクトに合わせてカスタマイズする場合は `.claude/dor/definition.md` を配置してください:
+`/refine-issue` はDoR定義を参照します。スキル同梱のデフォルト定義（`plugins/dev-workflow/skills/refine-issue/references/dor-default.md`）がそのまま使われますが、プロジェクトに合わせてカスタマイズする場合は `.claude/dor/definition.md` を配置してください:
 
 ```bash
 mkdir -p /path/to/your-project/.claude/dor
-cp skills/refine-issue/references/dor-default.md /path/to/your-project/.claude/dor/definition.md
+cp plugins/dev-workflow/skills/refine-issue/references/dor-default.md /path/to/your-project/.claude/dor/definition.md
 # 必要に応じて編集
 ```
 
@@ -88,7 +88,7 @@ cp skills/refine-issue/references/dor-default.md /path/to/your-project/.claude/d
 **読み込み優先順位:**
 
 1. `{プロジェクトルート}/.claude/dor/definition.md`（プロジェクト固有）
-2. スキル同梱のデフォルト（`skills/refine-issue/references/dor-default.md`）
+2. スキル同梱のデフォルト（`plugins/dev-workflow/skills/refine-issue/references/dor-default.md`）
 
 プロジェクトに合わせたチェック項目にカスタマイズする場合は、`.claude/dor/definition.md` を作成してください。
 
@@ -100,7 +100,7 @@ cp skills/refine-issue/references/dor-default.md /path/to/your-project/.claude/d
 ./setup-local.sh
 ```
 
-`claude --plugin-dir .` でプラグインとして読み込んだClaude Codeが起動します。各スキルは `/dev-workflow:{skill-name}` のスコープ付き呼び出しで利用できます。
+`claude --plugin-dir ./plugins/dev-workflow` でプラグインとして読み込んだClaude Codeが起動します。各スキルは `/dev-workflow:{skill-name}` のスコープ付き呼び出しで利用できます。
 
 ## ライセンス
 

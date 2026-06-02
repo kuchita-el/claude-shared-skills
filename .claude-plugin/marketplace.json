@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "dev-workflow",
-      "source": "./"
+      "source": "./plugins/dev-workflow"
     }
   ]
 }

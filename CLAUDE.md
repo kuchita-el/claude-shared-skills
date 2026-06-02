@@ -9,23 +9,23 @@ Claude Code向けの汎用スキルライブラリ。プロジェクト固有の
 ## Local Development Setup
 
 ```bash
-./setup-local.sh   # claude --plugin-dir . でプラグインとして起動
+./setup-local.sh   # claude --plugin-dir ./plugins/dev-workflow でプラグインとして起動
 ```
 
 ## Architecture
 
 ### Repository Structure
 
-- `.claude-plugin/plugin.json` — プラグイン定義（名前・バージョン・説明）
-- `.claude-plugin/marketplace.json` — マーケットプレイス定義（プラグイン配布用カタログ）
-- `skills/{skill-name}/SKILL.md` — 各スキルの定義ファイル（本体）
-- `skills/{skill-name}/references/` — スキルが参照する補助ファイル（テンプレート、デフォルト定義等）
-- `agents/{agent-name}.md` — サブエージェント定義（プラグインルートに集約、自動検出される。詳細は ADR-20260525-2）
-- `setup-local.sh` — ローカル開発用起動スクリプト（`claude --plugin-dir .` のラッパー）
+- `.claude-plugin/marketplace.json` — マーケットプレイス定義（プラグイン配布用カタログ。リポルート維持。`source: "./plugins/dev-workflow"`）
+- `plugins/dev-workflow/.claude-plugin/plugin.json` — プラグイン定義（名前・バージョン・説明）
+- `plugins/dev-workflow/skills/{skill-name}/SKILL.md` — 各スキルの定義ファイル（本体）
+- `plugins/dev-workflow/skills/{skill-name}/references/` — スキルが参照する補助ファイル（テンプレート、デフォルト定義等）
+- `plugins/dev-workflow/agents/{agent-name}.md` — サブエージェント定義（プラグインルートに集約、自動検出される。詳細は ADR-20260525-2）
+- `setup-local.sh` — ローカル開発用起動スクリプト（`claude --plugin-dir ./plugins/dev-workflow` のラッパー）
 
 ### Skill Definition Format
 
-各スキルは `skills/{name}/SKILL.md` に以下の形式で定義する:
+各スキルは `plugins/dev-workflow/skills/{name}/SKILL.md` に以下の形式で定義する:
 
 ```markdown
 ---
@@ -58,7 +58,7 @@ allowed-tools:
 `refine-issue` はDoR定義を参照する。読み込み優先順位:
 
 1. `{project}/.claude/dor/definition.md`（プロジェクト固有）
-2. `skills/refine-issue/references/dor-default.md`（スキル同梱のデフォルト）
+2. `plugins/dev-workflow/skills/refine-issue/references/dor-default.md`（スキル同梱のデフォルト）
 
 Issueサイズ（Small/Medium/Large）に応じてチェック項目が段階的に増える。
 
@@ -83,5 +83,5 @@ Issueサイズ（Small/Medium/Large）に応じてチェック項目が段階的
 
 ## Adding a New Skill
 
-1. `skills/{skill-name}/SKILL.md` を作成（YAMLフロントマター + 実装仕様）
+1. `plugins/dev-workflow/skills/{skill-name}/SKILL.md` を作成（YAMLフロントマター + 実装仕様）
 2. `./setup-local.sh` で起動して動作確認（`/dev-workflow:{skill-name}` でスコープ付き呼び出し）
