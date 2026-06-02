@@ -4,7 +4,7 @@
 
 ## スクリプト概要
 
-`scripts/lint-domain-doc.sh` は DDD ドキュメントの **記法逸脱（構造検証）** を機械検出する bash スクリプト。命名規約（イベント=過去形、コマンド=動詞句〔う段終止形〕等）は形態素解析を要する言語学的判定のため機械検証対象外とし、規約として人が守る運用に委ねる（背景は `skills/domain-modeling/references/domain-model-notation.md` の「Linter による機械検証の撤退について」を参照）。
+`scripts/lint-domain-doc.sh` は DDD ドキュメントの **記法逸脱（構造検証）** を機械検出する bash スクリプト。命名規約（イベント=過去形、コマンド=動詞句〔う段終止形〕等）は形態素解析を要する言語学的判定のため機械検証対象外とし、規約として人が守る運用に委ねる（背景は `plugins/dev-workflow/skills/domain-modeling/references/domain-model-notation.md` の「Linter による機械検証の撤退について」を参照）。
 
 - **検査対象（既定）**:
   - `docs/development/event-storming.md`
