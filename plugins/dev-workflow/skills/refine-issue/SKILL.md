@@ -75,7 +75,7 @@ bash ${CLAUDE_SKILL_DIR}/scripts/prepare-issues.sh [--repo <owner/repo>] [--labe
 
 - `${CLAUDE_SKILL_DIR}/references/refine-prompt.md` の内容
 - `${CLAUDE_SKILL_DIR}/references/output-format-single.md` の内容（`{OUTPUT_FORMAT}` プレースホルダに当てはめる）
-- DoR 定義（プロジェクト固有 `{project}/.claude/dor/definition.md` があれば優先、なければ `${CLAUDE_SKILL_DIR}/references/dor-default.md`）
+- DoR 定義（プロジェクト固有 `{project}/.claude/dor/definition.md` があれば優先、なければプラグイン共有 `${CLAUDE_PLUGIN_ROOT}/references/dor-default.md`）
 - 精査対象 Issue の JSON
 
 モデルは親と同じ。
@@ -93,6 +93,7 @@ bash ${CLAUDE_SKILL_DIR}/scripts/prepare-issues.sh [--repo <owner/repo>] [--labe
 各サブエージェントには以下のコンテキストを文字列で渡す（ファイル本文の埋め込みは行わない）:
 
 - スキルディレクトリパス（`${CLAUDE_SKILL_DIR}` を展開した実パス）
+- プラグインルートパス（`${CLAUDE_PLUGIN_ROOT}` を展開した実パス。共有DoRの参照に使用）
 - プロジェクトルートパス（現在の作業ディレクトリ）
 - Issue ファイルのディレクトリパス（手順2のstdout 1行目）
 - 担当 Issue 番号のリスト
@@ -101,7 +102,7 @@ bash ${CLAUDE_SKILL_DIR}/scripts/prepare-issues.sh [--repo <owner/repo>] [--labe
 
 1. `{skill_dir}/references/refine-prompt.md`（精査手順本体）
 2. プロジェクト固有DoR: `{project_root}/.claude/dor/definition.md`（存在すれば優先）
-3. デフォルトDoR: `{skill_dir}/references/dor-default.md`
+3. デフォルトDoR: `{plugin_root}/references/dor-default.md`（プラグイン共有。`{plugin_root}` は上で渡したプラグインルートパス）
 4. 出力形式テンプレート: `{skill_dir}/references/output-format-batch-subagent.md`（`{OUTPUT_FORMAT}` の置換イメージとして適用）
 5. 担当 Issue 番号それぞれの `{issue_dir}/issue-{number}.json`
 

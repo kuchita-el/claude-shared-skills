@@ -20,6 +20,7 @@ Claude Code向けの汎用スキルライブラリ。プロジェクト固有の
 - `plugins/dev-workflow/.claude-plugin/plugin.json` — プラグイン定義（名前・バージョン・説明）
 - `plugins/dev-workflow/skills/{skill-name}/SKILL.md` — 各スキルの定義ファイル（本体）
 - `plugins/dev-workflow/skills/{skill-name}/references/` — スキルが参照する補助ファイル（テンプレート、デフォルト定義等）
+- `plugins/dev-workflow/references/` — 複数スキルが共有する参照ファイル（DoRデフォルト定義等。`${CLAUDE_PLUGIN_ROOT}/references/` で参照。詳細は ADR-20260604）
 - `plugins/dev-workflow/agents/{agent-name}.md` — サブエージェント定義（プラグインルートに集約、自動検出される。詳細は ADR-20260525-2）
 - `setup-local.sh` — ローカル開発用起動スクリプト（`claude --plugin-dir ./plugins/dev-workflow` のラッパー）
 
@@ -47,7 +48,7 @@ allowed-tools:
 
 | カテゴリ | スキル |
 |---|---|
-| Issue管理 | `refine-issue` |
+| Issue管理 | `create-issue`, `refine-issue` |
 | 計画 | `plan-issue` |
 | 開発ループ | `dev-loop` |
 | ドメイン設計 | `event-storming` |
@@ -55,10 +56,10 @@ allowed-tools:
 
 ### DoR Framework
 
-`refine-issue` はDoR定義を参照する。読み込み優先順位:
+`create-issue`（作成時の前倒し充足）と `refine-issue`（作成後の精査）が同一のDoR定義を共有参照する。読み込み優先順位:
 
 1. `{project}/.claude/dor/definition.md`（プロジェクト固有）
-2. `plugins/dev-workflow/skills/refine-issue/references/dor-default.md`（スキル同梱のデフォルト）
+2. `plugins/dev-workflow/references/dor-default.md`（プラグイン共有のデフォルト。`${CLAUDE_PLUGIN_ROOT}/references/` で参照。詳細は ADR-20260604）
 
 Issueサイズ（Small/Medium/Large）に応じてチェック項目が段階的に増える。
 
