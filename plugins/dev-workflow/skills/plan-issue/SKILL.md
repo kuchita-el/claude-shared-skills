@@ -26,9 +26,7 @@ Issue番号を起点とする**通常モード**のほか、Issueを立てずに
   - Issueなしモード: `MUI v7→v9 アップグレードの実装プラン`（Issue番号/URL/`--input` 以外のテキスト）
   - `--input <path>`: JSONファイルからIssue情報を読み込む（`gh issue view` をスキップ）
 
-GitHub URLが含まれる場合、Issue番号を抽出する。番号以降のテキストは補足指示として扱う。
-
-`--input` とIssue番号が同時に指定された場合は `--input` を優先する。
+引数の解析・モード判定はステップ1を正本とする。`--input` とIssue番号が同時に指定された場合は `--input` を優先する。
 
 ## 手順
 
