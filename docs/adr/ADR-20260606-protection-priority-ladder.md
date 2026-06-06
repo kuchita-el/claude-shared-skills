@@ -63,4 +63,5 @@ Accepted
 
 - Related: ADR-20260602（principles を根拠ハブと位置づけ。本ADRの内容は principles.md 本体に置く方針の前提）
 - Related: ADR-20260602-2（自律度ラダーの二層構造＝本体ストック＋ADR採用決定。本ADRが倣った前例）
+- Amended by: ADR-20260606-2-instruction-tidying（棚卸し＝削除方向の決定を追加。本ADRは Accepted 維持・既存5決定は不変）
 - 関連Issue: #228, #157
