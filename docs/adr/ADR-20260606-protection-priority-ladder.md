@@ -2,9 +2,7 @@
 
 ## Status
 
-Proposed
-
-<!-- 本ADRを含むPRのマージをもって Accepted へ遷移する（提案 → 承認の二段。docs/adr/README.md 参照） -->
+Accepted
 
 ## Context
 
