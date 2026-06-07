@@ -50,6 +50,7 @@ Phase 2: セルフレビュー（superpowers委譲: S7 requesting-code-review、
 Phase 3: 判定 → ブロッカーなし→Phase 4 / ブロッカーあり→Phase 1（収束しなければエスカレーション）
 Phase 4: PR作成 + 完了報告（superpowers委譲: S6 finishing-a-development-branch ＋ セルフレビューサマリ）
 
+※ S3〜S7 は委譲先シームの識別子（番号順＝実行順ではない。各委譲先を示す）
 ※ superpowers 非導入時は各委譲が最小インラインへ縮退（「フォールバック分岐」節）
 ※ 全フェーズ共通: 判断ポイント・収束不能時はエスカレーション（後述）
 ```
@@ -148,7 +149,7 @@ Phase 4: PR作成 + 完了報告（superpowers委譲: S6 finishing-a-development
 
 #### 検証ゲート（S5）
 
-セルフレビューの前に `superpowers:verification-before-completion` に委譲する（参照機構②）。型チェック・lint・テストを実行し、その結果（証拠）を確認してから完了を主張する。証拠なしに「通った」と主張しない。検証コマンドが見つからない場合や `allowed-tools` で許可されていない場合はスキップしてよい。
+セルフレビューの前に `superpowers:verification-before-completion` に委譲する（参照機構②）。型チェック・lint・テストを実行し、その結果（証拠）を確認してから完了を主張する。証拠なしに「通った」と主張しない。検証コマンドが見つからない場合や `settings.json` の `allowedTools` で許可されていない場合はスキップしてよい。
 
 #### コミット
 
@@ -160,7 +161,7 @@ Phase 1 内でエスカレーション（後述）が発動する場合は、エ
 
 人間のレビュアーに渡す前に差分をセルフレビューして品質を高めるフェーズ。セルフレビューは本スキルの主要な付加価値であり、スキップしてはならない。
 
-レビューの**実行**は `superpowers:requesting-code-review` に委譲する（参照機構②: `Skill` ツール呼び出し）。レビュー結果の**ワークフロー反映**は dev-workflow 側の接続契約として保持する（realization mapping S7: 「レビュー実行のみ委譲、結果の反映は dev-workflow」）。
+レビューの**実行**は `superpowers:requesting-code-review` に委譲する（参照機構②: `Skill` ツール呼び出し）。レビュー結果の**ワークフロー反映**は dev-workflow 側の接続契約として保持する（S7: レビュー実行のみ委譲、結果の反映は dev-workflow）。
 
 接続契約として保持する入出力:
 
