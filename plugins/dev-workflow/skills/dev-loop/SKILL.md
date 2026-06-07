@@ -29,6 +29,9 @@ allowed-tools:
   - Bash(git restore*)
   # superpowers スキル委譲（参照機構②: メインループからの Skill ツール呼び出し）
   - Skill
+  # 委譲先（subagent-driven-development 等）のサブエージェント起動に備えた暫定保持。
+  # 権限合成が gate されないと #267 で判明すれば最小権限原則に従い削除する。
+  - Agent
   # ユーザー確認
   - AskUserQuestion
 ---
@@ -130,13 +133,14 @@ Phase 4: PR作成 + 完了報告（superpowers委譲: S6 finishing-a-development
 実装メカニクス（実装起動・TDD・検証ゲート・リファクタリング）は superpowers スキルへ委譲する（参照機構②: メインループから `Skill` ツールで呼ぶ）。dev-loop が自前で保持するのは、Phase 0 で導出した作業リスト・レビュー契約という接続契約のみ。テスト仕様の事前設計フェーズ・自前の周回統治（リトライ／スキップ／検証ゲートの反復制御）は持たない。
 
 > **スキル名の表記**: 委譲先スキルは `Skill` ツールの fully-qualified 形式 `superpowers:<スキル名>` で呼ぶ（プラグイン名前空間付き。`Skill` ツールの仕様に準拠）。実環境での最終挙動は #267 ドッグフードで確認する。
+> **#267 で確認する実環境挙動**: (1) スコープ付きスキル名の解決、(2) 委譲先（`subagent-driven-development` 等）がサブエージェントを起動する際の権限合成（dev-loop の `allowed-tools` に gate されるか）、(3) 別セッション前提スキル（`executing-plans`）を同期呼び出しした場合の制御戻り（Phase 2 への復帰）。なお `allowed-tools` の `Agent` は (2) の不確実性に対する**暫定復活**であり、gate されないと判明すれば最小権限原則に従い削除へ回帰する。
 > **superpowers 非導入時**: 委譲は skip され、最小インラインフォールバック（基本 TDD＋セルフレビュー）へ縮退する。詳細は「フォールバック分岐」節を参照。
 
 #### 実装の起動（S3）
 
 作業リストに基づき実装を起動する。
 
-- **正規パス（計画ファイルあり）**: `superpowers:executing-plans`（別セッションでのレビューチェックポイント付き実行）または `superpowers:subagent-driven-development`（現セッションで独立タスクを実行）に委譲し、計画のタスク分解を消化する。
+- **正規パス（計画ファイルあり）**: 計画のタスク分解を実装に委譲する。dev-loop の単位は現セッション完結（1 Issue→1 PR）であるため、`superpowers:subagent-driven-development`（現セッションで独立タスクを実行）を主候補とする。サブエージェントが使えない環境では `superpowers:executing-plans`（別セッション・レビューチェックポイント付き実行）にフォールバックする（選択基準＝サブエージェント利用可否。`executing-plans` 自身も「サブエージェント利用可なら subagent-driven-development を使え」と指示している）。
 - **簡易パス（計画なし）**: 作業リストの各項目を次の TDD 委譲（S4）で直接消化する。
 
 検証すべき振る舞いの識別は、Phase 0 のレビュー契約導出と S4 の TDD 委譲が担う（独立したテスト設計フェーズは持たない）。
