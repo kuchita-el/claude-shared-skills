@@ -82,8 +82,8 @@ dev-workflow が接続契約を担う結合点。各シームについて superp
 |---|---|---|:---:|---|
 | S1 計画起動 | プランニングを開始する | `writing-plans` | ③ | Issue/Discovery を計画入力へ変換、検証方針・判断依頼を計画へ織込み（Plan サブエージェントへ preload） |
 | S2 判断依頼 | 判断依頼を発行する | （委譲なし。dev-workflow 固有） | — | 判断必要事項をチケット管理（GitHub Issue 等）へ問い合わせる堀（②/③対象外） |
-| S3 実装起動 | 実装を開始する | `executing-plans` / `subagent-driven-development` | ② | 確定プランを実装実行へ受け渡す起動契約 |
-| S4 TDD 実行 | タスクを完了する | `test-driven-development` | ②（注） | タスク単位を TDD 小サイクルへ受け渡す。（注）子Dが subagent 駆動実装を採用する場合は③ |
+| S3 実装起動 | 実装を開始する | `subagent-driven-development`（主）／`executing-plans`（フォールバック） | ② | 確定プランを実装実行へ受け渡す起動契約。委譲先選択基準＝サブエージェント利用可否（SKILL.md と整合） |
+| S4 TDD 実行 | タスクを完了する | `test-driven-development` | ② | タスク単位を TDD 小サイクルへ受け渡す |
 | S5 検証ゲート | 検証ゲートを実行する | `verification-before-completion`（規律） | ② | 検証方針の供給、ゲート結果のワークフロー反映 |
 | S6 PR 化 | PRを作成する | `finishing-a-development-branch` | ② | 実装完了状態を PR 化へ受け渡す |
 | S7 レビュー契約 | レビュー依頼をする / 変更を要求する / レビューを承認する | `requesting-code-review` | ② | レビュー依頼の起動、レビュー結果（承認/変更要求）のワークフロー反映、Issue エスカレーション |
@@ -109,4 +109,4 @@ dev-workflow が接続契約を担う結合点。各シームについて superp
 - **単位判定**: dev-loop / plan-issue とも**現状維持**（再分割しない）。担い手境界は「どのスキルか」を分ける横線ではなく各フェーズ内の「superpowers コア vs dev-workflow 接続契約シェル」を分ける縦線であり、スキル単位ではなく内部メカニクス/接続契約境界に宿るため。
 - **L1: 検証ゲートを実行する（#11）の主担い = superpowers** `verification-before-completion`（上表#11に反映）。
 - **L2: ポリシー実現方式 = 委譲先 superpowers 実行スキルによるオーケストレーション**（上記ポリシー表注記に反映）。
-- **参照機構②/③割当**: S1=③、S3〜S7=②（S4 は子Dの subagent 駆動採用時のみ③）。詳細は ADR-20260607 Decision 項4。
+- **参照機構②/③割当**: S1=③、S3〜S7=②（S4 は #265＝PR #276 で ② に最終固定）。詳細は ADR-20260607 Decision 項4（ADR 本文への #265 追従は #278）。
