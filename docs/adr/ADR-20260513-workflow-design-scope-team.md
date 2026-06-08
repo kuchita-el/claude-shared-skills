@@ -4,6 +4,8 @@
 
 Accepted
 
+> 2026-06-09 正誤更新: チーム規模軸の切り出し先を `workflow-patterns.md`（#118）→ `team-workflow-patterns.md`（#284）へ是正。#118 でスコープを「パターン軸＝変更影響度に限定」と再定義し、チーム規模軸を別ファイルへ分離する決定に伴う前方参照の更新であり、本ADRの主決定（workflow-design.md からのチーム規模別フロー除外）は不変。
+
 ## Context
 
 `docs/workflow-design.md` がチーム規模・チーム構成（例: 1人開発 / 小規模チーム / 大規模チーム）への対応を含むべきかが議論となった。記述を含めると AI と人間の協働における作業フロー設計に「人間チーム間の合意形成プロセス」が混在し、設計書の焦点がぼやけるリスクが識別された。
@@ -22,7 +24,7 @@ Accepted
 3. **運用上の取り扱い**:
     - workflow-design.md のスコープセクションで本除外を免責する
     - workflow-design.md に対してチーム規模・合意形成プロセスの不足を指摘しない（レビュー時の運用ルール）
-    - チーム規模別フローが必要な場合は別ドキュメント（例: `workflow-patterns.md`、Issue #118 OPEN）に切り出す
+    - チーム規模別フローが必要な場合は別ドキュメント（`team-workflow-patterns.md`、Issue #284 OPEN）に切り出す
 
 ## Consequences
 
@@ -33,17 +35,17 @@ Accepted
 
 **受容したトレードオフ**:
 
-- チーム規模別の運用ガイドを workflow-design.md からは得られないため、別ドキュメント（Issue #118）への分離管理が必要
+- チーム規模別の運用ガイドを workflow-design.md からは得られないため、別ドキュメント（`team-workflow-patterns.md`、Issue #284）への分離管理が必要
 - 「チーム規模対応がない」という指摘がレビューで繰り返し発生する可能性がある（スコープセクションでの免責で対応）
 
 **将来の留保事項**:
 
-- パターン別ワークフロー定義（`workflow-patterns.md`、Issue #118 OPEN）でチーム規模別の運用を別途扱う
+- チーム規模別ワークフロー運用ガイド（`team-workflow-patterns.md`、Issue #284 OPEN）でチーム規模別の運用を別途扱う
 
 ## 関連ADR
 
 Related: ADR-20260402-workflow-design-v2-structure（workflow-design.md v2 構造選定。本ADRは v2 のスコープを限定する補足判定）
 
-関連Issue: #118（プラグイン共通: パターン別ワークフロー定義 `workflow-patterns.md` の設計・作成、OPEN）
+関連Issue: #284（プラグイン共通: チーム規模別ワークフロー運用ガイド `team-workflow-patterns.md` の設計・作成、OPEN）／#118（パターン別ワークフロー定義 `workflow-patterns.md` の設計・作成。本ADRが想定したチーム規模軸の切り出し先を再定義、CLOSED）
 
 由来memory: `feedback_workflow_scope_team.md`（本ADR起票によりmemory削除済、個人スコープ要素なしのため全削除）
