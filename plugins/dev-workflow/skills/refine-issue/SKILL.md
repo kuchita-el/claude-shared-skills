@@ -76,6 +76,7 @@ bash ${CLAUDE_SKILL_DIR}/scripts/prepare-issues.sh [--repo <owner/repo>] [--labe
 - `${CLAUDE_SKILL_DIR}/references/refine-prompt.md` の内容
 - `${CLAUDE_SKILL_DIR}/references/output-format-single.md` の内容（`{OUTPUT_FORMAT}` プレースホルダに当てはめる）
 - DoR 定義（プロジェクト固有 `{project}/.claude/dor/definition.md` があれば優先、なければプラグイン共有 `${CLAUDE_PLUGIN_ROOT}/references/dor-default.md`）
+- 種別プロファイル定義（プロジェクト固有 `{project}/.claude/dor/type-profiles.md` があれば優先、なければプラグイン共有 `${CLAUDE_PLUGIN_ROOT}/references/issue-type-profiles.md`。DoR と同一の優先順位）
 - 精査対象 Issue の JSON
 
 モデルは親と同じ。
@@ -103,8 +104,9 @@ bash ${CLAUDE_SKILL_DIR}/scripts/prepare-issues.sh [--repo <owner/repo>] [--labe
 1. `{skill_dir}/references/refine-prompt.md`（精査手順本体）
 2. プロジェクト固有DoR: `{project_root}/.claude/dor/definition.md`（存在すれば優先）
 3. デフォルトDoR: `{plugin_root}/references/dor-default.md`（プラグイン共有。`{plugin_root}` は上で渡したプラグインルートパス）
-4. 出力形式テンプレート: `{skill_dir}/references/output-format-batch-subagent.md`（`{OUTPUT_FORMAT}` の置換イメージとして適用）
-5. 担当 Issue 番号それぞれの `{issue_dir}/issue-{number}.json`
+4. 種別プロファイル: プロジェクト固有 `{project_root}/.claude/dor/type-profiles.md`（存在すれば優先）、なければ `{plugin_root}/references/issue-type-profiles.md`（プラグイン共有。DoR と同一の優先順位）
+5. 出力形式テンプレート: `{skill_dir}/references/output-format-batch-subagent.md`（`{OUTPUT_FORMAT}` の置換イメージとして適用）
+6. 担当 Issue 番号それぞれの `{issue_dir}/issue-{number}.json`
 
 サブエージェントは精査結果を構造化データ（YAML/JSON 等）で返却する。
 
