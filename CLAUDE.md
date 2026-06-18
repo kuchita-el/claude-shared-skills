@@ -63,6 +63,13 @@ allowed-tools:
 
 Issueサイズ（Small/Medium/Large）に応じてチェック項目が段階的に増える。
 
+さらに**Issue種別軸**（bug/feature/refactor/spike/chore/docs）を二軸目として持つ。種別プロファイル定義もDoRと同一の優先順位で読み込む（詳細は ADR-20260618）:
+
+1. `{project}/.claude/dor/type-profiles.md`（プロジェクト固有）
+2. `plugins/dev-workflow/references/issue-type-profiles.md`（プラグイン共有のデフォルト。`${CLAUDE_PLUGIN_ROOT}/references/` で参照）
+
+種別ごとに追加必須セクション・AC形/完了定義・適正な抽象度の厳しさを差別化する。サイズ軸とは独立した二軸であり、サイズ判定を置換しない。
+
 ## Conventions
 
 - ドキュメントおよびスキル内のコメントは日本語で記述する

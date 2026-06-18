@@ -10,6 +10,7 @@ SKILL.md 手順3 において全件モードのサブエージェントが自身
 - `number`: Issue番号
 - `title`: タイトル
 - `size`: Small / Medium / Large（判定不能時は `-`）
+- `type`: bug / feature / refactor / spike / chore / docs（判定不能時は `-`）
 - `is_ready`: true / false
 - `clarification_items`: 確認事項のリスト（なければ空配列）
 
