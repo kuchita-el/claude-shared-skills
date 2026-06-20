@@ -41,17 +41,7 @@ Issue番号を起点とする**通常モード**のほか、Issueを立てずに
    - それ以外（Issueへの言及が参考・引用にとどまる／対象Issueが曖昧／Issueと無関係な作業のプラン） → **Issueなしモード**。全文をフリーテキスト補足指示として扱う
    - 意図が「特定Issueのプラン作成」か判然としない、または対象Issueを一意に特定できない → `AskUserQuestion` でユーザーに確認する（黙って推測しない）
 
-判定例:
-
-| 入力 | 判定 | 理由 |
-|---|---|---|
-| `42` / `#42` / `https://github.com/o/r/issues/42` | 通常モード | #42 が対象 |
-| `#42 のレビュー指摘を反映するプラン` | 通常モード | #42 が対象、プラン作成依頼 |
-| `42 テストは不要` | 通常モード | #42 が対象、「テストは不要」は補足指示 |
-| `#42 を参考にして、MUIアップグレードを進めるプラン` | Issueなしモード | #42 は参考。対象はMUIアップグレード |
-| `周辺コードのリファクタプラン（関連: #42）` | Issueなしモード | #42 は関連参照。対象はリファクタ。番号の出現位置は判定に影響しない（役割で判断） |
-| `MUI v7→v9 アップグレードの実装プラン` | Issueなしモード | Issue参照なし |
-| `#42 #43 をまとめてプラン化` | 確認 | 対象Issueを一意に特定できない |
+**判定例**: `${CLAUDE_SKILL_DIR}/references/mode-detection-examples.md` を参照（通常モード／Issueなしモード／確認の 7 ケース）。
 
 ### 2. レビュー基準の読み込み
 
@@ -93,55 +83,7 @@ gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'
 
 ### 5. plan サブエージェントによるプラン作成
 
-`${CLAUDE_SKILL_DIR}/references/plan-prompt.md` をReadで読み込み、プロンプトを構築する。
-
-**プロンプト構築:**
-
-```
-{plan-prompt.md の内容}
-```
-
-`{OUTPUT_FORMAT}` プレースホルダを `${CLAUDE_SKILL_DIR}/references/plan-output-format.md` の内容で置換する。
-
-その後、モードに応じて以下を追加する:
-
-**通常モード / 固定入力モード:**
-
-```
-## Issue情報
-
-{gh issue viewの結果 または JSONの内容}
-
-## 補足指示
-
-{補足指示（あれば）}
-```
-
-**Issueなしモード:**
-
-```
-## 入力（フリーテキスト補足指示）
-
-{フリーテキスト全文}
-
-Issue番号は存在しない。プランのタイトル・AC・スコープはこの入力から導出すること。入力にAC相当の記述がない場合、テストケース対応表は既定文言「該当なし。AC定義後に再生成すること」とすること。
-```
-
-続けて、全モード共通で以下を追加する:
-
-```
-## ベースブランチ
-
-{決定したベースブランチ名}
-
-実行した全てのBashコマンドとツール呼び出しを、実行順に「実行ログ」セクションとして最終出力に含めること。
-```
-
-**サブエージェントの起動:**
-
-Agent tool（`subagent_type: dev-workflow:plan`）でプラン作成を実行する。モデルは定義の `inherit` に従う。custom plan agent は `skills: [writing-plans]` により計画骨格生成を superpowers `writing-plans` へ委譲する（S1=③ preload）。superpowers 未導入時は preload が skip され、エージェント定義のフォールバック（最小インライン計画）で動作する。
-
-Agent toolが使えない場合や起動に失敗した場合は、`plugins/dev-workflow/agents/plan.md` の定義内容をプロンプト本文へ埋め込んでインラインで直接実行する（サブエージェント側からの定義ファイル再Readは行わない）。インライン実行時は preload が効かないため、計画骨格は同定義のフォールバック手順に従って生成する。
+**プロンプト構築・サブエージェント起動の詳細手順**: `${CLAUDE_SKILL_DIR}/references/agent-prompt-construction.md` を参照（3 種モード別追加テンプレート、`subagent_type: dev-workflow:plan` での起動、`writing-plans` 委譲、`agents/plan.md` インライン実行のフォールバックを含む）。
 
 ### 6. プランファイルの保存
 
