@@ -37,34 +37,54 @@
 
 ### Phase 2: dev-loop
 
-- 起動コマンド:
-- worktree: 使用 / 不使用
+- 起動コマンド: `/dev-workflow:dev-loop 288`（スキル経由）
+- worktree: **不使用**（通常のブランチで作業。CLAUDE.md「ブランチ運用」に従う）
 - 委譲対象スキル稼働状況:
-  - [ ] test-driven-development（S4） — **N/A**（テスト対象コードなし）
-  - [ ] verification-before-completion（S5）
-  - [ ] finishing-a-development-branch（S6）
-  - [ ] requesting-code-review（S7）
-  - [ ] using-git-worktrees
+  - [x] test-driven-development（S4） — **N/A**（Markdown のみの変更、テスト対象コードなし）
+  - [x] verification-before-completion（S5） — **スキップ**（test/lint フレームワーク不在のため。dev-loop SKILL.md 仕様で許容）
+  - [x] finishing-a-development-branch（S6） — Phase 4 で起動予定
+  - [x] requesting-code-review（S7） — **起動成功**、レビュアーエージェント完了（abb2b6910843b457b、56k tokens、98秒、12 tool uses）
+  - [x] using-git-worktrees — **未起動**（worktree 不使用のため）
 - フェーズ別所感:
-  - 計画適用:
-  - 実装:
-  - 検証ゲート:
-  - PR化:
-  - レビュー反映:
+  - 計画適用: 計画ファイルから3タスク（追記/注記/検証）を直接消化。subagent-driven-development 委譲は不要（単一ファイル小規模）
+  - 実装: Edit で SKILL.md に49行追記。Markdown のみで TDD 不適用
+  - 検証ゲート: S5 スキップ。AC1〜AC4 を手動チェックリストで確認、wc -l で 183行確認（170超過13行、計画予測範囲内）
+  - PR化: 未実施
+  - レビュー反映: Phase 4 で実施
 - 自由記述:
+  - レビュアーは Ready to merge: Yes、Critical/Important 0件、Minor 3件
+  - **誤検知1件**: Minor 1/2「末尾改行欠落」は実測で全ファイル `\n` 終端を確認、誤検知
+  - 深刻度調整は不要（ブロッカー0件、誤検知格下げ対象は Minor のため対象外）
+  - dev-loop の周回統治撤去の影響なし（1周収束のため発動条件未満）
+
+### Phase 3: 判定
+
+- ブロッカー: 0件 → Phase 4 へ進む
+- 改善提案: 3件（Minor）+ 2件（Recommendations）。PR本文に記載
+  - Minor 3「ステップ7再起動の曖昧さ」: 別 Issue で改善検討
+  - Recommendation 1「dogfood Phase 2 空欄」: 本コミットで解消
+  - Recommendation 2「#97 完了後アクションの追跡」: PR 本文で言及
 
 ## 撤去機構の影響評価
 
 | 機構 | 後退兆候の観点 | 観測事象 | 評価 |
 |---|---|---|---|
 | 独立 test-spec 検証撤去 | テスト観点漏れが review/runtime で初検出されたか | N/A（テスト対象コードなし） | N/A |
-| リトライ統治撤去 | 失敗ループ・暴走・人間介入頻度 | | |
-| 振動検知撤去 | 同一箇所の往復編集 | | |
-| レビュー契約（保持） | requesting-code-review が blocker を実際に検出したか | | |
+| リトライ統治撤去 | 失敗ループ・暴走・人間介入頻度 | plan-issue/dev-loop 双方とも1周収束、人間介入は判断依頼2件のみ。失敗ループ・暴走の発生なし | 後退なし（本Issue規模では発動条件未満、観察対象事象なし） |
+| 振動検知撤去 | 同一箇所の往復編集 | 同一箇所の往復編集は発生せず（追記のみ、修正なし） | 後退なし（本Issue規模では発動条件未満） |
+| レビュー契約（保持） | requesting-code-review が blocker を実際に検出したか | Critical/Important 0件、Minor 3件のみ（うち2件は誤検知）。レビュー契約12項目は全項目PASS。レビュアーは AC↔実装の対応・event-storming 整合性・前方互換性を一次情報で検証 | 機能した（false-positive 1件 = 末尾改行欠落の誤検知あり、ただし計画リスクには影響なし） |
 
 ## 結論
 
-- 品質後退: （実施後記入）
+- **品質後退: なし**（本Issue規模・性質では撤去機構の発動条件に達する事象が発生せず、レビュー契約は機能した）
 - 詳細:
+  - writing-plans 委譲は preload 成功、dev-workflow plan-output-format と干渉なく両立
+  - requesting-code-review 委譲は機能し、AC網羅性・整合性・前方互換性の検証で具体的な確認を実施
+  - 接続契約（レビュー契約・判断依頼・検証方針）は委譲下でも保持
+  - レビュアー1件の誤検知（末尾改行）はメインループ側で `od -An -c` 実測により即座に判定可能、深刻度調整機構は機能
 - 別Issue化が必要な事項:
-- 観察制約: TDD/テスト網羅性軸は本Issueでは観察不可。当軸の観察は別Issue（実コードを含むリポでの追加観察）が必要。
+  - Minor 3「ステップ7再起動の任意性が読み手判断に委ねられる」→ 軽微、将来改修候補
+  - Recommendation 2「#97 完了後の SKILL.md L183 リンク更新の追跡」→ #97 のクローズ条件に含めるか別 Issue 化を要検討
+- 観察制約:
+  - TDD/テスト網羅性軸は本Issueでは観察不可（Markdown のみ）。当軸の観察は別Issue（実コードを含むリポでの追加観察）が必要
+  - リトライ統治・振動検知の撤去影響は「発動条件未満で観察対象事象なし」止まり。撤去後退の有無を判定するには、レビュー往復が発生する規模・性質のIssueでの追加観察が必要
