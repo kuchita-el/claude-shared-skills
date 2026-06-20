@@ -83,7 +83,9 @@ gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'
 
 ### 5. plan サブエージェントによるプラン作成
 
-**プロンプト構築・サブエージェント起動の詳細手順**: `${CLAUDE_SKILL_DIR}/references/agent-prompt-construction.md` を参照（3 種モード別追加テンプレート、`subagent_type: dev-workflow:plan` での起動、`writing-plans` 委譲、`agents/plan.md` インライン実行のフォールバックを含む）。
+ステップ2のレビュー基準・ステップ3のIssue情報（またはフリーテキスト補足指示）・ステップ4のベースブランチを統合したプロンプトを構築し、plan サブエージェントを起動してプラン本文を生成する。
+
+**プロンプト構築・サブエージェント起動の詳細手順**: `${CLAUDE_SKILL_DIR}/references/agent-prompt-construction.md` を参照（3 種モード別テンプレート、起動手順、フォールバック）。
 
 ### 6. プランファイルの保存
 
