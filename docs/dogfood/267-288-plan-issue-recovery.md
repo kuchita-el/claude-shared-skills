@@ -86,7 +86,11 @@
 - これは「contractual review（契約レビュー）vs free review（自由レビュー）」の差異であり、撤去機構の影響ではない
 - **dev-workflow 接続契約への示唆**: レビュー契約を AC由来のみで構成すると検出範囲が限定される。「ステップ間整合性」「プロセス手順の具体性」「運用追跡可能性」を契約に追加するか、reviewer subagent へ「契約外の懸念も自由に指摘してよい」と明示する改善余地あり
 
-**派生発見（dev-loop UXギャップ）**: C1 (a) 適用に伴い、dev-loop が `docs/plans/issue-{番号}.md` 固定で参照する仕様と、再生成時に新規plan が `issue-{番号}-2.md` などになる挙動の間にギャップあり。dev-loop の plan 探索を「最新の連番ファイル」を見つけるロジックへ拡張するフォローアップが必要。**別Issue化候補**。
+**派生発見（dev-loop UXギャップ）**: C1 (a) 適用に伴い、dev-loop が `docs/plans/issue-{番号}.md` 固定で参照する仕様と、再生成時に新規plan が `issue-{番号}-2.md` などになる挙動の間にギャップあり。当初は「別Issue化候補」として記録したが、別セッション Claude Code の再レビュー（C4）で「本PR導入のリカバリパスが本PRで動かない latent bug」と再評価された。
+
+**C4 対応**: 案 (a)（本PR scope に含める）を採用。`plugins/dev-workflow/skills/dev-loop/references/phase0-input-detection.md` L32 の plan 探索を「`docs/plans/` から `issue-{番号}.md` および `issue-{番号}-{連番}.md` を Glob で列挙 → 連番最大を選択」へ拡張。4シナリオ目視で動作確認済（通常初回・1〜2回リカバリ後・計画ファイルなし）。
+
+**観察3点目（dogfood で latent bug を別Issue化と楽観視）**: 私（メインループ）が dogfood で「別Issue化候補」とした判断は、レビュアー視点では「本PRで対応すべき Blocker」だった。**dogfood 観察時の重大度評価**にも構造的バイアス（自分が書いた仕様に対し甘い評価をする傾向）がある可能性。dev-workflow への示唆: dogfood 観察の重大度評価も別セッション Claude Code レビューに通すか、明示的なチェックリストで補強する余地あり。
 
 **dev-loop SKILL.md への発見**: Phase 5（レビュー対応サイクル）は dev-loop SKILL.md に明示されていない（Phase 4 = PR作成で文書化が終わっている）が、今回の実施で実体として存在することが観察された。Phase 5 の接続契約（スレッド返信・修正コミット・PR本文更新）を SKILL.md に明文化する改修候補あり。
 
@@ -110,7 +114,7 @@
 - 別Issue化が必要な事項:
   - Minor 3「ステップ7再起動の任意性が読み手判断に委ねられる」→ 軽微、将来改修候補
   - Recommendation 2「#97 完了後の SKILL.md L183 リンク更新の追跡」→ #97 へフォローコメント投稿で対応済（[issuecomment-4757523062](https://github.com/kuchita-el/claude-shared-skills/issues/97#issuecomment-4757523062)）
-  - **dev-loop の plan 探索ロジック拡張**（#288 派生）: 再生成後の連番付きplan を見つけるロジックが必要。別Issue化候補
+  - ~~**dev-loop の plan 探索ロジック拡張**（#288 派生）: 再生成後の連番付きplan を見つけるロジックが必要。別Issue化候補~~ → **本PRで対応済**（C4 指摘経由、`phase0-input-detection.md` L32 修正）
 - 観察制約:
   - TDD/テスト網羅性軸は本Issueでは観察不可（Markdown のみ）。当軸の観察は別Issue（実コードを含むリポでの追加観察）が必要
   - リトライ統治・振動検知の撤去影響は「発動条件未満で観察対象事象なし」止まり。撤去後退の有無を判定するには、レビュー往復が発生する規模・性質のIssueでの追加観察が必要
