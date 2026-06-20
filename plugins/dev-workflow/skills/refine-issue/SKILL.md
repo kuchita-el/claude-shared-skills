@@ -1,5 +1,5 @@
 ---
-description: Issueの準備状態を精査し、不足項目・確認事項・分割提案をレポートする。作業開始前のIssue品質チェック、全オープンIssueの一括棚卸し、Issue精査・レビューに使用
+description: 既存IssueのDoR（準備状態）を精査し、不足項目・確認事項・分割提案をレポートする。着手前の品質チェック、全オープンIssueの一括棚卸しに使用。「このIssue着手していい？」「DoR満たしてる？」「Issue棚卸しして」「これ分割した方がいい？」等の依頼に使う。新規起票はcreate-issue、実装はdev-loop、計画作成はplan-issue（本スキルは既存Issueの診断・レポートに限定）
 allowed-tools:
   - Bash(gh issue view*)
   - Bash(bash *skills/refine-issue/scripts/prepare-issues.sh*)
