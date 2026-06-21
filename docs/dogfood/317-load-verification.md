@@ -87,3 +87,25 @@ plugins/dev-workflow/agents/refactorer.md:model: sonnet
 ## 補足: `./setup-local.sh` を本セッションで実行しない理由
 
 スクリプトは末尾で `exec claude --plugin-dir ./plugins/dev-workflow` を呼ぶ。これは現在のシェルプロセス（および本 Claude Code セッション）を新しい `claude` プロセスで置き換えるため、本セッションが終了する。本セッション内で実機起動検証はできず、静的検証 + 後続ドッグフードでカバーする。
+
+## 実機検証ログ（2026-06-21）
+
+ユーザーが本ブランチで `./setup-local.sh` を起動し、PR #324 のコメントで以下を実機確認した（[PR #324 コメント](https://github.com/kuchita-el/claude-shared-skills/pull/324#issuecomment-4761045107) 参照）。
+
+### 起動とロード（AC3 実機確認）
+
+- `./setup-local.sh` で起動済みの Claude Code セッション（メインモデル: Opus 4.7）の system-reminder に `dev-workflow:code-reviewer / plan / plan-reviewer / refactorer / test-designer / test-spec-validator` の 6 エージェントが available agent types として列挙された。プラグインロードは PASS、起動エラーなし。
+- `Agent(subagent_type: "dev-workflow:code-reviewer", ...)` を最小タスクで起動 → 18.9 秒で完了、構造化レポート返却、エラーなし。
+
+### サブエージェント実行モデルの確認
+
+- 上記 code-reviewer サブエージェント応答内の疎通確認セクションで自己モデル申告を要求した結果、「実行モデル: `sonnet`」「system prompt に "You are powered by the model named Sonnet 4.6. The exact model ID is claude-sonnet-4-6." と明記」と回答。
+- 親セッション Opus 4.7 のまま、子サブエージェントは Sonnet 4.6 で起動。`model: sonnet` 明示指定が機能している直接証拠（降格側ペアの確認完了）。
+
+### バージョン確認
+
+- 実機ロード後も `plugin.json` の `version: "0.6.0"` を確認済。
+
+### 残検証項目（昇格側ペア）
+
+- `/model sonnet` に切替えた親セッションから `subagent_type: "dev-workflow:plan"` を呼んだ際、子サブエージェントが Opus（明示固定値）で起動するかの昇格側ペア検証は、メインセッションのモデル切替がユーザー操作のため未実施。降格側のオーバーライド機構と対称構造のため強い推定が成り立つが、確証には親セッション `/model` 切替操作と再呼び出しが必要。後続ドッグフードで実施する。
