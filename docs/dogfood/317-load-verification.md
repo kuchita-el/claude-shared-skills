@@ -106,6 +106,24 @@ plugins/dev-workflow/agents/refactorer.md:model: sonnet
 
 - 実機ロード後も `plugin.json` の `version: "0.6.0"` を確認済。
 
-### 残検証項目（昇格側ペア）
+### 昇格側ペア確認（2026-06-21 補足）
 
-- `/model sonnet` に切替えた親セッションから `subagent_type: "dev-workflow:plan"` を呼んだ際、子サブエージェントが Opus（明示固定値）で起動するかの昇格側ペア検証は、メインセッションのモデル切替がユーザー操作のため未実施。降格側のオーバーライド機構と対称構造のため強い推定が成り立つが、確証には親セッション `/model` 切替操作と再呼び出しが必要。後続ドッグフードで実施する。
+降格側ペアと対称の昇格側ペアを実機確認した（[PR #324 補足コメント](https://github.com/kuchita-el/claude-shared-skills/pull/324#issuecomment-4761076582)）。
+
+- 親セッション: `claude-sonnet-4-6`（`./setup-local.sh` 起動）
+- 起動: `Agent(subagent_type: "dev-workflow:plan", ...)` を最小タスクで実行
+- 子エージェント自己申告: 動作モデル ID `claude-opus-4-8`（Opus 4.8、1M コンテキスト版）
+
+親が Sonnet 4.6 でも `plan` エージェントは Opus で起動。`model: opus` 明示指定が機能している直接証拠。エイリアス `opus` は現状最新の Opus（4.8）に動的解決されることも観察。
+
+### 実機検証の最終状態
+
+| 項目 | 内容 | 状態 |
+|---|---|---|
+| 1（AC3 ロード） | `./setup-local.sh` でプラグインロード・6 エージェント列挙 | ✅ |
+| 2（応答） | `code-reviewer` 起動 → 18.9 秒完走、構造化レポート返却 | ✅ |
+| 3 降格側 | Opus 親 → `code-reviewer` が Sonnet 4.6 で動作 | ✅ |
+| 3 昇格側 | Sonnet 親 → `plan` が Opus 4.8 で動作 | ✅ |
+| 4（バージョン） | `plugin.json` の `version: "0.6.0"` を実機確認 | ✅ |
+
+全項目 PASS。AC3・AC4 の実機検証は完結。
