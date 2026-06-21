@@ -42,7 +42,7 @@ plan 段階で「人間判断が必要な観点」を plan ドキュメントに
 
 | フィールド | 型 | 値域 | 意味 |
 |---|---|---|---|
-| 関連AC番号 | 文字列 | AC 番号（例: `AC1`、`AC2-3`）または空 | 観点が直接関連する受入条件番号。欠落しても運用可（実装段階で局所判断） |
+| 関連AC番号 | 文字列 | AC 番号。単一参照は `AC{番号}`（例: `AC1`）、複数参照はカンマ区切り（例: `AC1, AC2`）。空も可 | 観点が直接関連する受入条件番号。欠落しても運用可（実装段階で局所判断） |
 
 任意扱いとした根拠: 誤判時の修正コストが小さく、実装段階での局所判断で十分機能する（Issue [#319](https://github.com/kuchita-el/claude-shared-skills/issues/319) リファイン記録 2026-06-21 で確認）。
 
@@ -73,14 +73,14 @@ plan 段階で「人間判断が必要な観点」を plan ドキュメントに
 
 | データ構造フィールド | plan-issue 側の現行語彙・参照箇所 | dev-loop / code-reviewer 側の現行語彙・参照箇所 |
 |---|---|---|
-| （セクション名） | `## 判断依頼`（`plugins/dev-workflow/skills/plan-issue/references/plan-output-format.md` L11） | `### 人間判断の選択肢`（`plugins/dev-workflow/skills/dev-loop/references/escalation-template.md` L47）、PR 本文の「人間に確認してほしい観点」セクション（Issue [#314](https://github.com/kuchita-el/claude-shared-skills/issues/314) AC2 で導入予定） |
+| （セクション名） | `## 判断依頼`（`plugins/dev-workflow/skills/plan-issue/references/plan-output-format.md` L11） | （現行該当なし。Issue [#314](https://github.com/kuchita-el/claude-shared-skills/issues/314) AC2 で PR 本文に `### 人間に確認してほしい観点` セクションとして導入予定） |
 | 観点ID | （現行未定義、本 ADR で導入） | （現行未定義、本 ADR で導入） |
-| 説明 | `## 判断依頼` 配下の `**[判断待ち / 前提確認]**` 項目本文（`plan-output-format.md` L15）、`plan-prompt.md` L9「判断依頼の生成指示」節 | `### 人間判断の選択肢` 配下の項目本文（`escalation-template.md` L47-53）、`SKILL.md` L124 の「人間判断」用語（収束失敗時のエスカレーション文脈、ニュアンス差は下記注を参照） |
+| 説明 | `## 判断依頼` 配下の `**[判断待ち / 前提確認]**` 項目本文（`plan-output-format.md` L15）、`plan-prompt.md` L9「判断依頼の生成指示」節 | （現行該当なし。Issue [#314](https://github.com/kuchita-el/claude-shared-skills/issues/314) AC2 で `### 人間に確認してほしい観点` 配下の項目本文として導入予定） |
 | 検出フェーズ | 暗黙的に `plan`（plan-issue が生成するため） | 暗黙的に `実装後`（dev-loop が生成するため） |
 | 判断者ロール | （現行未定義、本 ADR で導入） | （現行未定義、本 ADR で導入） |
 | 関連AC番号 | （現行未定義、本 ADR で任意フィールドとして導入） | （現行未定義、本 ADR で任意フィールドとして導入） |
 
-注: `SKILL.md` L124 の「人間判断」用語は収束失敗時のエスカレーション専用文脈で使用されており、本 ADR の「判断依頼」とニュアンスが異なる（前者は dev-loop の失敗手段、後者はレビュアーへの判断要請）。両者の関係性は将来の dev-loop 仕様改修（[#314](https://github.com/kuchita-el/claude-shared-skills/issues/314) 配下）で整理する。
+注: 既存の `plugins/dev-workflow/skills/dev-loop/references/escalation-template.md` L47 `### 人間判断の選択肢` セクション、および同セクションを参照する `plugins/dev-workflow/skills/dev-loop/SKILL.md` L124 の「人間判断」用語は、**収束失敗時のエスカレーション専用文脈**（dev-loop の失敗手段として「続行 / 破棄して再生成 / 計画の見直し」の3択を提示するもの）で使用されており、本 ADR の「判断依頼」（レビュアーへの判断要請）とは別概念である。対応表からは意図的に除外しており、将来の語彙改変時に dev-loop 側を「判断依頼」に揃える判断は本注に該当する箇所を変更対象としない（既存エスカレーションフローの破壊を避けるため）。両者の関係性整理は将来の dev-loop 仕様改修（[#314](https://github.com/kuchita-el/claude-shared-skills/issues/314) 配下）で行う。
 
 ## Consequences
 
