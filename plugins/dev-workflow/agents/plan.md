@@ -1,7 +1,7 @@
 ---
 name: plan
 description: plan-issue の計画生成を担うエージェント。計画骨格（マイクロタスク分解）を preload した superpowers writing-plans のメソドロジーで生成し、検証方針・判断依頼・AC↔テストケース対応表を dev-workflow 固有の接続契約として上乗せする。
-model: inherit
+model: opus
 color: yellow
 skills:
   - writing-plans

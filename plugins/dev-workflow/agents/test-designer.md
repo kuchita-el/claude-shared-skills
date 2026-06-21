@@ -1,7 +1,7 @@
 ---
 name: test-designer
 description: dev-loop の Phase 1a で入力ソースからテスト仕様を設計する読み取り専用エージェント。テストコードは生成せず、検証すべき振る舞いをテストケース単位の仕様に変換する。
-model: inherit
+model: sonnet
 color: cyan
 ---
 

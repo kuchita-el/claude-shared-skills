@@ -1,7 +1,7 @@
 ---
 name: test-spec-validator
 description: dev-loop の Phase 1a で test-designer が設計したテスト仕様を独立した視点から検証する読み取り専用エージェント。要件との突き合わせでカバレッジ不足・観点漏れ・仕様の誤読を検出する。
-model: inherit
+model: sonnet
 color: yellow
 ---
 

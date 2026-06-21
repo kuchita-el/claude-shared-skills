@@ -1,7 +1,7 @@
 ---
 name: refactorer
 description: dev-loop の Phase 1e で確定済みコードに対しリファクタリング観点を適用するエージェント。外部から見た振る舞いを変えず、テストが通る状態を維持しつつ内部構造を改善する。
-model: inherit
+model: sonnet
 color: blue
 ---
 
