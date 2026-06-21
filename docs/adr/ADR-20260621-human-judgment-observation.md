@@ -75,7 +75,7 @@ plan 段階で「人間判断が必要な観点」を plan ドキュメントに
 |---|---|---|
 | （セクション名） | `## 判断依頼`（`plugins/dev-workflow/skills/plan-issue/references/plan-output-format.md` L11） | `### 人間判断の選択肢`（`plugins/dev-workflow/skills/dev-loop/references/escalation-template.md` L47）、PR 本文の「人間に確認してほしい観点」セクション（Issue [#314](https://github.com/kuchita-el/claude-shared-skills/issues/314) AC2 で導入予定） |
 | 観点ID | （現行未定義、本 ADR で導入） | （現行未定義、本 ADR で導入） |
-| 説明 | `## 判断依頼` 配下の `**[判断待ち / 前提確認]**` 項目本文（`plan-output-format.md` L15）、`plan-prompt.md`「判断依頼の生成指示」節 | `### 人間判断の選択肢` 配下の項目本文（`escalation-template.md` L47-53）、`SKILL.md` L124 の「人間判断」用語（収束失敗時のエスカレーション文脈、ニュアンス差に注意） |
+| 説明 | `## 判断依頼` 配下の `**[判断待ち / 前提確認]**` 項目本文（`plan-output-format.md` L15）、`plan-prompt.md` L9「判断依頼の生成指示」節 | `### 人間判断の選択肢` 配下の項目本文（`escalation-template.md` L47-53）、`SKILL.md` L124 の「人間判断」用語（収束失敗時のエスカレーション文脈、ニュアンス差は下記注を参照） |
 | 検出フェーズ | 暗黙的に `plan`（plan-issue が生成するため） | 暗黙的に `実装後`（dev-loop が生成するため） |
 | 判断者ロール | （現行未定義、本 ADR で導入） | （現行未定義、本 ADR で導入） |
 | 関連AC番号 | （現行未定義、本 ADR で任意フィールドとして導入） | （現行未定義、本 ADR で任意フィールドとして導入） |
