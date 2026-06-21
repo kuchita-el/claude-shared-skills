@@ -160,6 +160,7 @@ Superseded との違い:
 全項目列挙強制／一部判定打ち切り防止／DoR 項目強制／単一ソース化によるドリフト防止。
 
 - [ADR-20260604-dor-shared-resource-consolidation](./ADR-20260604-dor-shared-resource-consolidation.md): DoR 定義を単一ソース化し、判定基準が作成側と精査側で乖離して「早期に妥当判定する」バイアスを防止
+- [ADR-20260621-completion-judgment-reach-via-hook](./ADR-20260621-completion-judgment-reach-via-hook.md): SessionStart フックで completion-judgment.md の原則を素の会話に注入し、スキル非起動の状態でも早期クローズ提案を抑止する
 
 ### 指示忠実性低下対策
 
