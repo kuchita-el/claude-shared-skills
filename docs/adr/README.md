@@ -142,10 +142,9 @@ Superseded との違い:
 
 同モデルに自作物を評価させない／独立 reviewer・validator の分離／人間承認ゲートの介在。
 
-- [ADR-20260406-review-contract-in-plan-issue](./ADR-20260406-review-contract-in-plan-issue.md): 実装者自身による完了条件導出を禁じ、plan-issue 段で人間承認済み契約を作成し自己評価バイアスを除去
+- [ADR-20260406-review-contract-in-plan-issue](./ADR-20260406-review-contract-in-plan-issue.md): 正規パスでは実装者自身による完了条件導出を排し、plan-issue 段で人間承認済み契約を作成し自己評価バイアスを除去（簡易パスでの自力導出は許容）
 - [ADR-20260407-dev-loop-input-path-split](./ADR-20260407-dev-loop-input-path-split.md): 入力種別で正規/簡易パスを分け、自己評価バイアス残存と過剰準備コストのトレードオフを明示化
-- [ADR-20260601-autonomy-approval-gate-alignment](./ADR-20260601-autonomy-approval-gate-alignment.md): 自律度（承認ゲート有無）をドメインモデルではなく責任分担マトリクスで表現し、AI暴走と人間承認を層分離
-- [ADR-20260602-2-autonomy-ladder-convention](./ADR-20260602-2-autonomy-ladder-convention.md): L2 の「提案→承認」二段で AI 自走を人間承認で抑止、L3 は検証能力成熟時のみ承認段を縮退する規約を固定
+- [ADR-20260602-2-autonomy-ladder-convention](./ADR-20260602-2-autonomy-ladder-convention.md): L2 の「提案→承認」二段で AI 自走を人間承認で抑止し、L3 を AI が提案から確定まで自律実行する縮退形として定義する規約を固定
 
 ### コンテキスト膨張・トークン効率対策
 
@@ -153,14 +152,14 @@ Superseded との違い:
 
 - [ADR-20260525-subagent-claude-md-injection](./ADR-20260525-subagent-claude-md-injection.md): サブエージェントへの CLAUDE.md 自動注入挙動を利用し、明示 Read による二重読み・許可プロンプト中断を排除
 - [ADR-20260525-2-subagent-agents-consolidation](./ADR-20260525-2-subagent-agents-consolidation.md): サブエージェント定義をプラグインルートに集約し、メイン側 Read と二重読みによるトークン浪費を排除
-- [ADR-20260604-dor-shared-resource-consolidation](./ADR-20260604-dor-shared-resource-consolidation.md): DoR 定義をプラグインルートで単一ソース化し、作成側と精査側で判定基準がドリフトする早期収束を防止
+- [ADR-20260604-dor-shared-resource-consolidation](./ADR-20260604-dor-shared-resource-consolidation.md): DoR 定義をプラグインルートで単一ソース化し、作成側と精査側での重複読み込み・ドリフトを抑制
 - [ADR-20260606-2-instruction-tidying](./ADR-20260606-2-instruction-tidying.md): 指示削除ゲートを設けて指示肥大化とモデル更新時のドリフトを抑制し、確率的な指示効力低下を防ぐ
 
 ### 早期収束・手抜き対策
 
 全項目列挙強制／一部判定打ち切り防止／DoR 項目強制／単一ソース化によるドリフト防止。
 
-- [ADR-20260604-dor-shared-resource-consolidation](./ADR-20260604-dor-shared-resource-consolidation.md): DoR 定義をプラグインルートで単一ソース化し、作成側と精査側で判定基準がドリフトする早期収束を防止
+- [ADR-20260604-dor-shared-resource-consolidation](./ADR-20260604-dor-shared-resource-consolidation.md): DoR 定義を単一ソース化し、判定基準が作成側と精査側で乖離して「早期に妥当判定する」バイアスを防止
 
 ### 指示忠実性低下対策
 
@@ -184,10 +183,11 @@ Superseded との違い:
 
 ### モデル/ハーネスの固有挙動への対処
 
-プロンプトキャッシュ TTL／許可プロンプトのパース挙動／文字列⇔整数の誤判定／HEREDOC 制約／コンテキスト自動注入。
+エージェント固有の制御パラメータをドメインモデルから分離／プロンプトキャッシュ TTL／許可プロンプトのパース挙動／文字列⇔整数の誤判定／HEREDOC 制約／コンテキスト自動注入。
 
 - [ADR-20260421-agent-modeling-principle](./ADR-20260421-agent-modeling-principle.md): ループ上限・打ち切り等のエージェント固有制御パラメータをドメインモデルから排しスキル実装側に隔離
 - [ADR-20260525-subagent-claude-md-injection](./ADR-20260525-subagent-claude-md-injection.md): サブエージェントへの CLAUDE.md 自動注入挙動を利用し、明示 Read による二重読み・許可プロンプト中断を排除
+- [ADR-20260601-autonomy-approval-gate-alignment](./ADR-20260601-autonomy-approval-gate-alignment.md): 自律度（承認ゲート有無）を Command 属性として追加せず、責任分担マトリクスで表現することで、ドメインモデル層と Explanation 層を分離
 
 ### スコープ逸脱対策（ツール制限）
 
