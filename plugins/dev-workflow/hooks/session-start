@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# SessionStart hook for dev-workflow plugin
+# Injects completion-judgment.md principles into the session context.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+completion_judgment=$(cat "${PLUGIN_ROOT}/references/completion-judgment.md" 2>/dev/null) || exit 0
+
+escape_for_json() {
+    local s="$1"
+    s="${s//\\/\\\\}"
+    s="${s//\"/\\\"}"
+    s="${s//$'\b'/\\b}"
+    s="${s//$'\f'/\\f}"
+    s="${s//$'\n'/\\n}"
+    s="${s//$'\r'/\\r}"
+    s="${s//$'\t'/\\t}"
+    printf '%s' "$s"
+}
+
+escaped=$(escape_for_json "$completion_judgment")
+context="<COMPLETION_JUDGMENT_PRINCIPLES>\n${escaped}\n</COMPLETION_JUDGMENT_PRINCIPLES>"
+
+printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$context"
+
+exit 0
