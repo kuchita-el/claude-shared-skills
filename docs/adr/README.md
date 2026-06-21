@@ -131,3 +131,75 @@ Superseded との違い:
 ## テンプレート
 
 新規 ADR を起票する際は [`./template.md`](./template.md) をコピーして使用する。MADR 準拠の必須項目（Title / Status / Context / Decision / Consequences）と本プロジェクト追加項目（関連ADR）を含む。
+
+## モデル制約由来の設計判断インデックス
+
+スキル/エージェント/参照ファイル群には「モデル（LLM）の制約への対処」が暗黙的に含まれている（自己評価バイアス、コンテキスト膨張、早期収束、指示の確率性、ハルシネーション等）。モデル更新時に「どのガードレールを見直すか・どの閾値を変更しうるか」を即座に判断できるよう、本索引で明示言及 ADR を設計要素別にクロスリファレンスする。
+
+索引対象は **モデル制約に明示言及している ADR 11 件**。暗黙該当 ADR（モデル制約由来と読めるが本文に明示記述のないもの）は対象外とする（判定境界が個別解釈に依存するため）。
+
+### 自己評価バイアス対策
+
+同モデルに自作物を評価させない／独立 reviewer・validator の分離／人間承認ゲートの介在。
+
+- [ADR-20260406-review-contract-in-plan-issue](./ADR-20260406-review-contract-in-plan-issue.md): 実装者自身による完了条件導出を禁じ、plan-issue 段で人間承認済み契約を作成し自己評価バイアスを除去
+- [ADR-20260407-dev-loop-input-path-split](./ADR-20260407-dev-loop-input-path-split.md): 入力種別で正規/簡易パスを分け、自己評価バイアス残存と過剰準備コストのトレードオフを明示化
+- [ADR-20260601-autonomy-approval-gate-alignment](./ADR-20260601-autonomy-approval-gate-alignment.md): 自律度（承認ゲート有無）をドメインモデルではなく責任分担マトリクスで表現し、AI暴走と人間承認を層分離
+- [ADR-20260602-2-autonomy-ladder-convention](./ADR-20260602-2-autonomy-ladder-convention.md): L2 の「提案→承認」二段で AI 自走を人間承認で抑止、L3 は検証能力成熟時のみ承認段を縮退する規約を固定
+
+### コンテキスト膨張・トークン効率対策
+
+サブエージェント委譲／on-demand ロード／references 分離／二重読み回避／単一ソース化。
+
+- [ADR-20260525-subagent-claude-md-injection](./ADR-20260525-subagent-claude-md-injection.md): サブエージェントへの CLAUDE.md 自動注入挙動を利用し、明示 Read による二重読み・許可プロンプト中断を排除
+- [ADR-20260525-2-subagent-agents-consolidation](./ADR-20260525-2-subagent-agents-consolidation.md): サブエージェント定義をプラグインルートに集約し、メイン側 Read と二重読みによるトークン浪費を排除
+- [ADR-20260604-dor-shared-resource-consolidation](./ADR-20260604-dor-shared-resource-consolidation.md): DoR 定義をプラグインルートで単一ソース化し、作成側と精査側で判定基準がドリフトする早期収束を防止
+- [ADR-20260606-2-instruction-tidying](./ADR-20260606-2-instruction-tidying.md): 指示削除ゲートを設けて指示肥大化とモデル更新時のドリフトを抑制し、確率的な指示効力低下を防ぐ
+
+### 早期収束・手抜き対策
+
+全項目列挙強制／一部判定打ち切り防止／DoR 項目強制／単一ソース化によるドリフト防止。
+
+- [ADR-20260604-dor-shared-resource-consolidation](./ADR-20260604-dor-shared-resource-consolidation.md): DoR 定義をプラグインルートで単一ソース化し、作成側と精査側で判定基準がドリフトする早期収束を防止
+
+### 指示忠実性低下対策
+
+指示の確率性への対応／構造による違反不可能化／指示棚卸し／重要事項の再掲。
+
+- [ADR-20260602-principles-rationale-hub](./ADR-20260602-principles-rationale-hub.md): principles.md を根拠ハブに縮退し「広さ」と「原則の射程」の混同による横断原則の取りこぼしを防止
+- [ADR-20260606-2-instruction-tidying](./ADR-20260606-2-instruction-tidying.md): 指示削除ゲートを設けて指示肥大化とモデル更新時のドリフトを抑制し、確率的な指示効力低下を防ぐ
+- [ADR-20260606-protection-priority-ladder](./ADR-20260606-protection-priority-ladder.md): 「指示は確率的にしか効かない」前提で構造・型による違反不可能化を指示追加より優先する原則を確定
+
+### ハルシネーション対策
+
+一次情報による再検証／推測禁止／Grep/Glob 実検証／実在確認の強制。
+
+該当 ADR なし（スキル定義側で対処: `plan-prompt.md`、`plan-reviewer.md`、ユーザー CLAUDE.md「検証」節 等）。**ADR 化候補**。
+
+### 並列数・モデル指定の固定
+
+モデル選定の固定／並列度上限／バッチサイズ制限／許可プロンプト挙動への配慮。
+
+該当 ADR なし（スキル定義側で対処: `refine-issue/SKILL.md`「最大3並列、モデル: sonnet」等の個別固定）。**ADR 化候補**。
+
+### モデル/ハーネスの固有挙動への対処
+
+プロンプトキャッシュ TTL／許可プロンプトのパース挙動／文字列⇔整数の誤判定／HEREDOC 制約／コンテキスト自動注入。
+
+- [ADR-20260421-agent-modeling-principle](./ADR-20260421-agent-modeling-principle.md): ループ上限・打ち切り等のエージェント固有制御パラメータをドメインモデルから排しスキル実装側に隔離
+- [ADR-20260525-subagent-claude-md-injection](./ADR-20260525-subagent-claude-md-injection.md): サブエージェントへの CLAUDE.md 自動注入挙動を利用し、明示 Read による二重読み・許可プロンプト中断を排除
+
+### スコープ逸脱対策（ツール制限）
+
+エージェントへの読み取り専用制限／Bash 実行範囲制限／破壊的操作の禁止。
+
+該当 ADR なし（エージェント定義側で対処: `code-reviewer.md`（読み取り専用）、`refactorer.md`（Bash は `git diff/status/restore*` のみ）、`test-designer.md`（読み取り専用）等）。**ADR 化候補**。
+
+### モデル更新時の見直しフロー
+
+モデル更新（コンテキスト窓拡張・検証精度向上・指示遵守性向上・自己評価バイアス減少等）が行われた際、本索引のカテゴリ順に各 ADR を再評価する。
+
+1. **設計要素別に該当 ADR を引く**: 上記カテゴリから対象設計要素の ADR を特定する
+2. **各 ADR の前提（モデル制約）が依然有効か判定**: ADR 本文の Context / Decision を読み、新モデルでも同じ制約が成立するか確認する
+3. **不要化・閾値変更の候補をリストアップ**: 制約が緩和された設計要素は、[Superseded / Amended の手続き](#廃止上書き手順)で更新候補とする
+4. **「該当 ADR なし」カテゴリは ADR 起票を検討**: 既存スキル/エージェントの該当箇所を洗い出し、ADR 化要否を [粒度判定基準](#粒度判定基準) で判定する
