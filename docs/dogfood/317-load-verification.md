@@ -20,12 +20,12 @@ AC3: 決定された `model` 値が `plugins/dev-workflow/agents/*.md` の各フ
 $ jq . plugins/dev-workflow/.claude-plugin/plugin.json
 ```
 
-結果（正常パース、`version: "0.5.1"` 反映済）:
+結果（正常パース、`version: "0.6.0"` 反映済）:
 
 ```json
 {
   "name": "dev-workflow",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Claude Code向けの汎用開発ワークフロースキル集。Issue管理・開発ループ・PR レビュー・依存関係チェック等を提供する。"
 }
 ```
@@ -68,7 +68,7 @@ plugins/dev-workflow/agents/refactorer.md:model: sonnet
 
 ### 4. 静的検証の結論
 
-- `plugin.json` は有効 JSON、`version: "0.5.1"` 反映。
+- `plugin.json` は有効 JSON、`version: "0.6.0"` 反映。
 - 全 6 エージェント定義の YAML フロントマターが構造的に破れていない。
 - 全 `model` 値が公式有効値範囲内。
 
