@@ -43,6 +43,8 @@ Issue番号を起点とする**通常モード**のほか、Issueを立てずに
 
 **判定例**: `${CLAUDE_SKILL_DIR}/references/mode-detection-examples.md` を参照（通常モード／Issueなしモード／確認の 7 ケース）。
 
+**通常モードの場合の分割計画判定**: 通常モードと判定された後、補足指示等に分割要求（「分割」「複数 PR」「split」等）がある場合は分割モードに入る。分割モード内で `docs/plans/issue-{番号}-plan.md`（分割計画マスター）の有無により初回/N回目をさらに判定する。詳細手順は `${CLAUDE_SKILL_DIR}/references/split-plan-procedure.md` を参照。
+
 ### 2. レビュー基準の読み込み
 
 以下の順序でReadツールで読み込み、両方の内容をマージしてレビュー基準とする:
