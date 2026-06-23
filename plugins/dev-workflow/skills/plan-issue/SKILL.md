@@ -139,8 +139,6 @@ Agent tool（`subagent_type: dev-workflow:plan-reviewer`）で起動する。モ
 
 プランファイル（保存先はステップ6参照）に `${CLAUDE_SKILL_DIR}/references/plan-output-format.md` の形式で出力する。
 
-「判断依頼」セクションの各エントリ構造は **[ADR-20260621-human-judgment-observation.md](../../docs/adr/ADR-20260621-human-judgment-observation.md)（[#319](https://github.com/kuchita-el/claude-shared-skills/issues/319)）** を正本とする（4フィールド: 観点ID・説明・検出フェーズ・判断者ロール）。
-
 ## 人間レビュー却下後のリカバリ
 
 ステップ7（レビュアーエージェントによる自動レビュー）が PASS した後、ステップ6で保存された plan ファイルを**人間レビュアー**が読み、設計判断やスコープに不同意して却下した場合のリカバリパス。本セクションはステップ7のサブエージェント自動レビューとは別フローであり、契機が異なる（自動レビュー＝サブエージェントの指摘、本リカバリ＝人間レビュアーの却下）。
