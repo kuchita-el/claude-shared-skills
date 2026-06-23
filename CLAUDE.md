@@ -50,7 +50,7 @@ allowed-tools:
 |---|---|
 | Issue管理 | `create-issue`, `refine-issue` |
 | 計画 | `plan-issue` |
-| 開発ループ | `dev-loop` |
+| 実装 | `implementation` |
 | ドメイン設計 | `event-storming` |
 | 依存関係 | `dependency-check` |
 
@@ -81,11 +81,11 @@ Issueサイズ（Small/Medium/Large）に応じてチェック項目が段階的
 
 スキル起動時の token ロード負荷とキャッシュ効率を保つため、新規スキル追加・既存スキル改修時は以下の規律に従う。
 
-- **`description`**: 200 字程度を目安、最長 300 字。同義語のトリガーワードを羅列せず、代表 3〜5 個に絞る（PR #297 で `dev-loop` description を約 400→241 字に圧縮した実績）
-- **`SKILL.md` 本体行数**: 170 行を目安、超過時は詳細手順・テンプレート・判定基準を `references/` へ分離する計画を立てる（PR #299 で `dev-loop` SKILL.md を 252→169 行へ縮退した実績）
+- **`description`**: 200 字程度を目安、最長 300 字。同義語のトリガーワードを羅列せず、代表 3〜5 個に絞る（PR #297 で `implementation` description を約 400→241 字に圧縮した実績）
+- **`SKILL.md` 本体行数**: 170 行を目安、超過時は詳細手順・テンプレート・判定基準を `references/` へ分離する計画を立てる（PR #299 で `implementation` SKILL.md を 252→169 行へ縮退した実績）
 - **on-demand ロード**: 詳細手順・テンプレート・判定基準は `${CLAUDE_SKILL_DIR}/references/{filename}.md` 形式で参照し、SKILL.md 本体には骨格＋ポインタのみを残す（PR #299）
 - **サブエージェントへの引数渡し**: 重い精査・調査・複数件の一括処理はサブエージェント並列化を既定とする。サブエージェントへはコンテキストを文字列で渡し、ファイル本文の埋め込みは避ける（サブエージェント側が必要に応じて Read する。`refine-issue` の既存規約を全スキルへ展開）
-- **`allowed-tools` の最小化**: 既存 Conventions の「`allowed-tools` の原則」（必要最小限のツールのみ許可）を再確認し、加えてカテゴリ別コメントの羅列を避け、ツール名から自明な説明は付さない（PR #299 で `dev-loop` の `allowed-tools` コメントを整理した実績）
+- **`allowed-tools` の最小化**: 既存 Conventions の「`allowed-tools` の原則」（必要最小限のツールのみ許可）を再確認し、加えてカテゴリ別コメントの羅列を避け、ツール名から自明な説明は付さない（PR #299 で `implementation` の `allowed-tools` コメントを整理した実績）
 
 ## Rules
 

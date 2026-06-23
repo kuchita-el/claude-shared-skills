@@ -8,7 +8,7 @@
 - 対象Issue: <URL>
 - 実施日: YYYY-MM-DD
 - 担当: kuchita-el + Claude (model: )
-- 使用フロー: plan-issue → dev-loop（再配線後）
+- 使用フロー: plan-issue → implementation（再配線後）
 - 想定観察制約: （例: TDD適合性なし＝テスト網羅性は観察対象外、等）
 
 ## 実行記録
@@ -25,7 +25,7 @@
   - [ ] 接続契約の保持確認（検証方針・判断依頼）
 - 自由記述:
 
-### Phase 2: dev-loop
+### Phase 2: implementation
 
 - 起動コマンド:
 - worktree: 使用 / 不使用（理由）

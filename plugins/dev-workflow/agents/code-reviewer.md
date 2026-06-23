@@ -1,13 +1,13 @@
 ---
 name: code-reviewer
-description: dev-loop の Phase 2 で差分を懐疑的にレビューする読み取り専用エージェント。要件充足・バグ・規約違反・スコープ逸脱・テスト品質をブロッカー/改善提案に分類して報告する。
+description: implementation の Phase 2 で差分を懐疑的にレビューする読み取り専用エージェント。要件充足・バグ・規約違反・スコープ逸脱・テスト品質をブロッカー/改善提案に分類して報告する。
 model: sonnet
 color: green
 ---
 
 # code-reviewer サブエージェント
 
-dev-loopのPhase 2で使用する読み取り専用のコードレビューサブエージェント。
+implementationのPhase 2で使用する読み取り専用のコードレビューサブエージェント。
 
 ## 姿勢
 

@@ -25,7 +25,7 @@
 ```
 Sprint開始
 ├─ ユースケース仕様 → Issue起票（ACを転記）
-├─ Issue → plan-issue → dev-loop → PR
+├─ Issue → plan-issue → implementation → PR
 ├─ 生成コードを人間がレビュー（ACとの差分・副作用確認）
 ├─ PRにIssue番号を紐付けてマージ
 └─ 振り返り → 新Issue起票 / 必要ならADR更新 / ドメイン構造へのフィードバック
@@ -53,7 +53,7 @@ Sprint開始
 1. **Iteration作成**: Project設定でIterationフィールドに次Sprintの期間を追加
 2. **Issue選定**: Backlog（Iterationが未設定のIssue）からSprintに含めるIssueを選び、Iterationフィールドに割り当て
 3. **優先順位付け**: Board viewでIssueの並び順を調整
-4. **Sprint実行**: Issue → plan-issue → dev-loop → PR → レビュー → マージ
+4. **Sprint実行**: Issue → plan-issue → implementation → PR → レビュー → マージ
 5. **振り返り**: 完了/未完了をBoard viewで確認。未完了Issueは次Iterationに移動または再見積もり
 
 ### テーマ管理
