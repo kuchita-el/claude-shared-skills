@@ -1,6 +1,6 @@
 # PR 本文テンプレート（Phase 4 セルフレビュー結果のサマリ）
 
-dev-loop の Phase 4 で `superpowers:finishing-a-development-branch` 等の委譲出力に上乗せする、セルフレビュー結果サマリのテンプレート。本体 SKILL.md の Phase 4 節からポインタ参照される。
+implementation の Phase 4 で `superpowers:finishing-a-development-branch` 等の委譲出力に上乗せする、セルフレビュー結果サマリのテンプレート。本体 SKILL.md の Phase 4 節からポインタ参照される。
 
 ## テンプレート
 

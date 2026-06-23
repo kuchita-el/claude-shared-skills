@@ -9,7 +9,7 @@
 
 **深く扱うフェーズの広さ = build スライス（Discovery→Delivery）。** 本書が深く扱うのは「何を作るか」を固める Discovery と、それを継続的に届ける Delivery。ライフサイクル全体の広さ（企画〜運用保守＝どのフェーズが存在し各々何をするか）は [`docs/big-picture.md`](big-picture.md) が持つため、本書では**広さを再記述せず**リンクで委譲する。ただしこれは扱う**フェーズの広さ**への制約であって、**原則の射程**への制約ではない。原則（検証ギャップ・再帰性／自動化バイアス等の横断的根拠を含む）は build を越えてライフサイクル全体に効いてよい。「広さ（列挙）」と「原則の射程」の切り分けは [ADR-20260602](adr/ADR-20260602-principles-rationale-hub.md) を参照。
 
-**ワークフローの骨格。** Discovery で 問題定義（`docs/problem-statement.md`：誰のどんな問題か・成功指標・スコープ外）→ ドメイン構造（`event-storming` / `domain-modeling`）→ デリバリーアイテム定義（ユースケース仕様 `spec.md` + Issue）を固め、Delivery で 技術設計+タスク分解（`plan-issue`）→ 実装+セルフレビュー+PR（`dev-loop`）→ 自動AIレビュー → 人間レビュー → マージ と進める。各フェーズの担い手スキル・入出力・状態は [スキルとフェーズの対応](references/skill-phase-mapping.md) を参照。Discovery から Delivery への移行可否は、問題定義・主要ドメインのドメイン構造・最初のデリバリーアイテムのユースケース仕様が揃っているかで判断する。
+**ワークフローの骨格。** Discovery で 問題定義（`docs/problem-statement.md`：誰のどんな問題か・成功指標・スコープ外）→ ドメイン構造（`event-storming` / `domain-modeling`）→ デリバリーアイテム定義（ユースケース仕様 `spec.md` + Issue）を固め、Delivery で 技術設計+タスク分解（`plan-issue`）→ 実装+セルフレビュー+PR（`implementation`）→ 自動AIレビュー → 人間レビュー → マージ と進める。各フェーズの担い手スキル・入出力・状態は [スキルとフェーズの対応](references/skill-phase-mapping.md) を参照。Discovery から Delivery への移行可否は、問題定義・主要ドメインのドメイン構造・最初のデリバリーアイテムのユースケース仕様が揃っているかで判断する。
 
 **実装メカニクスは superpowers に委譲する。** TDDサイクル・検証ゲート・コードレビュー・worktree並列・subagent駆動実装といった汎用実装メカニクスは OSS プラグイン superpowers に委譲し、dev-workflow は Discovery（ドメイン設計）と接続契約（検証方針・判断依頼・レビュー契約・エスカレーション）に縮退する。委譲境界の根拠は [ADR-20260531](adr/ADR-20260531-superpowers-delegation-boundary.md) を参照。
 

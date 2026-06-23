@@ -33,7 +33,7 @@ Claude Code向けの汎用スキル集です。プロジェクト固有の依存
 cp -r plugins/dev-workflow/skills/* /path/to/your-project/.claude/skills/
 
 # 例: 特定のスキルのみコピー
-cp -r plugins/dev-workflow/skills/dev-loop /path/to/your-project/.claude/skills/
+cp -r plugins/dev-workflow/skills/implementation /path/to/your-project/.claude/skills/
 ```
 
 ### DoR定義のカスタマイズ（オプション）
@@ -60,11 +60,11 @@ cp plugins/dev-workflow/skills/refine-issue/references/dor-default.md /path/to/y
 |---|---|---|
 | plan-issue | `/plan-issue 123` | Issueから実装プランを作成し、独立レビュアーによるレビューと要確認事項の質問までを自動化 |
 
-### 開発ループ
+### 実装
 
 | スキル | コマンド | 説明 |
 |---|---|---|
-| dev-loop | `/dev-loop 10` | Issue・計画・レビュー指摘を起点に、実装→セルフレビュー→修正→PR作成を自動化する汎用開発ループ |
+| implementation | `/implementation 10` | Issue・計画・レビュー指摘を起点に、実装→セルフレビュー→修正→PR作成を自動化する汎用実装スキル |
 
 ### ドメイン設計
 
