@@ -1,0 +1,5 @@
+{
+  "name": "growth",
+  "version": "0.1.0",
+  "description": "Claude Code向けの内省・学習プラグイン。セッションの学びを捕捉・検証し、配布物（skill / ルールファイル / ADR）として全利用者へ届ける。"
+}
