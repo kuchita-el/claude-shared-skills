@@ -1,5 +1,5 @@
 ---
-description: 現セッション会話履歴（session jsonl）から予測誤差シグナル（訂正・ツール拒否・反復試行・期待違反）を検知し、解釈を加えない生観察として個人ローカル store（`~/.claude/projects/<project-id>/growth/captures.md`）に記録する。判断は後回しにし、「何が起きたか」のみを記す。セッション中の予測誤差を貯めたいとき・growth プラグインの学習ループを手動で起動したいときに明示起動する（Phase 1）。
+description: reflect は現セッション会話履歴（session jsonl）から予測誤差シグナル（訂正・ツール拒否・反復試行・期待違反）を検知し、解釈を加えない生観察として個人ローカル store に記録する。判断は後回しにし、「何が起きたか」のみを記す。セッション中の予測誤差を貯めたいとき・growth プラグインの学習ループを手動で起動したいときに明示起動する（Phase 1）。
 allowed-tools:
   - Read
   - Write
@@ -7,7 +7,6 @@ allowed-tools:
   - Bash(date *)
   - Bash(printenv *)
   - Bash(git rev-parse *)
-  - Bash(cat *)
   - Bash(grep *)
 ---
 
@@ -30,10 +29,12 @@ allowed-tools:
 **リポジトリルートと project-id**:
 
 ```bash
-git rev-parse --show-toplevel
+git rev-parse --git-common-dir
 ```
 
-取得したパス（例: `/home/user/myproject`）の全 `/` を `-` に置換して `<project-id>` とする（例: `-home-user-myproject`）。
+このコマンドは worktree・通常リポジトリの両方で共通の `.git` ディレクトリの絶対パスを返す（例: `/home/user/myproject/.git`）。末尾の `/.git` を除いたパスをリポジトリルートとし、全 `/` を `-` に置換して `<project-id>` とする（例: `-home-user-myproject`）。
+
+> `git rev-parse --show-toplevel` は worktree 内では worktree 固有パスを返すため使用しない。
 
 **session UUID**:
 
@@ -54,13 +55,17 @@ date -u +"%Y-%m-%dT%H:%M:%SZ"
 - store パス: `~/.claude/projects/<project-id>/growth/captures.md`
 - jsonl パス: `~/.claude/projects/<project-id>/<session-UUID>.jsonl`
 
+> jsonl の保存場所は Claude Code の内部仕様に依存する。不明な場合は `~/.claude/projects/<project-id>/` 配下を確認すること。
+
 ### Step 2: jsonl 読取とシグナル検知
 
-jsonl を読み取り、4種のシグナルを**再現率寄り**（拾い過ぎ許容）で走査する。確実なものより多めに拾い、精査は Distill に委ねる。
+**ファイル存在確認**:
 
-```bash
-cat ~/.claude/projects/<project-id>/<session-UUID>.jsonl
-```
+Read ツールで jsonl パスを読み取る。ファイルが存在しない・読み取れない場合は「セッションログが見つかりません（確認パス: ...）」と報告して終了する。ファイルが存在しない場合でもエントリを store に書かない。
+
+**シグナル走査**:
+
+jsonl の内容（JSON Lines 形式）から4種のシグナルを**再現率寄り**（拾い過ぎ許容）で走査する。確実なものより多めに拾い、精査は Distill に委ねる。
 
 必要に応じてキーワードで絞り込む（例）:
 
@@ -69,7 +74,7 @@ grep -i "denied\|permission\|拒否\|訂正\|違う\|error\|再試行" \
   ~/.claude/projects/<project-id>/<session-UUID>.jsonl
 ```
 
-各メッセージ（JSON Lines 形式）から以下のシグナルを識別する:
+各メッセージから以下のシグナルを識別する:
 
 | シグナル | 識別の手掛かり |
 |---|---|
@@ -77,6 +82,8 @@ grep -i "denied\|permission\|拒否\|訂正\|違う\|error\|再試行" \
 | `ツール拒否` | ツール呼び出しが拒否された記録（denied、permission denied、hook ブロック等の痕跡） |
 | `反復試行` | 同一目的の操作を複数回繰り返した記録（同じコマンド・同じ修正が連続する等） |
 | `期待違反` | 予測した結果と実際の結果が食い違った痕跡（エラー後の対処、「想定と異なる」等の発話） |
+
+> `客観痕跡`（git revert・CI 失敗等）は store のシグナル値域に含まれるが Phase 1 では投入しない（取得は Phase 3）。
 
 **0件の場合**: 捕捉ゼロを報告して終了する（空エントリを store に書かない）。
 
