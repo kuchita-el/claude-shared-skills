@@ -7,6 +7,10 @@
     {
       "name": "dev-workflow",
       "source": "./plugins/dev-workflow"
+    },
+    {
+      "name": "growth",
+      "source": "./plugins/growth"
     }
   ]
 }
