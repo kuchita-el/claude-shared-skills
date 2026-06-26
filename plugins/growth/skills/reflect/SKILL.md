@@ -29,11 +29,12 @@ allowed-tools:
 **リポジトリルートと project-id**:
 
 ```bash
-git rev-parse --git-common-dir
+git rev-parse --path-format=absolute --git-common-dir
 ```
 
-このコマンドは worktree・通常リポジトリの両方で共通の `.git` ディレクトリの絶対パスを返す（例: `/home/user/myproject/.git`）。末尾の `/.git` を除いたパスをリポジトリルートとし、全 `/` を `-` に置換して `<project-id>` とする（例: `-home-user-myproject`）。
+このコマンドは worktree・通常リポジトリの両方で共通の `.git` ディレクトリの**絶対パス**を返す（例: `/home/user/myproject/.git`）。`--path-format=absolute` は Git 2.31 以降で利用可能。末尾の `/.git` を除いたパスをリポジトリルートとし、全 `/` を `-` に置換して `<project-id>` とする（例: `-home-user-myproject`）。
 
+> `--git-common-dir` 単体は CWD に応じて相対パスを返す場合があるため `--path-format=absolute` を必ず併用する。
 > `git rev-parse --show-toplevel` は worktree 内では worktree 固有パスを返すため使用しない。
 
 **session UUID**:
