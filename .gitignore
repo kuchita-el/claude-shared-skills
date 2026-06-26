@@ -3,3 +3,6 @@
 
 # Git worktrees placed inside the repo
 .claude/worktrees/
+
+# growth プラグインの個人ローカル store（in-repo dogfooding 用。生捕捉はコミットしない。詳細は plugins/growth/references/personal-store-spec.md）
+plugins/growth/.local/
