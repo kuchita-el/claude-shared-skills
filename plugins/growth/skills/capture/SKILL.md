@@ -1,5 +1,5 @@
 ---
-description: reflect は現セッション会話履歴（session jsonl）から予測誤差シグナル（訂正・ツール拒否・反復試行・期待違反）を検知し、解釈を加えない生観察として個人ローカル store に記録する。判断は後回しにし、「何が起きたか」のみを記す。セッション中の予測誤差を貯めたいとき・growth プラグインの学習ループを手動で起動したいときに明示起動する（Phase 1）。
+description: capture は現セッション会話履歴（session jsonl）から予測誤差シグナル（訂正・ツール拒否・反復試行・期待違反）を検知し、解釈を加えない生観察として個人ローカル store に記録する。判断は後回しにし、「何が起きたか」のみを記す。セッション中の予測誤差を貯めたいとき・growth プラグインの学習ループを手動で起動したいときに明示起動する（Phase 1）。
 allowed-tools:
   - Read
   - Write
@@ -10,7 +10,7 @@ allowed-tools:
   - Bash(grep *)
 ---
 
-# reflect（Capture）
+# capture
 
 現セッション会話履歴から予測誤差シグナルを検知し、生観察を個人ローカル store へ記録する。
 
@@ -28,7 +28,7 @@ allowed-tools:
 
 **リポジトリルートと project-id**:
 
-`<project-id>` の解決手順（`git rev-parse --path-format=absolute --git-common-dir` を用いる）は、個人ローカル store 仕様の「project-id とパスの解決手順」を単一出典とする（`${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md`）。同手順に従い `<project-id>` を解決する（reflect・distill 双方が同一手順で同一 project-id を得る）。
+`<project-id>` の解決手順（`git rev-parse --path-format=absolute --git-common-dir` を用いる）は、個人ローカル store 仕様の「project-id とパスの解決手順」を単一出典とする（`${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md`）。同手順に従い `<project-id>` を解決する（capture・distill 双方が同一手順で同一 project-id を得る）。
 
 **session UUID**:
 
