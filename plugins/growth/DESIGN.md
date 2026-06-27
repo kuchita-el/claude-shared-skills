@@ -181,7 +181,7 @@ dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 
 1. **学び置き場の形式**: 単一の人間可読ファイル。全体を一覧でき、肥大が見えるため原理5（足場を痩せさせる）に資する。内容モデル（2面・fan-out/fan-in 分離・配布の2空間・1欄スキーマ・忘却＝物理除去）・スキーマ・配置（パブリック空間の確定パス `plugins/growth/learnings.md`）・ライフサイクルは #344 で確定（[`references/learning-store-spec.md`](references/learning-store-spec.md)）。
 2. **客観痕跡の取得手段**: 現セッションの会話履歴は Phase 1、過去セッションログの横断解析と git revert は Phase 3、CI 失敗は Phase 3 以降（要連携・価値検証後）。取得は hook リアルタイム検知ではなくログ事後解析を主軸とする。なお過去セッションログは既定 **30 日でローテーション消滅する揮発資産**（`cleanupPeriodDays` 既定 30 日。#378 で確認）であり、横断解析は「消滅前にシグナルを抽出して個人 store に永続化する」ことを前提とする。Phase 3 の自発トリガーは取りこぼし回避のため 30 日より十分短い周期で走査する設計ドライバを持つ（決定事項4 に接続。形式詳細は [`references/session-log-format.md`](references/session-log-format.md)）。
 3. **個人 store の置き場**: 生の捕捉は個人ローカル（共有されない）に置き、検証を経たものだけ committed へ昇格させる。昇格経路を必ず持つことで memory の「個人で終わる」欠点を克服する。具体形式・置き場（`~/.claude/projects/<project-id>/growth/captures.md`、per-project）・状態管理は #345 で確定（[`references/personal-store-spec.md`](references/personal-store-spec.md)）。
-4. **`reflect` の自発性レベル**: 明示起動（Phase 1）から始め、自発化は Phase 3。Phase 3 の本質的論点は機構（SessionEnd hook か Routines か）ではなく、ナレッジ抽出の**解析単位と UX**である（2026-06-27 確定、#350）。単一セッション内の確認と複数セッション横断の一括確認を併存させ（抽出精度の中核は横断解析＝原理2・6）、ライブセッションに相乗りして解析する UX の適否は要検証とする。なお本 UX 論点は決定事項2 の取得手段軸（リアルタイム検知 vs 事後解析）とは直交する——ライブ相乗りを採っても痕跡の取得はセッションログの事後解析のままであり、決定事項2 / §3「客観痕跡の取得」は変わらない。ただしライブ相乗りをリアルタイム痕跡捕捉まで踏み込ませる変種を採用する場合は、決定事項2 / L105「事後解析を主軸」を見直す可能性がある。機構・#160 の nightly Routine 基盤への相乗りは実装段階の詳細とし、本設計では固定しない。
+4. **`reflect` の自発性レベル**: 明示起動（Phase 1）から始め、自発化は Phase 3。Phase 3 の本質的論点は機構（SessionEnd hook か Routines か）ではなく、ナレッジ抽出の**解析単位と UX**である（2026-06-27 確定、#350）。単一セッション内の確認と複数セッション横断の一括確認を併存させ（抽出精度の中核は横断解析＝原理2・6）、ライブセッションに相乗りして解析する UX の適否は要検証とする。なお本 UX 論点は決定事項2 の取得手段軸（リアルタイム検知 vs 事後解析）とは直交する——ライブ相乗りを採っても痕跡の取得はセッションログの事後解析のままであり、決定事項2 / §3「客観痕跡の取得」は変わらない。ただしライブ相乗りをリアルタイム痕跡捕捉まで踏み込ませる変種を採用する場合は、決定事項2 / L105「事後解析を主軸」を見直す可能性がある。機構・#160 の nightly Routine 基盤への相乗りは実装段階の詳細とし、本設計では固定しない。各機構（SessionEnd hook / Desktop scheduled task / `/loop` / クラウド Routine）の発火仕様・取得可能データ・解析単位への適合と非対称性は #379 で対称に調査済み（[`references/auto-trigger-spec.md`](references/auto-trigger-spec.md)）。クラウド Routine はローカル `~/.claude/projects/` にアクセスできず横断解析に不適である点が機構選定の決定的な非対称性。
 5. **チーム層**: team private marketplace の実運用を想定する。Phase 5 を本設計の対象とする（共有リポの CLAUDE.md / ADR への縮退ではない）。
 6. **メタ学習**: 内省の仕組み自体（検知基準・昇格閾値）の改善を Phase 6 として組み込む。仕組みの変更は必ず人間承認ゲートを通す。
 
@@ -197,7 +197,7 @@ dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 
 ### 実装時に一次確認する事項
 
 - ~~セッションログの保存場所・形式~~ → **#378 で確認済み**。`~/.claude/projects/<project-id>/<session-uuid>.jsonl`（per-project・JSONL・1ファイル1セッション）、既定 30 日でローテ消滅。予測誤差シグナルは全て取得可能、全文走査は実測 0.08 秒。実現可能性＝**条件付き可**（消滅前の抽出・永続化が条件）。詳細は [`references/session-log-format.md`](references/session-log-format.md)。
-- 自発トリガー機構（SessionEnd hook / nightly Routine 等）の発火仕様と取得可能なデータ
+- ~~自発トリガー機構（SessionEnd hook / nightly Routine 等）の発火仕様と取得可能なデータ~~ → **#379 で確認済み**。SessionEnd hook は payload に終了セッションの `session_id`/`transcript_path` を直渡し（単一セッション即時捕捉に最適、side-effect 専用）。横断解析はローカル実行スケジューラ（Desktop scheduled task / `/loop`）に限られ、**クラウド Routine はローカル `~/.claude/projects/` にアクセスできず不適**。単一＝hook・横断＝ローカルスケジューラの併存が #350 解析単位に対応。詳細は [`references/auto-trigger-spec.md`](references/auto-trigger-spec.md)。
 
 ---
 
