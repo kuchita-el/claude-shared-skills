@@ -197,6 +197,7 @@ dev-workflow との接続は疎結合とする。`reflect` は `gh` で直接 Is
 |---|---|---|
 | 内省機能を dev-workflow に混ぜず独立プラグイン growth として分離 | 後戻りコスト高・横断・却下選択肢あり・自動強制不可 → 3点以上、ADR 級 | 昇格済み: [ADR-20260626-growth-plugin-separation](../../docs/adr/ADR-20260626-growth-plugin-separation.md)（#343 のスケルトン作成 PR で昇格） |
 | 学びの共有は配布物（git ファイル）を本体とし、Issue は前段の品質ゲートとする | 横断・採用理由揮発 → 要再判定 | 再発時 |
+| 配布ファイルの内容モデル（2面 origin/consumer・fan-out/fan-in 分離・配布の2空間・1欄スキーマ・整理＝物理除去） | 後戻りコスト高・複数モジュール波及・採用理由揮発・自動強制不可 → 3点以上、ADR 級 | #344 で DESIGN.md＋[`references/learning-store-spec.md`](references/learning-store-spec.md) に記述。横断再発または別キャリアへの波及時に昇格（現状は spec 参照で足りる） |
 | 二段ゲート（保存=自動 / 仕組み化=レビュー） | 整合確認済み（2026-06-26）。既存の自律度 L0–L3／承認ゲート軸（ADR-20260601 / ADR-20260602-2）で表現でき矛盾なし。新規 ADR 不要 | — |
 
 ---
