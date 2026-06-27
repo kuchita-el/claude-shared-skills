@@ -185,7 +185,7 @@ dev-workflow との接続は疎結合とする。`reflect` は `gh` で直接 Is
 ### 実装時に一次確認する事項
 
 - セッションログの保存場所・形式
-- hook（SessionEnd 等）の発火仕様と取得可能なデータ
+- 自発トリガー機構（SessionEnd hook / nightly Routine 等）の発火仕様と取得可能なデータ
 
 ---
 
