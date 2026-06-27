@@ -24,6 +24,27 @@ growth プラグインの学習ループ（`[Capture] → [Distill] → [Route] 
 - **スコープは per-project**。捕捉はプロジェクト文脈（作業セッション）で発生するため、プロジェクトごとに store を分離して出所文脈を保持する。Distill はこのプロジェクト単位の store を入力源とする。
 - このパスはユーザースコープ（`~/.claude/` 配下）にあり、本リポジトリの work tree の外にある。したがって**配布物（プラグイン）に物理的に含まれず**、プラグイン更新で消えず、配布を受けた consumer の環境でも各自の user-local 領域として成立する。
 
+### project-id とパスの解決手順
+
+`<project-id>` と store パスは以下の手順で解決する。**Capture（reflect スキル）と Distill（distill スキル）は本手順を共通の単一出典として参照する**（操作手順を各スキルへ二重定義せず、git のバージョン要件や置換規約の改修をここ一箇所に集約する）。
+
+**リポジトリルートと project-id**:
+
+```bash
+git rev-parse --path-format=absolute --git-common-dir
+```
+
+このコマンドは worktree・通常リポジトリの両方で共通の `.git` ディレクトリの**絶対パス**を返す（例: `/home/user/myproject/.git`）。`--path-format=absolute` は Git 2.31 以降で利用可能。末尾の `/.git` を除いたパスをリポジトリルートとし、全 `/` を `-` に置換して `<project-id>` とする（例: `-home-user-myproject`）。
+
+> `--git-common-dir` 単体は CWD に応じて相対パスを返す場合があるため `--path-format=absolute` を必ず併用する。
+> `git rev-parse --show-toplevel` は worktree 内では worktree 固有パスを返すため使用しない。
+
+**store パスの組み立て**:
+
+- store パス: `~/.claude/projects/<project-id>/growth/captures.md`
+
+> reflect（Capture）は同一の `<project-id>` から jsonl パス `~/.claude/projects/<project-id>/<session-UUID>.jsonl` も組み立てるが、session UUID 解決と jsonl 読取は Capture 固有の手順であり本仕様の対象外（reflect SKILL.md が定義する）。
+
 ## 捕捉エントリの形式
 
 store は Markdown ファイルであり、1捕捉を1セクション（`##` 見出し）として追記する。人間可読であり、肥大が一目で分かる（`DESIGN.md` 原理5「足場を痩せさせる」の前提）。
