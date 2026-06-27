@@ -5,7 +5,7 @@ allowed-tools:
   - Bash(git rev-parse *)
 ---
 
-# distill（Distill）
+# distill
 
 個人ローカル store の未処理の生観察をクラスタ化・重複排除し、実行可能な振る舞い差分（規範）の候補へ変換する。学習ループ（`[Capture] → [Distill] → [Route] → [Promote] → [Distribute]`）の2段目。
 
