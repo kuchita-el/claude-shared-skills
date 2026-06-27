@@ -5,14 +5,14 @@ allowed-tools:
   - Bash(git rev-parse *)
 ---
 
-# distill（Distill）
+# distill
 
 個人ローカル store の未処理の生観察をクラスタ化・重複排除し、実行可能な振る舞い差分（規範）の候補へ変換する。学習ループ（`[Capture] → [Distill] → [Route] → [Promote] → [Distribute]`）の2段目。
 
 ## 目的・原則
 
 - **目的**: 蓄積した生観察を蒸留し、「次回どう違う行動を取るか」という実行可能な差分の**候補**にする（DESIGN.md §3 Distill・原理1）。実行不能な内省はここで捨て、肥大を下流へ送らない（原理5）。
-- **Capture と非同期**: distill は reflect（Capture）と別タイミングで明示起動するバッチ処理。store に溜まった `unprocessed` を一括で蒸留する（例: 1日分）。セッション終端には紐づかない。
+- **Capture と非同期**: distill は capture（Capture）と別タイミングで明示起動するバッチ処理。store に溜まった `unprocessed` を一括で蒸留する（例: 1日分）。セッション終端には紐づかない。
 - **候補化止まり（責務境界）**: 候補をチャット提示するまでで責務を終える。検証・Route・Promote・配布・`learnings.md` への書き込み・store の `status` 反転は行わない（二段ゲート。昇格は別 Issue・レビュー必須）。store と `learnings.md` のいずれにも書き込まない。
 - **Phase 1 スコープ**: 入力源は正準パス `captures.md` のみ。明示起動のみ。
 

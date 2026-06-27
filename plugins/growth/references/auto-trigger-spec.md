@@ -1,6 +1,6 @@
 # 自発トリガー機構の発火仕様・取得可能データの一次調査（spike #379）
 
-> **位置づけ**: growth Phase 3「reflect の自発化」（DESIGN.md 決定事項4・#350）の前提となる一次調査の記録。機構選定（単独/併存）の判定材料を、SessionEnd hook と nightly 系スケジューラについて対称に文書化する。決定そのものは実装時でよい（#379 完了定義）。ディスク上のログ形式は #378（[`session-log-format.md`](session-log-format.md)）が確立済みであり、本書はその「形式」に対する「発火点」を埋める。
+> **位置づけ**: growth Phase 3「capture の自発化」（DESIGN.md 決定事項4・#350）の前提となる一次調査の記録。機構選定（単独/併存）の判定材料を、SessionEnd hook と nightly 系スケジューラについて対称に文書化する。決定そのものは実装時でよい（#379 完了定義）。ディスク上のログ形式は #378（[`session-log-format.md`](session-log-format.md)）が確立済みであり、本書はその「形式」に対する「発火点」を埋める。
 
 ## 調査時点・対象バージョン
 
@@ -22,14 +22,14 @@
   - GUI 環境（macOS/Windows + Desktop アプリ）: **Desktop scheduled task**（ローカル実行・ローカルファイルアクセス可・オープンセッション不要・最小1分間隔）。
   - CLI/ヘッドレス・Linux 環境: **OS ネイティブスケジューラ**（cron / systemd timer / Windows Task Scheduler）から抽出スクリプトまたは `claude -p` を起動する。これはディスク上のローカルログを全 project-id 走査でき、オープンセッション不要。ただし**公式ドキュメントはスケジューリングを3択（Routine / Desktop task / `/loop`）に閉じており OS ネイティブ手段に言及がない**——ユーザー側ラップは技術的に可能だが公式の推奨経路ではない点に留意（§4 補足）。
   - `/loop`: ローカル・全OSだが**オープンセッション必須**。週次の横断バッチを常時セッション起動で回すのは非現実的なため、横断機構としては限定的。
-- **SessionEnd hook は単一セッションの軽量トリガーに最適**: 発火時 payload に終了セッションの `session_id` と `transcript_path`（jsonl 絶対パス）を直接含むため、reflect が即座に当該セッションを捕捉できる（§3）。ただし side-effect 専用（出力でブロック不可・非同期バックグラウンド実行）であり、重い横断解析を同期実行する機構ではない。SessionEnd hook は CLI（全OS）の機能であり、プラットフォーム非対称性の影響を受けない。
+- **SessionEnd hook は単一セッションの軽量トリガーに最適**: 発火時 payload に終了セッションの `session_id` と `transcript_path`（jsonl 絶対パス）を直接含むため、capture が即座に当該セッションを捕捉できる（§3）。ただし side-effect 専用（出力でブロック不可・非同期バックグラウンド実行）であり、重い横断解析を同期実行する機構ではない。SessionEnd hook は CLI（全OS）の機能であり、プラットフォーム非対称性の影響を受けない。
 
 ## 2. 後続実装（#350）への前提条件
 
 1. **併存設計**: SessionEnd hook（単一・即時）＋ローカル・スケジューラ（横断・週次）の二系統を併存させる。一方が他方を置換しない。
 2. **横断機構はローカル必須・環境で分岐**: 横断解析を担うスケジューラは `~/.claude/projects/` を読めるローカル実行とする。GUI 環境は Desktop scheduled task、CLI/ヘッドレス・Linux 環境は OS ネイティブスケジューラ（cron / systemd timer / Task Scheduler）から `claude -p` ないし抽出スクリプトを起動する。Desktop task は Linux 非対応（§1）のため、本リポジトリのような Linux/WSL 開発環境では OS ネイティブスケジューラが既定解になる。クラウド Routine を採る場合はログを clone 可能な場所へ事前同期する別設計が要る（現時点では非推奨）。
 3. **30日ローテに先んじた週次走査**（#378 §2 を継承）: 横断機構は 30 日より十分短い周期（週次程度）で走査し、抽出済みシグナルを個人 store へ永続化する。Desktop task の「最小1分・日次/週次プリセット」はこの周期要件を満たす。
-4. **捕捉対象の解決は payload 優先**: reflect の session UUID 解決は env（`CLAUDE_CODE_SESSION_ID`）ではなく SessionEnd payload の `session_id` / `transcript_path` を一次ソースとする（§3。reflect SKILL.md の `CLAUDE_CODE_CHILD_SESSION` 懸念を解消）。
+4. **捕捉対象の解決は payload 優先**: capture の session UUID 解決は env（`CLAUDE_CODE_SESSION_ID`）ではなく SessionEnd payload の `session_id` / `transcript_path` を一次ソースとする（§3。capture SKILL.md の `CLAUDE_CODE_CHILD_SESSION` 懸念を解消）。
 
 ---
 
@@ -38,7 +38,7 @@
 ### 3.1 発火契機（公式文書化済み）
 
 - Claude Code セッション終了時に発火。`matcher` で終了理由を区別: `clear`（`/clear`）/ `resume`（一時停止）/ `logout` / `prompt_input_exit` / `bypass_permissions_disabled` / `other`。
-- どの reason で reflect を発火させるかは実装時に選択（例: 通常終了 `prompt_input_exit` と `other` を対象、`clear`/`resume` の扱いは要検討）。
+- どの reason で capture を発火させるかは実装時に選択（例: 通常終了 `prompt_input_exit` と `other` を対象、`clear`/`resume` の扱いは要検討）。
 
 ### 3.2 payload スナップショット（実機 2.1.195・stdin JSON）
 
@@ -54,7 +54,7 @@
 }
 ```
 
-- **`transcript_path`**: 終了セッションの jsonl 絶対パスを直接手渡す。reflect の解析対象がそのまま得られる（#378 のパス導出を hook 経由で省略できる）。
+- **`transcript_path`**: 終了セッションの jsonl 絶対パスを直接手渡す。capture の解析対象がそのまま得られる（#378 のパス導出を hook 経由で省略できる）。
 - **`session_id`**: ファイル名 UUID と一致。
 - **`reason`**: 上記 matcher 値（`-p` 終了は `other`）。
 
@@ -76,7 +76,7 @@ CLAUDE_CODE_EXECPATH=…/versions/2.1.195
 - **ブロック不可**: exit code 2 は無視され、出力に関わらずセッションは終了する（side-effect 専用＝logging/cleanup/notification）。
 - **非同期**: セッションクローズ時にバックグラウンド実行。
 - **未文書**: タイムアウト既定値・複数 matcher マッチ時の実行順序は公式に記載なし（実装時に実機確認）。
-- → reflect の用途（終了セッションの捕捉・個人 store への追記）は side-effect であり制約に抵触しない。重い横断解析を hook 内で同期完結させる設計は避ける。
+- → capture の用途（終了セッションの捕捉・個人 store への追記）は side-effect であり制約に抵触しない。重い横断解析を hook 内で同期完結させる設計は避ける。
 
 ---
 
@@ -140,5 +140,5 @@ CLAUDE_CODE_EXECPATH=…/versions/2.1.195
 
 - 親エピック: #350（growth Phase 3）／本 spike: #379／隣接 spike: #378（ログ形式）・#380（活性化モデル）・#381（ライブ相乗り UX）
 - 隣接: #160（Routines ベース nightly grooming。本書 §6 で相乗り不可と評価）
-- DESIGN.md 決定事項2（取得手段＝事後解析主軸）・決定事項4（reflect 自発化）・「実装時に一次確認する事項」
+- DESIGN.md 決定事項2（取得手段＝事後解析主軸）・決定事項4（capture 自発化）・「実装時に一次確認する事項」
 - 形式の一次調査: [`session-log-format.md`](session-log-format.md)（#378）
