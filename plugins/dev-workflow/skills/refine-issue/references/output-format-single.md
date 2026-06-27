@@ -1,6 +1,6 @@
 <!--
 このファイルは refine-issue スキルの 1件モード出力テンプレート。
-SKILL.md 手順3 で 1件モードのメインが本ファイル内容を Read し、refine-prompt.md の {OUTPUT_FORMAT} プレースホルダ位置に埋め込んでサブエージェントへ送出する。
+SKILL.md 手順3 において 1件/--input モードのサブエージェントが自身で Read し、refine-prompt.md の {OUTPUT_FORMAT} プレースホルダ位置に適用する形で出力形式として運用する。
 末尾の「精査実施: Claude Code」フッタは再精査検出の識別子として必須（refine-prompt.md「再精査時の注意」が依拠）。
 このコメントブロックを除く以下の本文をテンプレートとして遵守すること。
 -->
