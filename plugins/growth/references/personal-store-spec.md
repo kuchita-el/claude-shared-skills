@@ -26,7 +26,7 @@ growth プラグインの学習ループ（`[Capture] → [Distill] → [Route] 
 
 ### project-id とパスの解決手順
 
-`<project-id>` と store パスは以下の手順で解決する。**Capture（reflect スキル）と Distill（distill スキル）は本手順を共通の単一出典として参照する**（操作手順を各スキルへ二重定義せず、git のバージョン要件や置換規約の改修をここ一箇所に集約する）。
+`<project-id>` と store パスは以下の手順で解決する。**Capture（capture スキル）と Distill（distill スキル）は本手順を共通の単一出典として参照する**（操作手順を各スキルへ二重定義せず、git のバージョン要件や置換規約の改修をここ一箇所に集約する）。
 
 **リポジトリルートと project-id**:
 
@@ -43,7 +43,7 @@ git rev-parse --path-format=absolute --git-common-dir
 
 - store パス: `~/.claude/projects/<project-id>/growth/captures.md`
 
-> reflect（Capture）は同一の `<project-id>` から jsonl パス `~/.claude/projects/<project-id>/<session-UUID>.jsonl` も組み立てるが、session UUID 解決と jsonl 読取は Capture 固有の手順であり本仕様の対象外（reflect SKILL.md が定義する）。
+> capture（Capture）は同一の `<project-id>` から jsonl パス `~/.claude/projects/<project-id>/<session-UUID>.jsonl` も組み立てるが、session UUID 解決と jsonl 読取は Capture 固有の手順であり本仕様の対象外（capture SKILL.md が定義する）。
 
 ## 捕捉エントリの形式
 
@@ -118,7 +118,7 @@ unprocessed ──(Distill が候補化 → 昇格処理〔別 Issue〕が反転
 - Capture が新規エントリを書き込むときの `status` は必ず `unprocessed`。
 - Distill は store を走査し、`status: unprocessed` のエントリのみを処理対象として選択する。`promoted` は無視する。Distill 自身は `status` を反転しない（候補化までに責務を限定する。distill スキル参照）。
 - エントリは store 内に残したまま `status` をインラインで反転させる（アーカイブへ移送しない）。捕捉履歴を可逆・監査可能な形で保持するため。
-- **昇格処理（`status` の `unprocessed → promoted` への反転を実行する主体）は本仕様の対象外**（別 Issue: reflect 検証→起票）。本仕様は状態軸と遷移規約の定義に留める。
+- **昇格処理（`status` の `unprocessed → promoted` への反転を実行する主体）は本仕様の対象外**（別 Issue: capture 検証→起票）。本仕様は状態軸と遷移規約の定義に留める。
 
 ### 二段ゲートとの整合
 
