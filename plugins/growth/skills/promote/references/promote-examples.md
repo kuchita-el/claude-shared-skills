@@ -128,7 +128,7 @@ Markdown 等の長文を CLI オプションに直接渡さない。ファイル
 ### 手順トレース
 
 1〜4. 検証合格 → Route 注記 → 起票成功（`#402`）。
-5. **status 反転**: provenance が**2つの timestamp** を持つため、`captures.md` の `2026-06-26T11:00:00Z` と `2026-06-26T11:10:00Z` の**両エントリ**を `promoted` へ反転する。
+5. **status 反転**: provenance が**2つの timestamp** を持つため、`captures.md` の `2026-06-26T11:00:00Z` と `2026-06-26T11:10:00Z` の**両エントリ**を `promoted` へ反転する。両エントリの `- status: unprocessed` 行は同一テキストのため、procedure §6 ステップ2 に従い**各 timestamp の `## <timestamp>` 見出しブロックをアンカーに個別に Edit** する（status 行単独 Edit や `replace_all` は使わない＝誤反転防止）。
 
 ### 期待結果
 

@@ -29,7 +29,7 @@ distill が候補ファイル（`candidates.md`）へ永続化した候補を仮
 2. **検証（AC1・原理2）**: 各候補を仮説とみなし、「予測（次にどんな状況で効くか）」と「検証観点（どの条件で反証されうるか）」を添えて評価する。反証可能性・予測力を欠く候補は**不合格**とし、`candidate-status` を `rejected` へ更新して後段（起票）へ進めない。合格候補のみ後段へ（procedure §3）。
 3. **Route 注記（AC2 消費）**: 合格候補の `scope-hypothesis` タグを読み、向かう空間（`universal`＝パブリック/グローバル空間＝`learnings.md` 相当 / `project-local`＝閉じた空間）を Issue 本文へ**仮説として注記**する。`learnings.md` には書かない（procedure §4）。
 4. **自動起票（AC3・AC4）**: Issue 本文を Write で一時ファイルへ書き出し、`gh issue create --body-file` で起票する。起票前に人間承認ゲートを置かない。dev-workflow スキルを呼ばない（疎結合）。本文構造は procedure §5。
-5. **`status` 反転（AC6）**: 起票が**成功した後にのみ**、候補の `provenance` が指す `captures.md` の各エントリの `status` を Edit で `unprocessed → promoted` へ反転する。複数 timestamp を持つ候補は全エントリを反転する。起票失敗時は反転しない（procedure §6）。
+5. **`status` 反転（AC6）**: 起票が**成功した後にのみ**、候補の `provenance` が指す `captures.md` の各エントリの `status` を `unprocessed → promoted` へ反転する。status 行はエントリ間で同一テキストのため、**一意な `## <timestamp>` 見出しブロックをアンカーに**個別 Edit する（`replace_all` 不可。誤反転防止）。複数 timestamp を持つ候補は全エントリを反転する。起票失敗時は反転しない（procedure §6）。
 
 ## 完了報告
 

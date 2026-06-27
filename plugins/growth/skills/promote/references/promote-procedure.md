@@ -35,7 +35,7 @@ promote スキルの各段の判定基準の詳細。SKILL.md の手順 overview
 | **合格** | 予測（効く場面）と反証条件の両方が立ち、規範として実行可能な振る舞い差分を述べている | 後段（Route 注記 → 起票）へ進める |
 | **不合格** | 反証可能性を欠く（反例が原理的に作れない）／予測力を欠く（いつ効くか述べられない）／一回限りの事象で再現性が読めない | 起票段へ**進めない**。`candidate-status` を `rejected` へ更新（§6 の冪等性）。`status` 反転もしない |
 
-- 不合格候補は `candidates.md` の当該エントリの `candidate-status: pending` を `rejected` へ Edit で更新する。これにより次回 distill / promote 実行で同一候補が再提示・再評価されるループを断つ（personal-store-spec.md「冪等性」）。
+- 不合格候補は `candidates.md` の当該エントリの `candidate-status: pending` を `rejected` へ Edit で更新する。これにより次回 distill / promote 実行で同一候補が再提示・再評価されるループを断つ（personal-store-spec.md「冪等性」）。`- candidate-status: pending` 行は候補間で同一テキストのため、対象候補の**一意な `- provenance:` 行を含む見出しブロック**（`## <見出し>` ＋ `- provenance: …` ＋ `- scope-hypothesis: …` ＋ `- candidate-status: pending`）を `old_string` アンカーにして Edit する（provenance は一意キー。§6 ステップ2 と同じハザード回避）。複数候補を更新する場合は候補ごとに個別アンカーで行う。
 - 検証は候補を**棄却する方向に厳しく**倒す。未検証の幻覚を配布経路に漏らさないことが原理2 の要請（疑わしきは rejected）。
 
 ## 4. Route 注記
@@ -71,8 +71,9 @@ Issue 本文に含める Route 注記欄の書式:
 起票が**成功した後にのみ**、候補の `provenance` が指す store エントリの `status` を反転する。
 
 1. **対象の特定**: 合格・起票成功した候補の `provenance`（`captures.md` の `## <timestamp>` 群）を読む。
-2. **反転**: provenance が指す `captures.md` の各エントリの `- status: unprocessed` 行を `- status: promoted` へ Edit で書き換える。**複数 timestamp を持つ候補は全エントリを反転**する（クラスタを畳んだ候補の全由来観察を昇格済みにする）。
-3. **候補側の更新**: 起票成功した候補の `candidate-status` を `promoted` へ更新してもよい（再走査からの除外。任意だが推奨）。
+2. **反転（一意アンカーで Edit）**: `captures.md` の各エントリの `- status: unprocessed` 行は**エントリ間で同一テキスト**のため、status 行単独では Edit の `old_string` が一意マッチしない（未処理エントリが複数残るのは distill バッチ直後の常態）。status 行だけを Edit すると一意マッチ失敗で**失敗**するか、`replace_all` を使うと provenance に含まれない無関係エントリまで**誤反転**する。これを避けるため、対象エントリの**一意な `## <timestamp>` 見出し行から `- status: unprocessed` 行までの連続ブロック**（見出し＋`signal`/`session`/`status` メタ行。timestamp 見出しはエントリ一意）を `old_string` に含め、そのブロックの `status` 値のみ `promoted` に変えた `new_string` で Edit する。`replace_all` は使わない。**複数 timestamp を持つ候補は、各 timestamp について個別に（それぞれ固有の見出しブロックをアンカーに）反転する**。
+   - 代替として、distill の upsert（§ distill-procedure §6）と対称に「Read で `captures.md` 全文取得 → 対象エントリの status のみ書き換え → Write で全文書き出し」で行ってもよい（他エントリを保持すればインライン性は保たれる）。状態反転のパターンを両スキルで揃えたい場合はこちらを採る。
+3. **候補側の更新**: 起票成功した候補の `candidate-status` を `promoted` へ更新してもよい（再走査からの除外。任意だが推奨）。更新する場合も §3 と同様、候補の**一意な `- provenance:` 行を含む見出しブロック**をアンカーに Edit する（`- candidate-status:` 行も候補間で同一テキストのため、単独 Edit は一意マッチしない）。
 
 **ディシジョンテーブル（status 反転）**:
 
