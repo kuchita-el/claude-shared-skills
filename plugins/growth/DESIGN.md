@@ -178,7 +178,7 @@ dev-workflow との接続は疎結合とする。`reflect` は `gh` で直接 Is
 1. **学び置き場の形式**: 単一の人間可読ファイル。全体を一覧でき、肥大が見えるため原理5（足場を痩せさせる）に資する。内容モデル（2面・fan-out/fan-in 分離・配布の2空間・1欄スキーマ・忘却＝物理除去）・スキーマ・配置（パブリック空間の確定パス `plugins/growth/learnings.md`）・ライフサイクルは #344 で確定（[`references/learning-store-spec.md`](references/learning-store-spec.md)）。
 2. **客観痕跡の取得手段**: 現セッションの会話履歴は Phase 1、過去セッションログの横断解析と git revert は Phase 3、CI 失敗は Phase 3 以降（要連携・価値検証後）。取得は hook リアルタイム検知ではなくログ事後解析を主軸とする。
 3. **個人 store の置き場**: 生の捕捉は個人ローカル（共有されない）に置き、検証を経たものだけ committed へ昇格させる。昇格経路を必ず持つことで memory の「個人で終わる」欠点を克服する。具体形式・置き場（`~/.claude/projects/<project-id>/growth/captures.md`、per-project）・状態管理は #345 で確定（[`references/personal-store-spec.md`](references/personal-store-spec.md)）。
-4. **`reflect` の自発性レベル**: 明示起動（Phase 1）から始め、hook 自発化は Phase 3。
+4. **`reflect` の自発性レベル**: 明示起動（Phase 1）から始め、自発化は Phase 3。Phase 3 の本質的論点は機構（SessionEnd hook か Routines か）ではなく、ナレッジ抽出の**解析単位と UX**である（2026-06-27 確定、#350）。単一セッション内の確認と複数セッション横断の一括確認を併存させ（抽出精度の中核は横断解析＝原理2・6）、ライブセッションに相乗りして解析する UX の適否は要検証とする。機構・#160 の nightly Routine 基盤への相乗りは実装段階の詳細とし、本設計では固定しない。
 5. **チーム層**: team private marketplace の実運用を想定する。Phase 5 を本設計の対象とする（共有リポの CLAUDE.md / ADR への縮退ではない）。
 6. **メタ学習**: 内省の仕組み自体（検知基準・昇格閾値）の改善を Phase 6 として組み込む。仕組みの変更は必ず人間承認ゲートを通す。
 
