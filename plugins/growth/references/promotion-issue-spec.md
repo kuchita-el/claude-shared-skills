@@ -69,7 +69,7 @@ learnings.md
 
 ## Route 判定規則
 
-候補の性質を入力に、昇格先キャリアを**一意に**出力する決定表を定義する（D1 の4分類）。入力条件は相互排他に設計し、1つの候補が複数の行に該当しないようにする。
+候補の性質を入力に、昇格先キャリアを**一意に**出力する決定表を定義する（D1 の4分類）。一意性は入力条件の相互排他ではなく、**上から順に評価して最初に合致した行を採る順序評価**と、**行4を「上記いずれにも該当しない」残余枝（既定枝）として定義する**ことで保証する。行1〜3の条件は重なりうる（例: 強キャリア化可能な候補は同時に汎用ルールでもある）が、順序評価＋強キャリア最優先により一意に決まる。
 
 ### 決定表（D1 4キャリア）
 
@@ -107,16 +107,16 @@ learnings.md
 
 | ラベル | 役割 | hex | 根拠 |
 |---|---|---|---|
-| `growth-promote` | 識別（昇格 Issue 全体） | `#0B6E4F` | `growth #0E8A16` 同系の濃緑（teal 寄り）で growth ドメインの昇格ゲートを示す。キャリアの緑と被らせない |
+| `growth:promote` | 識別（昇格 Issue 全体） | `#0B6E4F` | `growth #0E8A16` 同系の濃緑（teal 寄り）で growth ドメインの昇格ゲートを示す。キャリアの緑と被らせない |
 | `promote:learnings` | キャリア: learnings.md | `#2DA44E` | 知識配布先。growth 系の緑で「学び」を想起 |
 | `promote:adr` | キャリア: ADR 差分 | `#0969DA` | 設計判断。`type:feature` の青系に寄せる |
 | `promote:dev-workflow` | キャリア: dev-workflow Issue | `#8250DF` | プロセス/ツール。`type:spike #5319E7` 系の紫 |
-| `promote:carrier` | キャリア: 強キャリア(skill/hook/lint/test) | `#BC4C00` | コードレベルの直接配布。暖色で「強・直接」 |
+| `promote:strong` | キャリア: 強キャリア(skill/hook/lint/test) | `#BC4C00` | コードレベルの直接配布。暖色で「強・直接」 |
 
 ### 付与規約
 
-- 識別ラベル `growth-promote` は既存 `growth` ラベルと**併用**する。昇格 Issue は `growth` ＋ `growth-promote` ＋ キャリア1種（`promote:*` のいずれか1つ）を持つ。`growth` は growth ドメイン全体の識別、`growth-promote` は昇格 Issue のサブ識別、`promote:*` は「Route 判定規則」が出力した昇格先キャリアに対応する。
-- キャリアラベルは決定表の4分類に1対1で対応する（learnings.md→`promote:learnings`、ADR 差分→`promote:adr`、dev-workflow Issue→`promote:dev-workflow`、強キャリア→`promote:carrier`）。
+- 識別ラベル `growth:promote` は既存 `growth` ラベルと**併用**する。昇格 Issue は `growth` ＋ `growth:promote` ＋ キャリア1種（`promote:*` のいずれか1つ）を持つ。`growth` は growth ドメイン全体の識別、`growth:promote` は昇格 Issue のサブ識別、`promote:*` は「Route 判定規則」が出力した昇格先キャリアに対応する。
+- キャリアラベルは決定表の4分類に1対1で対応する（learnings.md→`promote:learnings`、ADR 差分→`promote:adr`、dev-workflow Issue→`promote:dev-workflow`、強キャリア→`promote:strong`）。
 
 ### 機械絞り込みレシピ
 
@@ -124,15 +124,15 @@ learnings.md
 
 ```bash
 # learnings.md 行きの昇格 Issue（オープン）だけを列挙する
-gh issue list --label growth-promote --label promote:learnings --state open
+gh issue list --label growth:promote --label promote:learnings --state open
 
 # ADR 差分行きの昇格 Issue を列挙する
-gh issue list --label growth-promote --label promote:adr --state open
+gh issue list --label growth:promote --label promote:adr --state open
 ```
 
-`--label` を複数指定すると AND 条件になるため、`growth-promote` ＋ キャリア1種で各キャリアの作業キューを一意に取り出せる。
+`--label` を複数指定すると AND 条件になるため、`growth:promote` ＋ キャリア1種で各キャリアの作業キューを一意に取り出せる。
 
-ただし**空間（パブリック / 閉じた）はラベルで区別しない**。キャリア軸 ⊥ 空間軸の直交（後述）により、同一キャリアラベル（例 `promote:learnings`）にパブリックと閉じたが混在する。後続ハンドラがキャリア × 空間で仕分ける場合は、ラベルでキャリアを絞り込んだうえで Issue 本文の `## 空間` 欄を読んで最終仕分けする。
+ただし**空間（パブリック / 閉じた）はラベルで区別しない**。キャリア軸 ⊥ 空間軸の直交（前述）により、同一キャリアラベル（例 `promote:learnings`）にパブリックと閉じたが混在する。後続ハンドラがキャリア × 空間で仕分ける場合は、ラベルでキャリアを絞り込んだうえで Issue 本文の `## 空間` 欄を読んで最終仕分けする。
 
 ### セットアップ手順（ラベル実体の作成）
 
@@ -140,11 +140,11 @@ gh issue list --label growth-promote --label promote:adr --state open
 
 ```bash
 # ラベル実体の作成（本 PR では実行しない。セットアップ時に実行する）
-gh label create growth-promote        --color 0B6E4F --description "配布物昇格 Issue（識別）"
+gh label create growth:promote        --color 0B6E4F --description "配布物昇格 Issue（識別）"
 gh label create promote:learnings     --color 2DA44E --description "昇格先キャリア: learnings.md"
 gh label create promote:adr           --color 0969DA --description "昇格先キャリア: ADR 差分"
 gh label create promote:dev-workflow  --color 8250DF --description "昇格先キャリア: dev-workflow Issue"
-gh label create promote:carrier       --color BC4C00 --description "昇格先キャリア: 強キャリア(skill/hook/lint/test)"
+gh label create promote:strong       --color BC4C00 --description "昇格先キャリア: 強キャリア(skill/hook/lint/test)"
 ```
 
 ## スコープ境界
