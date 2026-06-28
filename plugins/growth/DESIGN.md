@@ -222,6 +222,7 @@ dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 
 | 配布ファイルの内容モデル（2面 origin/consumer・fan-out/fan-in 分離・配布の2空間・1欄スキーマ・整理＝物理除去） | 後戻りコスト高・複数モジュール波及・採用理由揮発・自動強制不可 → 3点以上、ADR 級 | #344 で DESIGN.md＋[`references/learning-store-spec.md`](references/learning-store-spec.md) に記述。横断再発または別キャリアへの波及時に昇格（現状は spec 参照で足りる） |
 | 二段ゲート（保存=自動 / 仕組み化=レビュー） | 整合確認済み（2026-06-26）。既存の自律度 L0–L3／承認ゲート軸（ADR-20260601 / ADR-20260602-2）で表現でき矛盾なし。新規 ADR 不要 | — |
 | 活性化モデル（時間軸折衷）＋発火観測（本文スキル経由の使用台帳・fan-in） | 後戻りコスト高・複数モジュール波及・採用理由揮発 → 3点以上、ADR 級。ただし現状は §6 決定事項7＋[`references/learning-store-spec.md`](references/learning-store-spec.md) の記述で足りる | #380 で DESIGN.md §6＋spec に記述。Phase 3 実装 PR 時に昇格候補 |
+| ライブ相乗り解析 UX の適否（mid-session 割り込み型を不採用、境界・別時間型へ再定義） | 後戻りコスト低〜中・複数モジュール波及中・採用理由揮発高・自動強制不可 → 2〜3点。現状は §6 決定事項4「4-補」の記述で足りる | #381 で DESIGN.md §6 に記述。Phase 3 実装 PR 時に昇格候補（争点は (b-2) deliver 層の just-in-time 提示） |
 
 ---
 
@@ -238,6 +239,7 @@ dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 
 | 独立プラグイン growth | dev-workflow に混在 | 関心が異なる（開発ワークフロー vs 学習メタ機構）。常時ロードの分離・単独導入のため |
 | plugins/growth/ 同梱 | docs/development/ に設計ドキュメント | 複数プラグイン文書の混在を避け、設計とコードをコロケーション。DESIGN.md は自動ロードされず配布の害がない |
 | ローカル → 検証後 committed | 最初から committed | 未検証ノイズがリポジトリを汚す |
+| 提示を境界・別時間に置く自発解析（境界・別時間型） | mid-session 割り込み型のライブ相乗り解析 UX | 即時性は precision にも recall にも寄与せず（捕捉はログ事後解析＝決定事項2）、妨害コストは実在。横断確認は構造的にバッチで非両立。検証済みナレッジの just-in-time 提示 (b-2) は capture/reflect でなく deliver 層の別論点（決定事項4「4-補」/ #381） |
 
 ---
 
