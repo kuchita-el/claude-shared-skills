@@ -5,18 +5,19 @@ promote スキルの各段の判定基準の詳細。SKILL.md の手順 overview
 ## 1. 目的・責務境界
 
 - **目的**: distill が `candidates.md` へ永続化した候補を仮説として検証し（原理2）、検証を通過したものだけを `gh` で Issue へ自動起票して既存ワークフローへ渡す。起票成功後に store の `status` を反転する。
-- **責務境界**: promote が担うのは「検証 → Route 注記 → 自動起票 → status 反転」の4段。次は**行わない**:
+- **責務境界**: promote が担うのは「検証 → Route 注記 → 自動起票 → status 反転」の4段。**promote はルーティング不可知である**——career（昇格先キャリア）も scope（適用範囲）も**確定（裁定）しない**。distill が `candidates.md` に出した `scope-hypothesis` / `career-hypothesis` の両仮説を、昇格 Issue 本文へ**注記として運ぶのみ**（ADR-20260628-2）。次は**行わない**:
   - 候補の生成・クラスタ化（distill の責務）
+  - career の Route 判定・決定表評価・キャリアラベル付与（決定表は distill 側＝distill-procedure.md へ移設済み。promote は決定表を持たない）
   - `learnings.md`（配布物）への物理書き込み（Distribute、Phase 2 の責務）。Route はタグの**注記**までで終端し、物理昇格はしない。
   - dev-workflow スキルの直接呼び出し（疎結合。起票は `gh` 直接のみ）
-  - スコープ仮説タグの確証・真化（仮説のまま終点。最終裁定は人間 refine/review）
+  - scope / career 仮説タグの確証・真化（仮説のまま終点。scope の最終裁定は人間 refine/review、career の確定は集約点＝取り込み Issue）
 - **二段ゲートの位置**: promote の検証段（§3）が二段ゲートの「未検証を配布経路に乗せない」フィルタ。起票前に人間承認ゲートは置かない（§5）。L2 の規範的ゲート（承認/マルチエージェントレビュー）は起票後の既存ワークフロー（refine-issue / DoR / PR レビュー）が担う（DESIGN.md 二段ゲート）。
 
 ## 2. 候補読取（入力選択）
 
 1. **候補ファイルパスの解決**: personal-store-spec.md「project-id とパスの解決手順」に従い `<project-id>` を解決し、候補ファイルパス `~/.claude/projects/<project-id>/growth/candidates.md` を組み立てる。
 2. **候補ファイルの読取**: Read で読む。存在しない・読めない場合は §7 のエラー処理へ。
-3. **エントリの抽出**: personal-store-spec.md「候補ファイル（candidates.md）」のスキーマ（`## <見出し>` ＋ `- provenance:` / `- scope-hypothesis:` / `- candidate-status:` メタ行 ＋ 本文）に従い行ベースで抽出する。
+3. **エントリの抽出**: personal-store-spec.md「候補ファイル（candidates.md）」のスキーマ（`## <見出し>` ＋ `- provenance:` / `- scope-hypothesis:` / `- career-hypothesis:` / `- candidate-status:` メタ行 ＋ 本文）に従い行ベースで抽出する。
 4. **対象選択**: `candidate-status: pending` のエントリのみを処理対象に選ぶ。`rejected`（過去に検証で棄却）・`promoted`（昇格済み）は**無視**する。`pending` が0件なら §7 のエラー処理へ。
 
 ## 3. 検証（原理2）
@@ -35,17 +36,19 @@ promote スキルの各段の判定基準の詳細。SKILL.md の手順 overview
 | **合格** | 予測（効く場面）と反証条件の両方が立ち、規範として実行可能な振る舞い差分を述べている | 後段（Route 注記 → 起票）へ進める |
 | **不合格** | 反証可能性を欠く（反例が原理的に作れない）／予測力を欠く（いつ効くか述べられない）／一回限りの事象で再現性が読めない | 起票段へ**進めない**。`candidate-status` を `rejected` へ更新（§6 の冪等性）。`status` 反転もしない |
 
-- 不合格候補は `candidates.md` の当該エントリの `candidate-status: pending` を `rejected` へ Edit で更新する。これにより次回 distill / promote 実行で同一候補が再提示・再評価されるループを断つ（personal-store-spec.md「冪等性」）。`- candidate-status: pending` 行は候補間で同一テキストのため、対象候補の**一意な `- provenance:` 行を含む見出しブロック**（`## <見出し>` ＋ `- provenance: …` ＋ `- scope-hypothesis: …` ＋ `- candidate-status: pending`）を `old_string` アンカーにして Edit する（provenance は一意キー。§6 ステップ2 と同じハザード回避）。複数候補を更新する場合は候補ごとに個別アンカーで行う。
+- 不合格候補は `candidates.md` の当該エントリの `candidate-status: pending` を `rejected` へ Edit で更新する。これにより次回 distill / promote 実行で同一候補が再提示・再評価されるループを断つ（personal-store-spec.md「冪等性」）。`- candidate-status: pending` 行は候補間で同一テキストのため、対象候補の**一意な `- provenance:` 行を含む見出しブロック**（`## <見出し>` ＋ `- provenance: …` ＋ `- scope-hypothesis: …` ＋ `- career-hypothesis: …` ＋ `- candidate-status: pending`）を `old_string` アンカーにして Edit する（provenance は一意キー。§6 ステップ2 と同じハザード回避）。複数候補を更新する場合は候補ごとに個別アンカーで行う。
 - 検証は候補を**棄却する方向に厳しく**倒す。未検証の幻覚を配布経路に漏らさないことが原理2 の要請（疑わしきは rejected）。
 
-## 4. Route 注記
+## 4. Route 注記（scope ＋ career 両仮説）
 
-合格候補の `scope-hypothesis` タグを読み、Issue 本文へ**仮説として注記**する。注記は記述であって確証ではない。`learnings.md` へは書かない。
+合格候補の `scope-hypothesis` と `career-hypothesis` の両タグを読み、Issue 本文へ**仮説として注記**する。**promote はルーティング不可知であり、両仮説を確定（裁定）せず運ぶだけ**である（注記は記述であって確証ではない）。career の決定表は持たない（決定表は distill 側＝distill-procedure.md へ移設済み）。`learnings.md` へは書かない。
+
+### scope 仮説の注記
 
 - `scope-hypothesis: universal` → パブリック/グローバル空間（全世界 × 全プロジェクト ＝ `learnings.md` 相当）へ向かう候補。
 - `scope-hypothesis: project-local` → 閉じた空間（チーム/プロジェクト）へ向かう候補。
 
-Issue 本文に含める Route 注記欄の書式:
+Issue 本文に含める scope 注記欄の書式:
 
 ```
 ## スコープ仮説
@@ -54,6 +57,21 @@ Issue 本文に含める Route 注記欄の書式:
 ```
 
 `project-local` の場合は「適用範囲」を `project-local（閉じた空間 = チーム/プロジェクト）` と記す。
+
+### career 仮説の注記
+
+`career-hypothesis`（`<career> / repo: <宛先 repo 仮説>` 形式）を、distill が出した値のまま**欠落・改変なく**注記する。promote は career を確定しない——昇格先キャリアと宛先 repo の裁定は集約点（取り込み Issue）が行う。
+
+Issue 本文に含める career 注記欄の書式:
+
+```
+## キャリア仮説
+- 昇格先キャリア（仮説・未確証）: learnings.md
+- 宛先 repo（仮説・未確証）: 配布元プラグイン repo（本リポジトリ）
+- 最終裁定（career・宛先 repo の確定）は集約点（取り込み Issue）に委ねる。本タグは Distill の蒸留観点に基づく仮説。
+```
+
+`career-hypothesis` の `<career>` 部を「昇格先キャリア」へ、`repo:` 部を「宛先 repo」へ転記する。`career-hypothesis` が欠落している候補（旧スキーマで生成された古い候補等）は、career 注記欄を省略し scope 注記のみ運ぶ（promote は仮説を生成しない＝ルーティング不可知のため、欠落を補完しない）。
 
 ## 5. 自動起票（疎結合・起票前ゲートなし）
 
