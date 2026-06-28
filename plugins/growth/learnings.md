@@ -1,6 +1,6 @@
 # growth 学び置き場（パブリック/グローバル空間）
 
-検証済みの汎用の振る舞いルール（規範）を1ファイルに集約した配布物。各エントリは `## <規範の見出し>` ＋本文の1欄（振る舞い差分）で、メタ欄を持たない。形式・スキーマ・ライフサイクルは [`references/learning-store-spec.md`](references/learning-store-spec.md) を参照。
+検証済みの汎用の振る舞いルール（規範）を1ファイルに集約した配布物。各エントリは `## <規範の見出し>` ＋本文の1欄（振る舞い差分）で、メタ欄を持たない。形式・スキーマ・ライフサイクルは [`references/learning-store-spec.md`](references/learning-store-spec.md) を、昇格 Issue からエントリへの変換手順は [`references/learning-promotion-spec.md`](references/learning-promotion-spec.md) を参照。
 
 以下は形式を示す記入例。
 
