@@ -1,6 +1,6 @@
 ---
 name: plan-reviewer
-description: plan-issue で作成された実装プランを初見・独立の視点から懐疑的にレビューするエージェント。プランが参照するファイル・モジュールの実在を検証し、PASS/FAIL で判定する。
+description: 実装プランを初見・独立の視点から懐疑的にレビューするエージェント。プランが参照するファイル・モジュールの実在を検証し、PASS/FAIL で判定する。
 model: sonnet
 color: purple
 ---
