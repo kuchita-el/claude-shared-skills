@@ -11,6 +11,8 @@
 | 純記述的な観察を棄却する | 例B |
 | 実行不能・空の観察を棄却する | 例B |
 | 重複＋純記述＋有効の混在から有効分のみクラスタ化する | 例C |
+| 各候補に provenance（畳んだ timestamp 群）・scope-hypothesis・candidate-status を付与し candidates.md へ upsert する | 例A・例C |
+| 採用候補0件のとき candidates.md へ書き込まない | 例B |
 
 ---
 
@@ -62,16 +64,27 @@
    - 1・2（signal=訂正）と 3（signal=訂正）は **同一 signal だが振る舞い差分が異なる** → 畳まない（**signal 一致だけで集約しない**）。
    - 3 と 4 はトリガー×差分が一致 → 1候補へ集約（**signal が訂正/ツール拒否で異なっても、振る舞い差分が同じなら畳む**）。
 
-### 期待結果（候補2件 < 入力4件）
+### 期待結果（候補2件 < 入力4件、`candidates.md` へ upsert）
+
+各候補にメタ欄（provenance＝畳んだ観察の `## <timestamp>` 群、scope-hypothesis＝蒸留観点の仮説タグ、candidate-status＝`pending`）が付く。エントリ1・2 は同一クラスタなので provenance に両 timestamp を列挙する。
 
 ```
 ## ファイル復元には git restore を使う
+- provenance: 2026-06-26T10:00:00Z, 2026-06-26T10:05:00Z
+- scope-hypothesis: universal
+- candidate-status: pending
+
 ファイルを復元するとき git checkout ではなく git restore を使う。git checkout はブランチ切り替えと復元が多重定義されており、誤操作で別ブランチへ移る事故を招くため。
 
 ## 長文は CLI 引数に直接渡さず一時ファイル経由にする
+- provenance: 2026-06-26T11:00:00Z, 2026-06-26T11:10:00Z
+- scope-hypothesis: universal
+- candidate-status: pending
+
 Markdown 等の長文を CLI オプションに直接渡さない。ファイルへ書き出し --body-file 等で渡す。シェルのクォート・ヒアドキュメント制約による破損と、許可プロンプトの中断を避けるため。
 ```
 
+これらは `candidates.md` へ provenance キーで upsert 永続化され、チャットにも提示される。両候補とも全プロジェクトに効くため scope-hypothesis は `universal`（仮説。最終裁定は下流の人間 refine/review）。
 完了報告: 入力 unprocessed 4件 / 棄却0件 / 採用候補2件（2 < 4）。
 
 ---
@@ -114,7 +127,7 @@ npm install が想定より遅かった。
 
 ### 期待結果
 
-候補リストに上記いずれの観察も**現れない**。
+候補リストに上記いずれの観察も**現れない**。採用候補が0件のため `candidates.md` への書き込みは行わない（procedure §7）。
 完了報告: 入力 unprocessed 3件 / 棄却3件 / 採用候補0件（「候補化できる規範はありませんでした（棄却3件）」と報告。例: §7 エラー・境界処理）。
 
 ---
@@ -123,7 +136,7 @@ npm install が想定より遅かった。
 
 ### 入力（store の `unprocessed` エントリ4件）
 
-例A のエントリ1・2（重複する有効観察）＋ 例B の「npm install が想定より遅かった」（純記述）＋ 次の1件:
+例A のエントリ1・2（`2026-06-26T10:00:00Z` / `10:05:00Z`＝「git checkout でなく git restore」の重複する有効観察）＋ 例B の「npm install が想定より遅かった」（`2026-06-26T12:00:00Z`、純記述）＋ 次の1件:
 
 ```
 ## 2026-06-26T13:00:00Z
@@ -144,17 +157,26 @@ git commit のメッセージにヒアドキュメントを使って失敗した
 
 ```
 ## ファイル復元には git restore を使う
+- provenance: 2026-06-26T10:00:00Z, 2026-06-26T10:05:00Z
+- scope-hypothesis: universal
+- candidate-status: pending
+
 ファイルを復元するとき git checkout ではなく git restore を使う。…（理由）
 
 ## コミットメッセージに複数行を渡すときはヒアドキュメントを避け -m を複数回指定する
+- provenance: 2026-06-26T13:00:00Z
+- scope-hypothesis: universal
+- candidate-status: pending
+
 git commit のメッセージにヒアドキュメントを使わず、-m を複数回指定して行を分ける。シェルのヒアドキュメント制約による失敗を避けるため。
 ```
 
-完了報告: 入力 unprocessed 4件 / 棄却1件 / 採用候補2件（2 < 有効3 < 入力4）。純記述が候補に漏れず、有効分のみがクラスタ化されることを確認する。
+完了報告: 入力 unprocessed 4件 / 棄却1件 / 採用候補2件（2 < 有効3 < 入力4）。純記述が候補に漏れず、有効分のみがクラスタ化され、各候補に provenance・scope-hypothesis・candidate-status が付いて `candidates.md` へ upsert されることを確認する。
 
 ---
 
 ## 関連
 
 - [`distill-procedure.md`](distill-procedure.md) — 各例が検証する判定基準の本体
-- `${CLAUDE_PLUGIN_ROOT}/references/learning-store-spec.md` — 期待結果（候補）が整合すべき1欄スキーマ・記法例
+- `${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` — 期待結果（候補）が整合すべき候補ファイル（`candidates.md`）のメタ欄スキーマ・provenance 規約・upsert 方式
+- `${CLAUDE_PLUGIN_ROOT}/references/learning-store-spec.md` — 候補見出し・本文が昇格時に残る規範形（1欄スキーマ・記法例）・2空間モデル（scope-hypothesis の値域）
