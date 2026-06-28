@@ -145,3 +145,4 @@ Markdown 等の長文を CLI オプションに直接渡さない。ファイル
 
 - `plugins/growth/DESIGN.md` — 設計母艦（決定事項1・§3 保存設計・二段ゲート・学習ループ・原理1/4/5/7）
 - `plugins/growth/references/personal-store-spec.md` — 個人ローカル store（生捕捉）仕様（#345）。学習ループの起点
+- `plugins/growth/references/learning-promotion-spec.md` — 出来事ベースの昇格 Issue を本仕様の1欄エントリへ翻訳する変換規約（#383）。本仕様「記法ルール」を出口ゲートとして参照する

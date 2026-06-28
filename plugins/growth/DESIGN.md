@@ -150,7 +150,7 @@ growth プラグインは2つの顔を持つ。
    - `capture` スキル（Capture）: 現セッションの会話履歴から予測誤差シグナルを検知し、生観察を個人ローカル store に記録する。
    - `distill` スキル（Distill＋Route 統合）: store に溜まった未処理の生観察を Capture と非同期にバッチで蒸留し、クラスタ化・重複排除して実行可能な振る舞い差分の候補へ変換する。各候補に**スコープ仮説タグ**（`project-local` / `universal`）と provenance を付与し、候補ファイル（`candidates.md`）へ永続化する（Route をタグ付与として統合。候補永続化までで責務を終える）。
    - `promote` スキル（Promote・新規）: `candidates.md` の候補を仮説として検証し（原理2＝未検証を配布経路に乗せないフィルタ）、検証通過候補を `gh` で**自動起票**（起票前ゲートなし）して既存ワークフローへ疎結合に渡す。起票成功後に store（`captures.md`）の `status` を `unprocessed → promoted` へ反転する。L2 承認は起票後の既存ワークフロー（refine-issue / DoR / PR レビュー）が担う。
-   - 残る Distribute（検証済みの学びの `learnings.md` への物理昇格）は後続 Phase（Phase 2）。検証を経た候補は Issue 起票（小さければ PR）として既存ワークフローに渡す。昇格 Issue のテンプレート・ラベル・昇格先キャリア判定規則は [`references/promotion-issue-spec.md`](references/promotion-issue-spec.md)（#382）で定義する。
+   - 残る Distribute（検証済みの学びの `learnings.md` への物理昇格）は後続 Phase（Phase 2）。検証を経た候補は Issue 起票（小さければ PR）として既存ワークフローに渡す。昇格 Issue のテンプレート・ラベル・昇格先キャリア判定規則は [`references/promotion-issue-spec.md`](references/promotion-issue-spec.md)（#382）で定義する。出来事ベースの昇格 Issue を `learnings.md` の1欄エントリへ翻訳する変換規約は [`references/learning-promotion-spec.md`](references/learning-promotion-spec.md)（#383）で定義する。
 2. **配布物**: 蓄積された汎用の学び置き場。プラグイン配布によって全利用者の Claude Code に届く学びの実体。
 
 dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 Issue を起票し、その Issue は既存の `refine-issue` / DoR に乗る。スキル同士を直接呼び出さない（各スキルは store／学び置き場というファイルを介して疎に連結する）。足すのはプラグイン1個であり、繋ぎ先（create-issue → refine-issue → plan-issue → implementation、PR レビューは pr-review-toolkit）はすべて既存資産。
