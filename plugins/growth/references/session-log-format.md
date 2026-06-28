@@ -23,6 +23,7 @@
 1. **走査対象**: 親セッション `~/.claude/projects/*/*.jsonl` に加え、**サブエージェントログ `~/.claude/projects/*/*/subagents/agent-*.jsonl` も含める**。後者は `<session-uuid>/subagents/` 配下に分離保存され `*/*.jsonl` の glob では拾えないが、サブエージェントが起こした拒否・訂正・ツールエラーはこちらに記録されるため、走査から外すと取りこぼす（本環境実測で 195 ファイル・ツール呼び出し 1,922 件・`is_error` 46 件・`thinking` 159 件）。全 project-id 横断（worktree は別 project-id として並ぶため自動的に含まれる）。
 2. **30日ローテに先んじた抽出**: 生ログは既定30日で削除される（§3）。一度きりの解析では30日より前が欠落する。Phase 3 の自発トリガーは、取りこぼしを避けるため**30日より十分短い周期**（マージンを見て週次程度）で走査し、抽出済みシグナルを個人 store に永続化する設計とする。これは決定事項2 / 決定事項4（自発トリガー）に効く設計ドライバ。
 3. **抽出ロジック**: §4 のフィールドマッピングに準拠。ただし§4は版依存スナップショットであり、実装時に再検証する。
+4. **compaction 耐性のため raw 全行スキャン**: 会話の compaction はディスクログを書き換えないが（§6）、session loader の patched chain を経由すると compaction 前の生エントリを取りこぼす。抽出器は `compact_boundary` を無視して raw JSONL を全行走査し、シグナルは生エントリから取る（§6）。
 
 ---
 
@@ -76,6 +77,21 @@
 - 全ファイルへの `grep` 全文走査が **wall clock 0.08 秒・最大 RSS 約 5 MB**。
 
 → jq / grep ベースのバッチ走査はコスト的に完全に現実的。原理6（過去セッション群をまたいだ走査）のコスト前提を満たす。
+
+---
+
+## 6. compaction とログ保持（追記専用・抽出への影響）
+
+会話の compaction（コンテキストウィンドウが埋まったときの自動圧縮、および手動 `/compact`）は、オンディスクの JSONL を**書き換えない**。検証（2026-06-28、公式ドキュメント＋実ログ観察）:
+
+- JSONL は**追記専用**。compaction が起きても compaction 前の生エントリ（`user` / `assistant` / `tool_use` / `tool_result`）はディスク上に**そのまま残る**。削除・置換は発生しない。
+- compaction は `{type:"system", subtype:"compact_boundary"}` の**マーカーを1行追記するだけ**（`compactMetadata` に `trigger`〔auto / manual〕・`preTokens` / `postTokens`・preserved segment の UUID〔head / anchor / tail〕を持つ）。
+- 実例: 手動 `/compact` のセッションで `preTokens 104,487 → postTokens 3,882`・preserved 3 件だが、境界前の生エントリ（全 139 行中 115 行目が境界、前 114 行）はディスクに残存。
+- compaction 後も同一 `<session-uuid>.jsonl` に追記が続く（新ファイルへ切り替わらない）。session loader は読み込み時に preserved segment だけを繋ぎ直す——これは**コンテキスト再構成**であってディスク操作ではない。
+
+**抽出精度への含意**: 本設計の抽出は決定事項2 によりログの**事後解析**（ディスク JSONL を読む）を主軸とするため、compaction によって**抽出精度は劣化しない**——予測誤差シグナル（§4.3）は全てディスクの生エントリに残る。これは決定事項2 の頑健性であり、mid-session ライブ相乗りを退けた #381 の採用形（境界・別時間の事後解析）への追加論拠でもある（ライブ相乗りでモデルのコンテキストから読む設計だと、compaction 後はコンテキストに要約しか残らず生信号を失い精度が劣化する）。
+
+**実装要件**: 上記の精度不変は「抽出が生のフラット JSONL を**全行**読む」場合に限る。session loader の patched chain（preserved＋境界後のみの compaction 後ビュー）を経由すると境界前の生エントリを取りこぼすため、抽出器は **`compact_boundary` を無視して raw JSONL を全行スキャン**する（§2 前提条件4）。`away_summary`（§4.3）や `compact_boundary` の要約・メタは lossy であり、シグナルは常に生エントリから取る。
 
 ---
 
