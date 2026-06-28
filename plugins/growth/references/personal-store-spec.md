@@ -151,7 +151,7 @@ Distill が生成し `promote` が消費する**候補ファイル**の置き場
 | 見出し（`## <規範の短い見出し>`） | 必須 | 候補が命じる振る舞い差分の一文要約（規範）。learnings.md へ昇格した際そのまま見出しになる形 |
 | `provenance` | 必須 | 由来する store エントリへの一意参照。値は `captures.md` の `## <timestamp>` 見出し（ISO 8601）。クラスタが複数 observation を畳む場合は複数 timestamp をカンマ区切り等で列挙する。`promote` の `status` 反転対象を特定する粒度 |
 | `scope-hypothesis` | 必須 | スコープ仮説タグ。値域は `project-local` / `universal` の2値（learning-store-spec.md「2空間モデル」に対応）。Distill が蒸留観点として付与する**仮説**であり、確証しない（最終裁定は人間の refine/review、横断解析は Phase 3 の支援どまり） |
-| `candidate-status` | 必須 | 候補の処理状態。`pending`（既定。未処理）/ `rejected`（promote の検証で棄却）。再 distill 時の再提示ループを断つための追跡軸（下記「冪等性」参照） |
+| `candidate-status` | 必須 | 候補の処理状態。`pending`（既定。未処理）/ `rejected`（promote の検証で棄却）/ `promoted`（promote が Issue 起票成功後に付与。任意・推奨。再走査からの除外。promote-procedure.md §4 参照）。再 distill 時の再提示ループを断つための追跡軸（下記「冪等性」参照） |
 | 本文 | 必須 | 規範差分の具体（次回どう違う行動を取るか）＋理由。メタ欄の後にエントリ末尾の本文ブロックとして記述する（複数行可） |
 
 ### provenance 規約
