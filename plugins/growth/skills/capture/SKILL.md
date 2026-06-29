@@ -83,12 +83,29 @@ grep -i "denied\|permission\|拒否\|訂正\|違う\|error\|再試行" \
 
 ### Step 3: 生観察の生成
 
-Step 2 で検知した各シグナルについて observation を生成する。
+Step 2 で検知した各シグナルについて observation を生成し、あわせて出所・予測・実際を抽出する。
 
 **記述対象**: 「何が起きたか」のみ。ユーザーの発話・ツール結果・当方の応答から観察できる事実を記述する。  
 **記述禁止**: 原因・対策・分類・改善提案・昇格判断を含めない。
 
-例:
+**出所（origin）の判定**: 各シグナルが transcript の**どこに現れたか**で出所を2値に分類する（値域は personal-store-spec.md「出所」節を単一出典とする）。
+
+| origin | 判定 |
+|---|---|
+| `tool-result` | ツール結果（`type=tool_result` / `toolUseResult` / `is_error` 等）に現れた予測誤差。環境（権限・hook・コマンド失敗）との摩擦 |
+| `user-utterance` | ユーザー発話（`type=user` の text、tool_result 以外）に現れた予測誤差。当方の判断・提案への訂正 |
+
+出所軸は `signal` 種別と直交する独立軸であり、signal を置換・改名しない。
+
+**expected / actual の抽出**: 各シグナルについて、当方が予測した結果（`expected`）と実際に起きた結果（`actual`）を transcript から取り出す。引用可能性は**非対称**である（spec「生記録性」節）:
+
+- `actual`（実際の結果）は transcript に実在する痕跡（`tool_result`〔`is_error` 含む〕/ 後続のユーザー発話）の**逐語断片を含む引用**で記す（要点が transcript に実在する文字列であればよく、地の文で囲んでよい。全文の逐語転記は不要。複数行は単一行に畳み込む。spec「パース規約」節参照）。
+- `expected`（予測した結果）は逐語では存在しないことが多いため、痕跡（`type=thinking` / `tool_use.input`）に基づき「何を予測していたか」を**再構成**してよい（逐語引用に限らない）。抽出元は session-log-format.md §4.3。
+
+- **捏造禁止**: 痕跡（手掛かり）が無い `expected` / `actual` は**空にする**（フィールド自体は常設、値は該当時のみ）。`ツール拒否`・`反復試行` 等で予測の手掛かりが無い観察では expected が空になりうる。手掛かりの無い予測を埋めようとして解釈を混入させない（生記録性の契約）。
+- origin・expected・actual はいずれも、再構成は「何が起きたか／何を予測したか」の事実の言語化までに限り、摩擦/学びの価値判断・原因分析・改善案は加えない（Distill の責務）。
+
+例（observation 本文）:
 ```
 ユーザーが「git checkout ではなく git restore を使え」と訂正した。
 当方はファイル復元に git checkout を提案していた。
@@ -109,11 +126,28 @@ mkdir -p ~/.claude/projects/<project-id>/growth/
 - signal: <シグナル種別>
 - session: <session-UUID>
 - status: unprocessed
+- origin: <tool-result | user-utterance>
+- expected: <予測（transcript 抽出。抽出不能なら空）>
+- actual: <実際（transcript 抽出。抽出不能なら空）>
 
 <observation 本文（複数行可）>
 ```
 
-`status` は常に `unprocessed` で書き込む（既存エントリの status を変更しない）。
+`status` は常に `unprocessed` で書き込む（既存エントリの status を変更しない）。`origin` は Step 3 の判定に従い2値で記す。`expected` / `actual` は Step 3 で抽出した引用を記し、抽出不能なら値を空にする（行自体は残す）。
+
+記述例（tool-result 由来。上記 user-utterance 由来の訂正例と対比できる）:
+
+```
+## 2026-06-26T15:10:02Z
+- signal: ツール拒否
+- session: 2265f83f-c5a8-41a0-b284-b5d90882a2da
+- status: unprocessed
+- origin: tool-result
+- expected: rm のツール呼び出しが許可され実行される
+- actual: tool_result.is_error=true、permission denied で拒否された
+
+rm コマンドのツール呼び出しが権限拒否で失敗した。
+```
 
 **書き込み方式**:
 
