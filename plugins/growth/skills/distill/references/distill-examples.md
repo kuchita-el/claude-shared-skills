@@ -11,7 +11,7 @@
 | 純記述的な観察を棄却する | 例B |
 | 実行不能・空の観察を棄却する | 例B |
 | 重複＋純記述＋有効の混在から有効分のみクラスタ化する | 例C |
-| 各候補に provenance（畳んだ timestamp 群）・scope-hypothesis・candidate-status を付与し candidates.md へ upsert する | 例A・例C |
+| 各候補に provenance（畳んだ timestamp 群）・scope-hypothesis・career-hypothesis・candidate-status を付与し candidates.md へ upsert する | 例A・例C |
 | 採用候補0件のとき candidates.md へ書き込まない | 例B |
 
 ---
@@ -66,12 +66,13 @@
 
 ### 期待結果（候補2件 < 入力4件、`candidates.md` へ upsert）
 
-各候補にメタ欄（provenance＝畳んだ観察の `## <timestamp>` 群、scope-hypothesis＝蒸留観点の仮説タグ、candidate-status＝`pending`）が付く。エントリ1・2 は同一クラスタなので provenance に両 timestamp を列挙する。
+各候補にメタ欄（provenance＝畳んだ観察の `## <timestamp>` 群、scope-hypothesis＝蒸留観点の仮説タグ、career-hypothesis＝昇格先キャリア＋宛先 repo 仮説、candidate-status＝`pending`）が付く。エントリ1・2 は同一クラスタなので provenance に両 timestamp を列挙する。
 
 ```
 ## ファイル復元には git restore を使う
 - provenance: 2026-06-26T10:00:00Z, 2026-06-26T10:05:00Z
 - scope-hypothesis: universal
+- career-hypothesis: learnings.md / repo: 配布元プラグイン repo（本リポジトリ）
 - candidate-status: pending
 
 ファイルを復元するとき git checkout ではなく git restore を使う。git checkout はブランチ切り替えと復元が多重定義されており、誤操作で別ブランチへ移る事故を招くため。
@@ -79,12 +80,13 @@
 ## 長文は CLI 引数に直接渡さず一時ファイル経由にする
 - provenance: 2026-06-26T11:00:00Z, 2026-06-26T11:10:00Z
 - scope-hypothesis: universal
+- career-hypothesis: learnings.md / repo: 配布元プラグイン repo（本リポジトリ）
 - candidate-status: pending
 
 Markdown 等の長文を CLI オプションに直接渡さない。ファイルへ書き出し --body-file 等で渡す。シェルのクォート・ヒアドキュメント制約による破損と、許可プロンプトの中断を避けるため。
 ```
 
-これらは `candidates.md` へ provenance キーで upsert 永続化され、チャットにも提示される。両候補とも全プロジェクトに効くため scope-hypothesis は `universal`（仮説。最終裁定は下流の人間 refine/review）。
+これらは `candidates.md` へ provenance キーで upsert 永続化され、チャットにも提示される。両候補とも全プロジェクトに効くため scope-hypothesis は `universal`（仮説。最終裁定は下流の人間 refine/review）。career-hypothesis は両候補ともテキスト規範の汎用ルール（決定表 行4）のため `learnings.md`、宛先は配布元プラグイン repo（仮説。最終裁定は集約点）。
 完了報告: 入力 unprocessed 4件 / 棄却0件 / 採用候補2件（2 < 4）。
 
 ---
@@ -159,6 +161,7 @@ git commit のメッセージにヒアドキュメントを使って失敗した
 ## ファイル復元には git restore を使う
 - provenance: 2026-06-26T10:00:00Z, 2026-06-26T10:05:00Z
 - scope-hypothesis: universal
+- career-hypothesis: learnings.md / repo: 配布元プラグイン repo（本リポジトリ）
 - candidate-status: pending
 
 ファイルを復元するとき git checkout ではなく git restore を使う。…（理由）
@@ -166,12 +169,13 @@ git commit のメッセージにヒアドキュメントを使って失敗した
 ## コミットメッセージに複数行を渡すときはヒアドキュメントを避け -m を複数回指定する
 - provenance: 2026-06-26T13:00:00Z
 - scope-hypothesis: universal
+- career-hypothesis: learnings.md / repo: 配布元プラグイン repo（本リポジトリ）
 - candidate-status: pending
 
 git commit のメッセージにヒアドキュメントを使わず、-m を複数回指定して行を分ける。シェルのヒアドキュメント制約による失敗を避けるため。
 ```
 
-完了報告: 入力 unprocessed 4件 / 棄却1件 / 採用候補2件（2 < 有効3 < 入力4）。純記述が候補に漏れず、有効分のみがクラスタ化され、各候補に provenance・scope-hypothesis・candidate-status が付いて `candidates.md` へ upsert されることを確認する。
+完了報告: 入力 unprocessed 4件 / 棄却1件 / 採用候補2件（2 < 有効3 < 入力4）。純記述が候補に漏れず、有効分のみがクラスタ化され、各候補に provenance・scope-hypothesis・career-hypothesis・candidate-status が付いて `candidates.md` へ upsert されることを確認する。
 
 ---
 
