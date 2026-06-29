@@ -18,15 +18,11 @@ implementation の Phase 0「インプットの理解」で実施する各小手
 **新規作業の場合（既存の作業ブランチ上にいない場合）に限り実施する**。別セッション再開（既存の作業ブランチ上にいる場合。「実行環境の検知」参照）では本手順を実行せず、ベースの最新化やブランチの切り直しを行わない（進行中の作業を上書きしないため）。
 
 1. **ベースブランチの確定**: CLAUDE.md、CONTRIBUTING.md 等からベースブランチ（develop、main 等）を確認する。指定がなければデフォルトブランチ（main/master 等）をベースにする。
-2. **最新ベースを起点に据える（接続契約）**: 新しいブランチを切る前に、**現 HEAD ＝最新ベースの状態を実際に成立させる**。最新化は委譲の有無に関わらず本スキルが接続契約として担う。以下を順に実施する:
-   1. `git fetch` でリモートを取得する。
-   2. ローカルのベースブランチを `origin/<base>` へ fast-forward する。
-   3. **ベースブランチへ切り替える**（`git switch <base>`、ff 済み）。この切り替えは必須であり、省略不可。委譲先 `superpowers:using-git-worktrees` は**現 HEAD から枝を切る**ため、別ブランチ上で起動したまま切り替えを飛ばすと、本来塞ぐべき「古い基点で枝を切る」不具合が再発する（ベース ref の ff だけでは現 HEAD は最新にならない）。
-   - **ff できない場合**（ローカルベースが `origin/<base>` と分岐している等）: ローカルベースは更新せず、`origin/<base>` を直接起点にする（次の手順3でリモート追跡 ref から枝を切る）。
-   - baseRef は `fresh`（`origin/<base>` 起点）を既定とする。
-3. **隔離ワークスペースの確保とブランチ作成**:
-   - superpowers 導入時: `superpowers:using-git-worktrees` に委譲する（参照機構②: `Skill` ツール呼び出し）。手順2で現 HEAD を最新ベースに据えた状態を前提に、その最新ベースを基点として隔離ワークスペースを確保する。
-   - 非導入時: 最新ベース（`origin/<base>` ＝手順2で据えた現 HEAD）を起点に新しいブランチを作成する（古いローカルの `<base>` からは切らない）。
+2. **最新ベースを起点にブランチを作成する（接続契約）**: 新しいブランチは `origin/<base>` の最新を起点に切る。隔離機構の選択と「最新ベース起点」の責務の所在は経路で異なる:
+   - **superpowers 導入時**: `superpowers:using-git-worktrees` に委譲する（参照機構②: `Skill` ツール呼び出し）。委譲先は「ネイティブ worktree ツール（`EnterWorktree` 等）を優先 → 無ければ git worktree fallback」の順で隔離機構を選ぶ。
+     - **ネイティブツール経路（実環境の既定）**: 基点は harness の `worktree.baseRef` 設定が決める。**既定 `fresh` は `origin/<default-branch>` 起点**で最新ベースを保証する（現 HEAD は参照しない）。この基点制御は委譲境界（ADR-20260531）に属し、implementation は現 HEAD を操作しない。`worktree.baseRef=head`（現 HEAD 起点）に変更された環境でのみ最新が保証されないため、`fresh` を推奨する。
+     - **git worktree fallback 経路（ネイティブツール非提供時）**: 委譲先が**現 HEAD から枝を切る**ため、委譲前に現 HEAD を最新ベースへ合わせておく（`git fetch` → ベースブランチを `origin/<base>` へ ff → そのベースへ切替）。
+   - **非導入時（インライン作成）**: implementation の接続契約として、`git fetch` でリモートを取得し（**ref 更新のみで作業ツリーは変わらない**点に注意）、`origin/<base>` を起点に新しいブランチを切る（`git switch -c <new> origin/<base>` 等。古いローカルの `<base>` や現 HEAD からは切らない）。
 
 ## 正規パス/簡易パスの判定
 
