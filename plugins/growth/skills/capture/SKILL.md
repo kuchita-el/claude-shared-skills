@@ -125,7 +125,7 @@ mkdir -p ~/.claude/projects/<project-id>/growth/
 - status: unprocessed
 - origin: <tool-result | user-utterance>
 - expected: <予測（transcript 抽出。抽出不能なら空）>
-- actual: <実際（transcript 抽出）>
+- actual: <実際（transcript 抽出。抽出不能なら空）>
 
 <observation 本文（複数行可）>
 ```
