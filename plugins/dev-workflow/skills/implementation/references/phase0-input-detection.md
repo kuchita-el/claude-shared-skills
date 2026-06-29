@@ -20,7 +20,8 @@ implementation の Phase 0「インプットの理解」で実施する各小手
 1. **ベースブランチの確定**: CLAUDE.md、CONTRIBUTING.md 等からベースブランチ（develop、main 等）を確認する。指定がなければデフォルトブランチ（main/master 等）をベースにする。
 2. **最新ベースを起点にブランチを作成する（接続契約）**: 新しいブランチは `origin/<base>` の最新を起点に切る。隔離機構の選択と「最新ベース起点」の責務の所在は経路で異なる:
    - **superpowers 導入時**: `superpowers:using-git-worktrees` に委譲する（参照機構②: `Skill` ツール呼び出し）。委譲先は「ネイティブ worktree ツール（`EnterWorktree` 等）を優先 → 無ければ git worktree fallback」の順で隔離機構を選ぶ。
-     - **ネイティブツール経路（実環境の既定）**: 基点は harness の `worktree.baseRef` 設定が決める。**既定 `fresh` は `origin/<default-branch>` 起点**で最新ベースを保証する（現 HEAD は参照しない）。この基点制御は委譲境界（ADR-20260531）に属し、implementation は現 HEAD を操作しない。`worktree.baseRef=head`（現 HEAD 起点）に変更された環境でのみ最新が保証されないため、`fresh` を推奨する。
+     - **ネイティブツール経路（実環境の既定）**: 基点は harness の `worktree.baseRef` 設定が決める。**既定 `fresh` は `origin/<default-branch>`（リポジトリのデフォルトブランチ）起点**でその最新から枝を切る（現 HEAD は参照しない）。この基点制御は委譲境界（ADR-20260531）に属し、implementation は起点を操作しない。
+       - **限界（base ≠ デフォルトブランチの場合）**: `worktree.baseRef` は `fresh`/`head` の2値のみで、任意の base を指定できない。base がデフォルトブランチと異なる（例: デフォルト `main`／開発ベース `develop`）場合、`fresh` は base ではなくデフォルトブランチから枝を切るため、**最新 base 起点を保証できず誤った base から分岐する**。委譲境界上 implementation は起点を制御できないため、この環境では base＝デフォルトブランチに揃えるか、起点を明示できる git fallback / 非導入経路（下記）に拠る必要がある。`worktree.baseRef=head` の環境でも最新は保証されない（その場合は `fresh` を推奨）。
      - **git worktree fallback 経路（ネイティブツール非提供時）**: 委譲先が**現 HEAD から枝を切る**ため、委譲前に現 HEAD を最新ベースへ合わせておく（`git fetch` → ベースブランチを `origin/<base>` へ ff → そのベースへ切替）。
    - **非導入時（インライン作成）**: implementation の接続契約として、`git fetch` でリモートを取得し（**ref 更新のみで作業ツリーは変わらない**点に注意）、`origin/<base>` を起点に新しいブランチを切る（`git switch -c <new> origin/<base>` 等。古いローカルの `<base>` や現 HEAD からは切らない）。
 
