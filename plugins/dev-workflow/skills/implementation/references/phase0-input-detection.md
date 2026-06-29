@@ -15,13 +15,15 @@ implementation の Phase 0「インプットの理解」で実施する各小手
 
 ## ブランチの準備
 
-新規作業の場合（既存の作業ブランチ上にいない場合）、隔離ワークスペースを確保してブランチを作成する:
+**新規作業の場合（既存の作業ブランチ上にいない場合）に限り実施する**。別セッション再開（既存の作業ブランチ上にいる場合。「実行環境の検知」参照）では本手順を実行せず、ベースの最新化やブランチの切り直しを行わない（進行中の作業を上書きしないため）。
 
-1. **隔離ワークスペースの確保**: superpowers 導入時は `superpowers:using-git-worktrees` に委譲し（参照機構②: `Skill` ツール呼び出し）、作業着手時に隔離ワークスペースを確保する。非導入時は通常のブランチ作成（下記2〜4）にフォールバックする。
-   - 自動隔離の運用詳細（baseRef・keep/remove 等）は本スキルの範囲外。#209 で継続する。
-2. CLAUDE.md、CONTRIBUTING.md等からベースブランチ（develop、main等）を確認する
-3. 指定がない場合はデフォルトブランチ（main/master等）をベースにする
-4. 最新を取得（`git fetch`）し、ベースブランチから新しいブランチを作成する
+1. **ベースブランチの確定**: CLAUDE.md、CONTRIBUTING.md 等からベースブランチ（develop、main 等）を確認する。指定がなければデフォルトブランチ（main/master 等）をベースにする。
+2. **最新ベースを起点にブランチを作成する（接続契約）**: 新しいブランチは `origin/<base>` の最新を起点に切る。隔離機構の選択と「最新ベース起点」の責務の所在は経路で異なる:
+   - **superpowers 導入時**: `superpowers:using-git-worktrees` に委譲する（参照機構②: `Skill` ツール呼び出し）。委譲先は「ネイティブ worktree ツール（`EnterWorktree` 等）を優先 → 無ければ git worktree fallback」の順で隔離機構を選ぶ。
+     - **ネイティブツール経路（実環境の既定）**: 基点は harness の `worktree.baseRef` 設定が決める。**既定 `fresh` は `origin/<default-branch>`（リポジトリのデフォルトブランチ）起点**でその最新から枝を切る（現 HEAD は参照しない）。この基点制御は委譲境界（ADR-20260531）に属し、implementation は起点を操作しない。
+       - **限界（base ≠ デフォルトブランチの場合）**: `worktree.baseRef` は `fresh`/`head` の2値のみで、任意の base を指定できない。base がデフォルトブランチと異なる（例: デフォルト `main`／開発ベース `develop`）場合、`fresh` は base ではなくデフォルトブランチから枝を切るため、**最新 base 起点を保証できず誤った base から分岐する**。委譲境界上 implementation は起点を制御できず、かつ委譲先の Red Flags はネイティブツールがある環境での `git worktree add` を禁ずる（＝この環境では git fallback 経路に到達できない）ため、**この環境で取れる回避策は base＝デフォルトブランチに揃えることのみ**である。`worktree.baseRef=head` の環境でも最新は保証されない（その場合は `fresh` を推奨）。なお、ネイティブツール非提供環境では下記 git fallback 経路を通り `origin/<base>` を明示起点にできるため、本限界は生じない。
+     - **git worktree fallback 経路（ネイティブツール非提供時）**: 委譲先が**現 HEAD から枝を切る**ため、委譲前に現 HEAD を最新ベースへ合わせておく（`git fetch` → ベースブランチを `origin/<base>` へ ff → そのベースへ切替）。
+   - **非導入時（インライン作成）**: implementation の接続契約として、`git fetch` でリモートを取得し（**ref 更新のみで作業ツリーは変わらない**点に注意）、`origin/<base>` を起点に新しいブランチを切る（`git switch -c <new> origin/<base>` 等。古いローカルの `<base>` や現 HEAD からは切らない）。
 
 ## 正規パス/簡易パスの判定
 
