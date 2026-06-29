@@ -67,7 +67,7 @@
 | expected（予測） | `assistant.message.content[]` の `type=thinking` / `tool_use.input`（予測の手掛かり） | 自然文 / 構造化 |
 | actual（実際） | `tool_result`（`is_error` 含む）/ 後続の user 発話（実際の結果） | 構造化 / 自然文 |
 
-> **出所 / expected / actual の抽出元（capture 新スキーマ #416）**: capture 観察スキーマの `origin`（出所）・`expected`・`actual` フィールドは上表のフィールドから抽出する。出所はツール結果由来（`tool-result`）かユーザー発話由来（`user-utterance`）かの2値で、いずれも transcript に実在するフィールドへ対応し、capture が引用元を持つ（捏造でない）ことを裏付ける。本節は版依存スナップショットであり、抽出ロジックを上記フィールド名へ強依存させない設計方針（本文書冒頭の⚠️＝揮発性の注意）と整合させる。
+> **出所 / expected / actual の抽出元（capture 新スキーマ #416）**: capture 観察スキーマの `origin`（出所）・`expected`・`actual` フィールドは上表のフィールドから抽出する。出所はツール結果由来（`tool-result`）かユーザー発話由来（`user-utterance`）かの2値で、いずれも transcript に実在するフィールドへ対応し、capture が引用元を持つ（捏造でない）ことを裏付ける。`origin` と `actual` は逐語引用、`expected` は上表の手掛かり（`type=thinking` / `tool_use.input`）に基づく再構成である（引用可能性の非対称は personal-store-spec.md「生記録性」節）。本節は版依存スナップショットであり、抽出ロジックを上記フィールド名へ強依存させない設計方針（本文書冒頭の⚠️＝揮発性の注意）と整合させる。
 
 補助的に `permissionMode` / `mode`（権限・モード）、`gitBranch` / `cwd`（文脈）、`attributionSkill` / `attributionPlugin`（どのスキル・プラグイン起因か）、`system` の `away_summary`（区切りごとの自動要約）も取得可能。
 

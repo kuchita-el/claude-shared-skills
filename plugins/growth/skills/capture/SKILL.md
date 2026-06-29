@@ -97,10 +97,13 @@ Step 2 で検知した各シグナルについて observation を生成し、あ
 
 出所軸は `signal` 種別と直交する独立軸であり、signal を置換・改名しない。
 
-**expected / actual の抽出**: 各シグナルについて、当方が予測した結果（`expected`）と実際に起きた結果（`actual`）を transcript から**引用**で抽出する。expected の手掛かりは `type=thinking` / `tool_use.input`、actual は `tool_result`（`is_error` 含む）/ 後続のユーザー発話（抽出元は session-log-format.md §4.3）。
+**expected / actual の抽出**: 各シグナルについて、当方が予測した結果（`expected`）と実際に起きた結果（`actual`）を transcript から取り出す。引用可能性は**非対称**である（spec「生記録性」節）:
 
-- **捏造禁止**: 抽出できない `expected` / `actual` は**空にする**（フィールド自体は常設、値は抽出可能時のみ）。`ツール拒否`・`反復試行` 等で予測が明示的に存在しない観察では expected が空になりうる。抽出できない予測を埋めようとして解釈を混入させない（生記録性の契約）。
-- origin・expected・actual はいずれも transcript からの抽出（引用）に限り、摩擦/学びの価値判断は加えない（Distill の責務）。
+- `actual`（実際の結果）は transcript に実在する痕跡（`tool_result`〔`is_error` 含む〕/ 後続のユーザー発話）から**逐語で引用**する。
+- `expected`（予測した結果）は逐語では存在しないことが多いため、痕跡（`type=thinking` / `tool_use.input`）に基づき「何を予測していたか」を**再構成**してよい（逐語引用に限らない）。抽出元は session-log-format.md §4.3。
+
+- **捏造禁止**: 痕跡（手掛かり）が無い `expected` / `actual` は**空にする**（フィールド自体は常設、値は該当時のみ）。`ツール拒否`・`反復試行` 等で予測の手掛かりが無い観察では expected が空になりうる。手掛かりの無い予測を埋めようとして解釈を混入させない（生記録性の契約）。
+- origin・expected・actual はいずれも、再構成は「何が起きたか／何を予測したか」の事実の言語化までに限り、摩擦/学びの価値判断・原因分析・改善案は加えない（Distill の責務）。
 
 例（observation 本文）:
 ```
