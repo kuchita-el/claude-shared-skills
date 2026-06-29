@@ -22,7 +22,7 @@ growth プラグインの学習ループ（`[Capture] → [Distill] → [Route] 
 
 対象外と判定した候補の disposition を次の通り定める（握り潰さず、次の行動を一意に定めるため）。判定は裁定結果テーブルの career/空間 列から読む。
 
-- **`career＝learnings.md ∧ 空間＝閉じた`**: パブリック空間のハンドラ（本規約）の対象外（公開ゲートが閉じた空間の public 昇格を拒否する＝[`intake-issue-spec.md`](intake-issue-spec.md)「不変条件」）。閉じた空間の learnings.md 昇格ハンドラは現状未整備（「スコープ境界」で別 Issue へ将来送り）につき、当該候補へ差し戻すか、別 Issue で追跡する。本規約では変換しない。
+- **`career＝learnings.md ∧ 空間＝閉じた`**: パブリック空間のハンドラ（本規約）の対象外（公開ゲートが閉じた空間の public 昇格を拒否する＝[`intake-issue-spec.md`](intake-issue-spec.md)「不変条件」）。閉じた空間の learnings.md 昇格ハンドラは現状未整備（「スコープ境界」で別 Issue へ将来送り）につき、裁定点である取り込み Issue で再裁定するか、別 Issue で追跡する（候補 Issue は取り込み時に `not planned` でクローズ済みのため差し戻し先にしない＝[`intake-issue-spec.md`](intake-issue-spec.md)「取り込み時クローズ」）。本規約では変換しない。
 - **`career＝ADR 差分 / 改善還元 Issue / 強キャリア`**: 別キャリアのハンドラ（#384）の対象。本規約では変換せず、career 列に対応するキャリアのハンドラ（または集約点の裁定）へ委ねる。
 
 ## 出来事と規範の区別
