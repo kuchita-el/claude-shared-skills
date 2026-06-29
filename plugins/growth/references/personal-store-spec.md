@@ -151,6 +151,7 @@ Distill が生成し `promote` が消費する**候補ファイル**の置き場
 | 見出し（`## <規範の短い見出し>`） | 必須 | 候補が命じる振る舞い差分の一文要約（規範）。learnings.md へ昇格した際そのまま見出しになる形 |
 | `provenance` | 必須 | 由来する store エントリへの一意参照。値は `captures.md` の `## <timestamp>` 見出し（ISO 8601）。クラスタが複数 observation を畳む場合は複数 timestamp をカンマ区切り等で列挙する。`promote` の `status` 反転対象を特定する粒度 |
 | `scope-hypothesis` | 必須 | スコープ仮説タグ。値域は `project-local` / `universal` の2値（learning-store-spec.md「2空間モデル」に対応）。Distill が蒸留観点として付与する**仮説**であり、確証しない（最終裁定は人間の refine/review、横断解析は Phase 3 の支援どまり） |
+| `career-hypothesis` | 必須 | キャリア仮説タグ。**昇格先キャリア**（`強キャリア` / `改善還元` / `ADR 差分` / `learnings.md` の4分類）＋**宛先 repo の仮説**を `<career> / repo: <宛先 repo 仮説>` の1行形式で持つ。判定基準（4分類の決定表）は distill 側（distill-procedure.md「career-hypothesis の判定（決定表）」）を単一出典とする。`scope-hypothesis` と**対称・直交**な独立メタ欄であり（キャリア軸 ⊥ 空間軸。DESIGN.md「種別軸 ⊥ 共有境界軸」）、Distill が蒸留観点として付与する**仮説**で確証しない。career と宛先 repo の最終裁定は集約点（取り込み Issue）で行い、promote は確定しない（ADR-20260628-2） |
 | `candidate-status` | 必須 | 候補の処理状態。`pending`（既定。未処理）/ `rejected`（promote の検証で棄却）/ `promoted`（promote が Issue 起票成功後に付与。任意・推奨。再走査からの除外。promote-procedure.md §4 参照）。再 distill 時の再提示ループを断つための追跡軸（下記「冪等性」参照） |
 | 本文 | 必須 | 規範差分の具体（次回どう違う行動を取るか）＋理由。メタ欄の後にエントリ末尾の本文ブロックとして記述する（複数行可） |
 
@@ -169,7 +170,7 @@ Distill が生成し `promote` が消費する**候補ファイル**の置き場
 
 ### 1欄スキーマ（learnings.md）との区別
 
-learnings.md（配布物）は**メタ欄を持たない1欄スキーマ**（learning-store-spec.md「1欄スキーマ」）であり、provenance・scope・撤回追跡は空間・git 履歴が担う。一方、候補ファイルは個人ローカルの一時領域であり、`promote` が消費するための機械的メタ欄（provenance・scope-hypothesis・candidate-status）を持つ。候補が learnings.md へ昇格する際にこれらメタ欄は落ち、見出しと本文（規範）だけが残る。
+learnings.md（配布物）は**メタ欄を持たない1欄スキーマ**（learning-store-spec.md「1欄スキーマ」）であり、provenance・scope・撤回追跡は空間・git 履歴が担う。一方、候補ファイルは個人ローカルの一時領域であり、`promote` が消費するための機械的メタ欄（provenance・scope-hypothesis・career-hypothesis・candidate-status）を持つ。候補が learnings.md へ昇格する際にこれらメタ欄は落ち、見出しと本文（規範）だけが残る。
 
 ### 記述例
 
@@ -177,6 +178,7 @@ learnings.md（配布物）は**メタ欄を持たない1欄スキーマ**（lea
 ## git restore でファイル復元する
 - provenance: 2026-06-26T14:32:10Z
 - scope-hypothesis: universal
+- career-hypothesis: learnings.md / repo: 配布元プラグイン repo（本リポジトリ）
 - candidate-status: pending
 
 ファイル復元には git checkout ではなく git restore を使う。git checkout は復元とブランチ切替が多重定義され誤操作を招くため。

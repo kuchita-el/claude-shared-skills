@@ -23,6 +23,7 @@
 ## ファイル復元には git restore を使う
 - provenance: 2026-06-26T14:32:10Z
 - scope-hypothesis: universal
+- career-hypothesis: learnings.md / repo: 配布元プラグイン repo（本リポジトリ）
 - candidate-status: pending
 
 ファイル復元には git checkout ではなく git restore を使う。git checkout は復元とブランチ切替が多重定義され誤操作を招くため。
@@ -43,13 +44,13 @@
 
 1. **候補読取**: `candidate-status: pending` の1件が対象。
 2. **検証**: 予測「ファイルを復元する場面で効く」・反証条件「git checkout が復元用途で安全と示せれば反証」が立つ → **合格**。
-3. **Route 注記**: `scope-hypothesis: universal` → Issue 本文に「適用範囲（仮説・未確証）: universal」を注記。
+3. **Route 注記（ルーティング不可知）**: `scope-hypothesis: universal` → Issue 本文に `## スコープ仮説`「適用範囲（仮説・未確証）: universal」を注記。`career-hypothesis: learnings.md / repo: …` → `## キャリア仮説`「昇格先キャリア（仮説・未確証）: learnings.md / 宛先 repo（仮説・未確証）: 配布元プラグイン repo」を注記。promote は両者を確定せず運ぶのみ（career の裁定は集約点）。
 4. **自動起票**: 本文を一時ファイルへ Write → `gh issue create --title "ファイル復元には git restore を使う" --body-file <tmp>`。人間承認ゲートなし。成功し `#401` が払い出される。
 5. **status 反転**: provenance `2026-06-26T14:32:10Z` が指す `captures.md` エントリの `- status: unprocessed` を `- status: promoted` へ反転。
 
 ### 期待結果
 
-- Issue `#401` が起票される（本文に規範＋スコープ仮説注記＋検証の予測/反証観点を含む）。
+- Issue `#401` が起票される（本文に規範＋スコープ仮説注記＋キャリア仮説注記＋検証の予測/反証観点を含む）。
 - `captures.md` の当該エントリが `status: promoted` になる。
 - 候補の `candidate-status` を `promoted` へ更新（任意・推奨）。
 
@@ -65,6 +66,7 @@
 ## ログをちゃんと読む
 - provenance: 2026-06-26T15:00:00Z
 - scope-hypothesis: universal
+- career-hypothesis: learnings.md / repo: 配布元プラグイン repo（本リポジトリ）
 - candidate-status: pending
 
 エラーが出たときはログをちゃんと読むのが大事だと感じた。
@@ -118,6 +120,7 @@
 ## 長文は CLI 引数に直接渡さず一時ファイル経由にする
 - provenance: 2026-06-26T11:00:00Z, 2026-06-26T11:10:00Z
 - scope-hypothesis: universal
+- career-hypothesis: learnings.md / repo: 配布元プラグイン repo（本リポジトリ）
 - candidate-status: pending
 
 Markdown 等の長文を CLI オプションに直接渡さない。ファイルへ書き出し --body-file 等で渡す。シェルのクォート/ヒアドキュメント制約による破損を避けるため。
