@@ -30,8 +30,8 @@ allowed-tools:
 
 1. **取り込み対象の特定（AC2）**: 引数で候補 Issue 番号が渡ればそれを対象にする。無ければ `gh issue list --label growth:promote --state open` で inbox を列挙し、対象を人間に選ばせる。各候補を `gh issue view` で読む（career 提案と裁定サマリの材料。procedure §1）。
 2. **既存取り込み先の検出（不変条件・AC5）**: `gh issue list --label growth:intake --state open` で既存の取り込み Issue を列挙し、各候補の内容と意味的に照合する。重複する取り込み先があれば「既存 #X へ合流」、無ければ「新規作成」を束ね先として決める（procedure §2）。
-3. **裁定提案の生成**: 各候補本文の振る舞い差分（と存在すれば distill の career 仮説・scope 仮説）を材料に、候補ごとの career（#349 D1 の4分類）と公開可否（scope を公開ゲートに流用）を**提案**する。確証ではない（procedure §3）。
-4. **裁定サマリの提示と承認（AskUserQuestion）**: 裁定対象（候補リスト）＋裁定結果の提案（候補ごとの career・公開可否）＋束ね先（既存 #X / 新規）を提示し、承認を得る。人間は career・公開可否を編集でき、public への昇格を拒否できる。承認されるまで起票・クローズへ進めない（procedure §4）。
+3. **裁定提案の生成**: 各候補本文の振る舞い差分（と存在すれば distill の career 仮説・scope 仮説）を材料に、候補ごとの career（#349 D1 の4分類）と空間（scope を公開ゲートに流用）を**提案**する。確証ではない（procedure §3）。
+4. **裁定サマリの提示と承認（AskUserQuestion）**: 裁定対象（候補リスト）＋裁定結果の提案（候補ごとの career・空間）＋束ね先（既存 #X / 新規）を提示し、承認を得る。人間は career・空間を編集でき、public への昇格を拒否できる。承認されるまで起票・クローズへ進めない（procedure §4）。
 5. **正式起票／追記（AC1）**: 承認された裁定で、新規なら取り込み Issue を起票（`gh issue create`、`growth` ＋ `growth:intake` ラベル）、既存なら追記（`gh issue edit`）する。本文に「取り込んだ候補」「裁定結果」テーブル・「成果物」task list を含める。複数行本文は Write で一時ファイルへ書き出し `--body-file` で渡す（procedure §5）。
 6. **取り込み時クローズ（AC2・AC3）**: 各候補に対し、取り込み Issue へのリンクコメント（`gh issue comment`）→ `not planned` クローズ（`gh issue close --reason "not planned"`）を**この順**で行う。クローズ後 `is:open label:growth:promote` から外れることを確認する（procedure §6）。
 

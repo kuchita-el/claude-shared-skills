@@ -19,7 +19,7 @@ inbox に `growth:promote` 候補が3件ある。
 - **§1 対象特定**: 引数 `401 402 403`。`gh issue view` で各本文を読む。
 - **§2 重複検出**: `gh issue list --label growth:intake --state open` → open の取り込み Issue なし → **新規作成**。
 - **§3 裁定提案**: #401＝learnings.md/パブリック、#402＝ADR 差分/閉じた、#403＝強キャリア(lint)/パブリック を提案。
-- **§4 承認**: 裁定対象・束ね先(新規)・裁定提案を提示。人間が #401〜#403 の career・公開可否を承認(変更なし)。
+- **§4 承認**: 裁定対象・束ね先(新規)・裁定提案を提示。人間が #401〜#403 の career・空間を承認(変更なし)。
 - **§5 起票**: 本文を一時ファイルへ書き出し、`gh issue create --title "学びの取り込み(git/設計/lint)" --body-file ... --label growth --label growth:intake` で #420 を起票。
 
 ```markdown
@@ -29,7 +29,7 @@ inbox に `growth:promote` 候補が3件ある。
 - #403
 
 ## 裁定結果
-| 候補 | career | 公開可否 | 備考 |
+| 候補 | career | 空間 | 備考 |
 |---|---|---|---|
 | #401 | learnings.md | パブリック | scope 仮説: universal |
 | #402 | ADR 差分 | 閉じた | scope 仮説: project-local |
@@ -79,8 +79,8 @@ inbox に新たな候補 #410（「git restore でファイル復元」を補強
 ### トレース
 
 - **§3 裁定提案**: #405＝learnings.md/パブリック を提案（scope 仮説 universal 由来）。
-- **§4 承認**: 人間が公開可否を「パブリック → 閉じた」へ変更（public 昇格の拒否。不変条件2）。career は learnings.md のまま承認。
-- **§5 起票**: 「公開可否=閉じた」で裁定結果へ記録。閉じた空間 × learnings.md は learning-promotion-spec.md のパブリックハンドラ対象外であり、成果物 task は閉じた空間の着地先（別 Issue で追跡）として残す。
+- **§4 承認**: 人間が空間を「パブリック → 閉じた」へ変更（public 昇格の拒否。不変条件2）。career は learnings.md のまま承認。
+- **§5 起票**: 「空間=閉じた」で裁定結果へ記録。閉じた空間 × learnings.md は learning-promotion-spec.md のパブリックハンドラ対象外であり、成果物 task は閉じた空間の着地先（別 Issue で追跡）として残す。
 
 別パターン（**承認自体が得られない**）:
 
