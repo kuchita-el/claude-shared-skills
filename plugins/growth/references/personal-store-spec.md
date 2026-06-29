@@ -223,7 +223,9 @@ learnings.md（配布物）は**メタ欄を持たない1欄スキーマ**（lea
 
 growth プラグイン自身を本リポジトリで開発・dogfooding する際、リポジトリ内のパスへ捕捉を書き出す運用がありうる。その場合に未検証捕捉が誤ってコミットされないよう、リポジトリルートの `.gitignore` で `plugins/growth/.local/` を追跡対象外にする。検証手順は以下。
 
-なお **Distill の入力源は正準パス（`captures.md`）のみ**である。in-repo の `plugins/growth/.local/` は手動 dogfooding 時に捕捉を誤コミットから守るための保護領域であって、Distill の走査対象ではない。両方にファイルが存在する場合も Distill は正準パスだけを読む。
+なお **Distill の処理源（候補化対象の work queue）は正準パス（`captures.md`）のみ**である。in-repo の `plugins/growth/.local/` は手動 dogfooding 時に捕捉を誤コミットから守るための保護領域であって、Distill の走査対象ではない。両方にファイルが存在する場合も Distill は処理源として正準パスだけを読む。
+
+> Distill は処理源（`captures.md`）とは別に、既存ルール台帳（`CLAUDE.md` 2層・`learnings.md`・`candidates.md` 自身）を**読み取り専用の参照源**として突合に用いる（候補は生成しない・台帳は書き換えない）。処理源とは別レイヤであり、本「構成上の保証」の対象（生捕捉が配布物に混入しないこと）には影響しない。詳細は distill-procedure.md §2 および ADR-20260629。
 
 ```bash
 # .gitignore のマッチ規則が返れば追跡対象外であることが確認できる
