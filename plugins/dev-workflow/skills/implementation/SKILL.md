@@ -19,6 +19,7 @@ allowed-tools:
   - Bash(git branch*)
   - Bash(git push*)
   - Bash(git restore*)
+  - Bash(git worktree list*)
   # GitHub操作
   - Bash(gh issue view *)
   - Bash(gh issue comment *)
