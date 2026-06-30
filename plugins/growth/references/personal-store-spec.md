@@ -102,7 +102,9 @@ user-utterance 由来（ユーザーの訂正）の例:
 
 ## シグナル種別
 
-`signal` の値域は `DESIGN.md` の Capture が定義するシグナル（予測誤差＝驚きの源泉）を網羅する。以下の5値とする。
+`signal` の値域は `DESIGN.md` の Capture が定義するシグナルを網羅する。摩擦知（予測誤差＝驚きの源泉）の5値と、判断知（復元不能な会話知）の4値からなる。
+
+摩擦知シグナル（摩擦サブセットの補助検出器）:
 
 | 値（ラベル） | 意味 |
 |---|---|
@@ -112,7 +114,17 @@ user-utterance 由来（ユーザーの訂正）の例:
 | `期待違反` | 予測した結果と実際の結果が食い違った |
 | `客観痕跡` | git revert・CI 失敗等の外部の客観的痕跡 |
 
+判断知シグナル（予測誤差の形を持たない。価値軸は復元不能性。判断知検出子が拾う）:
+
+| 値（ラベル） | 意味 |
+|---|---|
+| `選好` | ユーザーが選択肢間の選好・傾きを表明した |
+| `却下理由` | ユーザーが提案・設計を理由付きで却下した |
+| `目標表明` | ユーザーが目標・意図・継続方針を表明した |
+| `設計判断` | ユーザーが設計境界・方針を確定する判断を示した |
+
 - ラベルは日本語を正準とする（`DESIGN.md` の表記に準拠）。
+- **知識型（判断知 / 摩擦知）は signal がどちらの群に属するかで導出する**（独立フィールドは設けない＝additive 拡張。摩擦知5値は破壊・改名しない）。下流 Distill は知識型で出力形を分岐する（摩擦知→`behavior-diff`、判断知→`decision-record`）。
 - `客観痕跡` は Phase 1（痕跡ソースが現セッションの会話履歴に限られる）では投入されない見込みだが、値域には含める。git revert・CI 失敗の取得は Phase 3 以降であり、その時点で同一スキーマに追記できるようにするため。
 
 ## 出所
@@ -175,12 +187,29 @@ Distill が生成し `promote` が消費する**候補ファイル**の置き場
 
 | 要素 | 必須 | 内容 |
 |---|---|---|
-| 見出し（`## <規範の短い見出し>`） | 必須 | 候補が命じる振る舞い差分の一文要約（規範）。learnings.md へ昇格した際そのまま見出しになる形 |
+| 見出し（`## <短い見出し>`） | 必須 | 候補の一文要約。`behavior-diff` は命じる振る舞い差分（規範）、`decision-record` は決定の要約。learnings.md へ昇格した際そのまま見出しになる形 |
+| `type` | 必須 | 候補の知識型。`behavior-diff`（既定・摩擦知）/ `decision-record`（判断知＝選好・却下理由・設計判断）。型により本文スキーマと promote の検証が分岐する（下記「type 別スキーマ」） |
 | `provenance` | 必須 | 由来する store エントリへの一意参照。値は `captures.md` の `## <timestamp>` 見出し（ISO 8601）。クラスタが複数 observation を畳む場合は複数 timestamp をカンマ区切り等で列挙する。`promote` の `status` 反転対象を特定する粒度 |
 | `scope-hypothesis` | 必須 | スコープ仮説タグ。値域は `project-local` / `universal` の2値（learning-store-spec.md「2空間モデル」に対応）。Distill が蒸留観点として付与する**仮説**であり、確証しない（最終裁定は人間の refine/review、横断解析は Phase 3 の支援どまり） |
 | `career-hypothesis` | 必須 | キャリア仮説タグ。**昇格先キャリア**（`強キャリア` / `改善還元` / `ADR 差分` / `learnings.md` の4分類）＋**宛先 repo の仮説**を `<career> / repo: <宛先 repo 仮説>` の1行形式で持つ。判定基準（4分類の決定表）は distill 側（distill-procedure.md「career-hypothesis の判定（決定表）」）を単一出典とする。`scope-hypothesis` と**対称・直交**な独立メタ欄であり（キャリア軸 ⊥ 空間軸。DESIGN.md「種別軸 ⊥ 共有境界軸」）、Distill が蒸留観点として付与する**仮説**で確証しない。career と宛先 repo の最終裁定は集約点（取り込み Issue）で行い、promote は確定しない（ADR-20260628-2） |
 | `candidate-status` | 必須 | 候補の処理状態。`pending`（既定。未処理）/ `rejected`（promote の検証で棄却）/ `promoted`（promote が Issue 起票成功後に付与。任意・推奨。再走査からの除外。promote-procedure.md §4 参照）。再 distill 時の再提示ループを断つための追跡軸（下記「冪等性」参照） |
-| 本文 | 必須 | 規範差分の具体（次回どう違う行動を取るか）＋理由。メタ欄の後にエントリ末尾の本文ブロックとして記述する（複数行可） |
+| 本文 | 必須 | 型別の本文。`behavior-diff` は規範差分の具体（次回どう違う行動を取るか）＋理由。`decision-record` は決定知の構造化4欄（下記「type 別スキーマ」）。メタ欄の後にエントリ末尾の本文ブロックとして記述する（複数行可） |
+
+### type 別スキーマ
+
+候補は `type` により本文スキーマと下流の扱いが分岐する。両型は同一の `candidates.md` に同居し、provenance・`candidate-status`・upsert・冪等性・ライフサイクル（promote→Issue）を共有する。
+
+- **`behavior-diff`（既定・摩擦知）**: 本文は規範差分（次回どう違う行動を取るか）＋理由。既存ルール台帳との突合・既存ルール再発の N 回カウント（provenance 件数から導出）・強制化の対象（#417 / ADR-20260629）。本型の扱いは従来どおりで変更しない。
+- **`decision-record`（判断知）**: 本文は文脈付き決定知を構造化した4欄を持つ。behavior-diff 要求（トリガー×振る舞い差分が両方読めること）と N 再発カウントを**免除**する（原理1 の例外口。一回性の設計境界をカウントでなく決定の記録として残す）。
+
+  | 欄 | 内容 |
+  |---|---|
+  | `decision` | 何を決めたか（採用した結論） |
+  | `rejected-alternatives` | 却下した代替案 |
+  | `rationale` | 却下・採択の理由 |
+  | `context` | どの設計局面か（対象 Issue / ファイル / 議論の文脈） |
+
+  `decision-record` の `scope-hypothesis` は大半が `project-local`（プロジェクト自身の設計判断は閉じた空間＝当該リポの ADR / docs へ向かう）。`career-hypothesis` は `ADR 差分` または `learnings.md` を取りうる。learnings.md（配布物）への翻訳規約（learning-promotion-spec.md・#383）の decision-record 対応は Phase 2 で定義する（本 Phase は candidates → Issue まで）。
 
 ### provenance 規約
 
@@ -203,12 +232,25 @@ learnings.md（配布物）は**メタ欄を持たない1欄スキーマ**（lea
 
 ```
 ## git restore でファイル復元する
+- type: behavior-diff
 - provenance: 2026-06-26T14:32:10Z
 - scope-hypothesis: universal
 - career-hypothesis: learnings.md / repo: 配布元プラグイン repo（本リポジトリ）
 - candidate-status: pending
 
 ファイル復元には git checkout ではなく git restore を使う。git checkout は復元とブランチ切替が多重定義され誤操作を招くため。
+
+## プランは追跡対象にしない
+- type: decision-record
+- provenance: 2026-06-29T08:50:02Z
+- scope-hypothesis: project-local
+- career-hypothesis: ADR 差分 / repo: 当該プロジェクト repo
+- candidate-status: pending
+
+- decision: プランファイルは git 追跡対象（コミット）に変えない。追跡可否は利用者に委ねる。
+- rejected-alternatives: プランを追跡対象（コミット）に変える第三案。
+- rationale: 追跡するか否かは利用者側の運用判断であり、仕組みで固定すべきでない。
+- context: プラン所在問題（#422 周辺）の解決案を巡る設計判断。
 ```
 
 ## 構成上の保証と検証手段
