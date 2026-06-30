@@ -35,7 +35,7 @@ promote スキルの各段の判定基準の詳細。SKILL.md の手順 overview
 
 ### decision-record（判断系）: 復元不能性
 
-判断知（選好・却下理由・設計判断）は一回性の設計境界＝予測誤差の形を持たないため、原理2 の予測的反証では測れない。代わりに「**復元不能で・まだ有効で・配布価値があるか**」を検査する。`decision-record` の本文4欄（`decision` / `rejected-alternatives` / `rationale` / `context`）を判断材料に、以下3条件をすべて満たせば合格、いずれかに該当すれば不合格とする:
+判断知（選好・却下理由・目標表明・設計判断）は一回性の設計境界＝予測誤差の形を持たないため、原理2 の予測的反証では測れない。代わりに「**復元不能で・まだ有効で・配布価値があるか**」を検査する。`decision-record` の本文4欄（`decision` / `rejected-alternatives` / `rationale` / `context`）を判断材料に、以下3条件をすべて満たせば合格、いずれかに該当すれば不合格とする:
 
 - **復元不能か**: その決定知が既にリポ（コード・git 履歴・ADR・spec）に記録済みなら**復元可能**＝不合格（反証条件(a)。捕まえ直す価値がない）。
 - **まだ有効か**: その決定が後に覆されているなら不合格（反証条件(b)。陳腐化）。
@@ -50,7 +50,7 @@ promote スキルの各段の判定基準の詳細。SKILL.md の手順 overview
 
 いずれの type も**不合格候補は起票段へ進めない**。`candidate-status` を `rejected` へ更新（§6 の冪等性）し、`status` 反転もしない。
 
-- 不合格候補は `candidates.md` の当該エントリの `candidate-status: pending` を `rejected` へ Edit で更新する。これにより次回 distill / promote 実行で同一候補が再提示・再評価されるループを断つ（personal-store-spec.md「冪等性」）。`- candidate-status: pending` 行は候補間で同一テキストのため、対象候補の**一意な `- provenance:` 行を含む見出しブロック**（`## <見出し>` ＋ `- type: …` ＋ `- provenance: …` ＋ `- scope-hypothesis: …` ＋ `- career-hypothesis: …` ＋ `- candidate-status: pending`）を `old_string` アンカーにして Edit する（provenance は一意キー。§6 ステップ2 と同じハザード回避）。複数候補を更新する場合は候補ごとに個別アンカーで行う。
+- 不合格候補は `candidates.md` の当該エントリの `candidate-status: pending` を `rejected` へ Edit で更新する。これにより次回 distill / promote 実行で同一候補が再提示・再評価されるループを断つ（personal-store-spec.md「冪等性」）。`- candidate-status: pending` 行は候補間で同一テキストのため、対象候補の**一意な `- provenance:` 行を含む見出しブロック**（`## <見出し>` ＋ `- type: …` ＋ `- provenance: …` ＋ `- scope-hypothesis: …` ＋ `- career-hypothesis: …` ＋ `- candidate-status: pending`）を `old_string` アンカーにして Edit する（provenance は一意キー。§6 ステップ2 と同じハザード回避）。旧スキーマ（`- type:` 行を持たない）候補は当該行を省いたブロックをアンカーとする。複数候補を更新する場合は候補ごとに個別アンカーで行う。
 - 検証は候補を**棄却する方向に厳しく**倒す。未検証の幻覚を配布経路に漏らさないことが原理2／復元不能性ゲートの要請（疑わしきは rejected）。両型とも合格候補の流路は不変（`candidates.md → promote → Issue → 既存ワークフロー`。decision-record を learnings.md へ直送しない）。
 
 ## 4. Route 注記（type ＋ scope ＋ career）
@@ -65,7 +65,7 @@ Issue 本文に含める知識型注記欄の書式:
 
 ```
 ## 知識型
-- type（distill 由来・未確証の扱い）: decision-record（判断知＝選好・却下理由・設計判断）
+- type（distill 由来・未確証の扱い）: decision-record（判断知＝選好・却下理由・目標表明・設計判断）
 ```
 
 `behavior-diff` の場合は `behavior-diff（摩擦知＝実行可能な振る舞い差分）` と記す。`type` が欠落している候補（旧スキーマ）は `behavior-diff` 既定として注記する。

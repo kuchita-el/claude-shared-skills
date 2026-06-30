@@ -1,5 +1,5 @@
 ---
-description: distill は個人ローカル store（captures.md）の status:unprocessed の生観察をバッチ蒸留し、知識型で出力形を2分する（摩擦知→behavior-diff、判断知→decision-record）。出所で分類・重み付けし、各候補にスコープ／キャリア仮説タグと provenance を付与し candidates.md へ upsert する。既存ルール台帳と突合し既知ルール再発を再発知見へ変換する（behavior-diff のみ）。検証・status 反転は行わない。観察を蒸留したいとき Capture と非同期に明示起動する（Phase 1）。
+description: distill は個人ローカル store（captures.md）の status:unprocessed の生観察をバッチ蒸留し、知識型で出力形を2分する（摩擦知→behavior-diff、判断知→decision-record）。出所で分類・重み付けし、各候補に scope/career 仮説タグと provenance を付与し candidates.md へ upsert する。既存ルール台帳と突合し既知ルール再発を知見化する（behavior-diff のみ）。検証・status 反転は行わない。Capture と非同期に明示起動する（Phase 1）。
 allowed-tools:
   - Read
   - Write

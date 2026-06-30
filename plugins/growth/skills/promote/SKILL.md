@@ -1,5 +1,5 @@
 ---
-description: promote は distill が candidates.md に永続化した候補を仮説として型に応じて検証し（摩擦系=予測・反証＝原理2／判断系=復元不能性）、検証通過候補のみを gh で Issue へ自動起票して既存ワークフロー（refine/DoR/PR レビュー）へ疎結合に渡す。promote はルーティング不可知で、distill 由来の scope/career 仮説を本文注記で運ぶのみ（確定しない）。起票前に人間承認ゲートを置かず、起票成功後に provenance 経由で store（captures.md）の status を unprocessed→promoted へ反転する。learnings.md へは書かない。候補を共有経路へ昇格させたいとき明示起動する（Phase 1）。
+description: promote は distill が candidates.md に永続化した候補を type 適応で検証し（behavior-diff=予測・反証／decision-record=復元不能性）、通過候補のみ gh で Issue へ自動起票し既存ワークフロー（refine/DoR/PR）へ疎結合に渡す。ルーティング不可知で scope/career 仮説は本文注記で運ぶのみ。起票前ゲートなし、起票成功後に store の status を unprocessed→promoted へ反転する。learnings.md へは書かない。共有経路へ昇格させたいとき明示起動する（Phase 1）。
 allowed-tools:
   - Read
   - Write

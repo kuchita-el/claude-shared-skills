@@ -307,7 +307,7 @@ node -e のワンライナーが拒否されたため、一時ファイルへ書
 ### 期待結果（候補1件、`candidates.md` へ upsert）
 
 ```
-## プランファイルは git 追跡対象にしない（追跡可否は利用者に委ねる）
+## プランは追跡対象にしない
 - type: decision-record
 - provenance: 2026-06-29T08:50:02Z
 - scope-hypothesis: project-local
