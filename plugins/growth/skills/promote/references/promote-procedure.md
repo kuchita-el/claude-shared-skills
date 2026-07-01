@@ -17,23 +17,23 @@ promote スキルの各段の判定基準の詳細。SKILL.md の手順 overview
 
 1. **候補ファイルパスの解決**: personal-store-spec.md「project-id とパスの解決手順」に従い `<project-id>` を解決し、候補ファイルパス `~/.claude/projects/<project-id>/growth/candidates.md` を組み立てる。
 2. **候補ファイルの読取**: Read で読む。存在しない・読めない場合は §7 のエラー処理へ。
-3. **エントリの抽出**: personal-store-spec.md「候補ファイル（candidates.md）」のスキーマ（`## <見出し>` ＋ `- provenance:` / `- scope-hypothesis:` / `- career-hypothesis:` / `- candidate-status:` メタ行 ＋ 本文）に従い行ベースで抽出する。
+3. **エントリの抽出**: personal-store-spec.md「候補ファイル（candidates.md）」のスキーマ（`## <見出し>` ＋ `- type:` / `- provenance:` / `- scope-hypothesis:` / `- career-hypothesis:` / `- candidate-status:` メタ行 ＋ 本文）に従い行ベースで抽出する。
 4. **対象選択**: `candidate-status: pending` のエントリのみを処理対象に選ぶ。`rejected`（過去に検証で棄却）・`promoted`（昇格済み）は**無視**する。`pending` が0件なら §7 のエラー処理へ。
 
 ## 3. 検証（型適応）
 
 各候補を**仮説**とみなし、配布経路（Issue）へ乗せる価値があるかを評価する。検証は promote 自身が行う自己検証（Phase 1 の最小形。独立検証エージェント化は Phase 4）。
 
-**検証軸は候補の `type` で分岐する**（ADR-20260701 D5）。摩擦系（`behavior-diff`）は予測誤差の反証（原理2）で、判断系（`decision-record`）は復元不能性で測る——フィルタは対象の価値軸と一致していなければ精度・再現のいずれかを失うため、1本のゲートで両型を測らない。`type` の値域・本文スキーマ正準は personal-store-spec.md「type 別スキーマ」を参照する（promote 側で二重定義しない）。`type` が欠落している候補（旧スキーマ）は既定の `behavior-diff` として扱う。
+**検証軸は候補の `type` で分岐する**（ADR-20260701 D5）。摩擦知（`behavior-diff`）は予測誤差の反証（原理2）で、判断知（`decision-record`）は復元不能性で測る——フィルタは対象の価値軸と一致していなければ精度・再現のいずれかを失うため、1本のゲートで両型を測らない。`type` の値域・本文スキーマ正準は personal-store-spec.md「type 別スキーマ」を参照する（promote 側で二重定義しない）。`type` が欠落している候補（旧スキーマ）は既定の `behavior-diff` として扱う。
 
-### behavior-diff（摩擦系）: 予測・反証（原理2）
+### behavior-diff（摩擦知）: 予測・反証（原理2）
 
 各候補について以下を添えて評価する（現行どおり。変更なし）:
 
 - **予測**: この規範が次にどんな状況で効くか（適用される具体場面）。予測が立てられない＝検証も反証もできない。
 - **検証観点**: どの条件で反証されうるか（反例の形）。反証可能性が無い主張は仮説たりえない。
 
-### decision-record（判断系）: 復元不能性
+### decision-record（判断知）: 復元不能性
 
 判断知（選好・却下理由・目標表明・設計判断）は一回性の設計境界＝予測誤差の形を持たないため、原理2 の予測的反証では測れない。代わりに「**復元不能で・まだ有効で・配布価値があるか**」を検査する。`decision-record` の本文4欄（`decision` / `rejected-alternatives` / `rationale` / `context`）を判断材料に、以下3条件をすべて満たせば合格、いずれかに該当すれば不合格とする:
 

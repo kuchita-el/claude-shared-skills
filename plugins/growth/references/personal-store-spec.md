@@ -188,7 +188,7 @@ Distill が生成し `promote` が消費する**候補ファイル**の置き場
 | 要素 | 必須 | 内容 |
 |---|---|---|
 | 見出し（`## <短い見出し>`） | 必須 | 候補の一文要約。`behavior-diff` は命じる振る舞い差分（規範）、`decision-record` は決定の要約。learnings.md へ昇格した際そのまま見出しになる形 |
-| `type` | 必須 | 候補の知識型。`behavior-diff`（既定・摩擦知）/ `decision-record`（判断知＝選好・却下理由・目標表明・設計判断）。型により本文スキーマと promote の検証が分岐する（下記「type 別スキーマ」） |
+| `type` | 必須 | 候補の知識型。`behavior-diff`（既定・摩擦知）/ `decision-record`（判断知＝選好・却下理由・目標表明・設計判断）。型により本文スキーマと promote の検証が分岐する（下記「type 別スキーマ」）。旧スキーマ（`type` 欠落）は `behavior-diff` として扱う（後方互換） |
 | `provenance` | 必須 | 由来する store エントリへの一意参照。値は `captures.md` の `## <timestamp>` 見出し（ISO 8601）。クラスタが複数 observation を畳む場合は複数 timestamp をカンマ区切り等で列挙する。`promote` の `status` 反転対象を特定する粒度 |
 | `scope-hypothesis` | 必須 | スコープ仮説タグ。値域は `project-local` / `universal` の2値（learning-store-spec.md「2空間モデル」に対応）。Distill が蒸留観点として付与する**仮説**であり、確証しない（最終裁定は人間の refine/review、横断解析は Phase 3 の支援どまり） |
 | `career-hypothesis` | 必須 | キャリア仮説タグ。**昇格先キャリア**（`強キャリア` / `改善還元` / `ADR 差分` / `learnings.md` の4分類）＋**宛先 repo の仮説**を `<career> / repo: <宛先 repo 仮説>` の1行形式で持つ。判定基準（4分類の決定表）は distill 側（distill-procedure.md「career-hypothesis の判定（決定表）」）を単一出典とする。`scope-hypothesis` と**対称・直交**な独立メタ欄であり（キャリア軸 ⊥ 空間軸。DESIGN.md「種別軸 ⊥ 共有境界軸」）、Distill が蒸留観点として付与する**仮説**で確証しない。career と宛先 repo の最終裁定は集約点（取り込み Issue）で行い、promote は確定しない（ADR-20260628-2） |
