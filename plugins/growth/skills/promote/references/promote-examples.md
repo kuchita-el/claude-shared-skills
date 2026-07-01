@@ -6,12 +6,14 @@
 
 | 検証するケース | 例 |
 |---|---|
-| 検証通過候補を自動起票し、起票成功後に provenance 経由で status を反転する | 例A |
+| `behavior-diff` の検証通過候補を自動起票し、起票成功後に provenance 経由で status を反転する | 例A |
 | 反証可能性・予測力を欠く候補は起票せず、candidate-status を rejected にし status を反転しない | 例B |
 | 起票が失敗したとき、由来 store エントリの status を反転しない（再実行可能を保つ） | 例C |
 | 1候補が複数 observation を畳む（provenance 複数）とき、起票成功で全 store エントリを反転する | 例D |
+| `decision-record` を復元不能性で検証して通過し、流路は behavior-diff と同一（learnings.md へ直送しない）で起票・反転する | 例E |
+| `decision-record` が既にリポに記録済み＝復元可能のとき棄却し、candidate-status を rejected にし status を反転しない | 例F |
 
-入力の `candidates.md` は distill が生成した状態（`candidate-status: pending`）を前提とする。
+入力の `candidates.md` は distill が生成した状態（`candidate-status: pending`）を前提とする。`behavior-diff`（例A〜D）は予測・反証で、`decision-record`（例E〜F）は復元不能性で検証する（procedure §3 の型適応）。
 
 ---
 
@@ -21,6 +23,7 @@
 
 ```
 ## ファイル復元には git restore を使う
+- type: behavior-diff
 - provenance: 2026-06-26T14:32:10Z
 - scope-hypothesis: universal
 - career-hypothesis: learnings.md / repo: 配布元プラグイン repo（本リポジトリ）
@@ -64,6 +67,7 @@
 
 ```
 ## ログをちゃんと読む
+- type: behavior-diff
 - provenance: 2026-06-26T15:00:00Z
 - scope-hypothesis: universal
 - career-hypothesis: learnings.md / repo: 配布元プラグイン repo（本リポジトリ）
@@ -118,6 +122,7 @@
 
 ```
 ## 長文は CLI 引数に直接渡さず一時ファイル経由にする
+- type: behavior-diff
 - provenance: 2026-06-26T11:00:00Z, 2026-06-26T11:10:00Z
 - scope-hypothesis: universal
 - career-hypothesis: learnings.md / repo: 配布元プラグイン repo（本リポジトリ）
@@ -140,6 +145,99 @@ Markdown 等の長文を CLI オプションに直接渡さない。ファイル
 - 次回 distill 実行時、両エントリは `promoted` のため再走査されず、同一候補は再生成されない（冪等性）。
 
 完了報告: 検証1件 / 合格1件 / 起票1件（#402）/ status 反転 store エントリ2件。
+
+---
+
+## 例E: decision-record の検証通過（復元不能性）→ 自動起票 → status 反転
+
+`behavior-diff` の予測・反証ではなく**復元不能性**で検証する型適応の正の例（procedure §3 decision-record 行）。流路は behavior-diff と**同一**（candidates → promote → Issue → 既存ワークフロー）であり、learnings.md へ直送しない。
+
+### 入力（candidates.md の `pending` 候補1件・`type: decision-record`）
+
+```
+## プランは追跡対象にしない
+- type: decision-record
+- provenance: 2026-06-29T08:50:02Z
+- scope-hypothesis: project-local
+- career-hypothesis: ADR 差分 / repo: 当該プロジェクト repo
+- candidate-status: pending
+
+- decision: プランファイルは git 追跡対象（コミット）に変えない。追跡可否は利用者に委ねる。
+- rejected-alternatives: プランを追跡対象（コミット）に変える第三案。
+- rationale: 追跡するか否かは利用者側の運用判断であり、仕組みで固定すべきでない。
+- context: プラン所在問題（#422 周辺）の解決案を巡る設計判断。
+```
+
+対応する `captures.md` のエントリ（抜粋）:
+
+```
+## 2026-06-29T08:50:02Z
+- signal: 設計判断
+- session: 7d3e1f02-9a4c-4b81-8e6f-1c2d3a4b5c6d
+- status: unprocessed
+- origin: user-utterance
+
+ユーザーが「プランを追跡対象に変えることは無い／追跡可否は利用者に委ねる」と設計境界を確定した。
+```
+
+### 手順トレース
+
+1. **候補読取**: `candidate-status: pending` の1件が対象。`type: decision-record`。
+2. **検証（型適応＝復元不能性）**: `behavior-diff` の予測・反証ではなく復元不能性で測る（procedure §3 decision-record）。本文4欄を材料に:
+   - 復元不能か: この設計境界（追跡可否を利用者に委ねる）は #422 周辺の会話でのみ交わされ、まだ ADR/spec に記録されていない → **復元不能**（反証条件(a)非該当）。
+   - まだ有効か: 後に覆されていない → **有効**（(b)非該当）。
+   - 配布価値があるか: プラン所在の設計指針として carry-forward する → **価値あり**（(c)非該当）。
+   - 3条件すべて満たす → **合格**。
+3. **Route 注記（type 運搬）**: `## 知識型`「type: decision-record（判断知）」＋ `## スコープ仮説`「project-local（閉じた空間）」＋ `## キャリア仮説`「昇格先キャリア: ADR 差分 / 宛先 repo: 当該プロジェクト repo」を注記。promote は型・scope・career のいずれも確定せず運ぶ。
+4. **自動起票**: 本文（4欄＋復元不能性の判定理由＋ Route 注記欄）を一時ファイルへ Write → `gh issue create --title "プランは追跡対象にしない" --body-file <tmp>`。人間承認ゲートなし。dev-workflow 非呼び出し。成功し `#403` が払い出される。
+5. **status 反転**: provenance `2026-06-29T08:50:02Z` が指す `captures.md` エントリの `- status: unprocessed` を `- status: promoted` へ反転（一意な `## <timestamp>` 見出しブロックをアンカーに Edit）。
+
+### 期待結果
+
+- Issue `#403` が起票される（本文に4欄＋知識型/スコープ/キャリア注記＋復元不能性の判定理由を含む）。
+- `captures.md` の当該エントリが `status: promoted` になる。
+- **流路は behavior-diff と同一**（candidates → promote → Issue → 既存ワークフロー＝L2 ゲート）。learnings.md へ直送しない（揉む場・Distribute 翻訳規約をスキップしない）。
+
+完了報告: 検証1件 / 不合格0件 / 起票1件（#403）/ status 反転 store エントリ1件。
+
+---
+
+## 例F: decision-record の検証棄却（既にリポに記録済み＝復元可能）
+
+復元不能性ゲートの反証条件(a)「既にリポに記録済み＝復元可能」に該当する負の例。棄却して起票せず status を反転しない（負の振る舞い）。
+
+### 入力（candidates.md の `pending` 候補1件・`type: decision-record`）
+
+```
+## ADR は docs/adr 配下に集約する
+- type: decision-record
+- provenance: 2026-06-29T09:10:00Z
+- scope-hypothesis: project-local
+- career-hypothesis: ADR 差分 / repo: 当該プロジェクト repo
+- candidate-status: pending
+
+- decision: ADR は docs/adr/ 配下に集約して置く。
+- rejected-alternatives: 各プラグインディレクトリ内へ分散配置する案。
+- rationale: 一覧性のため集約する。
+- context: ADR 配置を巡る整理。
+```
+
+### 手順トレース
+
+1. **候補読取**: 1件が対象。`type: decision-record`。
+2. **検証（型適応＝復元不能性）**:
+   - 復元不能か: この決定は既に `CLAUDE.md`「ADR」節・`docs/adr/README.md` に記録済み＝リポから決定的に復元可能 → 反証条件**(a)に該当**。
+   - → **不合格**（復元可能なものは捕まえ直す価値がない。検証は棄却方向に厳しく倒す）。
+3. 起票段へ進めない。候補の `candidate-status: pending` を `rejected` へ更新（一意な `- provenance:` 行を含む見出しブロックをアンカーに Edit）。
+4. status 反転は行わない。
+
+### 期待結果
+
+- Issue は起票され**ない**。
+- 候補の `candidate-status` が `rejected` になる（次回の再提示・再評価を抑止）。
+- `captures.md` の由来エントリ（`2026-06-29T09:10:00Z`）は `status: unprocessed` の**まま**（反転しない）。
+
+完了報告: 検証1件 / 不合格1件（candidate-status: rejected・既にリポに記録済み＝復元可能）/ 起票0件 / status 反転0件。
 
 ---
 

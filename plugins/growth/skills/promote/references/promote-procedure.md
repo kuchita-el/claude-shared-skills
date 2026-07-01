@@ -17,31 +17,58 @@ promote スキルの各段の判定基準の詳細。SKILL.md の手順 overview
 
 1. **候補ファイルパスの解決**: personal-store-spec.md「project-id とパスの解決手順」に従い `<project-id>` を解決し、候補ファイルパス `~/.claude/projects/<project-id>/growth/candidates.md` を組み立てる。
 2. **候補ファイルの読取**: Read で読む。存在しない・読めない場合は §7 のエラー処理へ。
-3. **エントリの抽出**: personal-store-spec.md「候補ファイル（candidates.md）」のスキーマ（`## <見出し>` ＋ `- provenance:` / `- scope-hypothesis:` / `- career-hypothesis:` / `- candidate-status:` メタ行 ＋ 本文）に従い行ベースで抽出する。
+3. **エントリの抽出**: personal-store-spec.md「候補ファイル（candidates.md）」のスキーマ（`## <見出し>` ＋ `- type:` / `- provenance:` / `- scope-hypothesis:` / `- career-hypothesis:` / `- candidate-status:` メタ行 ＋ 本文）に従い行ベースで抽出する。
 4. **対象選択**: `candidate-status: pending` のエントリのみを処理対象に選ぶ。`rejected`（過去に検証で棄却）・`promoted`（昇格済み）は**無視**する。`pending` が0件なら §7 のエラー処理へ。
 
-## 3. 検証（原理2）
+## 3. 検証（型適応）
 
 各候補を**仮説**とみなし、配布経路（Issue）へ乗せる価値があるかを評価する。検証は promote 自身が行う自己検証（Phase 1 の最小形。独立検証エージェント化は Phase 4）。
 
-各候補について以下を添えて評価する:
+**検証軸は候補の `type` で分岐する**（ADR-20260701 D5）。摩擦知（`behavior-diff`）は予測誤差の反証（原理2）で、判断知（`decision-record`）は復元不能性で測る——フィルタは対象の価値軸と一致していなければ精度・再現のいずれかを失うため、1本のゲートで両型を測らない。`type` の値域・本文スキーマ正準は personal-store-spec.md「type 別スキーマ」を参照する（promote 側で二重定義しない）。`type` が欠落している候補（旧スキーマ）は既定の `behavior-diff` として扱う。
+
+### behavior-diff（摩擦知）: 予測・反証（原理2）
+
+各候補について以下を添えて評価する（現行どおり。変更なし）:
 
 - **予測**: この規範が次にどんな状況で効くか（適用される具体場面）。予測が立てられない＝検証も反証もできない。
 - **検証観点**: どの条件で反証されうるか（反例の形）。反証可能性が無い主張は仮説たりえない。
 
-**合否境界**:
+### decision-record（判断知）: 復元不能性
 
-| 判定 | 条件 | 後段の扱い |
+判断知（選好・却下理由・目標表明・設計判断）は一回性の設計境界＝予測誤差の形を持たないため、原理2 の予測的反証では測れない。代わりに「**復元不能で・まだ有効で・配布価値があるか**」を検査する。`decision-record` の本文4欄（`decision` / `rejected-alternatives` / `rationale` / `context`）を判断材料に、以下3条件をすべて満たせば合格、いずれかに該当すれば不合格とする:
+
+- **復元不能か**: その決定知が既にリポ（コード・git 履歴・ADR・spec）に記録済みなら**復元可能**＝不合格（反証条件(a)。捕まえ直す価値がない）。
+- **まだ有効か**: その決定が後に覆されているなら不合格（反証条件(b)。陳腐化）。
+- **配布価値があるか**: carry-forward 価値のない一回性（その場限りで再利用されない判断）なら不合格（反証条件(c)）。
+
+**合否境界**（type 別）:
+
+| type | 合格条件 | 不合格条件（→ `candidate-status: rejected`） |
 |---|---|---|
-| **合格** | 予測（効く場面）と反証条件の両方が立ち、規範として実行可能な振る舞い差分を述べている | 後段（Route 注記 → 起票）へ進める |
-| **不合格** | 反証可能性を欠く（反例が原理的に作れない）／予測力を欠く（いつ効くか述べられない）／一回限りの事象で再現性が読めない | 起票段へ**進めない**。`candidate-status` を `rejected` へ更新（§6 の冪等性）。`status` 反転もしない |
+| `behavior-diff` | 予測（効く場面）と反証条件の両方が立ち、規範として実行可能な振る舞い差分を述べている | 反証可能性を欠く（反例が原理的に作れない）／予測力を欠く（いつ効くか述べられない）／一回限りの事象で再現性が読めない |
+| `decision-record` | 復元不能（リポ未記録）・まだ有効（覆されていない）・配布価値あり（carry-forward する）の3条件をすべて満たす | (a) 既にリポ（コード・git・ADR・spec）に記録済み＝復元可能／(b) 後に覆された／(c) carry-forward 価値のない一回性 |
 
-- 不合格候補は `candidates.md` の当該エントリの `candidate-status: pending` を `rejected` へ Edit で更新する。これにより次回 distill / promote 実行で同一候補が再提示・再評価されるループを断つ（personal-store-spec.md「冪等性」）。`- candidate-status: pending` 行は候補間で同一テキストのため、対象候補の**一意な `- provenance:` 行を含む見出しブロック**（`## <見出し>` ＋ `- provenance: …` ＋ `- scope-hypothesis: …` ＋ `- career-hypothesis: …` ＋ `- candidate-status: pending`）を `old_string` アンカーにして Edit する（provenance は一意キー。§6 ステップ2 と同じハザード回避）。複数候補を更新する場合は候補ごとに個別アンカーで行う。
-- 検証は候補を**棄却する方向に厳しく**倒す。未検証の幻覚を配布経路に漏らさないことが原理2 の要請（疑わしきは rejected）。
+いずれの type も**不合格候補は起票段へ進めない**。`candidate-status` を `rejected` へ更新（§6 の冪等性）し、`status` 反転もしない。
 
-## 4. Route 注記（scope ＋ career 両仮説）
+- 不合格候補は `candidates.md` の当該エントリの `candidate-status: pending` を `rejected` へ Edit で更新する。これにより次回 distill / promote 実行で同一候補が再提示・再評価されるループを断つ（personal-store-spec.md「冪等性」）。`- candidate-status: pending` 行は候補間で同一テキストのため、対象候補の**一意な `- provenance:` 行を含む見出しブロック**（`## <見出し>` ＋ `- type: …` ＋ `- provenance: …` ＋ `- scope-hypothesis: …` ＋ `- career-hypothesis: …` ＋ `- candidate-status: pending`）を `old_string` アンカーにして Edit する（provenance は一意キー。§6 ステップ2 と同じハザード回避）。旧スキーマ（`- type:` 行を持たない）候補は当該行を省いたブロックをアンカーとする。複数候補を更新する場合は候補ごとに個別アンカーで行う。
+- 検証は候補を**棄却する方向に厳しく**倒す。未検証の幻覚を配布経路に漏らさないことが原理2／復元不能性ゲートの要請（疑わしきは rejected）。両型とも合格候補の流路は不変（`candidates.md → promote → Issue → 既存ワークフロー`。decision-record を learnings.md へ直送しない）。
 
-合格候補の `scope-hypothesis` と `career-hypothesis` の両タグを読み、Issue 本文へ**仮説として注記**する。**promote はルーティング不可知であり、両仮説を確定（裁定）せず運ぶだけ**である（注記は記述であって確証ではない）。career の決定表は持たない（決定表は distill 側＝distill-procedure.md へ移設済み）。`learnings.md` へは書かない。
+## 4. Route 注記（type ＋ scope ＋ career）
+
+合格候補の `type` ・`scope-hypothesis` ・`career-hypothesis` を読み、Issue 本文へ**注記**する。**promote はルーティング不可知であり、型も両仮説も確定（裁定）せず運ぶだけ**である（注記は記述であって確証ではない）。career の決定表は持たない（決定表は distill 側＝distill-procedure.md へ移設済み）。`learnings.md` へは書かない。
+
+### 知識型（type）の注記
+
+合格候補の `type`（`behavior-diff` / `decision-record`）を Issue 本文へ注記する。promote は**ルーティング不可知のまま型を運搬する**——型に応じた下流の扱い（`behavior-diff` の強制化／`decision-record` の ADR・docs への翻訳）は確定せず、refine/review・集約点へ判断材料として渡す（ADR-20260701 D5）。両型とも流路は同一（`candidates.md → promote → Issue → 既存ワークフロー`）であり、`decision-record` を learnings.md へ直送しない。
+
+Issue 本文に含める知識型注記欄の書式:
+
+```
+## 知識型
+- type（distill 由来・未確証の扱い）: decision-record（判断知＝選好・却下理由・目標表明・設計判断）
+```
+
+`behavior-diff` の場合は `behavior-diff（摩擦知＝実行可能な振る舞い差分）` と記す。`type` が欠落している候補（旧スキーマ）は `behavior-diff` 既定として注記する。
 
 ### scope 仮説の注記
 
@@ -77,7 +104,7 @@ Issue 本文に含める career 注記欄の書式:
 
 検証通過候補を Issue へ自動起票する。**起票前に人間承認ゲートを置かない**。
 
-1. **本文の組み立て**: Issue 本文を組み立てる。最低限、候補の規範（見出し・本文）と §4 の Route 注記欄を含める。検証段の「予測」「検証観点」も本文へ記し、下流の refine/review が判断材料にできるようにする。
+1. **本文の組み立て**: Issue 本文を組み立てる。最低限、候補の見出し・本文（`behavior-diff` は規範差分、`decision-record` は4欄＝`decision`/`rejected-alternatives`/`rationale`/`context`）と §4 の Route 注記欄（知識型 ＋ スコープ ＋ キャリア）を含める。検証段の所見（`behavior-diff` は「予測」「検証観点」、`decision-record` は「復元不能・有効・配布価値」の判定理由）も本文へ記し、下流の refine/review が判断材料にできるようにする。
 2. **本文の受け渡し**: 複数行本文を CLI 引数へ直接渡さず、Write で一時ファイル（例: `/tmp/promote-issue-<連番>.md`）へ書き出してから `--body-file` で渡す（CLAUDE.md 規約。シェルのクォート/ヒアドキュメント制約による破損を避ける）。
 3. **起票コマンド**: `gh issue create --title "<見出し>" --body-file <一時ファイル>` で起票する。**dev-workflow スキル（create-issue 等）を呼び出さない**（疎結合。AC3）。ラベル付与等は任意。
 4. **起票後**: 起票された Issue は既存ワークフロー（refine-issue / DoR / plan-issue / PR レビュー）= L2 ゲートに乗る。promote はここで承認を待たず次段（§6）へ進む。
