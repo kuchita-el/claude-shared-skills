@@ -55,7 +55,7 @@ flowchart LR
     OBS["捕捉記録"]
     CAND["候補<br/>type: behavior-diff ｜ decision-record"]
     ADJ{{"制度化"}}
-    NORM["規範系"]
+    NORM["規範"]
 
     ORI -->|捕捉| OBS
     OBS -->|蒸留| CAND
@@ -64,7 +64,7 @@ flowchart LR
     NORM -.->|"測定 → 撤回"| NORM
 ```
 
-凡例: 角丸＝起点（学習の契機）／四角＝知識の状態（捕捉記録・候補・規範系）／六角＝裁定点（制度化＝人による二段ゲート L2）／〔 〕＝動作に伴うゲート／破線＝撤回ループ。
+凡例: 角丸＝起点（学習の契機）／四角＝知識の状態（捕捉記録・候補・規範）／六角＝裁定点（制度化＝人による二段ゲート L2）／〔 〕＝動作に伴うゲート／破線＝撤回ループ。
 
 上図がドメインモデルの正典（ユビキタス言語）。知識の状態・ドメイン動作・ゲートを domain 語で一箇所に固定し、実装の担い手は下表へ射影する。学習シグナルの価値は単一でなく2軸——**摩擦知**（環境摩擦・手続違反）と**判断知**（選好・却下理由・設計判断）——で、型は捕捉記録・候補を貫く **`type` 属性**として運ばれる（fork でなく同一流路・共有ライフサイクル。ADR-20260701）。
 
@@ -74,15 +74,13 @@ flowchart LR
 | 蒸留 → 候補 | `distill` → `candidates.md`（`type: behavior-diff｜decision-record`・`candidate-status`） |
 | 昇格〔型適応検証〕 | `promote`（摩擦系＝予測・反証／判断系＝復元不能・有効・配布価値）→ `gh` で Issue 起票 |
 | 制度化（二段ゲート L2） | `intake` → GitHub Issue ＋ refine / DoR / PR |
-| 配布 → 規範系 | `distribute` → learnings.md（behavior-diff）・ADR 差分（decision-record） |
+| 配布 → 規範 | `distribute` → learnings.md（behavior-diff）・ADR 差分（decision-record） |
 | 測定 → 撤回 | 使用台帳 → 集約ダイジェスト（fan-in） |
 
 以下は図・表が表せない理由・制約の補足のみ:
 
 - **価値の2軸（ゲートを型に一致させる）**: 摩擦知の価値軸は再発（#417。単発は無価値、横断で「配布ルールが効いていない」が出る）、判断知の価値軸は復元不能性（捕まえないと消える）。1本のゲートで両型を測らないため promote を型適応させる（ADR-20260701）。
 - **capture のフィルタ**: ハーネス強制摩擦（File-not-read ガード・worktree ガード・スキーマ検証・API 一時障害等）は既定除外。判断知は予測誤差の形を持たないため判断知検出子で別途拾う。判断は後回しにする。
-- **Route は distill に内在**: distill が候補へスコープ仮説タグ（`project-local` / `universal`）と career 仮説タグを付与。両タグとも確証せず仮説のまま、最終裁定は制度化が担う（ADR-20260628-2）。
-- **起票前ゲートを置かない理由**: 検証段（原理2）が未検証候補のフィルタとして残るため。L2 の仕組み化ゲートは起票後の refine-issue / DoR / PR が担い、下流ゲートとの二重化を避ける。
 - **measure / retire**: 観測値は配布ファイルに持たせず、各コンシューマのローカル使用台帳→集約ダイジェスト（fan-in）に置く。撤回は origin 側 learnings.md からの物理除去。発火観測・使用台帳の事後解析再構成は決定事項7／[`references/learning-store-spec.md`](references/learning-store-spec.md)。
 - **用語移行中（本節が現行正典）**: 図の domain 語のうち `捕捉記録`（旧 観察）・`制度化`（旧 取り込み）・起点 `学習の契機` を先行適用した。`摩擦知`/`判断知`/`候補`/`type`/`behavior-diff`/`decision-record` 等 #432 の語は維持。glossary・§4・各スキル・spec への全面反映、および学習語彙での用語見直し（`知` の位置・procedural/declarative 等）・`キャリア`/`スコープ` の日本語化は follow-up の「ユビキタス言語移行」epic へ。実装識別子（`captures.md`・`candidates.md`・`candidate-status`・各スキル名）は据え置き。
 
