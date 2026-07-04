@@ -1,5 +1,5 @@
 ---
-description: promote は distill が candidates.md に永続化した候補を仮説として検証し（予測・反証観点を添える＝原理2）、検証通過候補のみを gh で Issue へ自動起票して既存ワークフロー（refine/DoR/PR レビュー）へ疎結合に渡す。promote はルーティング不可知で、distill 由来の scope/career 仮説を本文注記で運ぶのみ（確定しない）。起票前に人間承認ゲートを置かず、起票成功後に provenance 経由で store（captures.md）の status を unprocessed→promoted へ反転する。learnings.md へは書かない。候補を共有経路へ昇格させたいとき明示起動する（Phase 1）。
+description: promote は distill が candidates.md に永続化した候補を type 適応で検証し（behavior-diff=予測・反証／decision-record=復元不能性）、通過候補のみ gh で Issue へ自動起票し既存ワークフロー（refine/DoR/PR）へ疎結合に渡す。ルーティング不可知で scope/career 仮説は本文注記で運ぶのみ。起票前ゲートなし、起票成功後に store の status を unprocessed→promoted へ反転する。learnings.md へは書かない。共有経路へ昇格させたいとき明示起動する（Phase 1）。
 allowed-tools:
   - Read
   - Write
@@ -26,8 +26,8 @@ distill が候補ファイル（`candidates.md`）へ永続化した候補を仮
 判定基準の詳細は `${CLAUDE_SKILL_DIR}/references/promote-procedure.md` を、worked example は `${CLAUDE_SKILL_DIR}/references/promote-examples.md` を参照する（手順本文を SKILL.md に二重化しない）。
 
 1. **候補読取（AC2 消費）**: personal-store-spec.md「project-id とパスの解決手順」で候補ファイルパス（`~/.claude/projects/<project-id>/growth/candidates.md`）を組み立て、Read で読む。`candidate-status: pending` のエントリのみを対象にする（`rejected` / `promoted` は無視）。未存在・0件は procedure §7 のエラー処理へ。
-2. **検証（AC1・原理2）**: 各候補を仮説とみなし、「予測（次にどんな状況で効くか）」と「検証観点（どの条件で反証されうるか）」を添えて評価する。反証可能性・予測力を欠く候補は**不合格**とし、`candidate-status` を `rejected` へ更新して後段（起票）へ進めない。合格候補のみ後段へ（procedure §3）。
-3. **Route 注記（AC2 消費・ルーティング不可知）**: 合格候補の `scope-hypothesis` ＋ `career-hypothesis` の両タグを読み、向かう空間（`universal`＝パブリック/グローバル空間＝`learnings.md` 相当 / `project-local`＝閉じた空間）と昇格先キャリア＋宛先 repo を Issue 本文へ**仮説として注記**する（`## スコープ仮説` ＋ `## キャリア仮説` 欄）。promote は両者を確定せず運ぶのみ（career の裁定は集約点）。`learnings.md` には書かない（procedure §4）。
+2. **検証（AC1・原理2／型適応）**: 各候補を仮説とみなして評価する。候補の `type` で検証軸を分岐する（ADR-20260701 D5）——`behavior-diff`（摩擦知）は「予測（次にどんな状況で効くか）」と「検証観点（どの条件で反証されうるか）」（原理2、現行どおり）、`decision-record`（判断知）は「復元不能で・まだ有効で・配布価値があるか」（反証条件＝既にリポに記録済み＝復元可能／後に覆された／carry-forward 価値のない一回性）。いずれの型も不合格候補は `candidate-status` を `rejected` へ更新し後段（起票）へ進めない。合格候補のみ後段へ（procedure §3）。
+3. **Route 注記（AC2 消費・ルーティング不可知）**: 合格候補の `type` ＋ `scope-hypothesis` ＋ `career-hypothesis` を読み、候補の知識型・向かう空間（`universal`＝パブリック/グローバル空間＝`learnings.md` 相当 / `project-local`＝閉じた空間）・昇格先キャリア＋宛先 repo を Issue 本文へ**仮説として注記**する（`## 知識型` ＋ `## スコープ仮説` ＋ `## キャリア仮説` 欄）。promote はルーティング不可知のまま型を運搬する（型・scope・career のいずれも確定しない。career の裁定は集約点）。`learnings.md` には書かない（procedure §4）。
 4. **自動起票（AC3・AC4）**: Issue 本文を Write で一時ファイルへ書き出し、`gh issue create --body-file` で起票する。起票前に人間承認ゲートを置かない。dev-workflow スキルを呼ばない（疎結合）。本文構造は procedure §5。
 5. **`status` 反転（AC6）**: 起票が**成功した後にのみ**、候補の `provenance` が指す `captures.md` の各エントリの `status` を `unprocessed → promoted` へ反転する。status 行はエントリ間で同一テキストのため、**一意な `## <timestamp>` 見出しブロックをアンカーに**個別 Edit する（`replace_all` 不可。誤反転防止）。複数 timestamp を持つ候補は全エントリを反転する。起票失敗時は反転しない（procedure §6）。
 
@@ -48,7 +48,7 @@ candidates: ~/.claude/projects/-home-user-myproject/growth/candidates.md
 ## 関連
 
 - `${CLAUDE_SKILL_DIR}/references/promote-procedure.md` — 各段の判定基準（検証の合否境界・Route 注記書式・起票コマンド・status 反転手順・エラー処理）の単一出典
-- `${CLAUDE_SKILL_DIR}/references/promote-examples.md` — worked example（検証通過→起票→反転／検証棄却／起票失敗時の status 非反転／複数 provenance 反転）
+- `${CLAUDE_SKILL_DIR}/references/promote-examples.md` — worked example（behavior-diff の検証通過→起票→反転／検証棄却／起票失敗時の status 非反転／複数 provenance 反転／decision-record の復元不能性検証 通過・棄却）
 - `${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` — 入力源 候補ファイル（`candidates.md`）の形式・メタ欄スキーマ・provenance 規約、store（`captures.md`）の `status` 状態機械・パス解決手順
 - `${CLAUDE_PLUGIN_ROOT}/references/learning-store-spec.md` — Route 注記が指す2空間モデル（universal/project-local＝パブリック/閉じた空間）
 - `${CLAUDE_PLUGIN_ROOT}/DESIGN.md` — 設計母艦（§3 Promote・§4 プラグイン構成・原理2・二段ゲート）
