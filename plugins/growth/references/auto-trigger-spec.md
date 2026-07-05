@@ -13,7 +13,7 @@
 
 ## 1. 結論：機構選定の判定
 
-**単一セッションの即時捕捉は SessionEnd hook、複数セッション横断の一括解析はローカル実行スケジューラ。両者は競合せず併存させるのが #350 の解析単位（単一＋横断の併存）に直接対応する。ただし横断機構の具体は実行環境で分岐する（GUI 環境＝Desktop scheduled task、CLI/ヘッドレス環境＝OS ネイティブスケジューラから `claude -p` 起動、`/loop` はセッション常時起動できる場合に限る）。**
+**単一セッションの即時観測は SessionEnd hook、複数セッション横断の一括解析はローカル実行スケジューラ。両者は競合せず併存させるのが #350 の解析単位（単一＋横断の併存）に直接対応する。ただし横断機構の具体は実行環境で分岐する（GUI 環境＝Desktop scheduled task、CLI/ヘッドレス環境＝OS ネイティブスケジューラから `claude -p` 起動、`/loop` はセッション常時起動できる場合に限る）。**
 
 - **2つの決定的な非対称性**:
   - **実行場所（ローカルファイルアクセス）**: クラウド Routine は **Anthropic 管理のクラウドで実行され、GitHub リポジトリを fresh clone してその中のファイルのみアクセスする。ローカルの `~/.claude/projects/` セッションログにはアクセスできない**（§4・公式明記）。横断ログ解析（決定事項2・#378）はローカルログ読み取りが前提のため、**クラウド Routine は横断解析の機構として不適**。#160 が想定する「nightly Routine 基盤への相乗り」は、growth のログ解析用途にはそのままでは成立しない（§6）。
@@ -22,14 +22,14 @@
   - GUI 環境（macOS/Windows + Desktop アプリ）: **Desktop scheduled task**（ローカル実行・ローカルファイルアクセス可・オープンセッション不要・最小1分間隔）。
   - CLI/ヘッドレス・Linux 環境: **OS ネイティブスケジューラ**（cron / systemd timer / Windows Task Scheduler）から抽出スクリプトまたは `claude -p` を起動する。これはディスク上のローカルログを全 project-id 走査でき、オープンセッション不要。ただし**公式ドキュメントはスケジューリングを3択（Routine / Desktop task / `/loop`）に閉じており OS ネイティブ手段に言及がない**——ユーザー側ラップは技術的に可能だが公式の推奨経路ではない点に留意（§4 補足）。
   - `/loop`: ローカル・全OSだが**オープンセッション必須**。週次の横断バッチを常時セッション起動で回すのは非現実的なため、横断機構としては限定的。
-- **SessionEnd hook は単一セッションの軽量トリガーに最適**: 発火時 payload に終了セッションの `session_id` と `transcript_path`（jsonl 絶対パス）を直接含むため、capture が即座に当該セッションを捕捉できる（§3）。ただし side-effect 専用（出力でブロック不可・非同期バックグラウンド実行）であり、重い横断解析を同期実行する機構ではない。SessionEnd hook は CLI（全OS）の機能であり、プラットフォーム非対称性の影響を受けない。
+- **SessionEnd hook は単一セッションの軽量トリガーに最適**: 発火時 payload に終了セッションの `session_id` と `transcript_path`（jsonl 絶対パス）を直接含むため、capture が即座に当該セッションを観測できる（§3）。ただし side-effect 専用（出力でブロック不可・非同期バックグラウンド実行）であり、重い横断解析を同期実行する機構ではない。SessionEnd hook は CLI（全OS）の機能であり、プラットフォーム非対称性の影響を受けない。
 
 ## 2. 後続実装（#350）への前提条件
 
 1. **併存設計**: SessionEnd hook（単一・即時）＋ローカル・スケジューラ（横断・週次）の二系統を併存させる。一方が他方を置換しない。
 2. **横断機構はローカル必須・環境で分岐**: 横断解析を担うスケジューラは `~/.claude/projects/` を読めるローカル実行とする。GUI 環境は Desktop scheduled task、CLI/ヘッドレス・Linux 環境は OS ネイティブスケジューラ（cron / systemd timer / Task Scheduler）から `claude -p` ないし抽出スクリプトを起動する。Desktop task は Linux 非対応（§1）のため、本リポジトリのような Linux/WSL 開発環境では OS ネイティブスケジューラが既定解になる。クラウド Routine を採る場合はログを clone 可能な場所へ事前同期する別設計が要る（現時点では非推奨）。
 3. **30日ローテに先んじた週次走査**（#378 §2 を継承）: 横断機構は 30 日より十分短い周期（週次程度）で走査し、抽出済みシグナルを個人 store へ永続化する。Desktop task の「最小1分・日次/週次プリセット」はこの周期要件を満たす。
-4. **捕捉対象の解決は payload 優先**: capture の session UUID 解決は env（`CLAUDE_CODE_SESSION_ID`）ではなく SessionEnd payload の `session_id` / `transcript_path` を一次ソースとする（§3。capture SKILL.md の `CLAUDE_CODE_CHILD_SESSION` 懸念を解消）。
+4. **観測対象の解決は payload 優先**: capture の session UUID 解決は env（`CLAUDE_CODE_SESSION_ID`）ではなく SessionEnd payload の `session_id` / `transcript_path` を一次ソースとする（§3。capture SKILL.md の `CLAUDE_CODE_CHILD_SESSION` 懸念を解消）。
 
 ---
 
@@ -76,7 +76,7 @@ CLAUDE_CODE_EXECPATH=…/versions/2.1.195
 - **ブロック不可**: exit code 2 は無視され、出力に関わらずセッションは終了する（side-effect 専用＝logging/cleanup/notification）。
 - **非同期**: セッションクローズ時にバックグラウンド実行。
 - **未文書**: タイムアウト既定値・複数 matcher マッチ時の実行順序は公式に記載なし（実装時に実機確認）。
-- → capture の用途（終了セッションの捕捉・個人 store への追記）は side-effect であり制約に抵触しない。重い横断解析を hook 内で同期完結させる設計は避ける。
+- → capture の用途（終了セッションの観測・個人 store への追記）は side-effect であり制約に抵触しない。重い横断解析を hook 内で同期完結させる設計は避ける。
 
 ---
 
