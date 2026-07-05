@@ -187,19 +187,19 @@ Distill が生成し `promote` が消費する**候補ファイル**の置き場
 
 | 要素 | 必須 | 内容 |
 |---|---|---|
-| 見出し（`## <短い見出し>`） | 必須 | 候補の一文要約。`behavior-diff` は命じる振る舞い差分（規範）、`decision-record` は決定の要約。learnings.md へ昇格した際そのまま見出しになる形 |
-| `type` | 必須 | 候補の知識型。`behavior-diff`（既定・摩擦知）/ `decision-record`（判断知＝選好・却下理由・目標表明・設計判断）。型により本文スキーマと promote の検証が分岐する（下記「type 別スキーマ」）。旧スキーマ（`type` 欠落）は `behavior-diff` として扱う（後方互換） |
+| 見出し（`## <短い見出し>`） | 必須 | 候補の一文要約。tags に `behavior-diff` を含む候補は命じる振る舞い差分（規範）、`decision-record` を含む候補は決定の要約、混在ゾーン（両値併記）は両者を要約する。learnings.md へ昇格した際そのまま見出しになる形 |
+| `tags` | 必須 | 候補の知識型（多値 set）。値域 `{behavior-diff, decision-record}` の非空部分集合。`behavior-diff`＝摩擦知、`decision-record`＝判断知（選好・却下理由・目標表明・設計判断）。混在ゾーン（1観測が両知識型にまたがる領域）は両値を併記する。tags の各要素により本文スキーマと promote の検証が分岐する（下記「tags 別スキーマ」）。旧 `type` 単値スキーマの後方互換は下記「後方互換規約」を参照 |
 | `provenance` | 必須 | 由来する store エントリへの一意参照。値は `captures.md` の `## <timestamp>` 見出し（ISO 8601）。クラスタが複数 observation を畳む場合は複数 timestamp をカンマ区切り等で列挙する。`promote` の `status` 反転対象を特定する粒度 |
 | `scope-hypothesis` | 必須 | スコープ仮説タグ。値域は `project-local` / `universal` の2値（learning-store-spec.md「2空間モデル」に対応）。Distill が蒸留観点として付与する**仮説**であり、確証しない（最終裁定は人間の refine/review、横断解析は Phase 3 の支援どまり） |
 | `career-hypothesis` | 必須 | キャリア仮説タグ。**昇格先キャリア**（`強キャリア` / `改善還元` / `ADR 差分` / `learnings.md` の4分類）＋**宛先 repo の仮説**を `<career> / repo: <宛先 repo 仮説>` の1行形式で持つ。判定基準（4分類の決定表）は distill 側（distill-procedure.md「career-hypothesis の判定（決定表）」）を単一出典とする。`scope-hypothesis` と**対称・直交**な独立メタ欄であり（キャリア軸 ⊥ 空間軸。DESIGN.md「種別軸 ⊥ 共有境界軸」）、Distill が蒸留観点として付与する**仮説**で確証しない。career と宛先 repo の最終裁定は集約点（取り込み Issue）で行い、promote は確定しない（ADR-20260628-2） |
 | `candidate-status` | 必須 | 候補の処理状態。`pending`（既定。未処理）/ `rejected`（promote の検証で棄却）/ `promoted`（promote が Issue 起票成功後に付与。任意・推奨。再走査からの除外。promote-procedure.md §4 参照）。再 distill 時の再提示ループを断つための追跡軸（下記「冪等性」参照） |
-| 本文 | 必須 | 型別の本文。`behavior-diff` は規範差分の具体（次回どう違う行動を取るか）＋理由。`decision-record` は決定知の構造化4欄（下記「type 別スキーマ」）。メタ欄の後にエントリ末尾の本文ブロックとして記述する（複数行可） |
+| 本文 | 必須 | tags 別の本文。`behavior-diff` は規範差分の具体（次回どう違う行動を取るか）＋理由。`decision-record` は決定知の構造化4欄（下記「tags 別スキーマ」）。混在ゾーン（両値併記）は両本文を併記する。メタ欄の後にエントリ末尾の本文ブロックとして記述する（複数行可） |
 
-### type 別スキーマ
+### tags 別スキーマ
 
-候補は `type` により本文スキーマと下流の扱いが分岐する。両型は同一の `candidates.md` に同居し、provenance・`candidate-status`・upsert・冪等性・ライフサイクル（promote→Issue）を共有する。
+候補は `tags` の各要素により本文スキーマと下流の扱いが分岐する。両知識型は同一の `candidates.md` に同居し、provenance・`candidate-status`・upsert・冪等性・ライフサイクル（promote→Issue）を共有する。`tags` は値域 `{behavior-diff, decision-record}` の非空部分集合であり、単一要素（`[behavior-diff]` / `[decision-record]`）と混在ゾーン（`[behavior-diff, decision-record]`）を取りうる。
 
-- **`behavior-diff`（既定・摩擦知）**: 本文は規範差分（次回どう違う行動を取るか）＋理由。既存ルール台帳との突合・既存ルール再発の N 回カウント（provenance 件数から導出）・強制化の対象（#417 / ADR-20260629）。本型の扱いは従来どおりで変更しない。
+- **`behavior-diff`（摩擦知）**: 本文は規範差分（次回どう違う行動を取るか）＋理由。既存ルール台帳との突合・既存ルール再発の N 回カウント（provenance 件数から導出）・強制化の対象（#417 / ADR-20260629）。本型の扱いは従来どおりで変更しない。
 - **`decision-record`（判断知）**: 本文は文脈付き決定知を構造化した4欄を持つ。behavior-diff 要求（トリガー×振る舞い差分が両方読めること）と N 再発カウントを**免除**する（原理1 の例外口。一回性の設計境界をカウントでなく決定の記録として残す）。
 
   | 欄 | 内容 |
@@ -211,6 +211,20 @@ Distill が生成し `promote` が消費する**候補ファイル**の置き場
 
   `decision-record` の `scope-hypothesis` は大半が `project-local`（プロジェクト自身の設計判断は閉じた空間＝当該リポの ADR / docs へ向かう）。`career-hypothesis` は `ADR 差分` または `learnings.md` を取りうる。learnings.md（配布物）への翻訳規約（learning-promotion-spec.md・#383）の decision-record 対応は Phase 2 で定義する（本 Phase は candidates → Issue まで）。
 
+- **混在ゾーン（`tags: [behavior-diff, decision-record]`）**: 1観測が両知識型にまたがる領域（DESIGN.md §6 決定事項10・glossary「混在ゾーン」）。本文は両型の本文を併記する（規範差分＋理由の behavior-diff 本文と、4欄の decision-record 本文を両方持つ）。promote の型適応検証は tags の各要素へ個別に適用する（下記「promote の検証」および promote-procedure.md）。第2タグの付与は distill の evidence-gated 分岐で陽性証拠がある時のみ行う（distill-procedure.md 参照）。既定は単一タグであり、両値併記を無条件に既定化しない。
+
+### 後方互換規約
+
+旧 `type`（単値）スキーマの既存エントリを壊さず読むための変換規則。`tags` は `type` の一般化（単値＝要素数1の tags 特殊ケース）であり、旧エントリは以下で `tags` へ写して解釈する。
+
+| 旧スキーマの状態 | `tags` としての解釈 |
+|---|---|
+| `type: <値>`（単値フィールドあり） | `tags: [<値>]`（要素数1の集合） |
+| `type`・`tags` とも欠落 | `tags: [behavior-diff]`（既定＝摩擦知） |
+
+- distill・promote とも、読み取り時にこの規則で旧エントリを `tags` として解釈する。物理的な一括変換（既存 `candidates.md` の書き換え）は要求しない（読み取り時変換で後方互換を保つ）。
+- distill が既存の旧 `type` エントリを upsert で再書き込みする場合は、`tags` 形式へ移行して書き出す（後方互換の読みと前方の書きが一致する）。
+
 ### provenance 規約
 
 - provenance は由来 store エントリの `## <timestamp>` 見出し（ISO 8601）を一意参照キーとして保持する。`promote` はこのキーで `captures.md` の該当エントリを特定し、起票成功後に `status` を反転する。
@@ -219,6 +233,7 @@ Distill が生成し `promote` が消費する**候補ファイル**の置き場
 ### Distill の書き込み方式（upsert）
 
 - Distill は候補を provenance キーで **upsert**（同一 provenance キーの既存候補があれば置換、なければ追加）して候補ファイルへ永続化する。単純追記は再実行で重複し、全置換は既存候補を失うため。provenance キーでの upsert により再 distill が冪等になる。
+- **tags の集合マージ（冪等）**: 同一 provenance キーの再蒸留で既存候補と新候補の `tags` を**集合和**でマージする。重複タグは生まない（set 意味論）。旧 `type` 単値エントリを再蒸留する場合は「後方互換規約」で `tags` へ写してからマージする。これにより、既存の第1タグを失わずに第2タグを付与でき、再実行しても `tags` が単調に安定する（冪等）。
 
 ### 冪等性（candidate-status による再提示抑止）
 
@@ -232,7 +247,7 @@ learnings.md（配布物）は**メタ欄を持たない1欄スキーマ**（lea
 
 ```
 ## git restore でファイル復元する
-- type: behavior-diff
+- tags: [behavior-diff]
 - provenance: 2026-06-26T14:32:10Z
 - scope-hypothesis: universal
 - career-hypothesis: learnings.md / repo: 配布元プラグイン repo（本リポジトリ）
@@ -241,7 +256,7 @@ learnings.md（配布物）は**メタ欄を持たない1欄スキーマ**（lea
 ファイル復元には git checkout ではなく git restore を使う。git checkout は復元とブランチ切替が多重定義され誤操作を招くため。
 
 ## プランは追跡対象にしない
-- type: decision-record
+- tags: [decision-record]
 - provenance: 2026-06-29T08:50:02Z
 - scope-hypothesis: project-local
 - career-hypothesis: ADR 差分 / repo: 当該プロジェクト repo
@@ -251,7 +266,22 @@ learnings.md（配布物）は**メタ欄を持たない1欄スキーマ**（lea
 - rejected-alternatives: プランを追跡対象（コミット）に変える第三案。
 - rationale: 追跡するか否かは利用者側の運用判断であり、仕組みで固定すべきでない。
 - context: プラン所在問題（#422 周辺）の解決案を巡る設計判断。
+
+## worktree を抜ける前にマージ状態を確認する
+- tags: [behavior-diff, decision-record]
+- provenance: 2026-07-01T10:12:44Z
+- scope-hypothesis: project-local
+- career-hypothesis: ADR 差分 / repo: 当該プロジェクト repo
+- candidate-status: pending
+
+ExitWorktree はマージ済みかを確認しないため、削除前に gh pr view --json state で確認してから抜ける。
+- decision: worktree 削除の前提として PR のマージ状態確認を必須手順に組み込む。
+- rejected-alternatives: 削除時に毎回マージ状態を自動チェックする仕組みを ExitWorktree 側へ入れる案。
+- rationale: ツール側の自動チェックは適用範囲が広すぎ、運用手順として明示する方が可逆的で軽い。
+- context: worktree 運用ルール（ExitWorktree のマージ未確認）を巡る設計判断。
 ```
+
+3番目の例は混在ゾーン（`tags: [behavior-diff, decision-record]`）。同一観測が「次回こう行動する」規範差分（behavior-diff 本文）と、それを支える設計判断（decision-record 4欄）の両方を含むため、両本文を併記する。
 
 ## 構成上の保証と検証手段
 

@@ -23,7 +23,7 @@
 
 ```
 ## ファイル復元には git restore を使う
-- type: behavior-diff
+- tags: [behavior-diff]
 - provenance: 2026-06-26T14:32:10Z
 - scope-hypothesis: universal
 - career-hypothesis: learnings.md / repo: 配布元プラグイン repo（本リポジトリ）
@@ -67,7 +67,7 @@
 
 ```
 ## ログをちゃんと読む
-- type: behavior-diff
+- tags: [behavior-diff]
 - provenance: 2026-06-26T15:00:00Z
 - scope-hypothesis: universal
 - career-hypothesis: learnings.md / repo: 配布元プラグイン repo（本リポジトリ）
@@ -122,7 +122,7 @@
 
 ```
 ## 長文は CLI 引数に直接渡さず一時ファイル経由にする
-- type: behavior-diff
+- tags: [behavior-diff]
 - provenance: 2026-06-26T11:00:00Z, 2026-06-26T11:10:00Z
 - scope-hypothesis: universal
 - career-hypothesis: learnings.md / repo: 配布元プラグイン repo（本リポジトリ）
@@ -152,11 +152,11 @@ Markdown 等の長文を CLI オプションに直接渡さない。ファイル
 
 `behavior-diff` の予測・反証ではなく**復元不能性**で検証する型適応の正の例（procedure §3 decision-record 行）。流路は behavior-diff と**同一**（candidates → promote → Issue → 既存ワークフロー）であり、learnings.md へ直送しない。
 
-### 入力（candidates.md の `pending` 候補1件・`type: decision-record`）
+### 入力（candidates.md の `pending` 候補1件・`tags: [decision-record]`）
 
 ```
 ## プランは追跡対象にしない
-- type: decision-record
+- tags: [decision-record]
 - provenance: 2026-06-29T08:50:02Z
 - scope-hypothesis: project-local
 - career-hypothesis: ADR 差分 / repo: 当該プロジェクト repo
@@ -182,13 +182,13 @@ Markdown 等の長文を CLI オプションに直接渡さない。ファイル
 
 ### 手順トレース
 
-1. **候補読取**: `candidate-status: pending` の1件が対象。`type: decision-record`。
+1. **候補読取**: `candidate-status: pending` の1件が対象。`tags: [decision-record]`。
 2. **検証（型適応＝復元不能性）**: `behavior-diff` の予測・反証ではなく復元不能性で測る（procedure §3 decision-record）。本文4欄を材料に:
    - 復元不能か: この設計境界（追跡可否を利用者に委ねる）は #422 周辺の会話でのみ交わされ、まだ ADR/spec に記録されていない → **復元不能**（反証条件(a)非該当）。
    - まだ有効か: 後に覆されていない → **有効**（(b)非該当）。
    - 配布価値があるか: プラン所在の設計指針として carry-forward する → **価値あり**（(c)非該当）。
    - 3条件すべて満たす → **合格**。
-3. **Route 注記（type 運搬）**: `## 知識型`「type: decision-record（判断知）」＋ `## スコープ仮説`「project-local（閉じた空間）」＋ `## キャリア仮説`「昇格先キャリア: ADR 差分 / 宛先 repo: 当該プロジェクト repo」を注記。promote は型・scope・career のいずれも確定せず運ぶ。
+3. **Route 注記（tags 運搬）**: `## 知識型`「tags: [decision-record]（判断知）」＋ `## スコープ仮説`「project-local（閉じた空間）」＋ `## キャリア仮説`「昇格先キャリア: ADR 差分 / 宛先 repo: 当該プロジェクト repo」を注記。promote は知識型・scope・career のいずれも確定せず運ぶ。
 4. **自動起票**: 本文（4欄＋復元不能性の判定理由＋ Route 注記欄）を一時ファイルへ Write → `gh issue create --title "プランは追跡対象にしない" --body-file <tmp>`。人間承認ゲートなし。dev-workflow 非呼び出し。成功し `#403` が払い出される。
 5. **status 反転**: provenance `2026-06-29T08:50:02Z` が指す `captures.md` エントリの `- status: unprocessed` を `- status: promoted` へ反転（一意な `## <timestamp>` 見出しブロックをアンカーに Edit）。
 
@@ -206,11 +206,11 @@ Markdown 等の長文を CLI オプションに直接渡さない。ファイル
 
 復元不能性ゲートの反証条件(a)「既にリポに記録済み＝復元可能」に該当する負の例。棄却して起票せず status を反転しない（負の振る舞い）。
 
-### 入力（candidates.md の `pending` 候補1件・`type: decision-record`）
+### 入力（candidates.md の `pending` 候補1件・`tags: [decision-record]`）
 
 ```
 ## ADR は docs/adr 配下に集約する
-- type: decision-record
+- tags: [decision-record]
 - provenance: 2026-06-29T09:10:00Z
 - scope-hypothesis: project-local
 - career-hypothesis: ADR 差分 / repo: 当該プロジェクト repo
@@ -224,7 +224,7 @@ Markdown 等の長文を CLI オプションに直接渡さない。ファイル
 
 ### 手順トレース
 
-1. **候補読取**: 1件が対象。`type: decision-record`。
+1. **候補読取**: 1件が対象。`tags: [decision-record]`。
 2. **検証（型適応＝復元不能性）**:
    - 復元不能か: この決定は既に `CLAUDE.md`「ADR」節・`docs/adr/README.md` に記録済み＝リポから決定的に復元可能 → 反証条件**(a)に該当**。
    - → **不合格**（復元可能なものは捕まえ直す価値がない。検証は棄却方向に厳しく倒す）。
