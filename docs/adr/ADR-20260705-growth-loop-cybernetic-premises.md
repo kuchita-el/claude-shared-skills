@@ -93,4 +93,5 @@ growth が究極に範囲内へ保つべき本質変数——growth ループの
 ## 関連ADR
 
 - Related: ADR-20260701-learning-signal-recoverability-and-output-forms（価値の 2 軸＝判断知＝復元不能性／摩擦知＝再発。本 ADR はこの 2 軸を制御論の 4 原理から基礎づける補完であり、Supersede でも Amend でもない。ADR-20260701 の Status・本文は変更しない）
+- Related: ADR-20260705-2-growth-learning-vocabulary-frame（本 ADR を上流入力とする #441 の学習/仮説検証フレーム・日本語正典語彙の確定。本 ADR の「判断知検出子／摩擦検出器」は同 ADR が正典化した HOW 軸命名「教示信号検出器／予測誤差検出器」と同一の検出器2本を指す）
 - 関連Issue: #441（派生元。本 ADR の上流化のきっかけであり、本 ADR は #441 decision 5 の上流入力）, #440, #436, #353（消費側）, #417（ハーネス非強制ルールの再発。警戒 5 の交絡対象）, #337, #230（本質変数の継承先候補）
