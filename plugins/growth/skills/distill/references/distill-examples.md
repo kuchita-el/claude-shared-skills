@@ -80,7 +80,7 @@
 
 ```
 ## ファイル復元には git restore を使う
-- type: behavior-diff
+- tags: [behavior-diff]
 - provenance: 2026-06-26T10:00:00Z, 2026-06-26T10:05:00Z
 - scope-hypothesis: universal
 - career-hypothesis: learnings.md / repo: 配布元プラグイン repo（本リポジトリ）
@@ -89,7 +89,7 @@
 ファイルを復元するとき git checkout ではなく git restore を使う。git checkout はブランチ切り替えと復元が多重定義されており、誤操作で別ブランチへ移る事故を招くため。
 
 ## 長文は CLI 引数に直接渡さず一時ファイル経由にする
-- type: behavior-diff
+- tags: [behavior-diff]
 - provenance: 2026-06-26T11:00:00Z, 2026-06-26T11:10:00Z
 - scope-hypothesis: universal
 - career-hypothesis: learnings.md / repo: 配布元プラグイン repo（本リポジトリ）
@@ -179,7 +179,7 @@ git commit のメッセージにヒアドキュメントを使って失敗した
 
 ```
 ## ファイル復元には git restore を使う
-- type: behavior-diff
+- tags: [behavior-diff]
 - provenance: 2026-06-26T10:00:00Z, 2026-06-26T10:05:00Z
 - scope-hypothesis: universal
 - career-hypothesis: learnings.md / repo: 配布元プラグイン repo（本リポジトリ）
@@ -188,7 +188,7 @@ git commit のメッセージにヒアドキュメントを使って失敗した
 ファイルを復元するとき git checkout ではなく git restore を使う。…（理由）
 
 ## コミットメッセージに複数行を渡すときはヒアドキュメントを避け -m を複数回指定する
-- type: behavior-diff
+- tags: [behavior-diff]
 - provenance: 2026-06-26T13:00:00Z
 - scope-hypothesis: universal
 - career-hypothesis: learnings.md / repo: 配布元プラグイン repo（本リポジトリ）
@@ -255,7 +255,7 @@ node -e のワンライナーが拒否されたため、一時ファイルへ書
 
 ```
 ## コミットは関連ファイルのみをステージングする（git add -A を使わない）
-- type: behavior-diff
+- tags: [behavior-diff]
 - provenance: 2026-06-29T10:00:00Z
 - scope-hypothesis: universal
 - career-hypothesis: learnings.md / repo: 配布元プラグイン repo（本リポジトリ）
@@ -264,7 +264,7 @@ node -e のワンライナーが拒否されたため、一時ファイルへ書
 コミット時は git add -A を使わず、関連ファイルのみを個別にステージングする。無関係な変更の混入を防ぐため。
 
 ## 既存ルール「インラインスクリプト（python -c / node -e 等）を組み立てて実行しない」が機能していない（2回再発）
-- type: behavior-diff
+- tags: [behavior-diff]
 - provenance: 2026-06-29T09:00:00Z, 2026-06-29T09:30:00Z
 - scope-hypothesis: universal
 - career-hypothesis: 強キャリア / repo: 配布元プラグイン repo（仮説）
@@ -302,14 +302,14 @@ node -e のワンライナーが拒否されたため、一時ファイルへ書
 2. **知識型の導出＋棄却（§3）**: `signal: 設計判断` → **判断群 → 知識型は判断知 → `decision-record`**（導出規則は personal-store-spec.md「シグナル種別」）。よって **§3.2** を適用する。この観察は「次回どう違う行動を取るか」の再現可能な振る舞い差分に落ちない一回性の設計境界であり、§3.1（behavior-diff）なら**実行不能として棄却**されていた（#432 で消滅していた症状）。§3.2 では `decision`（プランを追跡対象に変えない）が読み取れる → **合格**。
 3. **分類と重み付け（§4）**: `origin: user-utterance` → 判断誤り（高優先）側。知識型（出力形）とは直交。
 4. **クラスタ化（§5）**: 単独。同一 `decision` の重複なし。トリガー×差分では畳まない（decision-record はトリガー×差分で畳まず、N 再発カウントもしない）。
-5. **候補整形＋メタ付与（§6）**: `type: decision-record`。本文を4欄（`decision` / `rejected-alternatives` / `rationale` / `context`）へ整形。`scope-hypothesis` は**プロジェクト自身の設計判断＝閉じた空間**のため `project-local`。`career-hypothesis` は決定表で**後戻りコスト高・却下選択肢ありの設計決定 → 行3（`ADR 差分`）**。
+5. **候補整形＋メタ付与（§6）**: `tags: [decision-record]`。本文を4欄（`decision` / `rejected-alternatives` / `rationale` / `context`）へ整形。`scope-hypothesis` は**プロジェクト自身の設計判断＝閉じた空間**のため `project-local`。`career-hypothesis` は決定表で**後戻りコスト高・却下選択肢ありの設計決定 → 行3（`ADR 差分`）**。
 6. **台帳突合（§7）**: `decision-record` は **N 再発カウント免除**。§7 を通さず §6 整形のまま §8 へ送る（既にリポに記録済みか＝復元可能性の検証は promote の型適応検証の責務。ADR-20260701 D5）。
 
 ### 期待結果（候補1件、`candidates.md` へ upsert）
 
 ```
 ## プランは追跡対象にしない
-- type: decision-record
+- tags: [decision-record]
 - provenance: 2026-06-29T08:50:02Z
 - scope-hypothesis: project-local
 - career-hypothesis: ADR 差分 / repo: 当該プロジェクト repo（仮説）
@@ -321,7 +321,7 @@ node -e のワンライナーが拒否されたため、一時ファイルへ書
 - context: プラン所在問題（#422 周辺）の解決案を巡る設計判断。
 ```
 
-この候補は personal-store-spec.md「type 別スキーマ」記述例と整合する（4欄・scope=project-local・career=ADR 差分）。behavior-diff 候補（例A・C・D）と同一の `candidates.md` に同居し、provenance・candidate-status・upsert・ライフサイクル（promote→Issue）を共有する。一方、§3.2 の免除口と §7 の N 再発免除により、一回性の設計境界が棄却・畳み込みで失われない。
+この候補は personal-store-spec.md「tags 別スキーマ」記述例と整合する（4欄・scope=project-local・career=ADR 差分）。behavior-diff 候補（例A・C・D）と同一の `candidates.md` に同居し、provenance・candidate-status・upsert・ライフサイクル（promote→Issue）を共有する。一方、§3.2 の免除口と §7 の N 再発免除により、一回性の設計境界が棄却・畳み込みで失われない。
 完了報告: 入力 unprocessed 1件 / 棄却0件 / 分類 判断誤り1件・環境摩擦0件 / 型内訳 behavior-diff 0件・decision-record 1件 / 採用候補1件（再発知見変換0件）。
 
 ---

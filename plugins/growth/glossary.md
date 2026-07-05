@@ -260,7 +260,7 @@ growth の中核フロー。`観測 → 仮説形成 → 仮説検証 → 配布
 | `scope-hypothesis` | スコープ仮説 | 共有範囲の仮説タグ → スコープ仮説（scope-hypothesis） |
 | `candidate-status` | 候補状態 | 候補の処理状態 → 候補状態（candidate-status） |
 | `career-hypothesis` | キャリア仮説 | 昇格先キャリア＋宛先 repo の仮説 → キャリア仮説（career-hypothesis） |
-| `type` | 候補の型 | 知識型による候補出力形 → `behavior-diff` / `decision-record` |
+| `tags` | 候補の知識型（多値 set） | 知識型による候補出力形の集合 → `{behavior-diff, decision-record}` の非空部分集合。混在ゾーンは両値併記。詳細は personal-store-spec.md「tags 別スキーマ」・#440 決定事項10 |
 
 ### フィールドの値
 
@@ -272,12 +272,12 @@ growth の中核フロー。`観測 → 仮説形成 → 仮説検証 → 配布
 | `rejected` | 棄却 | candidate-status |
 | `universal` | 全世界 × 全プロジェクト対象 | scope-hypothesis |
 | `project-local` | チーム・プロジェクト限定 | scope-hypothesis |
-| `behavior-diff` | 振る舞い差分（摩擦知） | type |
-| `decision-record` | 文脈付き決定知（判断知） | type |
+| `behavior-diff` | 振る舞い差分（摩擦知） | tags |
+| `decision-record` | 文脈付き決定知（判断知） | tags |
 
 `signal` の値（摩擦知 `訂正` / `ツール拒否` / `反復試行` / `期待違反` / `客観痕跡`、判断知 `選好` / `却下理由` / `目標表明` / `設計判断`）は日本語を正準とする（personal-store-spec.md「シグナル種別」）。英語コードは持たない。
 
-> **`type`→`tags` の設計決定（#440・DESIGN.md §6 決定事項10）**: [[混在ゾーン（mixed zone）]]（1観測が両知識型にまたがる）の partition 硬度を非排他 tag（多値 set）で確定したことに伴い、排他 `type`（単値）を廃し `candidates.md` では **`tags`（多値 set、値域 {behavior-diff, decision-record} の部分集合）**へ改称する設計決定が下った。廃止されるのは排他制約であって `behavior-diff` / `decision-record` のカテゴリ自体は tag 値として存続する（`type` は tag の要素数1特殊ケース）。上表の `type` 行は改称前の現行スキーマ。物理スキーマ改称の実装（本対応表・personal-store-spec.md の書き換え）は #438／後続実装 Issue が担い、本 spike は設計決定の記録のみに留める。
+> **`type`→`tags` の設計決定と実装（#440・DESIGN.md §6 決定事項10 → #446 実装）**: [[混在ゾーン（mixed zone）]]（1観測が両知識型にまたがる）の partition 硬度を非排他 tag（多値 set）で確定したことに伴い（#440 決定事項10）、排他 `type`（単値）を廃し `candidates.md` では **`tags`（多値 set、値域 {behavior-diff, decision-record} の部分集合）**へ改称した。廃止されたのは排他制約であって `behavior-diff` / `decision-record` のカテゴリ自体は tag 値として存続する（旧 `type` 単値は後方互換で要素数1の `[<値>]` へ写す）。上表は改称後のスキーマ（`tags` 行）を反映する。物理スキーマ改称の実装（本対応表・personal-store-spec.md・distill/promote 手順書の書き換え）は #446 が担った。設計の一次記録は DESIGN.md §6 決定事項10。
 
 ### ファイル名・その他
 

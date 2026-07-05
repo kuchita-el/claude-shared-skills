@@ -9,10 +9,10 @@ distill スキルの仮説形成判定基準の詳細。SKILL.md の手順 overv
   - **スコープ仮説タグ**（`scope-hypothesis`: `project-local` / `universal`）: 仮説形成時に「どの観点で仮説形成したか」の視点で判定し、2空間（learning-store-spec.md「2空間モデル」）のいずれへ向かう候補かを示す。最終裁定（適用範囲の確定）は下流の人間 refine/review に委ねる（横断解析は Phase 3 の支援どまり）。
   - **キャリア仮説タグ**（`career-hypothesis`: 昇格先キャリア＋宛先 repo 仮説）: 候補がどのキャリア（成果物の種別）へ・どの repo へ向かうかを「§ career-hypothesis の判定（決定表）」で判定する。career の確定（裁定）は distill では行わず、最終裁定は集約点（取り込み Issue）が担う。promote はこの仮説をルーティング確定せず本文注記として運ぶのみ（ADR-20260628-2）。
 - **分類は軽い判定にとどめる（#417・責務境界）**: 観察の分類（環境摩擦 / 判断誤り）は**出所（`origin`）を一次キーとする決定的判定**で行い、内容で `origin` ラベルを反転する重い判断はしない（§4）。既存ルールとの突合も「既知 / novel」までしか判定せず、「本物か・配布価値があるか」（予測力・配布価値の検証）には踏み込まない。後者は promote の責務である（§7・ADR-20260629）。
-- **出力形の2系統分離（ADR-20260701 D4）**: 候補の**知識型**に応じて出力形（`type`）を分岐する。両型は同一の `candidates.md` に同居し、provenance・`candidate-status`・upsert・冪等性・ライフサイクル（promote→Issue）を共有する。
+- **出力形の2系統分離（ADR-20260701 D4）**: 候補の**知識型**に応じて出力形（`behavior-diff` / `decision-record`）を分岐する。系統数は2で不変であり、`tags`（多値 set）はこの2系統への**メンバーシップを関数（単値）から集合関係へ一般化**する（1候補が両系統に属しうる＝混在ゾーン。DESIGN.md §6 決定事項10）。両系統は同一の `candidates.md` に同居し、provenance・`candidate-status`・upsert・冪等性・ライフサイクル（promote→Issue）を共有する。
   - **摩擦知 → `behavior-diff`（既定）**: signal が摩擦群（訂正 / ツール拒否 / 反復試行 / 期待違反 / 客観痕跡）由来。本文は規範差分（次回どう違う行動を取るか）＋理由。§3 の棄却（トリガー×振る舞い差分）・§4 のランキング・§7 の台帳突合 / N 再発カウントを**従来どおり**適用する（#417・ADR-20260629 と両立、挙動不変）。
   - **判断知 → `decision-record`**: signal が判断群（選好 / 却下理由 / 目標表明 / 設計判断）由来。本文は決定知4欄（`decision` / `rejected-alternatives` / `rationale` / `context`）。原理1「実行不能な内省は捨てる」の**例外口**として、§3 の behavior-diff 要求（トリガー×振る舞い差分）と §7 の N 再発カウントを**免除**する。一回性の設計境界（例「プランを追跡対象に変えることは無い」）を、振る舞い差分やカウントでなく**決定の記録**として残すため。
-  - **知識型の導出規則・値域・スキーマ正準は personal-store-spec.md「シグナル種別」「type 別スキーマ」を単一出典**とし、本手順で二重定義しない（distill は signal 群から知識型を導出し、`type` 欄として候補へ転記するのみ）。
+  - **知識型の導出規則・値域・スキーマ正準は personal-store-spec.md「シグナル種別」「tags 別スキーマ」を単一出典**とし、本手順で二重定義しない（distill は signal 群から知識型を導出し、`tags` 欄〔多値 set〕として候補へ転記する。第2タグの付与条件は §3.3）。
 - **責務境界（候補永続化まで）**: distill は候補を整形し、メタ欄（provenance・scope-hypothesis・career-hypothesis・candidate-status）を付けて候補ファイル（`candidates.md`）へ永続化するところまでで責務を終える。次のいずれも**行わない**:
   - 検証（候補が本物か／母集団に予測力を持つかの判定。promote の責務）
   - 仮説検証ゲート（Promote）・Issue 起票（`gh`）・配布物（`learnings.md`）への書き込み
@@ -51,7 +51,7 @@ distill の入力は**処理源**と**参照源**の2種に分離する（ADR-20
 
 ## 3. 棄却の合否境界（知識型で分岐）
 
-クラスタ化の前に、各観察が**候補化可能か**を判定し、不可能なものを候補化対象から外す。判定の前に観察の**知識型**を導出する（signal が摩擦群か判断群か。導出規則・値域は personal-store-spec.md「シグナル種別」を単一出典とする）。知識型ごとに**別の合否境界**を適用する（ADR-20260701 D4）。1本の合否境界で両型を測ると、判断知の一回性の設計境界が behavior-diff 要求で棄却され消滅するため（#432）。
+クラスタ化の前に、各観察が**候補化可能か**を判定し、不可能なものを候補化対象から外す。判定の前に観察の**知識型**を導出する（signal が摩擦群か判断群か。導出規則・値域は personal-store-spec.md「シグナル種別」を単一出典とする）。既定では観察は単一の知識型（単一タグ）を持つ。1観測が両知識型にまたがる混在ゾーンの第2タグ付与は §3.3 の evidence-gated 分岐でのみ行う（既定 both 禁止）。知識型ごとに**別の合否境界**を適用する（ADR-20260701 D4）。1本の合否境界で両型を測ると、判断知の一回性の設計境界が behavior-diff 要求で棄却され消滅するため（#432）。混在ゾーンの候補は含む各タグについて対応する合否境界（§3.1・§3.2）を満たすこと。
 
 ### 3.1 behavior-diff（摩擦知）の合否境界
 
@@ -86,6 +86,21 @@ distill の入力は**処理源**と**参照源**の2種に分離する（ADR-20
 > 棄却は store からの削除ではない。distill は store を変更しない（§1）。棄却された観察は `unprocessed` のまま store に残る。
 > **分類だけを理由に棄却しない**: 環境摩擦（§4）であることは棄却理由ではない。摩擦は低優先化・畳み込み（§7）で扱い、落とすのは合否境界を満たす場合に限る。
 > **免除口は判断知にのみ開く**: §3.2 は判断知（decision-record）にのみ開く例外口であり、§3.1 の純記述・実行不能の排除は摩擦知（behavior-diff）に対して従来どおり維持する（判断知のみ免除）。
+
+### 3.3 混在ゾーンの第2タグ付与（evidence-gated 分岐）
+
+既定では観察（クラスタ）は signal 群から導出した**単一タグ**を持つ。1観測が摩擦知（`behavior-diff`）と判断知（`decision-record`）の両方にまたがる**混在ゾーン**（DESIGN.md §6 決定事項10・glossary「混在ゾーン」）に該当する場合のみ、第2タグを付与して `tags: [behavior-diff, decision-record]` とする。**both を無条件に既定化しない**（陽性証拠のない両値併記はノイズを増やすため）。
+
+第2タグは、次の代表パターン（#440 決定事項10）のいずれかに接地した**陽性証拠**がある時のみ付与する:
+
+| パターン | 陽性証拠の判定 |
+|---|---|
+| **同時型** | 1観測（またはクラスタ）の signal 集合が摩擦群（訂正 / ツール拒否 / 反復試行 / 期待違反 / 客観痕跡）と判断群（選好 / 却下理由 / 目標表明 / 設計判断）の**両方に交わる**（同一 observation が「次回こう行動する」規範差分と、それを支える一回性の設計判断の両方を明示的に含む） |
+| **時間解決型** | 同一トリガーの**再発**（provenance が複数）が第2群の知識を与える（例: 摩擦の反復が背後にある設計判断を露呈させ、`decision-record` の証拠となる） |
+
+- 陽性証拠が読み取れない場合は第2タグを付与せず単一タグに留める（§3.1・§3.2 いずれかの単型として扱う）。既定は単一タグであり、迷ったら単型へ倒す。
+- 混在ゾーン候補は `tags` の各要素について §3.1（behavior-diff）・§3.2（decision-record）の合否境界を**それぞれ**満たすこと。片方のタグが自型の合否境界を満たさない場合、そのタグは付与しない。
+- 付与した各タグがどの代表パターンに接地したか（陽性証拠の所在）は候補本文で追跡可能にする（監査可能性）。
 
 ## 4. 観察の分類と重み付け（環境摩擦 / 判断誤り）
 
@@ -127,21 +142,22 @@ distill の入力は**処理源**と**参照源**の2種に分離する（ADR-20
 
 ## 6. 候補整形＋メタ付与（career 決定表）
 
-各クラスタを、候補ファイル（`candidates.md`）のスキーマ（personal-store-spec.md「候補ファイル（candidates.md）」「type 別スキーマ」）に整合する候補へ整形する。候補は**見出し＋メタ欄＋本文**を持つ。
+各クラスタを、候補ファイル（`candidates.md`）のスキーマ（personal-store-spec.md「候補ファイル（candidates.md）」「tags 別スキーマ」）に整合する候補へ整形する。候補は**見出し＋メタ欄＋本文**を持つ。
 
-- **見出し** `## <短い見出し>`: 候補の一文要約。`behavior-diff` は命じる振る舞い差分（規範）、`decision-record` は決定の要約。昇格時にそのまま `learnings.md` の見出しになる形（learning-store-spec.md「記法例」と整合）。
+- **見出し** `## <短い見出し>`: 候補の一文要約。tags に `behavior-diff` を含む候補は命じる振る舞い差分（規範）、`decision-record` を含む候補は決定の要約、混在ゾーンは両者を要約する。昇格時にそのまま `learnings.md` の見出しになる形（learning-store-spec.md「記法例」と整合）。
 - **メタ欄**（`- key: value` 形式の単一行で見出し直後に置く）:
-  - `type`: 知識型。`behavior-diff`（摩擦知・既定）/ `decision-record`（判断知）。§1 の出力形2系統に従い、§3 で導出した知識型をそのまま記す。値域・スキーマ正準は personal-store-spec.md「type 別スキーマ」。
+  - `tags`: 知識型（多値 set）。値域 `{behavior-diff, decision-record}` の非空部分集合。§1 の出力形2系統に従い、§3 で導出した知識型を記す。既定は単一タグ、混在ゾーンの第2タグは §3.3 の evidence-gated 分岐で陽性証拠がある時のみ付与する。旧 `type` 単値エントリを再書き込みする場合は後方互換規約で `tags` へ移行する。値域・スキーマ正準は personal-store-spec.md「tags 別スキーマ」。
   - `provenance`: このクラスタを構成した観察の `## <timestamp>` 群（複数畳んだ場合はカンマ区切り等で全て列挙）。promote の `status` 反転対象を特定する粒度。**再発回数 N（§7）はこの provenance の件数から導出する**（専用フィールドを設けない。decision-record は N 再発免除＝§7）。
   - `scope-hypothesis`: スコープ仮説タグ（`project-local` / `universal` の2値のいずれか）。§1 の Route 統合に従い仮説形成観点で判定。2値以外を出さない。
   - `career-hypothesis`: キャリア仮説タグ。`<career> / repo: <宛先 repo 仮説>` の1行形式。`<career>` は次節「career-hypothesis の判定（決定表）」が一意に出力した4分類（`強キャリア` / `改善還元` / `ADR 差分` / `learnings.md`）のいずれか。`<宛先 repo 仮説>` は当該キャリアの成果物を向ける repo の仮説（distill 時点では仮説であり、最終宛先は集約点が確定する）。scope-hypothesis と直交に判定する。
   - `candidate-status`: 新規生成時は `pending`。
-- **本文（`type` で分岐）**:
+- **本文（`tags` の各要素で分岐）**:
   - `behavior-diff`: 規範差分の具体（次回どう違う行動を取るか）＋理由（なぜその振る舞いを取るか）。複数行可。
-  - `decision-record`: 決定知を構造化した4欄を箇条書き（`- decision:` …）で持つ＝`decision`（何を決めたか）/ `rejected-alternatives`（却下した代替案）/ `rationale`（却下・採択の理由）/ `context`（どの設計局面か＝対象 Issue／ファイル／議論の文脈）。§3.2 で読み取れなかった欄は空可（捏造しない）。スキーマ正準は personal-store-spec.md「type 別スキーマ」。
+  - `decision-record`: 決定知を構造化した4欄を箇条書き（`- decision:` …）で持つ＝`decision`（何を決めたか）/ `rejected-alternatives`（却下した代替案）/ `rationale`（却下・採択の理由）/ `context`（どの設計局面か＝対象 Issue／ファイル／議論の文脈）。§3.2 で読み取れなかった欄は空可（捏造しない）。
+  - **混在ゾーン（`tags: [behavior-diff, decision-record]`）**: 上記両本文を併記する（behavior-diff 本文と decision-record 4欄の両方）。スキーマ正準は personal-store-spec.md「tags 別スキーマ」。
 - メタ欄の後に本文を置く。昇格時にメタ欄は落ち、見出しと本文だけが `learnings.md` の1欄スキーマ（メタ欄なし）として残る形であること（learnings.md への翻訳規約の decision-record 対応は #383・Phase 2）。
 
-> **decision-record の scope / career 仮説（ADR-20260701 / personal-store-spec.md「type 別スキーマ」と一致）**: `decision-record` の `scope-hypothesis` は**大半が `project-local`**（プロジェクト自身の設計判断は universal でなく閉じた空間＝当該リポの ADR／docs へ向かう）。`career-hypothesis` は決定表の評価で多くが**行3（`ADR 差分`）または行4（`learnings.md`）**を取りうる（後戻りコスト高・横断・却下選択肢ありの設計決定は行3、テキスト規範として置くしかない汎用判断は行4）。distill は確証せず仮説として付し、最終裁定は集約点（取り込み Issue）に委ねる。
+> **decision-record の scope / career 仮説（ADR-20260701 / personal-store-spec.md「tags 別スキーマ」と一致）**: `decision-record` の `scope-hypothesis` は**大半が `project-local`**（プロジェクト自身の設計判断は universal でなく閉じた空間＝当該リポの ADR／docs へ向かう）。`career-hypothesis` は決定表の評価で多くが**行3（`ADR 差分`）または行4（`learnings.md`）**を取りうる（後戻りコスト高・横断・却下選択肢ありの設計決定は行3、テキスト規範として置くしかない汎用判断は行4）。distill は確証せず仮説として付し、最終裁定は集約点（取り込み Issue）に委ねる。
 
 ### career-hypothesis の判定（決定表）
 
@@ -177,7 +193,7 @@ distill の入力は**処理源**と**参照源**の2種に分離する（ADR-20
 
 §6 で整形した各候補（および `candidates.md` の既存 pending 候補）を、スコープに対応する既存ルール台帳と突合し、既知ルールに一致するものを「ルール追加候補」から「既存ルール再発」知見へ変換する（#417）。
 
-> **適用範囲＝`behavior-diff` のみ（ADR-20260701 D4）**: 本節（台帳突合・既存ルール再発の N 回カウント・再発知見化）は `behavior-diff`（摩擦知）候補にのみ適用する。`decision-record`（判断知）候補は **N 再発カウントを免除**され（原理1 の例外口）、本節を通さず §6 整形のまま §8 へ送る。判断知が「既にリポに記録済みか＝復元可能か」の検証は promote の型適応検証の責務である（ADR-20260701 D5。distill は踏み込まない＝§1 責務境界）。**behavior-diff 側の台帳突合・N 再発・再発知見化は従来どおりで一切変更しない**（#417・ADR-20260629 と両立、Supersede 不要）。
+> **適用範囲＝`behavior-diff` を含む候補のみ（ADR-20260701 D4）**: 本節（台帳突合・既存ルール再発の N 回カウント・再発知見化）は `tags` に `behavior-diff`（摩擦知）を含む候補にのみ適用する（混在ゾーン候補は behavior-diff タグの側についてのみ本節を通す）。`tags` が `decision-record`（判断知）**のみ**の候補は **N 再発カウントを免除**され（原理1 の例外口）、本節を通さず §6 整形のまま §8 へ送る。判断知が「既にリポに記録済みか＝復元可能か」の検証は promote の型適応検証の責務である（ADR-20260701 D5。distill は踏み込まない＝§1 責務境界）。**behavior-diff 側の台帳突合・N 再発・再発知見化は従来どおりで一切変更しない**（#417・ADR-20260629 と両立、Supersede 不要）。
 
 ### 7.1 スコープ別台帳突合（突合台帳の解決）
 
@@ -226,14 +242,14 @@ distill の入力は**処理源**と**参照源**の2種に分離する（ADR-20
 ## 8. 出力・完了報告
 
 - **候補ファイルへの永続化（upsert）**: §6・§7 で整形・変換した候補を `candidates.md`（パス解決は personal-store-spec.md「project-id とパスの解決手順」を共通参照。store と同階層 `~/.claude/projects/<project-id>/growth/candidates.md`）へ書き込む。書き込みは **provenance キーで upsert**（同一 provenance キーの既存候補があれば置換、なければ追加）する。単純追記は再実行で重複し、全置換は既存候補（promote が `rejected` を記録したもの等）を失うため。既存の `candidate-status: rejected` / `promoted` 候補は尊重し、同一 provenance の候補を安易に `pending` で再生成しない（§7.4）。
-  - **upsert の実装手順**: distill の `allowed-tools` は `Write` のみで `Edit`（部分置換）を持たない。したがって upsert は「(1) 既存 `candidates.md` を Read で全文取得（未存在なら空集合）→ (2) provenance キーで突き合わせ、新規候補を追加・既存候補を置換し、`rejected`/`promoted` の既存エントリは保持して、メモリ上で候補集合全体を再構成 → (3) 再構成した全文を Write で書き出す」で行う。Read を伴わない単純追記 Write・naive な全置換 Write は行わない（前者は重複、後者は既存候補喪失を招く）。なお §2.2 で読み取った台帳（参照源）は**書き換えない**。
+  - **upsert の実装手順**: distill の `allowed-tools` は `Write` のみで `Edit`（部分置換）を持たない。したがって upsert は「(1) 既存 `candidates.md` を Read で全文取得（未存在なら空集合）→ (2) provenance キーで突き合わせ、新規候補を追加・既存候補を置換（同一 provenance の再仮説形成では `tags` を**集合和でマージ**し重複タグを生まない＝冪等。旧 `type` 単値は後方互換規約で `tags` へ写してからマージ。personal-store-spec.md「Distill の書き込み方式（upsert）」）し、`rejected`/`promoted` の既存エントリは保持して、メモリ上で候補集合全体を再構成 → (3) 再構成した全文を Write で書き出す」で行う。Read を伴わない単純追記 Write・naive な全置換 Write は行わない（前者は重複、後者は既存候補喪失を招く）。なお §2.2 で読み取った台帳（参照源）は**書き換えない**。
 - **出力順位（重み付けの実現）**: 候補リストは §4 の分類に従い**判断誤り（高優先）を先頭、環境摩擦（低優先）を末尾**に並べて提示する。これが AC の「重み付けが出力順位で確認できる」を満たす。
 - 候補リストはチャットにも提示する（永続化と提示の両方を行う）。
 - 完了報告に以下を含める:
   - 入力した `unprocessed` 件数
   - 棄却件数（§3 で候補化対象から外した数）
   - **分類内訳**（判断誤り / 環境摩擦の件数。§4 の結果を揮発的に提示。candidates.md には永続化しない）
-  - **型内訳**（`behavior-diff` / `decision-record` の件数。ADR-20260701 の出力形2系統を観測可能にする。`type` は candidates.md に永続化される）
+  - **タグ内訳**（`behavior-diff` / `decision-record` を含む候補の件数、および混在ゾーン〔両タグ〕の件数。ADR-20260701 の出力形2系統を観測可能にする。`tags` は candidates.md に永続化される。単一候補が両タグを持つため各タグ件数の和は候補数と一致しないことがある）
   - 採用候補数（§6・§7 の出力数。集約後・変換後の件数）。うち**再発知見へ変換した件数**（§7.2。behavior-diff のみ）
   - store パス・候補ファイルパス
 

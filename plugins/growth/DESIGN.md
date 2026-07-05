@@ -268,7 +268,7 @@ dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 
 
    - **`candidates.md` の表現＝`type`→`tags` 改称（AC3 確定）**: partition 硬度＝tag と一貫する `candidates.md` 表現として、`type`（単一値）→ **`tags`（多値 set、値域 {behavior-diff, decision-record} の部分集合）**へ改称する設計決定を記録する。
      - 要素数1が旧 `type` の確信的コミットに相当。閉じた語彙（値域は既定2値の部分集合）で拡張余地を残す。
-     - personal-store-spec.md「type 別スキーマ」の正準（`behavior-diff`/`decision-record` の両型同居・provenance / candidate-status / upsert / 冪等性 / ライフサイクル共有・旧 `type` 欠落は `behavior-diff` 後方互換）と矛盾しない。tags 多値 set 化に伴い**後続実装 Issue が満たすべき制約**を列挙する:
+     - personal-store-spec.md「tags 別スキーマ」の正準（`behavior-diff`/`decision-record` の両型同居・provenance / candidate-status / upsert / 冪等性 / ライフサイクル共有・旧 `type` 欠落は `behavior-diff` 後方互換）と矛盾しない。tags 多値 set 化に伴い**後続実装 Issue が満たすべき制約**を列挙する:
        1. **書式規約**: `tags` は集合を表す記法（例: `tags: [behavior-diff, decision-record]`）とし、要素数1も集合として書く。
        2. **後方互換**: 旧 `type` の解釈——`type` 欠落＝`[behavior-diff]`、単値 `type: X`＝`[X]` へ写す（既存の後方互換規約を集合へ拡張）。
        3. **upsert 冪等**: provenance キーが同一なら tags 集合を集合演算でマージし、重複タグを生まない。
