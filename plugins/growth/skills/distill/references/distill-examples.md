@@ -76,7 +76,7 @@
 
 ### 期待結果（候補2件 < 入力4件、`candidates.md` へ upsert）
 
-各候補にメタ欄（provenance＝畳んだ観察の `## <timestamp>` 群、scope-hypothesis＝蒸留観点の仮説タグ、career-hypothesis＝昇格先キャリア＋宛先 repo 仮説、candidate-status＝`pending`）が付く。エントリ1・2 は同一クラスタなので provenance に両 timestamp を列挙する。両候補とも判断誤り（高優先）のため出力順位は同列で先頭側。
+各候補にメタ欄（provenance＝畳んだ観察の `## <timestamp>` 群、scope-hypothesis＝仮説形成観点の仮説タグ、career-hypothesis＝昇格先キャリア＋宛先 repo 仮説、candidate-status＝`pending`）が付く。エントリ1・2 は同一クラスタなので provenance に両 timestamp を列挙する。両候補とも判断誤り（高優先）のため出力順位は同列で先頭側。
 
 ```
 ## ファイル復元には git restore を使う

@@ -80,7 +80,7 @@ Issue 本文に含める scope 注記欄の書式:
 ```
 ## スコープ仮説
 - 適用範囲（仮説・未確証）: universal（パブリック/グローバル空間 = learnings.md 相当へ向かう候補）
-- 最終裁定は refine/review に委ねる。本タグは Distill の蒸留観点に基づく仮説。
+- 最終裁定は refine/review に委ねる。本タグは Distill の仮説形成観点に基づく仮説。
 ```
 
 `project-local` の場合は「適用範囲」を `project-local（閉じた空間 = チーム/プロジェクト）` と記す。
@@ -95,7 +95,7 @@ Issue 本文に含める career 注記欄の書式:
 ## キャリア仮説
 - 昇格先キャリア（仮説・未確証）: learnings.md
 - 宛先 repo（仮説・未確証）: 配布元プラグイン repo（本リポジトリ）
-- 最終裁定（career・宛先 repo の確定）は集約点（取り込み Issue）に委ねる。本タグは Distill の蒸留観点に基づく仮説。
+- 最終裁定（career・宛先 repo の確定）は集約点（取り込み Issue）に委ねる。本タグは Distill の仮説形成観点に基づく仮説。
 ```
 
 `career-hypothesis` の `<career>` 部を「昇格先キャリア」へ、`repo:` 部を「宛先 repo」へ転記する。`career-hypothesis` が欠落している候補（旧スキーマで生成された古い候補等）は、career 注記欄を省略し scope 注記のみ運ぶ（promote は仮説を生成しない＝ルーティング不可知のため、欠落を補完しない）。
