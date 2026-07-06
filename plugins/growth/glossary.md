@@ -55,45 +55,6 @@ growth の中核フロー。`観測 → 仮説形成 → 仮説検証 → 配布
 
 ---
 
-## 2. データと成果物
-
-### 観察（observation）
-- **定義**: 観測が記録した「何が起きたか」の生記録。解釈・原因分析・対策を含まない事実のみ。
-- **使用箇所**: references/personal-store-spec.md §2 / skills/capture/SKILL.md
-- **避ける語**: 「生観察」「生記録」（観察に統一。生である性質は [[生記録性]] で表す）
-
-### 振る舞い差分（behavior delta）
-- **定義**: 「次回どう違う行動を取るか」を一文で表す実行可能な規範。観測置き場 → 候補 → learnings.md へ受け継がれる学びの核。
-- **使用箇所**: DESIGN.md 原理1 / references/learning-store-spec.md
-- **避ける語**: 「行動差分」「差分」（振る舞い差分に統一）
-
-### 規範（norm）
-- **定義**: 「次回どう違う行動を取るか」を命じる learnings.md の見出し一文。テキストとして配布される最も弱いキャリア。
-- **使用箇所**: references/learning-store-spec.md
-- **避ける語**: 「ルール」「規則」「行動指針」（規範に統一）
-
-### 候補（candidate）
-- **定義**: 仮説形成が生成した、検証待ちの振る舞い差分。`candidates.md` 内のエントリとして存在する。
-- **使用箇所**: references/personal-store-spec.md / skills/distill/references/distill-procedure.md
-- **避ける語**: 「仮説形成候補」「検証候補」「Issue候補」（用途修飾を付けず候補に統一）
-
-### 観測置き場（captures.md）
-- **定義**: 個人ローカルに置かれる、未検証の生の観測（観察）を蓄積するファイル。パス `~/.claude/projects/<project-id>/growth/captures.md`。観測の書き込み先・仮説形成の入力源。
-- **使用箇所**: references/personal-store-spec.md
-- **避ける語**: 「store」「ストア」「生観測ストア」（カタカナ表記・旧称を避け観測置き場に統一。文脈で曖昧なときは captures.md と明示）
-
-### 候補ファイル（candidates.md）
-- **定義**: 仮説形成の出力先・仮説検証の入力源。個人ローカルの第3の成果物（観測置き場でも learnings.md でもない）。
-- **使用箇所**: references/personal-store-spec.md
-- **避ける語**: 「候補置き場」（candidates.md と明示）
-
-### 学び置き場（learnings.md）
-- **定義**: 検証済みの汎用振る舞い規範を集約した配布物。パス `plugins/growth/learnings.md`。1欄スキーマで記述する。
-- **使用箇所**: references/learning-store-spec.md / DESIGN.md
-- **避ける語**: 「配布物」「最終置き場」（learnings.md と明示）
-
----
-
 ## 4. スコープと配布構造
 
 ### スコープ仮説（scope-hypothesis）
