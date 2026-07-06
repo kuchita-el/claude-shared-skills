@@ -94,24 +94,6 @@ growth の中核フロー。`観測 → 仮説形成 → 仮説検証 → 配布
 
 ---
 
-## 3. 状態フィールドと値
-
-### 処理状態（status）
-- **定義**: 観測置き場の各エントリの処理状態。値は `unprocessed`（未処理）/ `promoted`（昇格済み）の2値。仮説検証が起票成功後に `unprocessed → promoted` を反転する。
-- **使用箇所**: references/personal-store-spec.md / skills/promote/references/promote-procedure.md
-
-### 候補状態（candidate-status）
-- **定義**: 候補ファイル内の各候補の処理状態。値は `pending`（検証待ち・既定）/ `rejected`（仮説検証で棄却）/ `promoted`（昇格済み。仮説検証が Issue 起票成功後に付与する任意・推奨値）の3値。
-- **使用箇所**: references/personal-store-spec.md / skills/promote/references/promote-procedure.md
-- **注記**: `promoted` は当初 personal-store-spec.md のスキーマ表に未記載で promote-procedure.md のみが扱う drift があった（本 PR で正典スキーマ側に任意・推奨値として追補して整合）
-
-### 由来（provenance）
-- **定義**: 候補の出自を追跡するメタフィールド。値は観測置き場の `## <timestamp>` 見出し。仮説形成の upsert・仮説検証の状態反転で同一性判定に使う。
-- **使用箇所**: references/personal-store-spec.md / skills/promote/references/promote-procedure.md
-- **避ける語**: 「出自キー」「由来参照」（由来 / provenance に統一）
-
----
-
 ## 4. スコープと配布構造
 
 ### スコープ仮説（scope-hypothesis）
