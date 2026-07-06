@@ -55,43 +55,6 @@ growth の中核フロー。`観測 → 仮説形成 → 仮説検証 → 配布
 
 ---
 
-## 4. スコープと配布構造
-
-### スコープ仮説（scope-hypothesis）
-- **定義**: 仮説形成が候補に付与する共有範囲の仮説タグ。値は `universal`（全プロジェクト対象）/ `project-local`（チーム・プロジェクト限定）。確証せず仮説のまま終端する。
-- **使用箇所**: references/personal-store-spec.md / references/promotion-issue-spec.md
-- **避ける語**: 「スコープタグ」「適用範囲仮説」（スコープ仮説に統一）
-
-### 共有境界（shared boundary）
-- **定義**: 学びを「誰」に「どの範囲で」共有するかを決める分界線。母集団＝共有境界。スコープ仮説がこれを表現する。
-- **使用箇所**: DESIGN.md §3「母集団 = 共有境界」
-
-### 2空間モデル（2-space model）
-- **定義**: 学び置き場が持つ2つの独立した共有領域。パブリック／グローバル空間（本リポジトリの learnings.md）と閉じた空間（チーム管理リポジトリ）。
-- **使用箇所**: references/learning-store-spec.md
-- **避ける語**: [[2面モデル]]（origin/consumer の面）と別概念。空間＝共有範囲、面＝書込/読取の役割
-
-### 2面モデル（2-face model）
-- **定義**: learnings.md が持つ2つの面。origin 面（編集・権威ファイル側、本リポジトリ）と consumer 面（読み取り専用ミラー、各利用者のプラグインキャッシュ）。
-- **使用箇所**: references/learning-store-spec.md
-- **避ける語**: [[2空間モデル]]と混同しない
-
-### fan-out
-- **定義**: origin 面の learnings.md から consumer 面（各利用者）への一方向配布フロー。
-- **使用箇所**: references/learning-store-spec.md「2面モデル」/ DESIGN.md
-- **避ける語**: 適切な和訳が定まっていない（暫定で英語のまま）。日本語化の要否は #409 で判定
-
-### fan-in
-- **定義**: consumer 面での観測値（発火・効果）を origin へ還流させるフィードバックフロー。Phase 3 の使用台帳→集約ダイジェスト。
-- **使用箇所**: references/learning-store-spec.md / DESIGN.md 決定事項7
-- **避ける語**: 適切な和訳が定まっていない（暫定で英語のまま）。日本語化の要否は #409 で判定
-
-### 活性化モデル（activation model）
-- **定義**: learnings.md が consumer のコンテキストへロードされる仕組み。Phase 1-2 は全文常時注入、Phase 3 は見出し常時注入＋本文オンデマンド読み込み。
-- **使用箇所**: DESIGN.md 決定事項7 / references/learning-store-spec.md
-
----
-
 ## 7. 横断・広義の語
 
 ### 昇格（広義）（promotion）
