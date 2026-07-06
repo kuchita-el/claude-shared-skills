@@ -131,26 +131,6 @@ growth の中核フロー。`観測 → 仮説形成 → 仮説検証 → 配布
 
 ---
 
-## 5. キャリア（配布先媒体）
-
-### キャリア（career）
-- **定義**: 学びを載せる配布先媒体の分類。`強キャリア` / `改善還元` / `ADR 差分` / `learnings.md` の4種。スコープ仮説（空間軸）とは直交する軸（キャリア軸 ⊥ 空間軸）。
-- **使用箇所**: skills/distill/references/distill-procedure.md「career-hypothesis の判定（決定表）」/ references/promotion-issue-spec.md / DESIGN.md
-- **避ける語**: 「昇格先」「配布媒体」（キャリアに統一）。「dev-workflow Issue」は旧名（#411 で「改善還元」へ。任意プラグイン／コミュニティの改善で dev-workflow に限らない）
-- **注記**: career は仮説形成が候補へ [[キャリア仮説（career-hypothesis）]] として付与する（#405/#411、ADR-20260628-2）。promote は確定せず注記で運び（ルーティング不可知）、career と宛先 repo の最終裁定は集約点「取り込み Issue」が担う
-
-### 強キャリア（strong carrier）
-- **定義**: skill / hook / lint / test などコードレベルの決定論的ガードレール。「二度と起こせない構造」として learnings.md には載らず、テキスト規範からは除去される。
-- **使用箇所**: references/promotion-issue-spec.md / references/learning-store-spec.md
-- **避ける語**: 「構造化キャリア」「コード配布」（強キャリアに統一）
-
-### キャリア仮説（career-hypothesis）
-- **定義**: 仮説形成が候補に付与する、昇格先キャリアと宛先 repo の仮説タグ。`<career> / repo: <宛先 repo 仮説>` の1行形式。4分類（`強キャリア` / `改善還元` / `ADR 差分` / `learnings.md`）の判定表は distill-procedure.md「career-hypothesis の判定（決定表）」が単一出典。[[スコープ仮説（scope-hypothesis）]]と対称・直交（キャリア軸 ⊥ 空間軸）。distill 時点では仮説で確証せず、最終裁定は集約点「取り込み Issue」（ADR-20260628-2）。
-- **使用箇所**: skills/distill/references/distill-procedure.md / references/personal-store-spec.md
-- **避ける語**: 「Route判定規則」（#411 で削除された旧称。career の判定は distill の career-hypothesis へ移動）
-
----
-
 ## 6. 検証と整理
 
 ### 検証（verification）
