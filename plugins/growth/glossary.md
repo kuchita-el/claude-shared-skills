@@ -29,19 +29,19 @@ growth の中核フロー。`観測 → 仮説形成 → 仮説検証 → 配布
 - **避ける語**: 「reflect」（reflect/distill 分離（#347）以前の旧称。現在は capture に統一）
 
 ### 仮説形成（distill）
-- **定義**: 個人ローカルの観測置き場の未処理の観察をクラスタ化・重複排除し、実行可能な振る舞い差分の候補へ変換する第2段。候補には [[スコープ仮説（scope-hypothesis）]]（2観点 project-local / universal）と [[キャリア仮説（career-hypothesis）]]（昇格先媒体）の2つの仮説を付与する（旧「経路判定」も career の判定も独立段でなく仮説形成に内在する責務。#411）。
+- **定義**: 個人ローカルの観測置き場の未処理の観察をクラスタ化・重複排除し、実行可能な振る舞い差分の候補へ変換する第2段。候補には スコープ仮説（scope-hypothesis）（2観点 project-local / universal）と キャリア仮説（career-hypothesis）（昇格先媒体）の2つの仮説を付与する（旧「経路判定」も career の判定も独立段でなく仮説形成に内在する責務。#411）。
 - **使用箇所**: DESIGN.md §3・§4 / skills/distill/SKILL.md
 - **避ける語**: 「route」「経路判定」「ルーティング」（スコープ仮説の付与を独立段・用語として呼ばない。仮説形成の責務に内在）
 
 ### 〔退役〕経路判定 / route
 - **disposition**: 棄却（退役）。スコープ仮説の付与は仮説形成に内在し、独立段・用語として残す必要がないと判断（#408 レビュー）。DESIGN.md 決定事項（Route を distill へ統合）・learning-store-spec（仮説形成は project-local と universal の2観点に分かれる）が裏付け。
 - **整合待ち（#409）**: DESIGN.md・personal-store-spec・learning-store-spec・learning-promotion-spec・promote 一式の「Route」語は未整合。#409 で「スコープ仮説の付与（仮説形成の責務）」言語へ伝播する（棄却 disposition の初回適用ケース）。
-- **生き残る語**: 仮説形成が付与する2つの仮説 [[スコープ仮説（scope-hypothesis）]]（空間軸）と [[キャリア仮説（career-hypothesis）]]（キャリア軸）。#411 で career の判定も distill へ移り、旧「Route判定規則」も削除された（scope・career とも routing は仮説形成に内在）。
+- **生き残る語**: 仮説形成が付与する2つの仮説 スコープ仮説（scope-hypothesis）（空間軸）と キャリア仮説（career-hypothesis）（キャリア軸）。#411 で career の判定も distill へ移り、旧「Route判定規則」も削除された（scope・career とも routing は仮説形成に内在）。
 
 ### 仮説検証（promote）
 - **定義**: 仮説形成が生成した候補を検証し、検証通過分を `gh` で Issue へ自動起票して既存ワークフローへ渡す第3段（Phase 1 スキル）。候補の scope/career 仮説は確定せず注記のまま運ぶ（ルーティング不可知。#411）。最終裁定は集約点「取り込み Issue」が担う。
 - **使用箇所**: DESIGN.md §3・§4 決定事項8 / skills/promote/SKILL.md
-- **避ける語**: 段・スキルとしての「仮説検証（promote）」と、全移送過程を指す広義の「昇格（promotion）」を区別する。広義は [[昇格（広義）]] を参照
+- **避ける語**: 段・スキルとしての「仮説検証（promote）」と、全移送過程を指す広義の「昇格（promotion）」を区別する。広義は 昇格（広義） を参照
 
 ### 配布（distribute）
 - **定義**: 検証済みの学びを `learnings.md` 等の配布物へ物理的に追加する第4段（Phase 2）。
@@ -51,7 +51,7 @@ growth の中核フロー。`観測 → 仮説形成 → 仮説検証 → 配布
 ### 測定（measure）／撤回（retire）
 - **定義**: 配布後に学びの発火回数・効果を観測し（測定）、効かない・害ある学びを配布物から物理除去する（撤回）第5段（Phase 3）。
 - **使用箇所**: DESIGN.md §3
-- **避ける語**: 撤回の実体は [[整理]]（忘却・畳み込み）として記述される。除去を指すときは忘却/畳み込みを使う
+- **避ける語**: 撤回の実体は 整理（忘却・畳み込み）として記述される。除去を指すときは忘却/畳み込みを使う
 
 ---
 
@@ -88,7 +88,7 @@ growth の中核フロー。`観測 → 仮説形成 → 仮説検証 → 配布
 
 `signal` の値（摩擦知 `訂正` / `ツール拒否` / `反復試行` / `期待違反` / `客観痕跡`、判断知 `選好` / `却下理由` / `目標表明` / `設計判断`）は日本語を正準とする（personal-store-spec.md「シグナル種別」）。英語コードは持たない。
 
-> **`type`→`tags` の設計決定と実装（#440・DESIGN.md §6 決定事項10 → #446 実装）**: [[混在ゾーン（mixed zone）]]（1観測が両知識型にまたがる）の partition 硬度を非排他 tag（多値 set）で確定したことに伴い（#440 決定事項10）、排他 `type`（単値）を廃し `candidates.md` では **`tags`（多値 set、値域 {behavior-diff, decision-record} の部分集合）**へ改称した。廃止されたのは排他制約であって `behavior-diff` / `decision-record` のカテゴリ自体は tag 値として存続する（旧 `type` 単値は後方互換で要素数1の `[<値>]` へ写す）。上表は改称後のスキーマ（`tags` 行）を反映する。物理スキーマ改称の実装（本対応表・personal-store-spec.md・distill/promote 手順書の書き換え）は #446 が担った。設計の一次記録は DESIGN.md §6 決定事項10。
+> **`type`→`tags` の設計決定と実装（#440・DESIGN.md §6 決定事項10 → #446 実装）**: 混在ゾーン（mixed zone）（1観測が両知識型にまたがる）の partition 硬度を非排他 tag（多値 set）で確定したことに伴い（#440 決定事項10）、排他 `type`（単値）を廃し `candidates.md` では **`tags`（多値 set、値域 {behavior-diff, decision-record} の部分集合）**へ改称した。廃止されたのは排他制約であって `behavior-diff` / `decision-record` のカテゴリ自体は tag 値として存続する（旧 `type` 単値は後方互換で要素数1の `[<値>]` へ写す）。上表は改称後のスキーマ（`tags` 行）を反映する。物理スキーマ改称の実装（本対応表・personal-store-spec.md・distill/promote 手順書の書き換え）は #446 が担った。設計の一次記録は DESIGN.md §6 決定事項10。
 
 ### ファイル名・その他
 
