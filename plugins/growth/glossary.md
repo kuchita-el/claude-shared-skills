@@ -92,37 +92,6 @@ growth の中核フロー。`観測 → 仮説形成 → 仮説検証 → 配布
 
 ---
 
-## 6. 検証と整理
-
-### 検証（verification）
-- **定義**: 仮説検証が各候補について行う、予測（効く場面）と反証条件（いつ反例が立つか）の両立可能性の評価。起票前のゲート。
-- **使用箇所**: skills/promote/references/promote-procedure.md §3 / DESIGN.md 原理2
-- **避ける語**: 「昇格ゲート」を検証の意味で使わない。起票前ゲート＝検証、起票後ゲート＝[[二段ゲート]]の L2（refine/DoR/PR）
-
-### 反証可能性（falsifiability）
-- **定義**: 検証で求める候補の必須性質。「この条件で反例が作られうる」という明確な反証経路が存在すること。
-- **使用箇所**: skills/promote/references/promote-procedure.md §3
-
-### 二段ゲート（two-gate system）
-- **定義**: growth の承認構造。保存（自動）→ 仕組み化（承認 or マルチエージェントレビュー）の2段。観測・置き場への保存は自動、PR マージで仕組み化を承認。
-- **使用箇所**: DESIGN.md「二段ゲート」/ references/personal-store-spec.md
-- **避ける語**: 「2段階承認」（二段ゲートに統一）
-
-### 整理（cleanup）
-- **定義**: learnings.md のライフサイクル操作の総称。忘却（除去）と畳み込み（上位への昇華）からなり、足場を痩せさせる営み。
-- **使用箇所**: references/learning-store-spec.md「整理」/ DESIGN.md 原理5
-
-### 忘却（forgetting）
-- **定義**: 整理の一形。反証された・無効果だった学びをエントリごと物理除去する。
-- **使用箇所**: references/learning-store-spec.md「整理」
-
-### 畳み込み（folding）
-- **定義**: 整理の一形。具体ルールを上位原理や強キャリア（skill/lint/test）へ昇華的に移送し、テキスト規範エントリを除去する。
-- **使用箇所**: references/learning-store-spec.md「整理」/ DESIGN.md 原理4・5
-- **避ける語**: 「高度化」「構造化」（畳み込みに統一）
-
----
-
 ## 7. 横断・広義の語
 
 ### 昇格（広義）（promotion）
