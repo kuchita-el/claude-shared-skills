@@ -82,7 +82,7 @@ flowchart LR
 - **価値の2軸（ゲートを型に一致させる）**: 摩擦知の価値軸は再発（#417。単発は無価値、横断で「配布ルールが効いていない」が出る）、判断知の価値軸は復元不能性（捕まえないと消える）。1本のゲートで両型を測らないため promote を型適応させる（ADR-20260701）。
 - **capture のフィルタ**: ハーネス強制摩擦（File-not-read ガード・worktree ガード・スキーマ検証・API 一時障害等）は既定除外。判断知は予測誤差の形を持たないため教示信号検出器で別途拾う。判断は後回しにする。
 - **measure / retire**: 観測値は配布ファイルに持たせず、各コンシューマのローカル使用台帳→集約ダイジェスト（fan-in）に置く。撤回は origin 側 learnings.md からの物理除去。発火観測・使用台帳の事後解析再構成は決定事項7／[`references/learning-store-spec.md`](references/learning-store-spec.md)。
-- **用語（本節が現行正典）**: 正典フレーム（`観測 → 仮説形成 → 仮説検証`）を #448 で growth 全ドキュメントへ全面反映した。旧名対応: `観測記録`（旧 観察）・`制度化`（旧 取り込み）・起点 `学習の契機`。`摩擦知`/`判断知`/`候補`/`type`/`behavior-diff`/`decision-record` 等 #432 の語は維持。学習語彙での用語見直し（`知` の位置・procedural/declarative 等）・`キャリア`/`スコープ` の日本語化は follow-up の「ユビキタス言語移行」epic（#409）へ。実装識別子（`captures.md`・`candidates.md`・`candidate-status`・各スキル名）は据え置き。
+- **用語（本節が現行正典）**: 正典フレーム（`観測 → 仮説形成 → 仮説検証`）を #448 で growth 全ドキュメントへ全面反映した。旧名対応: `観測記録`（旧 観察）・`制度化`（旧 取り込み）・起点 `学習の契機`。`摩擦知`/`判断知`/`候補`/`type`/`behavior-diff`/`decision-record` 等 #432 の語は維持。学習語彙での用語見直し（`知` の位置・procedural/declarative 等）・`キャリア`/`スコープ` の日本語化は follow-up の「ユビキタス言語移行」epic（#409）へ。実装識別子（`captures.md`・`candidates.md`・`candidate-status`・各スキル名）は据え置き。**用語集（旧 glossary.md）は #409 で廃止した**——各語の定義は上記の各設計節へ集約し、本設計書が用語の唯一の正典になった（日本語正典名と英語別名の分離規約は ADR-20260705-2 §0 が保持）。glossary が担っていた drift-guard（避ける語台帳）は手動再建せず、正典（本書）＋意味レビュー＋再発 denylist の follow-up 機構へ委ねる（中間期は drift-guard 空白を許容。将来は設計書の DSL 化で用語 drift を parse error 化する方向）。
 
 ### Issue と git ファイルの役割分担
 

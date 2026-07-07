@@ -211,7 +211,7 @@ Distill が生成し `promote` が消費する**候補ファイル**の置き場
 
   `decision-record` の `scope-hypothesis` は大半が `project-local`（プロジェクト自身の設計判断は閉じた空間＝当該リポの ADR / docs へ向かう）。`career-hypothesis` は `ADR 差分` または `learnings.md` を取りうる。learnings.md（配布物）への翻訳規約（learning-promotion-spec.md・#383）の decision-record 対応は Phase 2 で定義する（本 Phase は candidates → Issue まで）。
 
-- **混在ゾーン（`tags: [behavior-diff, decision-record]`）**: 1観測が両知識型にまたがる領域（DESIGN.md §6 決定事項10・glossary「混在ゾーン」）。本文は両型の本文を併記する（規範差分＋理由の behavior-diff 本文と、4欄の decision-record 本文を両方持つ）。promote の型適応検証は tags の各要素へ個別に適用する（下記「promote の検証」および promote-procedure.md）。第2タグの付与は distill の evidence-gated 分岐で陽性証拠がある時のみ行う（distill-procedure.md 参照）。既定は単一タグであり、両値併記を無条件に既定化しない。
+- **混在ゾーン（`tags: [behavior-diff, decision-record]`）**: 1観測が両知識型にまたがる領域（DESIGN.md §6 決定事項10）。本文は両型の本文を併記する（規範差分＋理由の behavior-diff 本文と、4欄の decision-record 本文を両方持つ）。promote の型適応検証は tags の各要素へ個別に適用する（下記「promote の検証」および promote-procedure.md）。第2タグの付与は distill の evidence-gated 分岐で陽性証拠がある時のみ行う（distill-procedure.md 参照）。既定は単一タグであり、両値併記を無条件に既定化しない。
 
 ### 後方互換規約
 
