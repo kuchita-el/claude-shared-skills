@@ -14,7 +14,7 @@ growth プラグインの学習ループにおいて、`promote` スキル（#34
   - [`personal-store-spec.md`](personal-store-spec.md) — 昇格 Issue の**入力源**となる仮説ファイル（`candidates.md`）の `scope-hypothesis`（`universal` / `project-local`）・`career-hypothesis`（昇格先キャリア＋宛先 repo 仮説）スキーマを定義する。本仕様のテンプレート「空間」欄・「昇格先キャリア」注記はこれらのタグからマッピングされる。
   - [`distill-procedure.md`](../skills/distill/references/distill-procedure.md) — `career-hypothesis` の昇格先キャリアを判定する**決定表の移設先（単一出典）**。本仕様から移設した（ADR-20260628-2）。
   - [`DESIGN.md`](../DESIGN.md) — 設計母艦。学習ループ・2系統・共有境界軸・二段ゲートの原典。
-- **promote（#348）との接続**: promote はこの規約を満たす Issue 本文を `--body-file` でプログラム生成し、`gh issue create` で自動起票する。本仕様は promote が起票した Issue の終端規約であり、promote 自身の検証・status 反転の手順（[`../skills/promote/references/promote-procedure.md`](../skills/promote/references/promote-procedure.md)）には踏み込まない。
+- **promote（#348）との接続**: promote はこの規約を満たす Issue 本文を `--body-file` でプログラム生成し、`gh issue create` で自動起票する。本仕様は promote が起票した Issue の終端規約であり、promote 自身の検証・candidate-status 前進の手順（[`../skills/promote/references/promote-procedure.md`](../skills/promote/references/promote-procedure.md)）には踏み込まない。
 
 ## テンプレート
 
