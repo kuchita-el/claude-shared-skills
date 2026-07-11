@@ -16,29 +16,38 @@ distill スキルの仮説形成判定基準の詳細。SKILL.md の手順 overv
 - **責務境界（仮説永続化まで）**: distill は仮説を整形し、メタ欄（provenance・scope-hypothesis・career-hypothesis・candidate-status）を付けて仮説ファイル（`candidates.md`）へ永続化するところまでで責務を終える。次のいずれも**行わない**:
   - 検証（仮説が本物か／母集団に予測力を持つかの判定。promote の責務）
   - 仮説検証ゲート（Promote）・Issue 起票（`gh`）・配布物（`learnings.md`）への書き込み
-  - store の `status` 反転（`unprocessed → promoted`。反転の実行主体は promote。personal-store-spec.md「状態管理」）
-- distill が書き込むのは `candidates.md`（第3の個人ローカル成果物）のみ。`captures.md`（store）と `learnings.md`（配布物）のいずれにも書き込まない。台帳（§2 参照源）は**読み取り専用**で書き換えない。仮説は `candidates.md` へ永続化しつつチャットにも提示する。
+  - 候補の `candidate-status` の promote/reject 前進（`pending → promoted`/`rejected`。前進の実行主体は promote。personal-store-spec.md「仮説ファイル（candidates.md）」）
+- distill が書き込むのは `candidates.md`（第3の個人ローカル成果物）と `distill-state.md`（処理済みカーソル。§2.1 の前進）のみ。`captures.md`（store）と `learnings.md`（配布物）のいずれにも書き込まない。台帳（§2 参照源）は**読み取り専用**で書き換えない。仮説は `candidates.md` へ永続化しつつチャットにも提示する。
 - 原理5（足場を痩せさせる仮説形成）に従い、実行不能な内省はここで捨てる。肥大を下流へ送らない。
 
-> **冪等性（`status` 反転は promote が担う）**: `status` を `promoted` へ反転する主体は promote（#348 で確定。personal-store-spec.md「状態管理」）。distill は `status: unprocessed` のみを処理対象とし `promoted` は再走査しないため、promote が起票成功後に由来エントリを `promoted` へ反転すれば、次回 distill で同一観察は再走査されず同一仮説は再生成されない（`status` 軸の冪等性が効く）。加えて仮説ファイル側では、distill が provenance キーで upsert することで再実行時の仮説重複を防ぎ、promote が棄却した仮説は `candidate-status: rejected` で追跡され安易な再提示を避ける（§7.4 の不可侵制約・§8 の upsert で `rejected`/`promoted` を保持）。
+> **冪等性（有界化＝カーソル／重複排除＝provenance 導出）**: 「どの観測を処理するか」は captures 側のフラグではなく distill 側の処理源選択で定める（`captures.md` は無状態。personal-store-spec.md「distill 処理源選択と処理済みカーソル」）。ルーチン distill はカーソル（`distill-state.md` の `- distill-cursor:` 行）より新しい観測のみを走査し（有界化）、そのスライス内で既に `promoted`/`pending` 候補を provenance に持つ観測を除外する（重複排除）。処理後 distill がカーソルを最新 timestamp へ前進させるため、次回 distill は処理済みノイズを再走査せず同一仮説を再生成しない。加えて仮説ファイル側では、distill が provenance キーで upsert することで再実行時の仮説重複を防ぎ、promote が棄却した仮説は `candidate-status: rejected` で追跡され安易な再提示を避ける（§7.4 の不可侵制約・§8 の upsert で `rejected`/`promoted` を保持）。有界化（カーソル）と重複排除（provenance）は役割が異なり合成される。
 
 ## 2. 入力選択（処理源と参照源）
 
 distill の入力は**処理源**と**参照源**の2種に分離する（ADR-20260629 決定1）。distill は `f(captures.md［処理源］, 台帳の現在状態［参照源・読み取り専用］)` として動作する。
 
-### 2.1 処理源（work queue）＝ `captures.md` のみ
+### 2.1 処理源（work queue）＝ `captures.md`（カーソル＋provenance 導出）
 
-何を仮説化するか。本決定で変更しない。
+何を仮説化するか。`captures.md` は無状態の append-only 観測コーパスであり、処理源選択は役割の異なる2機構の合成である（有界化＝処理済みカーソル／重複排除＝provenance 導出。personal-store-spec.md「distill 処理源選択と処理済みカーソル」・ADR-20260711-2 決定2/3）。
 
 1. **store パスの解決**: personal-store-spec.md「project-id とパスの解決手順」に従い `<project-id>` を解決し、store パス `~/.claude/projects/<project-id>/growth/captures.md` を組み立てる。
 2. **store の読取**: Read ツールで store を読む。存在しない・読めない場合は §9 のエラー処理へ。
 3. **エントリの抽出**: personal-store-spec.md「パース規約」に従い行ベースで抽出する。
    - エントリ境界: `## <timestamp>` 見出しから次の `##` 見出し（またはファイル末尾）まで。
-   - メタ: `- signal: …` / `- session: …` / `- status: …` / `- origin: …` / `- expected: …` / `- actual: …`（`- key: value` 形式の単一行）。
+   - メタ: `- signal: …` / `- session: …` / `- origin: …` / `- expected: …` / `- actual: …`（`- key: value` 形式の単一行）。旧 `- status: …` 行が残っていても**読み飛ばす**（値に依存しない。破壊的変換もしない＝後方互換。AC6）。
    - observation 本文: メタ行と見出し直後の空行を除いた残りの行。
-4. **未処理のみを対象**: `status: unprocessed` のエントリのみを処理対象に選ぶ。`status: promoted` は**無視**する（再走査しない）。`unprocessed` が0件なら §9 のエラー処理へ。
+4. **カーソルの読取（有界化）**: personal-store-spec.md「カーソルの格納場所」に従い `~/.claude/projects/<project-id>/growth/distill-state.md` の `- distill-cursor: <ISO8601>` 行を読む。カーソル（ファイル未存在・行欠落）が欠損している場合は「**先頭**」を既定とし、一度だけ全走査する（§9・欠損時既定）。
+5. **候補スライスの決定（有界化）**: カーソルより**新しい**（`## <timestamp>` がカーソル値より大きい）観測のみを候補スライスにする。比較はカーソル値と `captures.md` の見出し timestamp を同一キー空間（ISO 8601・単調増加）で行う。カーソルより新しい観測が0件なら §9 のエラー処理へ。
+6. **provenance による除外（重複排除）**: 候補スライス内でも、既に `promoted` または `pending` の候補を provenance に持つ観測は処理源から**除外**する（重複候補生成の防止）。`rejected` 候補しか持たない観測・候補を持たない観測は処理源に**残す**（再走査に開く）。除外判定は参照源 `candidates.md`（§2.2）の各候補の provenance と観測の `## <timestamp>` を突き合わせて行う。
+7. **処理源の確定**: 残った観測を処理源（work queue）として §3 以降へ送る。
 
-> 処理源は正準パス（`captures.md`）のみ。in-repo の `plugins/growth/.local/` は走査しない（personal-store-spec.md「構成上の保証」）。冪等性（`status` 軸の再走査抑止＋provenance upsert）はこの処理源に紐づく。
+**有界化と重複排除の役割分離（ADR-20260711-2 決定2/3）**: カーソル（有界化）は未 distill 観測が齢で無音脱落することと、走査済みノイズの毎回再走査（偽候補 churn）を止める進捗マーカーである。provenance 導出（重複排除）は live 候補（`promoted`/`pending`）を持つ観測の再仮説形成を止める。両者は役割が異なり合成される。カーソルは batch 処理の進捗（process bookkeeping）であって、候補の検証結果（domain state ＝ `candidate-status`）とは別カテゴリである。
+
+**カーソルの前進（distill のみ）**: ルーチン distill は処理後（§8）、カーソルを今回走査した観測の**最新 timestamp** へ前進させる。前進させる主体は **distill のみ**であり、promote は触らない（旧 `status` のようなスキル間反転結合を生まない）。
+
+**巻き戻し（再導出）**: distiller を改善したときは、カーソルを意図的に**先頭**（または再走査したい範囲の起点）へ巻き戻して1回だけ再導出する。`candidates.md` が消失した場合も**先頭**へ巻き戻し `captures.md` 全体から再導出する。いずれの巻き戻し再導出でも、provenance 導出（手順6）が live 候補（`promoted`/`pending`）の重複を止め、`candidate-status: rejected` 不可侵（§7.4・ADR-20260629 決定3）が棄却済み同一仮説の pending 復活を止める。再導出後はカーソルを最新へ戻す（前進と同じ）。改善判定は自動化せず、改善を入れた開発者が明示操作として巻き戻す（personal-store-spec.md「前進・巻き戻し・欠損規則」）。
+
+> 処理源は正準パス（`captures.md`）のみ。in-repo の `plugins/growth/.local/` は走査しない（personal-store-spec.md「構成上の保証」）。冪等性（カーソルによる有界化＋provenance 導出による重複排除）はこの処理源に紐づく。
 
 ### 2.2 参照源（consultation）＝ 既存ルール台帳（読み取り専用・新規）
 
@@ -83,7 +92,7 @@ distill の入力は**処理源**と**参照源**の2種に分離する（ADR-20
 
 - observation から少なくとも `decision`（採用した結論・表明した選好・却下した対象）が読み取れること。残る3欄（`rejected-alternatives` / `rationale` / `context`）は §6 で抽出し、読み取れない欄は空可（捏造しない）。
 
-> 棄却は store からの削除ではない。distill は store を変更しない（§1）。棄却された観察は `unprocessed` のまま store に残る。
+> 棄却は store からの削除ではない。distill は store を変更しない（§1）。棄却された観察は store に残る（`captures.md` は無状態。カーソルより新しければ次回も候補スライスに入りうる）。
 > **分類だけを理由に棄却しない**: 環境摩擦（§4）であることは棄却理由ではない。摩擦は低優先化・畳み込み（§7）で扱い、落とすのは合否境界を満たす場合に限る。
 > **免除口は判断知にのみ開く**: §3.2 は判断知（decision-record）にのみ開く例外口であり、§3.1 の純記述・実行不能の排除は摩擦知（behavior-diff）に対して従来どおり維持する（判断知のみ免除）。
 
@@ -147,7 +156,7 @@ distill の入力は**処理源**と**参照源**の2種に分離する（ADR-20
 - **見出し** `## <短い見出し>`: 仮説の一文要約。tags に `behavior-diff` を含む仮説は命じる振る舞い差分（規範）、`decision-record` を含む仮説は決定の要約、混在ゾーンは両者を要約する。昇格時にそのまま `learnings.md` の見出しになる形（learning-store-spec.md「記法例」と整合）。
 - **メタ欄**（`- key: value` 形式の単一行で見出し直後に置く）:
   - `tags`: 知識型（多値 set）。値域 `{behavior-diff, decision-record}` の非空部分集合。§1 の出力形2系統に従い、§3 で導出した知識型を記す。既定は単一タグ、混在ゾーンの第2タグは §3.3 の evidence-gated 分岐で陽性証拠がある時のみ付与する。旧 `type` 単値エントリを再書き込みする場合は後方互換規約で `tags` へ移行する。値域・スキーマ正準は personal-store-spec.md「tags 別スキーマ」。
-  - `provenance`: このクラスタを構成した観察の `## <timestamp>` 群（複数畳んだ場合はカンマ区切り等で全て列挙）。promote の `status` 反転対象を特定する粒度。**再発回数 N（§7）はこの provenance の件数から導出する**（専用フィールドを設けない。decision-record は N 再発免除＝§7）。
+  - `provenance`: このクラスタを構成した観察の `## <timestamp>` 群（複数畳んだ場合はカンマ区切り等で全て列挙）。distill が処理源選択の重複排除（§2.1 手順6）で処理源から除外する観測（`promoted`/`pending` 候補を持つもの）を特定する粒度。**再発回数 N（§7）はこの provenance の件数から導出する**（専用フィールドを設けない。decision-record は N 再発免除＝§7）。
   - `scope-hypothesis`: スコープタグ（`project-local` / `universal` の2値のいずれか）。§1 の Route 統合に従い仮説形成観点で判定。2値以外を出さない。
   - `career-hypothesis`: キャリアタグ。`<career> / repo: <宛先 repo 仮説>` の1行形式。`<career>` は次節「career-hypothesis の判定（決定表）」が一意に出力した4分類（`強キャリア` / `改善還元` / `ADR 差分` / `learnings.md`）のいずれか。`<宛先 repo 仮説>` は当該キャリアの成果物を向ける repo の仮説（distill 時点では仮説であり、最終宛先は集約点が確定する）。scope-hypothesis と直交に判定する。
   - `candidate-status`: 新規生成時は `pending`。
@@ -219,7 +228,7 @@ distill の入力は**処理源**と**参照源**の2種に分離する（ADR-20
 - **本文**: どの台帳ルール（**出典パス＋規範文**）が、何回（N）再発したかを記す。突合した台帳ルールへの参照（出典パス＋見出し）を本文に明記する（ADR-20260629 決定2＝監査可能性／再現性の回復）。記すのは**事実集計（N 回再発）まで**であり、「機能不全だから撤去せよ」等の裁定はしない（裁定は下流 promote → Issue → 人間。§1・ADR 決定4）。
 - **provenance**: 畳んだ観察の `## <timestamp>` 群。**N（再発回数）はこの provenance の件数から導出**する（専用フィールドを設けない）。
 
-> **Phase 1 の制限（N はバッチ内集計であり累積でない）**: N は当該 distill 実行で `unprocessed` だった再発観察を §5 で畳んだ件数である。**複数の distill バッチを跨いだ累積ではない**。promote が起票成功後に由来エントリを `promoted` へ反転すると（personal-store-spec.md「状態管理」）、次バッチの同一ルール再発は別 provenance の別観察群となり、§7.4 の不可侵制約により旧仮説とは別の再発知見仮説として並ぶ（「N=2」「N=2」…が分散し「N=4」へ集約されない）。バッチを跨いで累積する N が必要なら、provenance キーではなく**ルール identity（一致した台帳ルール）をキーにした別機構**を要し、ADR-20260629 が実装 Issue 送りにした「再発回数の専用フィールド化／自己参照ループの収束条件」と接続する。Phase 1 はバッチ内集計を意図的に許容する（累積機構は将来 Issue）。
+> **Phase 1 の制限（N はバッチ内集計であり累積でない）**: N は当該 distill 実行で処理源だった再発観察を §5 で畳んだ件数である。**複数の distill バッチを跨いだ累積ではない**。promote が起票成功後に候補を `candidate-status: promoted` へ前進させると（personal-store-spec.md「仮説ファイル（candidates.md）」）、その候補を provenance に持つ観測は次バッチ以降 §2.1 手順6 の重複排除で処理源から除外され、同一ルールの新たな再発は別 provenance の別観察群となり、§7.4 の不可侵制約により旧仮説とは別の再発知見仮説として並ぶ（「N=2」「N=2」…が分散し「N=4」へ集約されない）。バッチを跨いで累積する N が必要なら、provenance キーではなく**ルール identity（一致した台帳ルール）をキーにした別機構**を要し、ADR-20260629 が実装 Issue 送りにした「再発回数の専用フィールド化／自己参照ループの収束条件」と接続する。Phase 1 はバッチ内集計を意図的に許容する（累積機構は将来 Issue）。
 - **scope-hypothesis**: 一致した台帳の層に整合させる（global 台帳一致なら universal 寄り、project 台帳一致なら project-local 寄り）。
 - **career-hypothesis**: §6 の決定表で**再評価**する。テキスト規範が機能していない事実は「強制可能な構造へ畳み込む」動機（原理4）になるため、多くは行1（`強キャリア`＝hook/lint 等のガードレール化）または行2（`改善還元`）へ寄るが、distill は確証せず仮説として付す。
 - **candidate-status**: `pending`。
@@ -235,7 +244,8 @@ distill の入力は**処理源**と**参照源**の2種に分離する（ADR-20
 
 - `candidates.md` の既存 `candidate-status: pending` 仮説は、distill 実行時の台帳で**再評価**し最新化する。既存ルールと一致すれば「ルール追加候補」から「既存ルール再発」知見へ §7.2 に従い変換し、同一 provenance キーで **upsert 置換**する（§8 の upsert 手順）。
 - `promoted` / `rejected` の仮説は**不可侵**とする。distill は再評価でこれらを覆さない（特に promote が `rejected` にした仮説を再生成・pending 復活させない。promote の検証判断を侵さない＝§1 責務境界）。
-- 再評価は同一 provenance での内容置換＝既存 upsert の範囲内で行い、新たな削除操作や `status` 反転を導入しない。
+- **巻き戻し再導出時も同じ**（§2.1 巻き戻し）: distiller 改善時・`candidates.md` 消失時にカーソルを先頭へ巻き戻して再走査しても、`rejected` 候補しか持たない観測は処理源に残る一方、`candidate-status: rejected` 不可侵により同一仮説を pending で復活させない。live 候補（`promoted`/`pending`）を持つ観測は §2.1 手順6 の重複排除で処理源から除外される。
+- 再評価は同一 provenance での内容置換＝既存 upsert の範囲内で行い、新たな削除操作や候補の `candidate-status` 前進を導入しない。
 
 > **自己参照ループの収束**: 参照源に `candidates.md` 自身を含むため、distill が `candidates.md` を読んで書き戻す自己参照になる（ADR-20260629「自己参照の留保」）。収束は次で担保する: 再評価は**同一 provenance の内容置換のみ**で新規 provenance を生成しない（provenance 集合は処理源 `captures.md` 由来で固定）。`promoted` / `rejected` は不可侵。したがって新規仮説の無限生成は起きず、有限回で不動点に収束する。
 
@@ -243,14 +253,16 @@ distill の入力は**処理源**と**参照源**の2種に分離する（ADR-20
 
 - **仮説ファイルへの永続化（upsert）**: §6・§7 で整形・変換した仮説を `candidates.md`（パス解決は personal-store-spec.md「project-id とパスの解決手順」を共通参照。store と同階層 `~/.claude/projects/<project-id>/growth/candidates.md`）へ書き込む。書き込みは **provenance キーで upsert**（同一 provenance キーの既存仮説があれば置換、なければ追加）する。単純追記は再実行で重複し、全置換は既存仮説（promote が `rejected` を記録したもの等）を失うため。既存の `candidate-status: rejected` / `promoted` 仮説は尊重し、同一 provenance の仮説を安易に `pending` で再生成しない（§7.4）。
   - **upsert の実装手順**: distill の `allowed-tools` は `Write` のみで `Edit`（部分置換）を持たない。したがって upsert は「(1) 既存 `candidates.md` を Read で全文取得（未存在なら空集合）→ (2) provenance キーで突き合わせ、新規仮説を追加・既存仮説を置換（同一 provenance の再仮説形成では `tags` を**集合和でマージ**し重複タグを生まない＝冪等。旧 `type` 単値は後方互換規約で `tags` へ写してからマージ。personal-store-spec.md「Distill の書き込み方式（upsert）」）し、`rejected`/`promoted` の既存エントリは保持して、メモリ上で仮説集合全体を再構成 → (3) 再構成した全文を Write で書き出す」で行う。Read を伴わない単純追記 Write・naive な全置換 Write は行わない（前者は重複、後者は既存仮説喪失を招く）。なお §2.2 で読み取った台帳（参照源）は**書き換えない**。
+- **カーソルの前進（§2.1）**: 仮説を書き出した後、`distill-state.md` の `- distill-cursor:` を今回走査した観測（候補スライス）の**最新 timestamp** へ前進させ Write で書き戻す。前進主体は distill のみ。ファイル未存在時は新規作成する。巻き戻し再導出（§2.1）の場合も再導出後にこの前進を行い最新へ戻す。カーソル前進は provenance 除外（重複排除）とは独立の有界化操作であり、`captures.md`（無状態）は書き換えない。
 - **出力順位（重み付けの実現）**: 仮説リストは §4 の分類に従い**判断誤り（高優先）を先頭、環境摩擦（低優先）を末尾**に並べて提示する。これが AC の「重み付けが出力順位で確認できる」を満たす。
 - 仮説リストはチャットにも提示する（永続化と提示の両方を行う）。
 - 完了報告に以下を含める:
-  - 入力した `unprocessed` 件数
+  - 処理源件数（カーソルより新しく provenance 除外後の観測数）
   - 棄却件数（§3 で仮説化対象から外した数）
   - **分類内訳**（判断誤り / 環境摩擦の件数。§4 の結果を揮発的に提示。candidates.md には永続化しない）
   - **タグ内訳**（`behavior-diff` / `decision-record` を含む仮説の件数、および混在ゾーン〔両タグ〕の件数。ADR-20260701 の出力形2系統を観測可能にする。`tags` は candidates.md に永続化される。単一仮説が両タグを持つため各タグ件数の和は仮説数と一致しないことがある）
   - 採用仮説数（§6・§7 の出力数。集約後・変換後の件数）。うち**再発知見へ変換した件数**（§7.2。behavior-diff のみ）
+  - **前進後カーソル**（`distill-cursor` の新値。有界化の進捗を観測可能にする）
   - store パス・仮説ファイルパス
 
 ## 9. エラー・境界処理
@@ -259,16 +271,18 @@ distill の入力は**処理源**と**参照源**の2種に分離する（ADR-20
 |---|---|
 | `git rev-parse` が失敗（git リポジトリ外・git 未インストール等で project-id を解決できない） | 「project-id を解決できませんでした（確認: `git rev-parse --path-format=absolute --git-common-dir`）」と報告して終了。仮説0 |
 | store ファイルが存在しない／読めない | 「store が見つかりません（確認パス: `~/.claude/projects/<project-id>/growth/captures.md`）」と報告して終了。仮説0 |
-| `status: unprocessed` が0件（全 `promoted` または空） | 「未処理の観察はありません」と報告して終了。仮説0 |
+| カーソル（`distill-state.md` またはその `- distill-cursor:` 行）が欠損 | 「**先頭**」を既定とし、一度だけ `captures.md` 全体を候補スライスとして全走査する（データ損失なく安全に劣化）。エラーにせず仮説化を継続し、処理後カーソルを最新へ前進させ `distill-state.md` を新規作成する（§2.1・欠損時既定） |
+| カーソルより新しい観測が0件（カーソルが最新に追いついている／空） | 「カーソルより新しい観測はありません」と報告して終了。仮説0。カーソルは前進させない |
+| `candidates.md` が消失（重複排除の参照源が失われた） | カーソルを**先頭**へ巻き戻し `captures.md` 全体から再導出する（§2.1・巻き戻し）。`rejected`/`promoted` 追跡も失われるため、再導出後は §7.4 の不可侵に頼れず全観察が pending 再生成されうる点に留意（意図した再生成）。再導出後カーソルを最新へ戻す |
 | 参照源（台帳）の一部が読めない（未存在・権限等） | 当該台帳をスキップして突合を継続する（読めた台帳のみで照合）。台帳欠如はエラーにせず、突合できなかった旨を完了報告に注記する。仮説化は継続 |
 | 全観察が §3 で棄却された | 「仮説化できる規範はありませんでした（棄却 N 件）」と報告して終了。仮説0 |
 
-store・unprocessed・棄却の各0件はエラーではなく正常終了として報告する。仮説が0件のためいずれの場合も `candidates.md` への書き込みは行わず、`captures.md`（store）・`learnings.md` も変更しない。
+store・処理源（カーソルより新しい観測）・棄却の各0件はエラーではなく正常終了として報告する。仮説が0件のためいずれの場合も `candidates.md` への書き込みは行わず、`captures.md`（store）・`learnings.md` も変更しない（カーソルも前進させない）。
 
 ## 関連
 
 - [`distill-examples.md`](distill-examples.md) — クラスタ化・棄却・再発知見化・分類順位のサンプル入力＋期待結果（手順トレース用）
-- `${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` — 入力源（処理源 store）の形式・パース規約・パス解決手順・`status` 状態管理（`origin`/`expected`/`actual` 欄を含む）、および出力先 仮説ファイル（`candidates.md`）の形式・メタ欄スキーマ・provenance 規約・upsert 方式
+- `${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` — 入力源（処理源 store）の形式・パース規約・パス解決手順・distill 処理源選択（処理済みカーソル＋provenance 導出。`distill-state.md`・前進/巻き戻し/欠損規則。`origin`/`expected`/`actual` 欄を含む）、および出力先 仮説ファイル（`candidates.md`）の形式・メタ欄スキーマ・provenance 規約・upsert 方式
 - `${CLAUDE_PLUGIN_ROOT}/references/learning-store-spec.md` — 仮説が将来昇格する先の1欄スキーマ・記法ルール・記法例（昇格時に残る見出し・本文の規範形）・2空間モデル（scope-hypothesis の値域の裏付け）
 - `${CLAUDE_PLUGIN_ROOT}/DESIGN.md` — 設計母艦（§3 Distill・原理1・4・5・二段ゲート）
 - `docs/adr/ADR-20260629-distill-input-contract-and-ledger-matching.md` — 入力契約の2分（処理源/参照源）・時間不変性の放棄・pending 再評価・責務境界の設計判断
