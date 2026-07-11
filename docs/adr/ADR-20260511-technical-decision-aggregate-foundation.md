@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Superseded
+
+Superseded by: ADR-20260711-3-adr-two-axis-status-validity-model
 
 ## Context
 
@@ -47,6 +49,8 @@ Accepted
 
 ## 関連ADR
 
-該当なし（本リポジトリにおける最初の ADR）
+- Superseded by: ADR-20260711-3-adr-two-axis-status-validity-model（状態モデル〔4状態・英文表記〕と廃止扱いを2軸分離モデルへ再設計。採番方式・配置は新 ADR が不変で継承）
+
+本リポジトリにおける最初の ADR。
 
 関連Issue: #130（技術的意思決定集約モデル化、CLOSED）、#169（ADR運用基盤整備、本 ADR の起票元）
