@@ -146,7 +146,7 @@ stateDiagram-v2
 ```
 
   - **`captures.md` は無状態、distill の処理済みカーソルが有界化を担う**: `captures.md` は append-only の観測コーパスであり、旧 `status`（再走査抑止フラグ）のようなエントリ単位の状態フィールドを持たない（ADR-20260711）。distill の再走査範囲は、専用ファイル `distill-state.md` の `distill-cursor`（ISO8601 timestamp）と provenance 導出（`promoted`/`pending` 候補を持つ観測の処理源からの除外）の合成で有界化する。カーソルは distill が処理後に今回走査した観測の最新 timestamp へ前進させ、前進主体は distill のみ（promote はカーソルに触れない）（ADR-20260711-2、[`references/personal-store-spec.md`](references/personal-store-spec.md)）。
-  - **`candidate-status`**: `pending`（検証待ち・既定）/ `rejected`（promote が棄却）/ `promoted`（promote が起票成功後に付与する任意・推奨値）の3値。状態軸はこの1本に集約する。
+  - **`candidate-status`**: `pending`（検証待ち・既定）/ `rejected`（promote が棄却）/ `promoted`（promote が起票成功後に必須で付与。付与しないと pending のまま二重起票を招く）の3値。状態軸はこの1本に集約する。
   - **`provenance`（由来）**: 仮説の出自を追跡するメタ。値は `captures.md` の `## <timestamp>` 見出し。distill の upsert・処理源選択の同一性判定、および promote の `candidate-status` 前進で同一性判定に使う（避ける語: 出自キー・由来参照）。
 
 ### 客観痕跡の取得
