@@ -1,13 +1,13 @@
 # 個人ローカル store（生観測）仕様
 
-growth プラグインの学習ループ（概念上の5段: `[Capture] → [Distill] → [Route] → [Promote] → [Distribute]`。Phase 1 のスキルマッピングでは Route は Distill に統合される＝DESIGN.md §4・決定事項8）の起点となる、生観測（未検証の観察）を蓄積する個人ローカル store の置き場・形式・状態管理を定義する。あわせて、Distill が生成し `promote` が消費する**候補ファイル（`candidates.md`）**の置き場・形式・メタ欄スキーマも本仕様で単一出典化する（#348）。
+growth プラグインの学習ループ（概念上の5段: `[Capture] → [Distill] → [Route] → [Promote] → [Distribute]`。Phase 1 のスキルマッピングでは Route は Distill に統合される＝DESIGN.md §4・決定事項8）の起点となる、生観測（未検証の観察）を蓄積する個人ローカル store の置き場・形式・状態管理を定義する。あわせて、Distill が生成し `promote` が消費する**仮説ファイル（`candidates.md`）**の置き場・形式・メタ欄スキーマも本仕様で単一出典化する（#348）。
 
 ## 位置づけ
 
 - `DESIGN.md` 決定事項3「個人 store の置き場」を具体化する文書。生の観測は個人ローカル（共有されない）に置き、検証を経たものだけ committed の学び置き場へ昇格させる。
 - 本 store は学習ループの **Capture の書き込み先**であり、**Distill の入力源**である。Capture の検知ロジック本体・committed な学び置き場（`learnings.md`）への物理昇格（Distribute、Phase 2）・過去セッションログの横断解析は本仕様の対象外（別 Issue / 別 Phase）。一方、**store の `status` 状態機械（`unprocessed → promoted` の反転）は本仕様が定義し、反転を実行する主体は `promote` スキルである**（#348 で確定。「状態管理」節）。
 - 本 store は committed な学び置き場（単一の人間可読ファイル）とは別物である。store は未検証の生記録を貯める一時領域であり、検証を経た学びは store の外（昇格先）へ移送される。
-- 本仕様はさらに、Distill が生成し `promote` が消費する**候補ファイル（`candidates.md`）**の置き場・形式・メタ欄スキーマを単一出典として定義する（#348。「候補ファイル（candidates.md）」節）。候補ファイルは store（生観測）でも `learnings.md`（配布物）でもない第3の個人ローカル成果物である。
+- 本仕様はさらに、Distill が生成し `promote` が消費する**仮説ファイル（`candidates.md`）**の置き場・形式・メタ欄スキーマを単一出典として定義する（#348。「仮説ファイル（candidates.md）」節）。仮説ファイルは store（生観測）でも `learnings.md`（配布物）でもない第3の個人ローカル成果物である。
 
 ### memory との違い
 
@@ -149,27 +149,27 @@ user-utterance 由来（ユーザーの訂正）の例:
 | 状態 | 意味 |
 |---|---|
 | `unprocessed` | 未処理（既定値）。Capture が書き込んだ直後の状態。Distill の処理対象 |
-| `promoted` | 昇格済み。Distill による候補化を経て、`promote` スキルが Issue 起票に成功した後に `status` を反転したもの。Distill は再走査しない |
+| `promoted` | 昇格済み。Distill による仮説化を経て、`promote` スキルが Issue 起票に成功した後に `status` を反転したもの。Distill は再走査しない |
 
 ```
-unprocessed ──(Distill が候補化 → promote が起票成功後に反転)──▶ promoted
+unprocessed ──(Distill が仮説化 → promote が起票成功後に反転)──▶ promoted
 ```
 
 - Capture が新規エントリを書き込むときの `status` は必ず `unprocessed`。
-- Distill は store を走査し、`status: unprocessed` のエントリのみを処理対象として選択する。`promoted` は無視する。Distill 自身は `status` を反転しない（候補化・候補ファイルへの永続化までに責務を限定する。distill スキル参照）。
+- Distill は store を走査し、`status: unprocessed` のエントリのみを処理対象として選択する。`promoted` は無視する。Distill 自身は `status` を反転しない（仮説化・仮説ファイルへの永続化までに責務を限定する。distill スキル参照）。
 - エントリは store 内に残したまま `status` をインラインで反転させる（アーカイブへ移送しない）。観測履歴を可逆・監査可能な形で保持するため。
-- **`status` の `unprocessed → promoted` への反転を実行する主体は `promote` スキルである**（#348 で確定）。promote は候補を検証し、`gh issue create` による Issue 起票に**成功した後にのみ**、候補の provenance（「候補ファイル（candidates.md）」節）が指す store エントリの `status` をインライン反転する。起票失敗・候補棄却・ゲート拒否時は反転しない。本仕様は状態軸・遷移規約・反転主体を定義し、反転の具体手順は promote スキルが持つ。
+- **`status` の `unprocessed → promoted` への反転を実行する主体は `promote` スキルである**（#348 で確定）。promote は仮説を検証し、`gh issue create` による Issue 起票に**成功した後にのみ**、仮説の provenance（「仮説ファイル（candidates.md）」節）が指す store エントリの `status` をインライン反転する。起票失敗・仮説棄却・ゲート拒否時は反転しない。本仕様は状態軸・遷移規約・反転主体を定義し、反転の具体手順は promote スキルが持つ。
 
 ### 二段ゲートとの整合
 
 この状態遷移は `DESIGN.md` の二段ゲート、および自律度モデル L0–L3 / 承認ゲート軸（ADR-20260601 / ADR-20260602-2）と整合する。
 
 - **保存（store への書き込み）= L3（AI 自律・承認段が縮退）**: 観測は無ゲートで自動的に `unprocessed` として貯まる。
-- **仕組み化（昇格＝ committed への移送）= L2（提案→承認の二段）**: `promoted` への遷移は、promote の検証段（原理2＝未検証候補を配布経路に乗せないフィルタ）を通過した候補が `gh` で自動起票されたことを表す。**起票前に人間承認ゲートは置かない**（自動化を阻害し下流ゲートと二重になるため）。L2 の規範的な仕組み化ゲート（承認またはマルチエージェントレビュー）は、起票後の既存ワークフロー（refine-issue / DoR / PR レビュー）が担う。`status: promoted` は、この L3 で貯めた記述的ナレッジが promote の検証を経て共有経路（Issue）へ投入された状態を表す。
+- **仕組み化（昇格＝ committed への移送）= L2（提案→承認の二段）**: `promoted` への遷移は、promote の検証段（原理2＝未検証仮説を配布経路に乗せないフィルタ）を通過した仮説が `gh` で自動起票されたことを表す。**起票前に人間承認ゲートは置かない**（自動化を阻害し下流ゲートと二重になるため）。L2 の規範的な仕組み化ゲート（承認またはマルチエージェントレビュー）は、起票後の既存ワークフロー（refine-issue / DoR / PR レビュー）が担う。`status: promoted` は、この L3 で貯めた記述的ナレッジが promote の検証を経て共有経路（Issue）へ投入された状態を表す。
 
-## 候補ファイル（candidates.md）
+## 仮説ファイル（candidates.md）
 
-Distill が生成し `promote` が消費する**候補ファイル**の置き場・形式・スキーマを単一出典として定義する（#348）。候補ファイルは生観測 store（`captures.md`）でも配布物（`learnings.md`）でもない**第3の個人ローカル成果物**であり、Distill の仮説形成結果（候補）を `promote` の入力として永続化する一時領域である。
+Distill が生成し `promote` が消費する**仮説ファイル**の置き場・形式・スキーマを単一出典として定義する（#348）。仮説ファイルは生観測 store（`captures.md`）でも配布物（`learnings.md`）でもない**第3の個人ローカル成果物**であり、Distill の仮説形成結果を `promote` の入力として永続化する一時領域である。
 
 ### 置き場
 
@@ -179,25 +179,25 @@ Distill が生成し `promote` が消費する**候補ファイル**の置き場
 
 - `captures.md` と**同一階層**（`~/.claude/projects/<project-id>/growth/`）に置く。per-project・user-local。`<project-id>` の解決は「project-id とパスの解決手順」を共通参照する（Distill・promote とも同手順）。
 - captures.md 同様ユーザースコープ（`~/.claude/` 配下）にあり work tree の外。配布物に物理的に含まれない。
-- **in-repo dogfooding**: growth プラグイン自身を本リポジトリで開発・dogfooding する際にリポジトリ内へ候補を書き出す運用も、既存 `.gitignore` の `plugins/growth/.local/` がディレクトリごと追跡対象外にするためカバーされる。候補ファイルのための `.gitignore` 追加変更は不要。
+- **in-repo dogfooding**: growth プラグイン自身を本リポジトリで開発・dogfooding する際にリポジトリ内へ仮説を書き出す運用も、既存 `.gitignore` の `plugins/growth/.local/` がディレクトリごと追跡対象外にするためカバーされる。仮説ファイルのための `.gitignore` 追加変更は不要。
 
 ### 形式とスキーマ
 
-候補ファイルは Markdown であり、1候補を1セクション（`##` 見出し）として持つ。captures.md と同じく行ベースの平文規約でパースする（YAML パーサによる厳密解釈は前提としない）。captures.md と異なり、候補は**メタ欄を持つ**（learnings.md の1欄スキーマとは別物。下記参照）。
+仮説ファイルは Markdown であり、1仮説を1セクション（`##` 見出し）として持つ。captures.md と同じく行ベースの平文規約でパースする（YAML パーサによる厳密解釈は前提としない）。captures.md と異なり、仮説は**メタ欄を持つ**（learnings.md の1欄スキーマとは別物。下記参照）。
 
 | 要素 | 必須 | 内容 |
 |---|---|---|
-| 見出し（`## <短い見出し>`） | 必須 | 候補の一文要約。tags に `behavior-diff` を含む候補は命じる振る舞い差分（規範）、`decision-record` を含む候補は決定の要約、混在ゾーン（両値併記）は両者を要約する。learnings.md へ昇格した際そのまま見出しになる形 |
-| `tags` | 必須 | 候補の知識型（多値 set）。値域 `{behavior-diff, decision-record}` の非空部分集合。`behavior-diff`＝摩擦知、`decision-record`＝判断知（選好・却下理由・目標表明・設計判断）。混在ゾーン（1観測が両知識型にまたがる領域）は両値を併記する。tags の各要素により本文スキーマと promote の検証が分岐する（下記「tags 別スキーマ」）。旧 `type` 単値スキーマの後方互換は下記「後方互換規約」を参照 |
+| 見出し（`## <短い見出し>`） | 必須 | 仮説の一文要約。tags に `behavior-diff` を含む仮説は命じる振る舞い差分（規範）、`decision-record` を含む仮説は決定の要約、混在ゾーン（両値併記）は両者を要約する。learnings.md へ昇格した際そのまま見出しになる形 |
+| `tags` | 必須 | 仮説の知識型（多値 set）。値域 `{behavior-diff, decision-record}` の非空部分集合。`behavior-diff`＝摩擦知、`decision-record`＝判断知（選好・却下理由・目標表明・設計判断）。混在ゾーン（1観測が両知識型にまたがる領域）は両値を併記する。tags の各要素により本文スキーマと promote の検証が分岐する（下記「tags 別スキーマ」）。旧 `type` 単値スキーマの後方互換は下記「後方互換規約」を参照 |
 | `provenance` | 必須 | 由来する store エントリへの一意参照。値は `captures.md` の `## <timestamp>` 見出し（ISO 8601）。クラスタが複数 observation を畳む場合は複数 timestamp をカンマ区切り等で列挙する。`promote` の `status` 反転対象を特定する粒度 |
-| `scope-hypothesis` | 必須 | スコープ仮説タグ。値域は `project-local` / `universal` の2値（learning-store-spec.md「2空間モデル」に対応）。Distill が仮説形成観点として付与する**仮説**であり、確証しない（最終裁定は人間の refine/review、横断解析は Phase 3 の支援どまり） |
-| `career-hypothesis` | 必須 | キャリア仮説タグ。**昇格先キャリア**（`強キャリア` / `改善還元` / `ADR 差分` / `learnings.md` の4分類）＋**宛先 repo の仮説**を `<career> / repo: <宛先 repo 仮説>` の1行形式で持つ。判定基準（4分類の決定表）は distill 側（distill-procedure.md「career-hypothesis の判定（決定表）」）を単一出典とする。`scope-hypothesis` と**対称・直交**な独立メタ欄であり（キャリア軸 ⊥ 空間軸。DESIGN.md「種別軸 ⊥ 共有境界軸」）、Distill が仮説形成観点として付与する**仮説**で確証しない。career と宛先 repo の最終裁定は集約点（取り込み Issue）で行い、promote は確定しない（ADR-20260628-2） |
-| `candidate-status` | 必須 | 候補の処理状態。`pending`（既定。未処理）/ `rejected`（promote の検証で棄却）/ `promoted`（promote が Issue 起票成功後に付与。任意・推奨。再走査からの除外。promote-procedure.md §4 参照）。再 distill 時の再提示ループを断つための追跡軸（下記「冪等性」参照） |
+| `scope-hypothesis` | 必須 | スコープタグ。値域は `project-local` / `universal` の2値（learning-store-spec.md「2空間モデル」に対応）。Distill が仮説形成観点として付与する**仮説**であり、確証しない（最終裁定は人間の refine/review、横断解析は Phase 3 の支援どまり） |
+| `career-hypothesis` | 必須 | キャリアタグ。**昇格先キャリア**（`強キャリア` / `改善還元` / `ADR 差分` / `learnings.md` の4分類）＋**宛先 repo の仮説**を `<career> / repo: <宛先 repo 仮説>` の1行形式で持つ。判定基準（4分類の決定表）は distill 側（distill-procedure.md「career-hypothesis の判定（決定表）」）を単一出典とする。`scope-hypothesis` と**対称・直交**な独立メタ欄であり（キャリア軸 ⊥ 空間軸。DESIGN.md「種別軸 ⊥ 共有境界軸」）、Distill が仮説形成観点として付与する**仮説**で確証しない。career と宛先 repo の最終裁定は集約点（取り込み Issue）で行い、promote は確定しない（ADR-20260628-2） |
+| `candidate-status` | 必須 | 仮説の処理状態。`pending`（既定。未処理）/ `rejected`（promote の検証で棄却）/ `promoted`（promote が Issue 起票成功後に付与。任意・推奨。再走査からの除外。promote-procedure.md §4 参照）。再 distill 時の再提示ループを断つための追跡軸（下記「冪等性」参照） |
 | 本文 | 必須 | tags 別の本文。`behavior-diff` は規範差分の具体（次回どう違う行動を取るか）＋理由。`decision-record` は決定知の構造化4欄（下記「tags 別スキーマ」）。混在ゾーン（両値併記）は両本文を併記する。メタ欄の後にエントリ末尾の本文ブロックとして記述する（複数行可） |
 
 ### tags 別スキーマ
 
-候補は `tags` の各要素により本文スキーマと下流の扱いが分岐する。両知識型は同一の `candidates.md` に同居し、provenance・`candidate-status`・upsert・冪等性・ライフサイクル（promote→Issue）を共有する。`tags` は値域 `{behavior-diff, decision-record}` の非空部分集合であり、単一要素（`[behavior-diff]` / `[decision-record]`）と混在ゾーン（`[behavior-diff, decision-record]`）を取りうる。
+仮説は `tags` の各要素により本文スキーマと下流の扱いが分岐する。両知識型は同一の `candidates.md` に同居し、provenance・`candidate-status`・upsert・冪等性・ライフサイクル（promote→Issue）を共有する。`tags` は値域 `{behavior-diff, decision-record}` の非空部分集合であり、単一要素（`[behavior-diff]` / `[decision-record]`）と混在ゾーン（`[behavior-diff, decision-record]`）を取りうる。
 
 - **`behavior-diff`（摩擦知）**: 本文は規範差分（次回どう違う行動を取るか）＋理由。既存ルール台帳との突合・既存ルール再発の N 回カウント（provenance 件数から導出）・強制化の対象（#417 / ADR-20260629）。本型の扱いは従来どおりで変更しない。
 - **`decision-record`（判断知）**: 本文は文脈付き決定知を構造化した4欄を持つ。behavior-diff 要求（トリガー×振る舞い差分が両方読めること）と N 再発カウントを**免除**する（原理1 の例外口。一回性の設計境界をカウントでなく決定の記録として残す）。
@@ -232,16 +232,16 @@ Distill が生成し `promote` が消費する**候補ファイル**の置き場
 
 ### Distill の書き込み方式（upsert）
 
-- Distill は候補を provenance キーで **upsert**（同一 provenance キーの既存候補があれば置換、なければ追加）して候補ファイルへ永続化する。単純追記は再実行で重複し、全置換は既存候補を失うため。provenance キーでの upsert により再 distill が冪等になる。
-- **tags の集合マージ（冪等）**: 同一 provenance キーの再仮説形成で既存候補と新候補の `tags` を**集合和**でマージする。重複タグは生まない（set 意味論）。旧 `type` 単値エントリを再仮説形成する場合は「後方互換規約」で `tags` へ写してからマージする。これにより、既存の第1タグを失わずに第2タグを付与でき、再実行しても `tags` が単調に安定する（冪等）。
+- Distill は仮説を provenance キーで **upsert**（同一 provenance キーの既存仮説があれば置換、なければ追加）して仮説ファイルへ永続化する。単純追記は再実行で重複し、全置換は既存仮説を失うため。provenance キーでの upsert により再 distill が冪等になる。
+- **tags の集合マージ（冪等）**: 同一 provenance キーの再仮説形成で既存仮説と新仮説の `tags` を**集合和**でマージする。重複タグは生まない（set 意味論）。旧 `type` 単値エントリを再仮説形成する場合は「後方互換規約」で `tags` へ写してからマージする。これにより、既存の第1タグを失わずに第2タグを付与でき、再実行しても `tags` が単調に安定する（冪等）。
 
 ### 冪等性（candidate-status による再提示抑止）
 
-- promote の検証で棄却された候補は `status` 反転されず、由来 `captures.md` エントリが `unprocessed` のまま残る。何もしなければ次回 distill で同一候補が再生成・再提示される。これを避けるため、候補ファイルに `candidate-status` 欄を持たせ、promote が棄却した候補を `rejected` で追跡する。Distill は upsert 時に既存の `rejected` 候補を尊重し、安易な再提示を避ける。
+- promote の検証で棄却された仮説は `status` 反転されず、由来 `captures.md` エントリが `unprocessed` のまま残る。何もしなければ次回 distill で同一仮説が再生成・再提示される。これを避けるため、仮説ファイルに `candidate-status` 欄を持たせ、promote が棄却した仮説を `rejected` で追跡する。Distill は upsert 時に既存の `rejected` 仮説を尊重し、安易な再提示を避ける。
 
 ### 1欄スキーマ（learnings.md）との区別
 
-learnings.md（配布物）は**メタ欄を持たない1欄スキーマ**（learning-store-spec.md「1欄スキーマ」）であり、provenance・scope・撤回追跡は空間・git 履歴が担う。一方、候補ファイルは個人ローカルの一時領域であり、`promote` が消費するための機械的メタ欄（provenance・scope-hypothesis・career-hypothesis・candidate-status）を持つ。候補が learnings.md へ昇格する際にこれらメタ欄は落ち、見出しと本文（規範）だけが残る。
+learnings.md（配布物）は**メタ欄を持たない1欄スキーマ**（learning-store-spec.md「1欄スキーマ」）であり、provenance・scope・撤回追跡は空間・git 履歴が担う。一方、仮説ファイルは個人ローカルの一時領域であり、`promote` が消費するための機械的メタ欄（provenance・scope-hypothesis・career-hypothesis・candidate-status）を持つ。仮説が learnings.md へ昇格する際にこれらメタ欄は落ち、見出しと本文（規範）だけが残る。
 
 ### 記述例
 
@@ -295,9 +295,9 @@ ExitWorktree はマージ済みかを確認しないため、削除前に gh pr 
 
 growth プラグイン自身を本リポジトリで開発・dogfooding する際、リポジトリ内のパスへ観測を書き出す運用がありうる。その場合に未検証観測が誤ってコミットされないよう、リポジトリルートの `.gitignore` で `plugins/growth/.local/` を追跡対象外にする。検証手順は以下。
 
-なお **Distill の処理源（候補化対象の work queue）は正準パス（`captures.md`）のみ**である。in-repo の `plugins/growth/.local/` は手動 dogfooding 時に観測を誤コミットから守るための保護領域であって、Distill の走査対象ではない。両方にファイルが存在する場合も Distill は処理源として正準パスだけを読む。
+なお **Distill の処理源（仮説化対象の work queue）は正準パス（`captures.md`）のみ**である。in-repo の `plugins/growth/.local/` は手動 dogfooding 時に観測を誤コミットから守るための保護領域であって、Distill の走査対象ではない。両方にファイルが存在する場合も Distill は処理源として正準パスだけを読む。
 
-> Distill は処理源（`captures.md`）とは別に、既存ルール台帳（`CLAUDE.md` 2層・`learnings.md`・`candidates.md` 自身）を**読み取り専用の参照源**として突合に用いる（候補は生成しない・台帳は書き換えない）。処理源とは別レイヤであり、本「構成上の保証」の対象（生観測が配布物に混入しないこと）には影響しない。詳細は distill-procedure.md §2 および ADR-20260629。
+> Distill は処理源（`captures.md`）とは別に、既存ルール台帳（`CLAUDE.md` 2層・`learnings.md`・`candidates.md` 自身）を**読み取り専用の参照源**として突合に用いる（仮説は生成しない・台帳は書き換えない）。処理源とは別レイヤであり、本「構成上の保証」の対象（生観測が配布物に混入しないこと）には影響しない。詳細は distill-procedure.md §2 および ADR-20260629。
 
 ```bash
 # .gitignore のマッチ規則が返れば追跡対象外であることが確認できる
@@ -318,7 +318,7 @@ git status --porcelain plugins/growth/.local/   # 出力が空であること
 | 出所軸（`origin`）の値域（2値・signal と直交） | 出所に基づく摩擦/判断の分類・重み付け（distill 側） |
 | `expected` / `actual` フィールド（該当時必須・transcript 抽出限定） | 客観痕跡向けの出所値の追加（Phase 3） |
 | 状態管理（`status` 軸・遷移規約・反転主体＝promote） | git revert・CI 失敗の取得（Phase 3 以降） |
-| 候補ファイル（`candidates.md`）の置き場・形式・メタ欄スキーマ・provenance 規約 | promote の検証・Route 注記・起票の具体手順（promote スキルが定義） |
+| 仮説ファイル（`candidates.md`）の置き場・形式・メタ欄スキーマ・provenance 規約 | promote の検証・Route 注記・起票の具体手順（promote スキルが定義） |
 | store が配布物に混入しない構成保証 | |
 
 ## 関連
