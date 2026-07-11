@@ -1,11 +1,11 @@
-# Promote 手順（検証→Route 注記→自動起票→status 反転）
+# Promote 手順（検証→Route 注記→自動起票→candidate-status 前進）
 
 promote スキルの各段の判定基準の詳細。SKILL.md の手順 overview から参照される単一出典。worked example は [`promote-examples.md`](promote-examples.md) を参照する。
 
 ## 1. 目的・責務境界
 
-- **目的**: distill が `candidates.md` へ永続化した仮説を検証し（原理2）、検証を通過したものだけを `gh` で Issue へ自動起票して既存ワークフローへ渡す。起票成功後に store の `status` を反転する。
-- **責務境界**: promote が担うのは「検証 → Route 注記 → 自動起票 → status 反転」の4段。**promote はルーティング不可知である**——career（昇格先キャリア）も scope（適用範囲）も**確定（裁定）しない**。distill が `candidates.md` に出した `scope-hypothesis` / `career-hypothesis` の両仮説を、昇格 Issue 本文へ**注記として運ぶのみ**（ADR-20260628-2）。次は**行わない**:
+- **目的**: distill が `candidates.md` へ永続化した仮説を検証し（原理2）、検証を通過したものだけを `gh` で Issue へ自動起票して既存ワークフローへ渡す。起票成功後に候補の `candidate-status` を前進させる。
+- **責務境界**: promote が担うのは「検証 → Route 注記 → 自動起票 → candidate-status 前進」の4段。**promote はルーティング不可知である**——career（昇格先キャリア）も scope（適用範囲）も**確定（裁定）しない**。distill が `candidates.md` に出した `scope-hypothesis` / `career-hypothesis` の両仮説を、昇格 Issue 本文へ**注記として運ぶのみ**（ADR-20260628-2）。次は**行わない**:
   - 仮説の生成・クラスタ化（distill の責務）
   - career の Route 判定・決定表評価・キャリアラベル付与（決定表は distill 側＝distill-procedure.md へ移設済み。promote は決定表を持たない）
   - `learnings.md`（配布物）への物理書き込み（Distribute、Phase 2 の責務）。Route はタグの**注記**までで終端し、物理昇格はしない。
@@ -49,7 +49,7 @@ promote スキルの各段の判定基準の詳細。SKILL.md の手順 overview
 | `decision-record` | 復元不能（リポ未記録）・まだ有効（覆されていない）・配布価値あり（carry-forward する）の3条件をすべて満たす | (a) 既にリポ（コード・git・ADR・spec）に記録済み＝復元可能／(b) 後に覆された／(c) carry-forward 価値のない一回性 |
 
 - **混在ゾーン仮説（`tags: [behavior-diff, decision-record]`）の合否**: 各タグを対応する検証にかけ、**全タグが合格した仮説のみ起票段へ進める**。いずれかのタグが不合格なら仮説全体を `rejected` とする（保守的既定＝疑わしきは rejected。一部タグのみ合格した仮説を合格タグへ絞って起票する部分昇格は Phase 1 では扱わない）。
-- いずれのタグも**不合格仮説は起票段へ進めない**。`candidate-status` を `rejected` へ更新（§6 の冪等性）し、`status` 反転もしない。
+- いずれのタグも**不合格仮説は起票段へ進めない**。`candidate-status` を `rejected` へ更新する（§6 の冪等性）。`captures.md` は `status` フィールドを持たないため、`candidate-status: rejected` の更新のみで冪等性が完結する（captures.md への書き込みは発生しない）。
 
 - 不合格仮説は `candidates.md` の当該エントリの `candidate-status: pending` を `rejected` へ Edit で更新する。これにより次回 distill / promote 実行で同一仮説が再提示・再評価されるループを断つ（personal-store-spec.md「冪等性」）。`- candidate-status: pending` 行は仮説間で同一テキストのため、対象仮説の**一意な `- provenance:` 行を含む見出しブロック**（`## <見出し>` ＋ `- tags: …` ＋ `- provenance: …` ＋ `- scope-hypothesis: …` ＋ `- career-hypothesis: …` ＋ `- candidate-status: pending`）を `old_string` アンカーにして Edit する（provenance は一意キー。§6 ステップ2 と同じハザード回避）。旧スキーマ仮説は実ファイルの記法に合わせ、`- tags:` の代わりに `- type: …` 行を（`type`/`tags` とも無ければ当該行を省いて）アンカーに用いる。複数仮説を更新する場合は仮説ごとに個別アンカーで行う。
 - 検証は仮説を**棄却する方向に厳しく**倒す。未検証の幻覚を配布経路に漏らさないことが原理2／復元不能性ゲートの要請（疑わしきは rejected）。両型とも合格仮説の流路は不変（`candidates.md → promote → Issue → 既存ワークフロー`。decision-record を learnings.md へ直送しない）。
@@ -112,42 +112,39 @@ Issue 本文に含める career 注記欄の書式:
 
 > **疎結合の静的保証**: 起票経路は `Bash(gh issue create*)` のみ。SKILL.md の `allowed-tools` に dev-workflow スキル呼び出し経路（Skill ツール等）を含めないことで、疎結合を許可ツールの面から保証する（AC3）。
 
-## 6. status 反転（起票成功後のみ）
+## 6. candidate-status 前進（起票成功後のみ）
 
-起票が**成功した後にのみ**、仮説の `provenance` が指す store エントリの `status` を反転する。
+起票が**成功した後にのみ**、起票した候補自身の `candidate-status` を `pending` から `promoted` へ更新する。`captures.md` は無状態の store であり、promote はこれを書き換えない（対象は `candidates.md` の当該エントリのみ）。
 
-1. **対象の特定**: 合格・起票成功した仮説の `provenance`（`captures.md` の `## <timestamp>` 群）を読む。
-2. **反転（一意アンカーで Edit）**: `captures.md` の各エントリの `- status: unprocessed` 行は**エントリ間で同一テキスト**のため、status 行単独では Edit の `old_string` が一意マッチしない（未処理エントリが複数残るのは distill バッチ直後の常態）。status 行だけを Edit すると一意マッチ失敗で**失敗**するか、`replace_all` を使うと provenance に含まれない無関係エントリまで**誤反転**する。これを避けるため、対象エントリの**一意な `## <timestamp>` 見出し行から `- status: unprocessed` 行までの連続ブロック**（見出し＋`signal`/`session`/`status` メタ行。timestamp 見出しはエントリ一意）を `old_string` に含め、そのブロックの `status` 値のみ `promoted` に変えた `new_string` で Edit する。`replace_all` は使わない。**複数 timestamp を持つ仮説は、各 timestamp について個別に（それぞれ固有の見出しブロックをアンカーに）反転する**。
-   - 代替として、distill の upsert（§ distill-procedure §6）と対称に「Read で `captures.md` 全文取得 → 対象エントリの status のみ書き換え → Write で全文書き出し」で行ってもよい（他エントリを保持すればインライン性は保たれる）。状態反転のパターンを両スキルで揃えたい場合はこちらを採る。
-3. **仮説側の更新**: 起票成功した仮説の `candidate-status` を `promoted` へ更新してもよい（再走査からの除外。任意だが推奨）。更新する場合も §3 と同様、仮説の**一意な `- provenance:` 行を含む見出しブロック**をアンカーに Edit する（`- candidate-status:` 行も仮説間で同一テキストのため、単独 Edit は一意マッチしない）。
+1. **対象の特定**: 起票が成功した候補（`candidates.md` の当該見出しブロック）を特定する。§1〜§5 で既に読み取り・検証済みの候補であり、追加の store 参照は不要。
+2. **前進（一意アンカーで Edit）**: `- candidate-status: pending` 行は候補間で同一テキストのため、単独 Edit では `old_string` が一意マッチしない。対象候補の**一意な `- provenance:` 行を含む見出しブロック**（`## <見出し>` ＋ `- tags: …` ＋ `- provenance: …` ＋ `- scope-hypothesis: …` ＋ `- career-hypothesis: …` ＋ `- candidate-status: pending`）を `old_string` アンカーにして、`candidate-status` 値のみ `promoted` に変えた `new_string` で Edit する（`replace_all` は使わない。誤前進防止）。旧スキーマ仮説は §3 と同様、`- tags:` の代わりに `- type: …` 行をアンカーに用いる。複数候補を更新する場合は候補ごとに個別アンカーで行う。
 
-**ディシジョンテーブル（status 反転）**:
+**ディシジョンテーブル（candidate-status 前進）**:
 
-| 検証通過 | 起票成功 | status 反転 |
+| 検証通過 | 起票成功 | candidate-status 前進 |
 |---|---|---|
-| No | —（起票しない） | しない |
-| Yes | No（失敗） | しない |
-| Yes | Yes | する（provenance が指す全エントリ） |
+| No | —（起票しない） | しない（`rejected` のまま） |
+| Yes | No（失敗） | しない（`pending` のまま） |
+| Yes | Yes | する（`pending → promoted`） |
 
-- 誤反転は store の状態機械（監査履歴）を汚すため、起票成功を確認してから反転する順序を厳守する。
-- provenance が指す store エントリが見つからない場合は、当該エントリの反転をスキップして警告報告する（起票済み Issue は維持する。§7）。
+- `candidate-status` は `pending` から `rejected` / `promoted` への一方向遷移であり、`rejected` / `promoted` はいずれも不可侵の終端（再走査対象から除外。ADR-20260629 決定3）。誤って `promoted` を先に付与すると起票失敗時の再実行判定を壊すため、起票成功を確認してから前進する順序を厳守する。
 
 ## 7. エラー・境界処理
 
 | 状況 | promote の振る舞い |
 |---|---|
-| `git rev-parse` が失敗（git リポジトリ外等で project-id を解決できない） | 「project-id を解決できませんでした（確認: `git rev-parse --path-format=absolute --git-common-dir`）」と報告して終了。起票0・反転0 |
-| `candidates.md` が存在しない／読めない | 「仮説がありません（確認パス: `~/.claude/projects/<project-id>/growth/candidates.md`）」と報告し正常終了。起票0・反転0 |
-| `candidate-status: pending` が0件（全 `rejected` / `promoted`） | 「処理対象の仮説はありません」と報告して終了。起票0・反転0 |
-| 全仮説が検証で不合格 | 「配布可能な仮説はありませんでした（不合格 N 件）」と報告して終了。全件 `candidate-status: rejected`。反転0 |
-| `gh issue create` が失敗（認証・権限・ネットワーク等） | 一時ファイルを残しパスを示して再実行可能にする。`status` 反転は行わない（由来エントリは `unprocessed` のまま） |
-| provenance が指す store エントリが見つからない | 当該エントリの反転をスキップし警告報告（起票済み Issue は維持） |
+| `git rev-parse` が失敗（git リポジトリ外等で project-id を解決できない） | 「project-id を解決できませんでした（確認: `git rev-parse --path-format=absolute --git-common-dir`）」と報告して終了。起票0・前進0 |
+| `candidates.md` が存在しない／読めない | 「仮説がありません（確認パス: `~/.claude/projects/<project-id>/growth/candidates.md`）」と報告し正常終了。起票0・前進0 |
+| `candidate-status: pending` が0件（全 `rejected` / `promoted`） | 「処理対象の仮説はありません」と報告して終了。起票0・前進0 |
+| 全仮説が検証で不合格 | 「配布可能な仮説はありませんでした（不合格 N 件）」と報告して終了。全件 `candidate-status: rejected`。前進0 |
+| `gh issue create` が失敗（認証・権限・ネットワーク等） | 一時ファイルを残しパスを示して再実行可能にする。`candidate-status` の前進は行わない（`pending` のまま） |
+| 起票成功後、対象候補の一意アンカー（`- provenance:` 行を含む見出しブロック）が `candidates.md` で Edit マッチしない | 当該候補の `candidate-status` 前進をスキップし警告報告（起票済み Issue は維持） |
 
-いずれも由来 store エントリの `status` を不用意に反転しないことを保証する（起票成功した仮説の provenance のみ反転）。
+いずれも候補の `candidate-status` を不用意に前進させないことを保証する（起票成功した候補のみ `pending → promoted` へ前進する）。
 
 ## 関連
 
 - [`promote-examples.md`](promote-examples.md) — 各段を検証する worked example（手順トレース用）
-- `${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` — 入力源 仮説ファイルの形式・メタ欄スキーマ・provenance 規約、store の `status` 状態機械・パス解決手順
+- `${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` — 入力源 仮説ファイルの形式・メタ欄スキーマ・provenance 規約、`candidate-status` 状態機械・パス解決手順
 - `${CLAUDE_PLUGIN_ROOT}/references/learning-store-spec.md` — Route 注記が指す2空間モデル
 - `${CLAUDE_PLUGIN_ROOT}/DESIGN.md` — 設計母艦（§3 Promote・§4 プラグイン構成・原理2・二段ゲート）
