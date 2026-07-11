@@ -246,7 +246,7 @@ Distill が生成し `promote` が消費する**仮説ファイル**の置き場
 ### provenance 規約
 
 - provenance は由来 store エントリの `## <timestamp>` 見出し（ISO 8601）を一意参照キーとして保持する。distill はこのキーで由来観測を特定し、provenance 導出（`promoted` / `pending` 候補を持つ観測の処理源からの除外）に用いる。`promote` は候補側の `candidate-status` を前進させ、`captures.md` は書き換えない。
-- **前提**: 同一 store 内で timestamp が衝突しない（capture 時刻が秒単位で一意）。衝突する場合は反転対象が曖昧になるため、安定 ID 導入の検討が必要（本仕様は timestamp 一意を前提とする）。
+- **前提**: 同一 store 内で timestamp が衝突しない（capture 時刻が秒単位で一意）。衝突する場合は同定対象（provenance 参照・candidate-status 前進の対象）が曖昧になるため、安定 ID 導入の検討が必要（本仕様は timestamp 一意を前提とする）。
 
 ### Distill の書き込み方式（upsert）
 

@@ -33,7 +33,7 @@ distill が仮説ファイル（`candidates.md`）へ永続化した仮説を検
 
 ## 完了報告
 
-検証件数・合格/不合格件数・起票した Issue（番号/URL）・反転した store エントリ数・仮説ファイルパスを報告する。
+検証件数・合格/不合格件数・起票した Issue（番号/URL）・前進した candidate-status 件数（pending → promoted）・仮説ファイルパスを報告する。
 
 ```
 仮説3件を検証しました。
