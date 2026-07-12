@@ -162,6 +162,74 @@ run_layer1_invalid "01-status-missing" "status が空です" "AC1: status 欠落
 run_layer1_invalid "02-validity-missing" "validity が空です" "AC1: status=承認済み かつ validity 欠落"
 run_layer1_invalid "03-superseded-by-missing" "superseded-by が空です" "AC1: validity=上書き済み かつ superseded-by 欠落"
 
+# ADR_DIR が存在しない場合は exit 2（fixture 不要、不在パスを渡すだけ）
+run_layer1_missing_dir() {
+    local corpus="$FIXTURES_DIR/invalid/__nonexistent__"
+
+    if [ ! -f "$LINT_ADR" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] AC1: lint-adr.sh not found: %s\n' "$LINT_ADR"
+        return
+    fi
+
+    local output rc
+    set +e
+    output=$(bash "$LINT_ADR" "$corpus" 2>&1)
+    rc=$?
+    set -e
+
+    total=$((total + 1))
+    if [ "$rc" -eq 2 ]; then
+        printf '[PASS] AC1: ディレクトリ不在は exit 2\n'
+        passed=$((passed + 1))
+    else
+        printf '[FAIL] AC1: ディレクトリ不在は exit 2 を期待したが %d\n  output:\n%s\n' "$rc" "$output"
+        failed=$((failed + 1))
+    fi
+}
+
+run_layer1_missing_dir
+
+# 複数 ADR 同時違反: 1件目で早期打ち切りせず全件出力されること
+run_layer1_multi_violation() {
+    local corpus="$FIXTURES_DIR/invalid/06-multi-violation"
+
+    if [ ! -f "$LINT_ADR" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] AC1(multi): lint-adr.sh not found: %s\n' "$LINT_ADR"
+        return
+    fi
+
+    if [ ! -d "$corpus" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] AC1(multi): missing fixture corpus: %s\n' "$corpus"
+        return
+    fi
+
+    local output rc
+    set +e
+    output=$(bash "$LINT_ADR" "$corpus" 2>&1)
+    rc=$?
+    set -e
+
+    total=$((total + 1))
+    if [ "$rc" -eq 1 ]; then
+        printf '[PASS] AC1(multi): exit 1\n'
+        passed=$((passed + 1))
+    else
+        printf '[FAIL] AC1(multi): exit 1 を期待したが %d\n  output:\n%s\n' "$rc" "$output"
+        failed=$((failed + 1))
+    fi
+
+    assert_contains "$output" "ADR-20260601-multi-violation-status-missing.md: status が空です" "AC1(multi): 1件目(status欠落)の違反メッセージ"
+    assert_contains "$output" "ADR-20260602-multi-violation-superseded-by-missing.md: validity=上書き済み だが superseded-by が空です" "AC1(multi): 2件目(superseded-by欠落)の違反メッセージ"
+}
+
+run_layer1_multi_violation
+
 # ==== 後続 Task 3〜4 で
 #      レイヤ2（index 同期）/ レイヤ3（相互参照双方向性）の
 #      invalid corpus 検査ブロックをここに追記する ====
