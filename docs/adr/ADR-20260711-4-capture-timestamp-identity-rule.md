@@ -54,6 +54,6 @@ growth の生観察 store（`captures.md`）は各観察を `## <timestamp>` 見
 ## 関連ADR
 
 - Related: ADR-20260711-2-distill-highwater-cursor（カーソル highwater モデル。本 ADR はその依拠する見出しキーの一意性 facet を補完する。カーソルモデル本体は不変）
-- Related: ADR-20260711-store-state-model-captures-stateless（captures 無状態化。provenance ＋カーソルによる処理源選択の土台）
+- Related: ADR-20260713-captures-stateless-candidate-side-state（captures 無状態化。provenance ＋カーソルによる処理源選択の土台。決定1・3 の現行の住処。ADR分割〔#488〕以前は上書き済みの ADR-20260711-store-state-model-captures-stateless を指していた）
 
 関連Issue: #434, #459, #451, #470
