@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# ADR drift-lint（レイヤ1: front-matter スキーマ検証／レイヤ2: index 同期検証）
+# ADR drift-lint（レイヤ1: front-matter スキーマ検証／レイヤ2: index 同期検証／
+# レイヤ3: 相互参照双方向性検証）
 #
 # ADR_DIR 配下の ADR-*.md を走査し、front-matter を持つ ADR
 # （先頭行が `---`）のみを対象に以下を検証する。front-matter を
@@ -23,6 +24,12 @@
 # レイヤ2（index 同期）: scripts/gen-adr-index.sh を ADR_DIR に対して実行し、
 # その出力を ADR_DIR/index.md と比較する。差分あり、または index.md が
 # 不在の場合は同期違反とする。
+#
+# レイヤ3（相互参照双方向性）: front-matter に superseded-by: B を持つ ADR A
+# について、B（ADR_DIR/B.md）の本文 `## 関連ADR` 節に `Supersedes: A`
+# （フル slug 完全一致）があるかを照合する。B が存在しない、または B の
+# 本文に逆参照が無ければ違反とする。`Amends:`/`Amended by:` のみを持つ
+# エッジは凍結扱いで検査対象外（superseded-by を経由しないため自然に対象外）。
 #
 # 全違反を列挙してから最後に非0 exitする（早期returnで打ち切らない）。
 #
@@ -95,6 +102,35 @@ extract_frontmatter() {
     [ "$in_fm" -eq 1 ]
 }
 
+# ファイル file の本文中の `## 関連ADR` 節（次の `## ` 見出しまたは
+# ファイル末尾まで）に `- Supersedes: <target_stem>`（フル slug 完全一致）
+# の行が存在するかを判定する。
+# 戻り値: 存在すれば 0、しなければ 1
+body_has_supersedes() {
+    local file="$1"
+    local target_stem="$2"
+    local line in_section=0 candidate
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        if [[ "$line" =~ ^##[[:space:]]+関連ADR ]]; then
+            in_section=1
+            continue
+        fi
+        if [ "$in_section" -eq 1 ] && [[ "$line" =~ ^##[[:space:]] ]]; then
+            in_section=0
+            continue
+        fi
+        if [ "$in_section" -eq 1 ] && [[ "$line" =~ ^-[[:space:]]*Supersedes:[[:space:]]*([A-Za-z0-9-]+) ]]; then
+            candidate="${BASH_REMATCH[1]}"
+            if [ "$candidate" = "$target_stem" ]; then
+                return 0
+            fi
+        fi
+    done <"$file"
+
+    return 1
+}
+
 # ファイル名昇順で走査対象を収集
 files=()
 shopt -s nullglob
@@ -111,6 +147,10 @@ if [ "${#files[@]}" -gt 0 ]; then
 fi
 
 violations=0
+
+# レイヤ3で照合する superseded-by ペア（front-matter を持つ ADR のみ対象）
+xref_sources=()
+xref_targets=()
 
 for file in "${sorted[@]}"; do
     if ! extract_frontmatter "$file"; then
@@ -132,6 +172,11 @@ for file in "${sorted[@]}"; do
         printf '%s: validity=上書き済み だが superseded-by が空です（superseded-by キーの値が必要）\n' "$file"
         violations=$((violations + 1))
     fi
+
+    if [ -n "$FM_SUPERSEDED_BY" ]; then
+        xref_sources+=("$file")
+        xref_targets+=("$FM_SUPERSEDED_BY")
+    fi
 done
 
 # レイヤ2: index 同期検証
@@ -150,6 +195,25 @@ else
         violations=$((violations + 1))
     fi
 fi
+
+# レイヤ3: 相互参照双方向性検証
+for i in "${!xref_sources[@]}"; do
+    a_file="${xref_sources[$i]}"
+    b_stem="${xref_targets[$i]}"
+    a_stem="$(basename "$a_file" .md)"
+    b_file="$ADR_DIR/$b_stem.md"
+
+    if [ ! -f "$b_file" ]; then
+        printf '%s: 相互参照違反（superseded-by=%s だが参照先 %s が見つかりません）\n' "$a_file" "$b_stem" "$b_file"
+        violations=$((violations + 1))
+        continue
+    fi
+
+    if ! body_has_supersedes "$b_file" "$a_stem"; then
+        printf '%s: 相互参照違反（%s の本文 "## 関連ADR" に "Supersedes: %s" が見つかりません）\n' "$a_file" "$b_file" "$a_stem"
+        violations=$((violations + 1))
+    fi
+done
 
 if [ "$violations" -gt 0 ]; then
     exit 1

@@ -299,8 +299,111 @@ run_layer2_valid_still_passes() {
 
 run_layer2_valid_still_passes
 
-# ==== 後続 Task 4 で
-#      レイヤ3（相互参照双方向性）の invalid corpus 検査ブロックをここに追記する ====
+# ==== AC2: lint-adr.sh レイヤ3（相互参照双方向性） ====
+
+# superseded-by=B を持つが B の本文に Supersedes 逆参照が無い corpus は
+# exit 1 ＋ 相互参照違反メッセージ
+run_layer3_xref_missing() {
+    local corpus="$FIXTURES_DIR/invalid/05-xref-missing"
+
+    if [ ! -f "$LINT_ADR" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] AC2: lint-adr.sh not found: %s\n' "$LINT_ADR"
+        return
+    fi
+
+    if [ ! -d "$corpus" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] AC2: missing fixture corpus: %s\n' "$corpus"
+        return
+    fi
+
+    local output rc
+    set +e
+    output=$(bash "$LINT_ADR" "$corpus" 2>&1)
+    rc=$?
+    set -e
+
+    total=$((total + 1))
+    if [ "$rc" -eq 1 ]; then
+        printf '[PASS] AC2: xref-missing corpus は exit 1\n'
+        passed=$((passed + 1))
+    else
+        printf '[FAIL] AC2: xref-missing corpus は exit 1 を期待したが %d\n  output:\n%s\n' "$rc" "$output"
+        failed=$((failed + 1))
+    fi
+
+    assert_contains "$output" "相互参照違反" "AC2: xref-missing corpus の相互参照違反メッセージ"
+}
+
+run_layer3_xref_missing
+
+# 相互参照検証専用の valid corpus（双方向一致ペア＋Amends凍結例）は exit 0
+run_layer3_xref_valid() {
+    local corpus="$FIXTURES_DIR/valid/02-xref-valid"
+
+    if [ ! -f "$LINT_ADR" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] AC2(valid): lint-adr.sh not found: %s\n' "$LINT_ADR"
+        return
+    fi
+
+    if [ ! -d "$corpus" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] AC2(valid): missing fixture corpus: %s\n' "$corpus"
+        return
+    fi
+
+    local output rc
+    set +e
+    output=$(bash "$LINT_ADR" "$corpus" 2>&1)
+    rc=$?
+    set -e
+
+    total=$((total + 1))
+    if [ "$rc" -eq 0 ]; then
+        printf '[PASS] AC2: xref-valid corpus(02-xref-valid) は exit 0\n'
+        passed=$((passed + 1))
+    else
+        printf '[FAIL] AC2: xref-valid corpus(02-xref-valid) は exit 0 を期待したが %d\n  output:\n%s\n' "$rc" "$output"
+        failed=$((failed + 1))
+    fi
+}
+
+run_layer3_xref_valid
+
+# valid 01-mixed-validity はレイヤ3（相互参照双方向性）追加後も exit 0 を維持すること
+run_layer3_mixed_validity_still_passes() {
+    local corpus="$FIXTURES_DIR/valid/01-mixed-validity"
+
+    if [ ! -f "$LINT_ADR" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] AC2(mixed-validity): lint-adr.sh not found: %s\n' "$LINT_ADR"
+        return
+    fi
+
+    local output rc
+    set +e
+    output=$(bash "$LINT_ADR" "$corpus" 2>&1)
+    rc=$?
+    set -e
+
+    total=$((total + 1))
+    if [ "$rc" -eq 0 ]; then
+        printf '[PASS] AC2: valid corpus(01-mixed-validity) はレイヤ3追加後も exit 0\n'
+        passed=$((passed + 1))
+    else
+        printf '[FAIL] AC2: valid corpus(01-mixed-validity) はレイヤ3追加後も exit 0 を期待したが %d\n  output:\n%s\n' "$rc" "$output"
+        failed=$((failed + 1))
+    fi
+}
+
+run_layer3_mixed_validity_still_passes
 
 echo
 if [ "$failed" -eq 0 ]; then

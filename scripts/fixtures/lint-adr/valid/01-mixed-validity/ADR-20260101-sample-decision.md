@@ -19,3 +19,7 @@ fixture 用のサンプル ADR。有効な状態を表す。
 ## Consequences
 
 fixture として index 生成器の入力に使う。
+
+## 関連ADR
+
+- Supersedes: ADR-20260103-old-decision（相互参照双方向性 fixture のペア。旧決定を上書き）
