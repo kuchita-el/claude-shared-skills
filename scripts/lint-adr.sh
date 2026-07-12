@@ -25,11 +25,22 @@
 # その出力を ADR_DIR/index.md と比較する。差分あり、または index.md が
 # 不在の場合は同期違反とする。
 #
-# レイヤ3（相互参照双方向性）: front-matter に superseded-by: B を持つ ADR A
-# について、B（ADR_DIR/B.md）の本文 `## 関連ADR` 節に `Supersedes: A`
-# （フル slug 完全一致）があるかを照合する。B が存在しない、または B の
-# 本文に逆参照が無ければ違反とする。`Amends:`/`Amended by:` のみを持つ
-# エッジは凍結扱いで検査対象外（superseded-by を経由しないため自然に対象外）。
+# レイヤ3（相互参照双方向性）: 「A.superseded-by=B ⟺ B 本文 `## 関連ADR` に
+# `Supersedes: A`（フル slug 完全一致）」の真の双方向（⟺）を検証する。
+#   - forward（front-matter起点）: front-matter に superseded-by: B を持つ
+#     ADR A について、B（ADR_DIR/B.md）の本文に `Supersedes: A` があるかを
+#     照合する。B が存在しない、または本文に逆参照が無ければ違反。
+#   - reverse（本文起点）: 本文 `## 関連ADR` 節で `Supersedes: T` を宣言する
+#     ADR C について、T（ADR_DIR/T.md）の front-matter superseded-by が C を
+#     指しているかを照合する。T が存在しない、または front-matter が C を
+#     指していなければ違反（本文で Supersedes 宣言したが front-matter 側の
+#     更新を忘れ、T が validity: 有効 のまま index に残るドリフトを検出する）。
+# forward・reverse は互いに独立した検査（片方が満たされればもう片方は
+# 発火しない設計）であり、双方が揃うエッジは違反にしない（二重計上しない）。
+# `Amends:`/`Amended by:` のみを持つエッジは凍結扱いで両方向とも検査対象外
+# （本文走査は `Supersedes:` のみを対象にする）。
+# `Supersedes:` 行は行頭空白（入れ子/インデントされたバレット）を許容して
+# 抽出する（forward の照合・reverse の抽出のいずれも同一の緩和を適用）。
 #
 # 全違反を列挙してから最後に非0 exitする（早期returnで打ち切らない）。
 #
@@ -103,8 +114,8 @@ extract_frontmatter() {
 }
 
 # ファイル file の本文中の `## 関連ADR` 節（次の `## ` 見出しまたは
-# ファイル末尾まで）に `- Supersedes: <target_stem>`（フル slug 完全一致）
-# の行が存在するかを判定する。
+# ファイル末尾まで）に `- Supersedes: <target_stem>`（フル slug 完全一致。
+# 行頭空白＝入れ子/インデントされたバレットも許容）の行が存在するかを判定する。
 # 戻り値: 存在すれば 0、しなければ 1
 body_has_supersedes() {
     local file="$1"
@@ -120,7 +131,7 @@ body_has_supersedes() {
             in_section=0
             continue
         fi
-        if [ "$in_section" -eq 1 ] && [[ "$line" =~ ^-[[:space:]]*Supersedes:[[:space:]]*([A-Za-z0-9-]+) ]]; then
+        if [ "$in_section" -eq 1 ] && [[ "$line" =~ ^[[:space:]]*-[[:space:]]*Supersedes:[[:space:]]*([A-Za-z0-9-]+) ]]; then
             candidate="${BASH_REMATCH[1]}"
             if [ "$candidate" = "$target_stem" ]; then
                 return 0
@@ -129,6 +140,32 @@ body_has_supersedes() {
     done <"$file"
 
     return 1
+}
+
+# ファイル file の本文中の `## 関連ADR` 節（次の `## ` 見出しまたは
+# ファイル末尾まで）にある `Supersedes: <target_stem>`（フル slug 完全一致、
+# 行頭空白＝入れ子/インデントされたバレットを許容）をすべて抽出し、
+# グローバル配列 BODY_SUPERSEDES_TARGETS へ格納する（0件なら空配列）。
+# レイヤ3 reverse（本文起点）の照合対象を集めるために使う。
+extract_body_supersedes() {
+    local file="$1"
+    local line in_section=0
+
+    BODY_SUPERSEDES_TARGETS=()
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        if [[ "$line" =~ ^##[[:space:]]+関連ADR ]]; then
+            in_section=1
+            continue
+        fi
+        if [ "$in_section" -eq 1 ] && [[ "$line" =~ ^##[[:space:]] ]]; then
+            in_section=0
+            continue
+        fi
+        if [ "$in_section" -eq 1 ] && [[ "$line" =~ ^[[:space:]]*-[[:space:]]*Supersedes:[[:space:]]*([A-Za-z0-9-]+) ]]; then
+            BODY_SUPERSEDES_TARGETS+=("${BASH_REMATCH[1]}")
+        fi
+    done <"$file"
 }
 
 # ファイル名昇順で走査対象を収集
@@ -148,15 +185,22 @@ fi
 
 violations=0
 
-# レイヤ3で照合する superseded-by ペア（front-matter を持つ ADR のみ対象）
+# レイヤ3 forward で照合する superseded-by ペア（front-matter を持つ ADR のみ対象）
 xref_sources=()
 xref_targets=()
+
+# レイヤ3 reverse の照合用: stem -> front-matter superseded-by 値
+# （front-matter を持たない、または superseded-by が空の場合はキー未設定のまま。
+#   参照時は "${FM_SB_BY_STEM[$stem]:-}" で空扱いにする）
+declare -A FM_SB_BY_STEM=()
 
 for file in "${sorted[@]}"; do
     if ! extract_frontmatter "$file"; then
         # front-matter を持たない旧形式はレイヤ1検査対象外（スキップ）
         continue
     fi
+
+    FM_SB_BY_STEM["$(basename "$file" .md)"]="$FM_SUPERSEDED_BY"
 
     if [ -z "$FM_STATUS" ]; then
         printf '%s: status が空です（front-matter に status キーの値が必要）\n' "$file"
@@ -196,7 +240,7 @@ else
     fi
 fi
 
-# レイヤ3: 相互参照双方向性検証
+# レイヤ3 forward: front-matter superseded-by 起点で本文 Supersedes 逆参照を照合
 for i in "${!xref_sources[@]}"; do
     a_file="${xref_sources[$i]}"
     b_stem="${xref_targets[$i]}"
@@ -213,6 +257,33 @@ for i in "${!xref_sources[@]}"; do
         printf '%s: 相互参照違反（%s の本文 "## 関連ADR" に "Supersedes: %s" が見つかりません）\n' "$a_file" "$b_file" "$a_stem"
         violations=$((violations + 1))
     fi
+done
+
+# レイヤ3 reverse: 本文 Supersedes 宣言起点で front-matter superseded-by を照合
+# （C の本文が Supersedes: T を宣言するのに、T の front-matter superseded-by
+#   が C を指していない＝front-matter 更新忘れを検出する。forward で既に
+#   一致確認済みのエッジは reverse 側でも自然に一致するため、ここでは
+#   forward 側で捕捉できない「本文はあるが front-matter が追随していない」
+#   ケースのみが新たに violation として計上される＝二重計上にならない）
+for c_file in "${sorted[@]}"; do
+    extract_body_supersedes "$c_file"
+    c_stem="$(basename "$c_file" .md)"
+
+    for t_stem in "${BODY_SUPERSEDES_TARGETS[@]}"; do
+        t_file="$ADR_DIR/$t_stem.md"
+
+        if [ ! -f "$t_file" ]; then
+            printf '%s: 相互参照違反（逆方向: 本文 "## 関連ADR" の "Supersedes: %s" 宣言の参照先 %s が見つかりません）\n' "$c_file" "$t_stem" "$t_file"
+            violations=$((violations + 1))
+            continue
+        fi
+
+        actual_superseded_by="${FM_SB_BY_STEM[$t_stem]:-}"
+        if [ "$actual_superseded_by" != "$c_stem" ]; then
+            printf '%s: 相互参照違反（逆方向: %s の本文 "## 関連ADR" が "Supersedes: %s" を宣言していますが、%s の front-matter superseded-by がそれを指していません）\n' "$t_file" "$c_file" "$t_stem" "$t_file"
+            violations=$((violations + 1))
+        fi
+    done
 done
 
 if [ "$violations" -gt 0 ]; then

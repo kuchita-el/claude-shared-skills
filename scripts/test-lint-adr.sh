@@ -468,6 +468,83 @@ run_layer3_mixed_validity_still_passes() {
 
 run_layer3_mixed_validity_still_passes
 
+# ==== PRレビュー反映: レイヤ3を真の双方向（⟺）にする ====
+# 正本 ADR-20260711-3 決定5: A.superseded-by=B ⟺ B本文 Supersedes: A。
+# 従来は front-matter 起点（forward）のみの片方向照合だったため、
+# 本文で Supersedes 宣言したが front-matter 更新を忘れたケース（逆方向の
+# ドリフト）を検出できなかった。逆方向（本文 Supersedes 起点で
+# front-matter superseded-by を照合）を追加する。
+
+# 本文が Supersedes 宣言しているが対象ADRの front-matter superseded-by が
+# 欠落/不一致（更新忘れ）の corpus は exit 1 ＋ 逆方向と分かる違反メッセージ
+run_layer3_xref_reverse_missing() {
+    local corpus="$FIXTURES_DIR/invalid/07-xref-reverse-missing"
+
+    if [ ! -f "$LINT_ADR" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] PRレビュー反映(reverse-missing): lint-adr.sh not found: %s\n' "$LINT_ADR"
+        return
+    fi
+
+    if [ ! -d "$corpus" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] PRレビュー反映(reverse-missing): missing fixture corpus: %s\n' "$corpus"
+        return
+    fi
+
+    local output rc
+    set +e
+    output=$(bash "$LINT_ADR" "$corpus" 2>&1)
+    rc=$?
+    set -e
+
+    total=$((total + 1))
+    if [ "$rc" -eq 1 ]; then
+        printf '[PASS] PRレビュー反映(reverse-missing): exit 1\n'
+        passed=$((passed + 1))
+    else
+        printf '[FAIL] PRレビュー反映(reverse-missing): exit 1 を期待したが %d\n  output:\n%s\n' "$rc" "$output"
+        failed=$((failed + 1))
+    fi
+
+    assert_contains "$output" "相互参照違反（逆方向" "PRレビュー反映(reverse-missing): 逆方向と分かる違反メッセージ"
+    assert_contains "$output" "ADR-20260701-xref-reverse-missing-old" "PRレビュー反映(reverse-missing): front-matter更新忘れ側(旧ADR)の言及"
+}
+
+run_layer3_xref_reverse_missing
+
+# 入れ子（インデント）バレット `  - Supersedes: ...` を持つ双方向一致ペアは
+# 誤検知せず exit 0（02-xref-valid に追加した nested ペアで確認）
+run_layer3_xref_nested_bullet_valid() {
+    local corpus="$FIXTURES_DIR/valid/02-xref-valid"
+
+    if [ ! -f "$LINT_ADR" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] PRレビュー反映(nested-bullet): lint-adr.sh not found: %s\n' "$LINT_ADR"
+        return
+    fi
+
+    local output rc
+    set +e
+    output=$(bash "$LINT_ADR" "$corpus" 2>&1)
+    rc=$?
+    set -e
+
+    total=$((total + 1))
+    if [ "$rc" -eq 0 ]; then
+        printf '[PASS] PRレビュー反映(nested-bullet): 入れ子バレット双方向一致ペアを含む02-xref-validはexit 0\n'
+        passed=$((passed + 1))
+    else
+        printf '[FAIL] PRレビュー反映(nested-bullet): exit 0 を期待したが %d\n  output:\n%s\n' "$rc" "$output"
+        failed=$((failed + 1))
+    fi
+}
+
+run_layer3_xref_nested_bullet_valid
+
 # ==== AC5: docs/adr/README.md の新スキーマ改訂（decision tree・3段構え対応表の存在、旧記述の除去） ====
 
 README_ADR="$REPO_ROOT/docs/adr/README.md"
