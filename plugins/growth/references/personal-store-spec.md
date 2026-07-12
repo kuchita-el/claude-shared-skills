@@ -23,6 +23,7 @@ growth プラグインの学習ループ（概念上の5段: `[Capture] → [Dis
 
 - **バケット名生成規約**: バケット名 `captures-YYYY-MM-DD.md` の `YYYY-MM-DD` は、観測の見出しキー timestamp（capture 実行時刻・UTC・ISO 8601）の **UTC 日付部分**である。capture は `date -u` 由来の同一 timestamp から見出しキーとバケット名の両方を導く**純関数**であり、ローテーション状態を持たない（無状態 append）。例: 見出しキー `2026-07-11T09:19:03Z` → バケット `captures-2026-07-11.md`。
 - **同一 UTC 日の全観測は同一バケットに同居する**（run をまたいでも）。日付が変わると次のバケットへ自然に切り替わる。バケット跨ぎは UTC 日付の境界でのみ起こり、capture 側の状態遷移では起こらない。
+- **表記規約（概念名 vs 物理形）**: 以降 store 全体（観測記録コーパス）を指す**概念名**として `captures.md` を用いることがあるが、**物理形はセグメント `captures-*.md`（日付バケット群）**である。単一の `captures.md` というファイルは本仕様では存在しない（バケット化以前に生成された単一 `captures.md` は本 store 形式の対象外。#485 OUT・移行は手動）。概念文中の `captures.md` はこの別称であり、パス・処理源・書き込み先を指す文脈ではセグメント `captures-*.md` を用いる。
 - `<project-id>` は既存 memory 機構が用いるプロジェクト識別子と同一（このリポジトリでは作業ディレクトリのパス区切りを `-` に置換した形式。例: `-home-kuchita-Development-claude-shared-skills`）。memory が `projects/<project-id>/memory/` を使うのと同階層に `projects/<project-id>/growth/` を置く。
 - **スコープは per-project**。観測はプロジェクト文脈（作業セッション）で発生するため、store をプロジェクトごとに分離してこの文脈を保持する。Distill はこのプロジェクト単位の store を入力源とする。
 - このパスはユーザースコープ（`~/.claude/` 配下）にあり、本リポジトリの work tree の外にある。したがって**配布物（プラグイン）に物理的に含まれず**、プラグイン更新で消えず、配布を受けた consumer の環境でも各自の user-local 領域として成立する。
@@ -180,7 +181,7 @@ user-utterance 由来（ユーザーの訂正）の例:
 
 観測は**有界保持**する。従来の恒久保持方針を改め、retention horizon を超えた古い観測は経年削除して store を有界化する。retention の目的は監査保持（単独利用者ゆえ不要）ではなく、**distiller 改善時にカーソルを巻き戻して retention horizon 内の観測から再導出することを可能にするため**である（ADR-20260712。ADR-20260711 決定4〔旧・観測の恒久保持方針〕を有界保持へ改訂）。改善された distiller が horizon 内の観測から新たなシグナルを拾えるよう直近の観測コーパスを保持する一方、horizon を超えた古い観測はバケット単位で**経年削除**する。
 
-- **retention horizon M**: 直近 M 日（**既定 M=60 日・可変**）。M はドキュメント定数であり、値を変えるには本節および distill 手順（`distill-procedure.md`）の該当記述を編集する（単独利用者ゆえ config 機構は設けない）。
+- **retention horizon M**: 直近 M 日（**既定 M=60 日・可変**）。M はドキュメント定数であり、**本節が既定値の単一出典**である。値を変えるには本節を編集し、あわせて restate 箇所（`distill-procedure.md`「経年削除（retention）」節・`distill/SKILL.md`「経年削除」原則と手順8）の `既定 M=60 日` 表記も追随させる（単独利用者ゆえ config 機構は設けない。restate 箇所は spec 参照の注記付き）。
 - **保持/削除セマンティクス**:
   - **バケット drop 条件** ＝ (バケット内の全エントリがカーソル通過済み) ∧ (バケット日付が horizon より古い ＝ `バケット日付 < today − M` 日)。両条件が真のバケットのみ削除対象。
   - **保持集合** ＝ (直近 M 日のバケット) ∪ (未 distill エントリを含む全バケット)。
