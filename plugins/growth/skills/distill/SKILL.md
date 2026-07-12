@@ -34,13 +34,13 @@ allowed-tools:
 
 ## 完了報告
 
-処理源件数（カーソルより新しく provenance 除外後）・棄却件数・分類内訳・型内訳（`behavior-diff` / `decision-record`）・採用仮説数（うち再発知見変換数）・前進後カーソル・store パス・仮説ファイルパスを報告する。
+処理源件数（カーソルより新しく provenance 除外後）・棄却件数・型内訳（`behavior-diff` / `decision-record`）・優先度内訳（高優先／再発 N 順の件数）・採用仮説数（うち再発知見変換数）・前進後カーソル・store パス・仮説ファイルパスを報告する。
 
 ```
 処理源5件（カーソルより新しく provenance 除外後）を仮説形成しました。
 - 棄却: 1件（純記述・実行不能）
-- 分類: 判断誤り2件 / 環境摩擦2件
 - 型内訳: behavior-diff 2件 / decision-record 1件
+- 優先度: 高優先 1件（decision-record）/ 再発 N 順 2件（behavior-diff。うち再発知見1件）
 - 採用仮説: 3件（candidates.md へ upsert。うち再発知見へ変換1件）
 - 前進後カーソル: 2026-07-11T09:30:00Z
 store: ~/.claude/projects/-home-user-myproject/growth/captures.md

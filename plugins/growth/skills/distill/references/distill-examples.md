@@ -74,12 +74,12 @@
    - 1 と 2 はトリガー×差分が一致 → 1仮説へ集約（**表層の語彙差を無視して畳む**）。
    - 1・2（signal=訂正）と 3（signal=訂正）は **同一 signal だが振る舞い差分が異なる** → 畳まない（**signal 一致だけで集約しない**）。
    - 3 と 4 はトリガー×差分が一致 → 1仮説へ集約（**signal/origin が異なっても、振る舞い差分が同じなら畳む**）。
-   - この集約仮説（3＋4）は `user-utterance`（3）と `tool-result`（4）の混在クラスタだが、痕跡種別は順位に無関係。`behavior-diff` として provenance=2（N=2 再発）で重み付けする（§4.1）。
+   - この集約仮説（3＋4）は `user-utterance`（3）と `tool-result`（4）の混在クラスタだが、痕跡種別は順位に無関係。`behavior-diff` として provenance=2（複数観察の支持。novel＝台帳未一致のため §7 再発知見化はしない）で重み付けする（§4.1）。
 6. **台帳突合**: 両仮説とも参照源（`~/.claude/CLAUDE.md` 等）に一致する既存ルールが無ければ novel → 通常仮説のまま（突合の既知例は例D）。
 
 ### 期待結果（仮説2件 < 入力4件、`candidates.md` へ upsert）
 
-各仮説にメタ欄（provenance＝畳んだ観察の `## <timestamp>` 群、scope-hypothesis＝仮説形成観点の仮説タグ、career-hypothesis＝昇格先キャリア＋宛先 repo 仮説、candidate-status＝`pending`）が付く。エントリ1・2 は同一クラスタなので provenance に両 timestamp を列挙する。両仮説とも `behavior-diff`・provenance=2（N=2 再発）のため出力順位は同列。痕跡種別に依らず再発 N で順位が決まる。
+各仮説にメタ欄（provenance＝畳んだ観察の `## <timestamp>` 群、scope-hypothesis＝仮説形成観点の仮説タグ、career-hypothesis＝昇格先キャリア＋宛先 repo 仮説、candidate-status＝`pending`）が付く。エントリ1・2 は同一クラスタなので provenance に両 timestamp を列挙する。両仮説とも `behavior-diff`・provenance=2（観察2件が支持＝N=2。台帳未一致 novel のため §7 再発知見化はせず、provenance 件数で単発より上位）のため出力順位は同列。痕跡種別に依らず provenance 件数で順位が決まる。
 
 ```
 ## ファイル復元には git restore を使う
@@ -102,7 +102,7 @@ Markdown 等の長文を CLI オプションに直接渡さない。ファイル
 ```
 
 これらは `candidates.md` へ provenance キーで upsert 永続化され、チャットにも提示される。両仮説とも全プロジェクトに効くため scope-hypothesis は `universal`（仮説。最終裁定は下流の人間 refine/review）。career-hypothesis は両仮説ともテキスト規範の汎用ルール（決定表 行4）のため `learnings.md`、宛先は配布元プラグイン repo（仮説。最終裁定は集約点）。
-完了報告: 処理源4件 / 棄却0件 / 型内訳 behavior-diff 4観察→2仮説・decision-record 0件 / 優先度 両仮説 N=2（再発・同列） / 採用仮説2件（2 < 4。再発知見変換0件） / 前進後カーソル 2026-06-26T11:10:00Z（今回走査の最新 timestamp）。
+完了報告: 処理源4件 / 棄却0件 / 型内訳 behavior-diff 4観察→2仮説・decision-record 0件 / 優先度 両仮説 provenance=2・novel（同列。台帳未一致のため §7 昇格なし） / 採用仮説2件（2 < 4。再発知見変換0件） / 前進後カーソル 2026-06-26T11:10:00Z（今回走査の最新 timestamp）。
 
 ---
 
@@ -168,13 +168,13 @@ git commit のメッセージにヒアドキュメントを使って失敗した
 
 1. **処理源選択（§2.1）**: 4件すべてカーソルより新しく provenance 除外なし → 全4件が処理源。
 2. **棄却判定**: 「npm install が想定より遅かった」を純記述として棄却（残り有効3件）。
-3. **優先度付け（§4）**: git restore クラスタ（エントリ1・2）は `behavior-diff`・N=2（再発）→ 上位。commit メッセージ観察は `behavior-diff`・N=1（単発）→ 低優先。痕跡種別（`origin`）は順位に用いない。
+3. **優先度付け（§4）**: git restore クラスタ（エントリ1・2）は `behavior-diff`・provenance=2（観察2件）→ commit の provenance=1 より上位。両者 novel（台帳未一致）のため §7 再発知見化はしない。痕跡種別（`origin`）は順位に用いない。
 4. **クラスタ化**: 有効3件のうち、例A エントリ1・2 を「ファイル復元には git restore を使う」へ集約。上記の commit メッセージ観察は別トリガー×差分（「コミットメッセージに複数行を渡すとき」×「ヒアドキュメントでなく -m を複数回指定」）→ 単独仮説。
 5. **台帳突合**: 両仮説とも既知ルール無し（novel）と仮定 → 通常仮説のまま。
 
 ### 期待結果（仮説2件 < 有効3件 < 入力4件）
 
-出力順位は再発（git restore、N=2）→ 単発（commit メッセージ、N=1）の順。痕跡種別に依らず再発 N で決まる。
+出力順位は provenance=2（git restore）→ provenance=1（commit メッセージ）の順。両者 novel（台帳未一致）。痕跡種別に依らず provenance 件数で決まる。
 
 ```
 ## ファイル復元には git restore を使う
@@ -196,7 +196,7 @@ git commit のメッセージにヒアドキュメントを使って失敗した
 git commit のメッセージにヒアドキュメントを使わず、-m を複数回指定して行を分ける。シェルのヒアドキュメント制約による失敗を避けるため。
 ```
 
-完了報告: 処理源4件 / 棄却1件 / 型内訳 behavior-diff 3観察→2仮説・decision-record 0件 / 優先度 git restore N=2（再発）> commit N=1（単発） / 採用仮説2件（2 < 有効3 < 処理源4。再発知見変換0件） / 前進後カーソル 2026-06-26T13:00:00Z。純記述が仮説に漏れず、有効分のみがクラスタ化され、各仮説に provenance・scope-hypothesis・career-hypothesis・candidate-status が付いて `candidates.md` へ upsert されることを確認する。
+完了報告: 処理源4件 / 棄却1件 / 型内訳 behavior-diff 3観察→2仮説・decision-record 0件 / 優先度 git restore provenance=2 > commit provenance=1（両者 novel） / 採用仮説2件（2 < 有効3 < 処理源4。再発知見変換0件） / 前進後カーソル 2026-06-26T13:00:00Z。純記述が仮説に漏れず、有効分のみがクラスタ化され、各仮説に provenance・scope-hypothesis・career-hypothesis・candidate-status が付いて `candidates.md` へ upsert されることを確認する。
 
 ---
 
