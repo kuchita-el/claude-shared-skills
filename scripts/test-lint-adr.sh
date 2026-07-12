@@ -405,6 +405,29 @@ run_layer3_mixed_validity_still_passes() {
 
 run_layer3_mixed_validity_still_passes
 
+# ==== AC5: docs/adr/README.md の新スキーマ改訂（decision tree・3段構え対応表の存在、旧記述の除去） ====
+
+README_ADR="$REPO_ROOT/docs/adr/README.md"
+
+run_ac5_readme() {
+    if [ ! -f "$README_ADR" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] AC5: docs/adr/README.md not found: %s\n' "$README_ADR"
+        return
+    fi
+
+    local content
+    content=$(cat "$README_ADR")
+
+    assert_contains "$content" "3段構え" "AC5: 3段構え編集機構の対応表が存在する"
+    assert_contains "$content" "些末" "AC5: decision tree（些末/非core/core 判定フロー）が存在する"
+    assert_not_contains "$content" "モデル制約由来の設計判断インデックス" "AC5: 旧モデル制約由来の設計判断インデックス節が除去されている"
+    assert_not_contains "$content" "### Amended（部分改訂）" "AC5: 旧 Amended（部分改訂）手順節が除去されている"
+}
+
+run_ac5_readme
+
 echo
 if [ "$failed" -eq 0 ]; then
     printf 'All tests passed: %d/%d\n' "$passed" "$total"
