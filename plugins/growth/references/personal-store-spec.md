@@ -5,7 +5,7 @@ growth プラグインの学習ループ（概念上の5段: `[Capture] → [Dis
 ## 位置づけ
 
 - `DESIGN.md` 決定事項3「個人 store の置き場」を具体化する文書。生の観測は個人ローカル（共有されない）に置き、検証を経たものだけ committed の学び置き場へ昇格させる。
-- 本 store は学習ループの **Capture の書き込み先**であり、**Distill の入力源**である。Capture の検知ロジック本体・committed な学び置き場（`learnings.md`）への物理昇格（Distribute、Phase 2）・過去セッションログの横断解析は本仕様の対象外（別 Issue / 別 Phase）。一方、**`captures.md` は無状態の append-only 観測コーパスであり（エントリ単位の処理状態フィールドを持たない）、distill の処理源選択（provenance 導出 ＋ 処理済みカーソル）とカーソルの格納・前進・巻き戻し規約は本仕様が定義する**（ADR-20260711 / ADR-20260711-2。「distill 処理源選択と処理済みカーソル」節）。
+- 本 store は学習ループの **Capture の書き込み先**であり、**Distill の入力源**である。Capture の検知ロジック本体・committed な学び置き場（`learnings.md`）への物理昇格（Distribute、Phase 2）・過去セッションログの横断解析は本仕様の対象外（別 Issue / 別 Phase）。一方、**`captures.md` は無状態の append-only 観測コーパスであり（エントリ単位の処理状態フィールドを持たない）、distill の処理源選択（provenance 導出 ＋ 処理済みカーソル）とカーソルの格納・前進・巻き戻し規約は本仕様が定義する**（ADR-20260711 / ADR-20260711-2〔ADR-20260712 が restate〕。「distill 処理源選択と処理済みカーソル」節）。
 - 本 store は committed な学び置き場（単一の人間可読ファイル）とは別物である。store は未検証の生記録を貯める一時領域であり、検証を経た学びは store の外（昇格先）へ移送される。
 - 本仕様はさらに、Distill が生成し `promote` が消費する**仮説ファイル（`candidates.md`）**の置き場・形式・メタ欄スキーマを単一出典として定義する（#348。「仮説ファイル（candidates.md）」節）。仮説ファイルは store（生観測）でも `learnings.md`（配布物）でもない第3の個人ローカル成果物である。
 
@@ -15,12 +15,15 @@ growth プラグインの学習ループ（概念上の5段: `[Capture] → [Dis
 
 ## 置き場
 
-生観測 store のパスを以下に確定する。
+生観測 store は日付バケットのセグメントファイル群であり、パスを以下に確定する。
 
 ```
-~/.claude/projects/<project-id>/growth/captures.md
+~/.claude/projects/<project-id>/growth/captures-YYYY-MM-DD.md
 ```
 
+- **バケット名生成規約**: バケット名 `captures-YYYY-MM-DD.md` の `YYYY-MM-DD` は、観測の見出しキー timestamp（capture 実行時刻・UTC・ISO 8601）の **UTC 日付部分**である。capture は `date -u` 由来の同一 timestamp から見出しキーとバケット名の両方を導く**純関数**であり、ローテーション状態を持たない（無状態 append）。例: 見出しキー `2026-07-11T09:19:03Z` → バケット `captures-2026-07-11.md`。
+- **同一 UTC 日の全観測は同一バケットに同居する**（run をまたいでも）。日付が変わると次のバケットへ自然に切り替わる。バケット跨ぎは UTC 日付の境界でのみ起こり、capture 側の状態遷移では起こらない。
+- **表記規約（概念名 vs 物理形）**: 以降 store 全体（観測記録コーパス）を指す**概念名**として `captures.md` を用いることがあるが、**物理形はセグメント `captures-*.md`（日付バケット群）**である。単一の `captures.md` というファイルは本仕様では存在しない（バケット化以前に生成された単一 `captures.md` は本 store 形式の対象外。#485 OUT・移行は手動）。概念文中の `captures.md` はこの別称であり、パス・処理源・書き込み先を指す文脈ではセグメント `captures-*.md` を用いる。
 - `<project-id>` は既存 memory 機構が用いるプロジェクト識別子と同一（このリポジトリでは作業ディレクトリのパス区切りを `-` に置換した形式。例: `-home-kuchita-Development-claude-shared-skills`）。memory が `projects/<project-id>/memory/` を使うのと同階層に `projects/<project-id>/growth/` を置く。
 - **スコープは per-project**。観測はプロジェクト文脈（作業セッション）で発生するため、store をプロジェクトごとに分離してこの文脈を保持する。Distill はこのプロジェクト単位の store を入力源とする。
 - このパスはユーザースコープ（`~/.claude/` 配下）にあり、本リポジトリの work tree の外にある。したがって**配布物（プラグイン）に物理的に含まれず**、プラグイン更新で消えず、配布を受けた consumer の環境でも各自の user-local 領域として成立する。
@@ -42,7 +45,7 @@ git rev-parse --path-format=absolute --git-common-dir
 
 **store パスの組み立て**:
 
-- store パス: `~/.claude/projects/<project-id>/growth/captures.md`
+- store パス: `~/.claude/projects/<project-id>/growth/captures-YYYY-MM-DD.md`（日付バケット。`YYYY-MM-DD` は見出しキー timestamp の UTC 日付部分。バケット名生成規約は「置き場」冒頭を参照）
 
 > capture（Capture）は同一の `<project-id>` から jsonl パス `~/.claude/projects/<project-id>/<session-UUID>.jsonl` も組み立てるが、session UUID 解決と jsonl 読取は Capture 固有の手順であり本仕様の対象外（capture SKILL.md が定義する）。
 
@@ -140,9 +143,9 @@ user-utterance 由来（ユーザーの訂正）の例:
 
 ## distill 処理源選択と処理済みカーソル
 
-`captures.md` は無状態の append-only 観測コーパスであり、エントリ単位の処理状態フィールド（旧 `status`）を持たない。「どの観測を distill が処理するか」は、captures 側のフラグではなく **distill 側の処理源選択**で定める。処理源選択は役割の異なる2機構の合成である（ADR-20260711 / ADR-20260711-2）。
+`captures.md` は無状態の append-only 観測コーパスであり、エントリ単位の処理状態フィールド（旧 `status`）を持たない。「どの観測を distill が処理するか」は、captures 側のフラグではなく **distill 側の処理源選択**で定める。処理源選択は役割の異なる2機構の合成である（ADR-20260711 / ADR-20260711-2〔ADR-20260712 が restate〕）。
 
-- **有界化（処理済みカーソル / high-water mark）**: store レベルに単一の「最終処理 timestamp（カーソル）」を持ち、ルーチン distill はカーソルより**新しい**観測のみを処理源とする。これにより未 distill 観測が齢で無音脱落せず（coverage 欠損の除去）、走査済みノイズの毎回再走査（LLM 非決定性による偽候補 churn）も起きない。
+- **有界化（処理済みカーソル / high-water mark）**: store レベルに単一の「最終処理 timestamp（カーソル）」を持ち、ルーチン distill はカーソルより**新しい**観測のみを処理源とする。これにより未 distill 観測が齢で無音脱落せず（coverage 欠損の除去）、走査済みノイズの毎回再走査（LLM 非決定性による偽候補 churn）も起きない。**セグメント（バケット）形式では、この有界化を Read レベルでも効かせる**: distill はバケット日付が**カーソル日付以降**のバケットのみを Read 対象にし（バケット粒度の superset フィルタ）、読んだバケット内で per-entry に見出しキーとカーソルを辞書順比較して処理源を最終確定する。バケット粒度フィルタは超集合であり（同日バケットは全通過済みでも Read し per-entry で除外しうる）、エントリ粒度比較が最終確定する。カーソルより古いバケット（sealed）は Read から外れ、Read トークン天井を回避する（ADR-20260712）。
 - **重複排除（provenance 導出）**: カーソルより新しいスライス内でも、既に `promoted` または `pending` の候補を provenance に持つ観測は処理源から除外する（重複候補生成の防止）。`rejected` 候補しか持たない観測・候補を持たない観測は provenance では除外せず処理源に残す。ただし有界化（カーソル）が別途効くため、ルーチン distill でこれらが処理源に入るのはカーソルより新しい間（＝当該走査の1回）に限られ、処理後はカーソル前進とともに処理源から外れる（走査済みノイズと同じ扱い。以降の再走査は巻き戻しでのみ開く）。
 
 有界化（カーソル）と重複排除（provenance）は役割が異なり、両者は合成される。カーソルは batch 処理の進捗マーカー（process bookkeeping）であって、候補の検証結果（domain state ＝ `candidate-status`）とは別カテゴリである。状態軸は候補側 `candidate-status` 1 本に集約し、captures 側には状態を持たない。
@@ -160,23 +163,32 @@ user-utterance 由来（ユーザーの訂正）の例:
 ```
 
 - `<project-id>` と親ディレクトリの解決は「project-id とパスの解決手順」を共通参照する（`captures.md` / `candidates.md` と同一階層・同一 project-id）。
-- カーソル値は `captures.md` の `## <timestamp>` 見出し（ISO 8601）と**同一キー空間**で辞書順比較する。観測は capture 実行時刻の単調増加 timestamp を持つため「カーソルより新しい」は一意に定まる（ADR-20260711-2 末尾）。1 run 複数観察に付す run 内序数サフィックス（`-NN`・固定幅）は辞書順で記録順に整列するため、同一キー空間・単調増加の前提を保つ（ADR-20260711-4）。
+- カーソル値は `captures.md` の `## <timestamp>` 見出し（ISO 8601）と**同一キー空間**で辞書順比較する。観測は capture 実行時刻の単調増加 timestamp を持つため「カーソルより新しい」は一意に定まる（ADR-20260711-2〔ADR-20260712 が restate〕末尾）。1 run 複数観察に付す run 内序数サフィックス（`-NN`・固定幅）は辞書順で記録順に整列するため、同一キー空間・単調増加の前提を保つ（ADR-20260711-4）。
 - カーソルは captures.md のフロントマターにも candidates.md にも同居させず、専用ファイルに置く。カーソルは観測の内容でも候補の内容でもなく、distill の処理進捗のみを表すためである。
 
 ### 前進・巻き戻し・欠損規則
 
 - **前進**: ルーチン distill は処理後、カーソルを今回走査した観測の**最新見出しキー**（辞書順の最大。`-NN` 込みになりうる）へ前進させる。カーソルを前進させる主体は **distill のみ**であり、`promote` は触らない（旧 `status` のようなスキル間反転結合を生まない）。
-- **巻き戻し（distiller 改善時）**: distiller を改善したときは、カーソルを意図的に**先頭**（または再走査したい範囲の起点）へ巻き戻して1回だけ再導出する。巻き戻し範囲の観測を再走査し、provenance が live 候補（`promoted` / `pending`）の重複を止め、`rejected` 不可侵（ADR-20260629 決定3）が棄却済み同一仮説の復活を止める。再導出後カーソルを最新へ戻す。改善判定は自動化せず、改善を入れた開発者が明示操作として巻き戻す。
-- **巻き戻し（candidates.md 消失時）**: `candidates.md` が消失した場合はカーソルを**先頭**へ巻き戻し、`captures.md` 全体から再導出する（ADR-20260711 Consequence (b) の「再生成可能」をカーソル巻き戻しとして具体化）。
-- **欠損時既定**: カーソル（`distill-state.md` またはその中の `- distill-cursor:` 行）が欠損している場合は「**先頭**」を既定とし、一度だけ全走査する。データ損失を招かず安全に劣化する。
+- **巻き戻し（distiller 改善時）**: distiller を改善したときは、カーソルを意図的に**保持集合の先頭**（retention horizon 先頭。または再走査したい範囲の起点）へ巻き戻して1回だけ再導出する。horizon を超えたバケットは経年削除済みで物理的に存在しないため、再走査の到達射程は自然に horizon 先頭で有界化される（ADR-20260712 決定2）。巻き戻し範囲の観測を再走査し、provenance が live 候補（`promoted` / `pending`）の重複を止め、`rejected` 不可侵（ADR-20260629 決定3）が棄却済み同一仮説の復活を止める。再導出後カーソルを最新へ戻す。改善判定は自動化せず、改善を入れた開発者が明示操作として巻き戻す。
+- **巻き戻し（candidates.md 消失時）**: `candidates.md` が消失した場合はカーソルを**保持集合の先頭**（retention horizon 先頭）へ巻き戻し、保持されているバケット群（`captures-*.md`）から再導出する（ADR-20260711 Consequence (b) の「再生成可能」をカーソル巻き戻しとして具体化。再導出の到達射程は ADR-20260712 決定2 により horizon 先頭までへ有界化される）。
+- **欠損時既定**: カーソル（`distill-state.md` またはその中の `- distill-cursor:` 行）が欠損している場合は「**保持集合の先頭**（retention horizon 先頭）」を既定とし、一度だけ保持バケット群を全走査する。データ損失を招かず安全に劣化する。
 
 ### 後方互換
 
 既存 `captures.md` に旧 `status` フィールド（`- status: unprocessed` / `- status: promoted`）付きのエントリが残っていても、distill は**読み取り時にこの行を無視して読む**。破壊的な一括変換（旧エントリからの当該行の削除・書き換え）は行わない。処理源選択は上記のカーソル ＋ provenance のみで判定し、旧 `status` の値には依存しない。
 
-### retention の目的
+### retention（有界保持と経年削除）
 
-観測は削除しない。retention の目的は監査保持（単独利用者ゆえ不要）ではなく、**distiller 改善時にカーソルを巻き戻して再導出することを可能にするため**である（ADR-20260711 決定4 / ADR-20260711-2）。改善された distiller が過去の観測から新たなシグナルを拾えるよう、観測コーパスを保持する。
+観測は**有界保持**する。従来の恒久保持方針を改め、retention horizon を超えた古い観測は経年削除して store を有界化する。retention の目的は監査保持（単独利用者ゆえ不要）ではなく、**distiller 改善時にカーソルを巻き戻して retention horizon 内の観測から再導出することを可能にするため**である（ADR-20260712。ADR-20260711 決定4〔旧・観測の恒久保持方針〕を有界保持へ改訂）。改善された distiller が horizon 内の観測から新たなシグナルを拾えるよう直近の観測コーパスを保持する一方、horizon を超えた古い観測はバケット単位で**経年削除**する。
+
+- **retention horizon M**: 直近 M 日（**既定 M=60 日・可変**）。M はドキュメント定数であり、**本節が既定値の単一出典**である。値を変えるには本節を編集し、あわせて restate 箇所（`distill-procedure.md`「経年削除（retention）」節・`distill/SKILL.md`「経年削除」原則と手順8）の `既定 M=60 日` 表記も追随させる（単独利用者ゆえ config 機構は設けない。restate 箇所は spec 参照の注記付き）。
+- **保持/削除セマンティクス**:
+  - **バケット drop 条件** ＝ (バケット内の全エントリがカーソル通過済み) ∧ (バケット日付が horizon より古い ＝ `バケット日付 < today − M` 日)。両条件が真のバケットのみ削除対象。
+  - **保持集合** ＝ (直近 M 日のバケット) ∪ (未 distill エントリを含む全バケット)。
+  - horizon 境界はちょうど M 日前（`バケット日付 == today − M`）を**保持側**とする（drop 条件に厳密不等号 `<` を用いる。`< today − M` ＝ `M+1` 日前以降が削除側）。
+- **削除主体は distill のみ**。capture は無状態を保ち削除を行わない（バケット名生成の純関数性・無状態 append を壊さないため）。経年削除はバケット丸ごとの `rm`。
+- **guarantee-once 非退行**: 未 distill エントリを含むバケットは horizon 超でも削除しない（drop 条件の「全エントリ通過済み」を満たさないため）。未検証観測が齢で無音脱落しない（ADR-20260712 制約〔ADR-20260711-2 決定2 を restate〕維持）。
+- **再導出可能性の核は horizon 内で維持する**。「観測を安易に捨てない」核（ADR-20260711 決定4 の趣旨）は horizon 内の巻き戻し再導出可能性として restate され、horizon を超えた観測のバケット削除と両立する（ADR-20260712 決定1・決定3）。
 
 ### 二段ゲートとの整合
 
@@ -308,15 +320,15 @@ ExitWorktree はマージ済みかを確認しないため、削除前に gh pr 
 
 ### ユーザースコープ store（正準の置き場）
 
-正準の置き場 `~/.claude/projects/<project-id>/growth/captures.md` は本リポジトリの work tree の外にあるため、リポジトリの `git status` には原理上現れない。リポジトリのどのブランチからもトラッキング対象にならないことが、置き場の選定そのものによって保証される。
+正準の置き場 `~/.claude/projects/<project-id>/growth/`（セグメント `captures-*.md` 群）は本リポジトリの work tree の外にあるため、リポジトリの `git status` には原理上現れない。リポジトリのどのブランチからもトラッキング対象にならないことが、置き場の選定そのものによって保証される。
 
 ### in-repo dogfooding 時の防御
 
 growth プラグイン自身を本リポジトリで開発・dogfooding する際、リポジトリ内のパスへ観測を書き出す運用がありうる。その場合に未検証観測が誤ってコミットされないよう、リポジトリルートの `.gitignore` で `plugins/growth/.local/` を追跡対象外にする。検証手順は以下。
 
-なお **Distill の処理源（仮説化対象の work queue）は正準パス（`captures.md`）のみ**である。in-repo の `plugins/growth/.local/` は手動 dogfooding 時に観測を誤コミットから守るための保護領域であって、Distill の走査対象ではない。両方にファイルが存在する場合も Distill は処理源として正準パスだけを読む。
+なお **Distill の処理源（仮説化対象の work queue）は正準パス（セグメント `captures-*.md` 群）のみ**である。in-repo の `plugins/growth/.local/` は手動 dogfooding 時に観測を誤コミットから守るための保護領域であって、Distill の走査対象ではない。両方にファイルが存在する場合も Distill は処理源として正準パスだけを読む。
 
-> Distill は処理源（`captures.md`）とは別に、既存ルール台帳（`CLAUDE.md` 2層・`learnings.md`・`candidates.md` 自身）を**読み取り専用の参照源**として突合に用いる（仮説は生成しない・台帳は書き換えない）。処理源とは別レイヤであり、本「構成上の保証」の対象（生観測が配布物に混入しないこと）には影響しない。詳細は distill-procedure.md §2 および ADR-20260629。
+> Distill は処理源（セグメント `captures-*.md` 群）とは別に、既存ルール台帳（`CLAUDE.md` 2層・`learnings.md`・`candidates.md` 自身）を**読み取り専用の参照源**として突合に用いる（仮説は生成しない・台帳は書き換えない）。処理源とは別レイヤであり、本「構成上の保証」の対象（生観測が配布物に混入しないこと）には影響しない。詳細は distill-procedure.md §2 および ADR-20260629。
 
 ```bash
 # .gitignore のマッチ規則が返れば追跡対象外であることが確認できる
@@ -337,6 +349,7 @@ git status --porcelain plugins/growth/.local/   # 出力が空であること
 | 痕跡種別軸（`origin`）の値域（2値・signal と直交） | 摩擦/判断の分類・重み付け（distill 側。優先度は知識型で決める） |
 | `expected` / `actual` フィールド（該当時必須・transcript 抽出限定） | 客観痕跡向けの痕跡種別値の追加（Phase 3） |
 | distill 処理源選択（provenance 導出 ＋ 処理済みカーソル）・カーソル格納場所（`distill-state.md`）・前進/巻き戻し/欠損規則 | git revert・CI 失敗の取得（Phase 3 以降） |
+| retention ポリシー（有界保持＋経年削除・horizon M＝既定 60 日・可変・保持/削除セマンティクス・削除主体は distill） | 過去に生成済みの単一 `captures.md` の移行スクリプト（単独利用者の手動移行で足りる。#485 OUT） |
 | 仮説ファイル（`candidates.md`）の置き場・形式・メタ欄スキーマ・provenance 規約 | promote の検証・Route 注記・起票の具体手順（promote スキルが定義） |
 | store が配布物に混入しない構成保証 | |
 
