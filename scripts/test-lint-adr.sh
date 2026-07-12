@@ -14,6 +14,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 GEN_INDEX="$REPO_ROOT/scripts/gen-adr-index.sh"
+LINT_ADR="$REPO_ROOT/scripts/lint-adr.sh"
 FIXTURES_DIR="$REPO_ROOT/scripts/fixtures/lint-adr"
 
 passed=0
@@ -88,7 +89,80 @@ run_ac4() {
 
 run_ac4
 
-# ==== 後続 Task 2〜4 でレイヤ1（front-matter スキーマ）/
+# ==== AC1: lint-adr.sh レイヤ1（front-matter スキーマ検証） ====
+
+# valid corpus は違反0件で exit 0 になること
+# （旧形式スキップ・却下/提案中/廃止済みが合法であることを含む）
+run_layer1_valid() {
+    local corpus="$FIXTURES_DIR/valid/01-mixed-validity"
+
+    if [ ! -f "$LINT_ADR" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] AC1(valid): lint-adr.sh not found: %s\n' "$LINT_ADR"
+        return
+    fi
+
+    local output rc
+    set +e
+    output=$(bash "$LINT_ADR" "$corpus" 2>&1)
+    rc=$?
+    set -e
+
+    total=$((total + 1))
+    if [ "$rc" -eq 0 ]; then
+        printf '[PASS] AC1: valid corpus(01-mixed-validity) は exit 0\n'
+        passed=$((passed + 1))
+    else
+        printf '[FAIL] AC1: valid corpus(01-mixed-validity) は exit 0 を期待したが %d\n  output:\n%s\n' "$rc" "$output"
+        failed=$((failed + 1))
+    fi
+}
+
+# invalid corpus は exit 1 ＋ 該当違反種別メッセージの部分一致になること
+# 引数: corpus名 期待メッセージ部分文字列 ラベル
+run_layer1_invalid() {
+    local corpus_name="$1" expect_substr="$2" label="$3"
+    local corpus="$FIXTURES_DIR/invalid/$corpus_name"
+
+    if [ ! -f "$LINT_ADR" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] %s: lint-adr.sh not found: %s\n' "$label" "$LINT_ADR"
+        return
+    fi
+
+    if [ ! -d "$corpus" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] %s: missing fixture corpus: %s\n' "$label" "$corpus"
+        return
+    fi
+
+    local output rc
+    set +e
+    output=$(bash "$LINT_ADR" "$corpus" 2>&1)
+    rc=$?
+    set -e
+
+    total=$((total + 1))
+    if [ "$rc" -eq 1 ]; then
+        printf '[PASS] %s: exit 1\n' "$label"
+        passed=$((passed + 1))
+    else
+        printf '[FAIL] %s: exit 1 を期待したが %d\n  output:\n%s\n' "$label" "$rc" "$output"
+        failed=$((failed + 1))
+    fi
+
+    assert_contains "$output" "$expect_substr" "$label: 違反メッセージ部分一致"
+}
+
+run_layer1_valid
+run_layer1_invalid "01-status-missing" "status が空です" "AC1: status 欠落"
+run_layer1_invalid "02-validity-missing" "validity が空です" "AC1: status=承認済み かつ validity 欠落"
+run_layer1_invalid "03-superseded-by-missing" "superseded-by が空です" "AC1: validity=上書き済み かつ superseded-by 欠落"
+
+# ==== 後続 Task 3〜4 で
 #      レイヤ2（index 同期）/ レイヤ3（相互参照双方向性）の
 #      invalid corpus 検査ブロックをここに追記する ====
 
