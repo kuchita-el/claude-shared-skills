@@ -22,7 +22,7 @@ growth プラグインの学習ループ（概念上の5段: `[Capture] → [Dis
 ```
 
 - `<project-id>` は既存 memory 機構が用いるプロジェクト識別子と同一（このリポジトリでは作業ディレクトリのパス区切りを `-` に置換した形式。例: `-home-kuchita-Development-claude-shared-skills`）。memory が `projects/<project-id>/memory/` を使うのと同階層に `projects/<project-id>/growth/` を置く。
-- **スコープは per-project**。観測はプロジェクト文脈（作業セッション）で発生するため、プロジェクトごとに store を分離して由来文脈を保持する。Distill はこのプロジェクト単位の store を入力源とする。
+- **スコープは per-project**。観測はプロジェクト文脈（作業セッション）で発生するため、store をプロジェクトごとに分離してこの文脈を保持する。Distill はこのプロジェクト単位の store を入力源とする。
 - このパスはユーザースコープ（`~/.claude/` 配下）にあり、本リポジトリの work tree の外にある。したがって**配布物（プラグイン）に物理的に含まれず**、プラグイン更新で消えず、配布を受けた consumer の環境でも各自の user-local 領域として成立する。
 
 ### project-id とパスの解決手順
