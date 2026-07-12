@@ -308,7 +308,7 @@ dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 
      - **(2) #439 直交性・#441 裁定基準・ADR-20260705-2 decision 2**: `type` は tag の要素数1特殊ケースで tag が type を包含し、確信ケースを要素数1で表せる。decision 2 が委譲した partition 硬度（「不十分なら tag」の tag 寄り示唆）を tag 確定で充足する。
      - **(3) ADR-20260701 §1（価値2軸）/§4（出力2系統分離）**: tag 採用が二重損失（平板化 or N 再発喪失）を回避し、§4 の系統数2が不変（両タグ仮説が両系統に入り、系統メンバーシップが関数から集合関係になるのみ）。
      - **(4) ADR-20260705 の能動推論不採用＝requisite variety（検出器2本維持）**: 非排他 tag 表現は検出器2本（教示信号検出器／予測誤差検出器）・知識型2系統（`behavior-diff`／`decision-record`）を単一検出器・単一値へ畳み戻さない。両知識型が `tags` 多値 set で併存表現され、variety を減らさない。
-     - **軸区別（J3・前提確認クリア）**: #440 の混在ゾーン（**知識型軸**: behavior-diff / decision-record）は、distill-procedure.md §4.1 の既存「**混在クラスタ**」（**出所軸**: user-utterance / tool-result）と直交する別概念。前者は「1観測が両知識型にまたがる」、後者は「出所の異なる観察が1仮説へ畳まれる」。両者は独立軸であり互いを置換しない。
+     - **軸区別（J3・前提確認クリア）**: #440 の混在ゾーン（**知識型軸**: behavior-diff / decision-record）は、distill-procedure.md §4.1 の既存「**混在クラスタ**」（**痕跡種別軸**: user-utterance / tool-result）と直交する別概念。前者は「1観測が両知識型にまたがる」、後者は「痕跡種別の異なる観察が1仮説へ畳まれる」。両者は独立軸であり互いを置換しない。
 
    - **ADR 記録＝ADR-20260705-2 の Amend（AC5・J2 確定）**: docs/adr/README.md 粒度判定4項目に本決定を照らすと、①後戻りコスト高（`type`↔`tags` はスキーマ・distill・promote・spec へ波及し事後変更は配布物フォーマットの破壊的変更）②複数モジュール波及（personal-store-spec.md・distill・promote・candidates.md）③採用理由揮発（tag を採る理由＝二重損失回避・直交性は時間で忘れやすい）④ツール自動強制不可（enum/set の設計選択は linter で強制できない）——**4点、ADR 級**。記録形式は新規 ADR ではなく **ADR-20260705-2 の Amend で確定**（J2）。partition 硬度は同 ADR decision 2 が #440 へ委譲した未決事項であり、同一系譜への in-place 追補（自己 Amend）が自然（新規 ADR は起票しない）。docs/adr/README.md の Amend 手続きは*新規 ADR による改訂*を想定するため本件は完全準拠せず、自己 Amend 形として ADR-20260705-2 decision 2 へ確定を追補し、同 ADR「関連ADR」節へ #440 逆参照を併記（`Amends:`/`Amended by:` の代替。Status は Accepted 維持）、本決定事項10 と相互参照を張った。
 

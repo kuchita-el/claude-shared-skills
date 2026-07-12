@@ -106,19 +106,19 @@ grep -i "denied\|permission\|拒否\|訂正\|違う\|ではなく\|error\|再試
 
 ### Step 3: 生観察の生成
 
-Step 2 で検知した各シグナルについて observation を生成し、あわせて出所・予測・実際を抽出する。
+Step 2 で検知した各シグナルについて observation を生成し、あわせて痕跡種別・予測・実際を抽出する。
 
 **記述対象**: 「何が起きたか」のみ。ユーザーの発話・ツール結果・当方の応答から観察できる事実を記述する。  
 **記述禁止**: 原因・対策・分類・改善提案・昇格判断を含めない。
 
-**出所（origin）の判定**: 各シグナルが transcript の**どこに現れたか**で出所を2値に分類する（値域は personal-store-spec.md「出所」節を単一出典とする）。
+**痕跡種別（origin）の判定**: 各シグナルが transcript のどの痕跡（tool-result / user-utterance）として現れたかで痕跡種別を2値に判定する（値域は personal-store-spec.md「痕跡種別」節を単一出典とする）。
 
 | origin | 判定 |
 |---|---|
 | `tool-result` | ツール結果（`type=tool_result` / `toolUseResult` / `is_error` 等）に現れた予測誤差。環境（権限・hook・コマンド失敗）との摩擦 |
 | `user-utterance` | ユーザー発話（`type=user` の text、tool_result 以外）に現れた予測誤差。当方の判断・提案への訂正 |
 
-出所軸は `signal` 種別と直交する独立軸であり、signal を置換・改名しない。
+痕跡種別（軸）は `signal` 種別と直交する独立軸であり、signal を置換・改名しない。
 
 **expected / actual の抽出**: 各シグナルについて、当方が予測した結果（`expected`）と実際に起きた結果（`actual`）を transcript から取り出す。引用可能性は**非対称**である（spec「生記録性」節）:
 

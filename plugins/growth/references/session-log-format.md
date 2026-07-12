@@ -62,12 +62,12 @@
 | ユーザー訂正 | `type=user` の text / string content（`tool_result` 以外の発話） | 自然文 |
 | 再試行 | `tool_use.id` ↔ `tool_result.tool_use_id` の紐付け＋連続する同一ツール呼び出し | 相関で導出 |
 | 思考過程 | `assistant.message.content[]` の `type=thinking` | 自然文 |
-| 出所＝tool-result 由来 | `user.message.content[]` の `type=tool_result` / top-level `toolUseResult` の存在 → `tool-result` | 構造化 |
-| 出所＝user 発話由来 | `type=user` の text / string content（`tool_result` 以外の発話）→ `user-utterance` | 自然文 |
+| 痕跡種別＝tool-result | `user.message.content[]` の `type=tool_result` / top-level `toolUseResult` の存在 → `tool-result` | 構造化 |
+| 痕跡種別＝user-utterance | `type=user` の text / string content（`tool_result` 以外の発話）→ `user-utterance` | 自然文 |
 | expected（予測） | `assistant.message.content[]` の `type=thinking` / `tool_use.input`（予測の手掛かり） | 自然文 / 構造化 |
 | actual（実際） | `tool_result`（`is_error` 含む）/ 後続の user 発話（実際の結果） | 構造化 / 自然文 |
 
-> **出所 / expected / actual の抽出元（capture 新スキーマ #416）**: capture 観察スキーマの `origin`（出所）・`expected`・`actual` フィールドは上表のフィールドから抽出する。出所はツール結果由来（`tool-result`）かユーザー発話由来（`user-utterance`）かの2値で、いずれも transcript に実在するフィールドへ対応し、capture が引用元を持つ（捏造でない）ことを裏付ける。`actual` は逐語断片を含む引用（要点が transcript に実在する文字列）、`expected` は上表の手掛かり（`type=thinking` / `tool_use.input`）に基づく再構成、`origin` は痕跡がどのフィールドに現れたかの2値判別である（引用可能性の非対称は personal-store-spec.md「生記録性」節）。本節は版依存スナップショットであり、抽出ロジックを上記フィールド名へ強依存させない設計方針（本文書冒頭の⚠️＝揮発性の注意）と整合させる。
+> **痕跡種別 / expected / actual の抽出元（capture 新スキーマ #416）**: capture 観察スキーマの `origin`（痕跡種別）・`expected`・`actual` フィールドは上表のフィールドから抽出する。痕跡種別はツール結果由来（`tool-result`）かユーザー発話由来（`user-utterance`）かの2値で、いずれも transcript に実在するフィールドへ対応し、capture が引用元を持つ（捏造でない）ことを裏付ける。`actual` は逐語断片を含む引用（要点が transcript に実在する文字列）、`expected` は上表の手掛かり（`type=thinking` / `tool_use.input`）に基づく再構成、`origin` は痕跡がどのフィールドに現れたかの2値判別である（引用可能性の非対称は personal-store-spec.md「生記録性」節）。本節は版依存スナップショットであり、抽出ロジックを上記フィールド名へ強依存させない設計方針（本文書冒頭の⚠️＝揮発性の注意）と整合させる。
 
 補助的に `permissionMode` / `mode`（権限・モード）、`gitBranch` / `cwd`（文脈）、`attributionSkill` / `attributionPlugin`（どのスキル・プラグイン起因か）、`system` の `away_summary`（区切りごとの自動要約）も取得可能。
 
