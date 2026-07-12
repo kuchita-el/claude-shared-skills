@@ -89,6 +89,69 @@ run_ac4() {
 
 run_ac4
 
+# ==== 回帰: gen-adr-index.sh の validity 抽出は末尾空白をトリムする ====
+# （lint-adr.sh の trim() と抽出・判定を一致させる。トリムしないと
+#   validity: 有効<末尾空白> の ADR が gen 側からは「有効でない」扱いで
+#   index から静かに除外される一方、lint レイヤ1はトリム済みで「有効」
+#   判定するため、レイヤ2（gen 出力と index.md の diff）でも drift として
+#   検出されず ADR が index から無言で消えるドリフトの回帰）
+run_whitespace_validity() {
+    local corpus="$FIXTURES_DIR/valid/03-whitespace-validity"
+
+    if [ ! -d "$corpus" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] 回帰(whitespace-validity): missing fixture corpus: %s\n' "$corpus"
+        return
+    fi
+
+    if [ ! -f "$GEN_INDEX" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] 回帰(whitespace-validity): gen-adr-index.sh not found: %s\n' "$GEN_INDEX"
+        return
+    fi
+
+    local gen_output gen_rc
+    set +e
+    gen_output=$(bash "$GEN_INDEX" "$corpus" 2>&1)
+    gen_rc=$?
+    set -e
+
+    if [ "$gen_rc" -ne 0 ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] 回帰(whitespace-validity): gen-adr-index.sh exited %d, expected 0\n  output:\n%s\n' "$gen_rc" "$gen_output"
+        return
+    fi
+
+    assert_contains "$gen_output" "ADR-20260201-trailing-space-decision" "回帰(whitespace-validity): validity末尾空白ADRがindexに含まれる"
+
+    if [ ! -f "$LINT_ADR" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] 回帰(whitespace-validity): lint-adr.sh not found: %s\n' "$LINT_ADR"
+        return
+    fi
+
+    local lint_output lint_rc
+    set +e
+    lint_output=$(bash "$LINT_ADR" "$corpus" 2>&1)
+    lint_rc=$?
+    set -e
+
+    total=$((total + 1))
+    if [ "$lint_rc" -eq 0 ]; then
+        printf '[PASS] 回帰(whitespace-validity): lint-adr.sh は exit 0（レイヤ2 drift 誤検出なし）\n'
+        passed=$((passed + 1))
+    else
+        printf '[FAIL] 回帰(whitespace-validity): lint-adr.sh は exit 0 を期待したが %d\n  output:\n%s\n' "$lint_rc" "$lint_output"
+        failed=$((failed + 1))
+    fi
+}
+
+run_whitespace_validity
+
 # ==== AC1: lint-adr.sh レイヤ1（front-matter スキーマ検証） ====
 
 # valid corpus は違反0件で exit 0 になること

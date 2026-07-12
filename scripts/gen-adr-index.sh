@@ -23,7 +23,16 @@ if [ ! -d "$ADR_DIR" ]; then
     exit 2
 fi
 
+# 前後の空白（スペース・タブ）をトリムする（scripts/lint-adr.sh の trim と同一実装）
+trim() {
+    local s="$1"
+    s="${s#"${s%%[![:space:]]*}"}"
+    s="${s%"${s##*[![:space:]]}"}"
+    printf '%s' "$s"
+}
+
 # front-matter から validity の値を取得（front-matter 無し／キー無し／値空はすべて空文字）
+# 値は前後空白をトリムして返す（lint-adr.sh の抽出・判定と一致させる）
 get_validity() {
     local file="$1"
     local line_num=0
@@ -46,7 +55,7 @@ get_validity() {
                 break
             fi
             if [[ "$line" =~ ^validity:[[:space:]]*(.*)$ ]]; then
-                value="${BASH_REMATCH[1]}"
+                value="$(trim "${BASH_REMATCH[1]}")"
             fi
         fi
     done <"$file"
