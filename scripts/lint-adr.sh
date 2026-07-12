@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ADR drift-lint（レイヤ1: front-matter スキーマ検証）
+# ADR drift-lint（レイヤ1: front-matter スキーマ検証／レイヤ2: index 同期検証）
 #
 # ADR_DIR 配下の ADR-*.md を走査し、front-matter を持つ ADR
 # （先頭行が `---`）のみを対象に以下を検証する。front-matter を
@@ -19,6 +19,10 @@
 #   - status=提案中 かつ validity 空
 #   - status=却下 かつ validity 空
 #   - validity=廃止済み かつ superseded-by 無し
+#
+# レイヤ2（index 同期）: scripts/gen-adr-index.sh を ADR_DIR に対して実行し、
+# その出力を ADR_DIR/index.md と比較する。差分あり、または index.md が
+# 不在の場合は同期違反とする。
 #
 # 全違反を列挙してから最後に非0 exitする（早期returnで打ち切らない）。
 #
@@ -129,6 +133,23 @@ for file in "${sorted[@]}"; do
         violations=$((violations + 1))
     fi
 done
+
+# レイヤ2: index 同期検証
+# 生成器の呼び出しはスクリプト自身の位置からの相対パスで解決する（cwd 依存回避）
+GEN_INDEX="$(dirname "$0")/gen-adr-index.sh"
+INDEX_FILE="$ADR_DIR/index.md"
+
+if [ ! -f "$INDEX_FILE" ]; then
+    printf '%s: index 同期違反（index.md が存在しません）\n' "$INDEX_FILE"
+    violations=$((violations + 1))
+else
+    generated="$(bash "$GEN_INDEX" "$ADR_DIR")"
+    current="$(cat "$INDEX_FILE")"
+    if [ "$generated" != "$current" ]; then
+        printf '%s: index 同期違反（gen-adr-index.sh の出力と一致しません。再生成してください）\n' "$INDEX_FILE"
+        violations=$((violations + 1))
+    fi
+fi
 
 if [ "$violations" -gt 0 ]; then
     exit 1

@@ -230,9 +230,77 @@ run_layer1_multi_violation() {
 
 run_layer1_multi_violation
 
-# ==== 後続 Task 3〜4 で
-#      レイヤ2（index 同期）/ レイヤ3（相互参照双方向性）の
-#      invalid corpus 検査ブロックをここに追記する ====
+# ==== AC3: lint-adr.sh レイヤ2（index 同期） ====
+
+# 古い index.md（有効ADRを1件欠く）を同梱した corpus は exit 1 ＋ 同期違反メッセージ
+run_layer2_index_drift() {
+    local corpus="$FIXTURES_DIR/invalid/04-index-drift"
+
+    if [ ! -f "$LINT_ADR" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] AC3: lint-adr.sh not found: %s\n' "$LINT_ADR"
+        return
+    fi
+
+    if [ ! -d "$corpus" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] AC3: missing fixture corpus: %s\n' "$corpus"
+        return
+    fi
+
+    local output rc
+    set +e
+    output=$(bash "$LINT_ADR" "$corpus" 2>&1)
+    rc=$?
+    set -e
+
+    total=$((total + 1))
+    if [ "$rc" -eq 1 ]; then
+        printf '[PASS] AC3: index-drift corpus は exit 1\n'
+        passed=$((passed + 1))
+    else
+        printf '[FAIL] AC3: index-drift corpus は exit 1 を期待したが %d\n  output:\n%s\n' "$rc" "$output"
+        failed=$((failed + 1))
+    fi
+
+    assert_contains "$output" "index 同期違反" "AC3: index-drift corpus の同期違反メッセージ"
+}
+
+run_layer2_index_drift
+
+# valid 01-mixed-validity はレイヤ2（index 同期）追加後も exit 0 を維持すること
+run_layer2_valid_still_passes() {
+    local corpus="$FIXTURES_DIR/valid/01-mixed-validity"
+
+    if [ ! -f "$LINT_ADR" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] AC3(valid): lint-adr.sh not found: %s\n' "$LINT_ADR"
+        return
+    fi
+
+    local output rc
+    set +e
+    output=$(bash "$LINT_ADR" "$corpus" 2>&1)
+    rc=$?
+    set -e
+
+    total=$((total + 1))
+    if [ "$rc" -eq 0 ]; then
+        printf '[PASS] AC3: valid corpus(01-mixed-validity) はレイヤ2追加後も exit 0\n'
+        passed=$((passed + 1))
+    else
+        printf '[FAIL] AC3: valid corpus(01-mixed-validity) はレイヤ2追加後も exit 0 を期待したが %d\n  output:\n%s\n' "$rc" "$output"
+        failed=$((failed + 1))
+    fi
+}
+
+run_layer2_valid_still_passes
+
+# ==== 後続 Task 4 で
+#      レイヤ3（相互参照双方向性）の invalid corpus 検査ブロックをここに追記する ====
 
 echo
 if [ "$failed" -eq 0 ]; then
