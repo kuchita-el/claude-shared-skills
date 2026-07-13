@@ -8,7 +8,7 @@ growth プラグインの学習ループ（`[Capture] → [Distill] → [Route] 
 - **新規スキルを設けない**（#349 D2）。本仕様は参照ドキュメントであり、昇格の実行主体は既存ワークフローである。
   - **ADR 差分** → 既存の implementation → PR ワークフロー（`docs/adr/` への ADR 起票・改訂を PR で提出する）。
   - **改善還元 Issue** → `gh issue create` による宛先 repo への疎結合な起票（起票後は宛先 repo 側の既存ワークフロー＝ refine / DoR / plan / implementation / PR レビューが消費する）。
-- **出口ゲートは既存の ADR 運用ルールと宛先 repo の受け入れに委ねる**。ADR 差分は [`docs/adr/README.md`](../../../docs/adr/README.md) の粒度判定（4項目）・Superseded / Amended 手続きへ照合し、本規約はこれらを再定義しない。改善還元 Issue は宛先 repo の refine / DoR / レビューが受け入れ可否を締める。
+- **出口ゲートは既存の ADR 運用ルールと宛先 repo の受け入れに委ねる**。ADR 差分は [`docs/adr/README.md`](../../../docs/adr/README.md) の粒度判定（4項目）・上書き（Superseded）／廃止（Deprecated）／3段構え編集機構へ照合し、本規約はこれらを再定義しない。改善還元 Issue は宛先 repo の refine / DoR / レビューが受け入れ可否を締める。
 - 姉妹規約 [`learning-promotion-spec.md`](learning-promotion-spec.md)（#383）が learnings.md（パブリック / グローバル空間）行きの変換4手順を担うのに対し、本規約は残る2キャリア（ADR 差分・改善還元 Issue）への昇格と、強キャリアの振り分け確認を担う。
 
 ## 入力境界
@@ -34,7 +34,7 @@ growth プラグインの学習ループ（`[Capture] → [Distill] → [Route] 
    4. ツールで自動強制できない
 
    判定ルール（同 README）: **3点以上→ ADR 化推奨 / 2点以下→ ADR 化しない / 迷ったら ADR 化しない**（境界では「書かない」を優先）。
-2. **既存 ADR との関係を確認**: 既存 ADR と矛盾する決定なら Superseded（全体上書き）、一部 facet のみ改訂なら Amended、後継なし廃止なら Deprecated の手続きを [`docs/adr/README.md`](../../../docs/adr/README.md)「廃止・上書き手順」に従って踏む。新規の独立した決定なら新規 ADR を採番方式で起票する。
+2. **既存 ADR との関係を確認**: 既存 ADR と矛盾し決定の骨子を覆すなら上書き（Superseded、後継 ADR による置換）、パラメータ・適用範囲のみの改訂なら3段構え編集機構の非core段（対象 ADR を直接編集＋`## 変更履歴`）、後継なし廃止なら廃止（Deprecated）の手続きを [`docs/adr/README.md`](../../../docs/adr/README.md)「廃止・上書き手順」に従って踏む。新規の独立した決定なら新規 ADR を採番方式で起票する。
 3. **昇格**: ADR 化推奨と判定した仮説のみ、`docs/adr/` への新規 ADR 追加または既存 ADR 改訂を、既存の implementation → PR ワークフローで提出する。ADR 化しないと判定した仮説は ADR ファイルに反映しない（差し戻しの扱いは「裁定外仮説の非反映と確認」節）。
 
 ADR 化要否の判定例は「入出力例」節に示す（ADR 化する例・しない例の双方）。
@@ -142,7 +142,7 @@ gh issue create \
 
 | 本仕様が定義する（IN） | 本仕様が定義しない（OUT） |
 |---|---|
-| ADR 差分行き仮説の `docs/adr/` 昇格手順（粒度判定4項目の適用・Superseded / Amended 手続きへの照合・ADR 化要否の判定例） | 粒度判定基準・Superseded 手続き自体の定義（[`docs/adr/README.md`](../../../docs/adr/README.md) が担う） |
+| ADR 差分行き仮説の `docs/adr/` 昇格手順（粒度判定4項目の適用・上書き（Superseded）／3段構え編集機構への照合・ADR 化要否の判定例） | 粒度判定基準・上書き（Superseded）手続き自体の定義（[`docs/adr/README.md`](../../../docs/adr/README.md) が担う） |
 | 改善還元 Issue 行き仮説の宛先 repo への `gh` 経由の疎結合転送手順（宛先 repo は Issue 作成側が決定・dev-workflow 固定でなく可変） | career / 空間の裁定（集約点＝取り込み Issue が担う＝[`intake-issue-spec.md`](intake-issue-spec.md)）・裁定結果テーブルへの宛先 repo 列追加 |
 | 強キャリア行き仮説の通常実装ワークフローへの振り分け確認（専用ハンドラを設けない） | 強キャリア（skill / hook / lint / test）への構造変換そのもの（通常の implementation → PR） |
 | 同一仮説 ID の単一出力先保証（重複出現の防止）・裁定外仮説の非反映の確認 | learnings.md 行きの変換（[`learning-promotion-spec.md`](learning-promotion-spec.md) #383） |
@@ -152,7 +152,7 @@ gh issue create \
 
 - [`intake-issue-spec.md`](intake-issue-spec.md) — 入力源（#412）。裁定結果の記録形式（career / 空間 / 備考テーブル）の出典であり、本規約の入力境界が参照する裁定結果テーブルを提供する。宛先 repo 列を持たない単一 repo 配線・集約トポロジの不変条件もここで確定
 - [`learning-promotion-spec.md`](learning-promotion-spec.md) — 姉妹規約（#383）。learnings.md 行きの変換4手順。本規約と合わせ #349 D1 の全キャリアを Phase 2 でカバーする
-- [`docs/adr/README.md`](../../../docs/adr/README.md) — ADR 差分の出口ゲート。粒度判定基準（4項目）・Superseded / Deprecated / Amended 手続き・命名規約の ADR 化基準
+- [`docs/adr/README.md`](../../../docs/adr/README.md) — ADR 差分の出口ゲート。粒度判定基準（4項目）・上書き（Superseded）／廃止（Deprecated）／却下／3段構え編集機構・命名規約の ADR 化基準
 - [`promotion-issue-spec.md`](promotion-issue-spec.md) — 仮説 Issue（`growth:promote`）のテンプレート（#382。昇格先キャリアの判定＝Route は distill へ移設＝ADR-20260628-2）
 - [`DESIGN.md`](../DESIGN.md) — 設計母艦（学習ループ・Distribute 段・学びの2系統・二段ゲート）
 - ADR-20260628-2 — career 決定モデルの再設計（distill 仮説 ＋ 集約点裁定・決定表行2の一般化）。本規約の決定根拠
