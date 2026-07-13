@@ -63,14 +63,17 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 
 採番日（起票日）は外部コマンド（`date`）を実行せず、実行時コンテキストの現在日付から取得する。
 
-## 各操作後の自己検証（必須）
+## 各操作後の自己検証（必須・隔離コピー検証）
 
-各遷移・編集操作の完了後、以下で front-matter と相互参照の整合を自己検証する。
+実 ADR ファイルは `docs/adr` に書き込むが、**自己検証は live `docs/adr` を直接 lint しない**。現状の `docs/adr` 全体は `index.md` 未生成・未移行 ADR の drift により baseline が exit 1（red）であり、#③（既存 ADR の front-matter 移行・index 初期生成）完了までは、どれだけ正しく操作しても全体 green にできない。live を直接 lint して「exit 0 まで反復」すると正しい操作でも永久に完了しないため、**変更/生成した ADR を隔離コピーしたディレクトリ**に対して検証する。
 
-1. **index 同期**（`validity` を変える操作＝承認・上書き・廃止の後）: `bash scripts/gen-adr-index.sh <対象ディレクトリ>` の出力で `<対象ディレクトリ>/index.md` を再生成する（起票・却下は `validity` を変えないため index 再生成不要）。
-2. **lint 実行**: `bash scripts/lint-adr.sh <対象ディレクトリ>` を実行し exit 0 を確認する。
-3. **フィードバックループ**（exit 0 以外）: lint-adr の出力（レイヤ1 スキーマ／レイヤ2 index 同期 drift／レイヤ3 相互参照）を利用者へ提示し、指摘に応じて修正する — front-matter（`status`/`validity`/`superseded-by`）または相互参照（旧側 `superseded-by`・後継側 `Supersedes:`）を直す。レイヤ2 drift なら `gen-adr-index.sh` を再実行して index を同期する。再度 lint-adr を実行し、**exit 0 になるまで反復する**。exit 0 を得られないまま操作を完了扱いにしない。
+各遷移・編集操作の完了後、以下を実行する。
 
-`lint-adr.sh` の exit code: `0`＝違反0件／`1`＝違反検出／`2`＝対象ディレクトリ不在。
+0. **隔離コピー作成**: 一時ディレクトリ（作業用 scratchpad 等）を作り、**本操作で変更/生成した ADR ＋その相互参照相手を漏れなくコピーする**。コピーセットの規則は `${CLAUDE_SKILL_DIR}/references/transitions.md`（「自己検証の隔離コピーセット」節）を参照する。とりわけ上書きは**旧 ADR ＋後継 ADR の2ファイルを必ず含める**（旧単体だと後継不在でレイヤ3 forward が発火し false negative になる）。
+1. **index 同期**（`validity` を変える操作＝承認・上書き・廃止の後）: `bash scripts/gen-adr-index.sh <隔離ディレクトリ>` の出力で `<隔離ディレクトリ>/index.md` を再生成する（起票・却下は `validity` を変えないため index 再生成不要）。
+2. **lint 実行**: `bash scripts/lint-adr.sh <隔離ディレクトリ>` を実行し exit 0 を確認する。**この exit 0（＝隔離セットに新たなスキーマ違反・相互参照違反が無いこと）が合否基準**である。
+3. **フィードバックループ**（exit 0 以外）: lint-adr の出力（レイヤ1 スキーマ／レイヤ2 index 同期 drift／レイヤ3 相互参照）を利用者へ提示し、指摘に応じて実 ADR（`docs/adr` 側）を修正する — front-matter（`status`/`validity`/`superseded-by`）または相互参照（旧側 `superseded-by`・後継側 `Supersedes:`）を直す。修正を隔離コピーへ反映し、レイヤ2 drift なら `gen-adr-index.sh` を再実行して index を同期する。再度 lint-adr を実行し、**隔離セットが exit 0 になるまで反復する**。exit 0 を得られないまま操作を完了扱いにしない。
 
-**検証対象ディレクトリについて**: 本自己検証は #①成果物（`scripts/lint-adr.sh`／`scripts/gen-adr-index.sh`）に依存する。現状の `docs/adr` 全体は `index.md` 未生成・未移行 ADR の drift により baseline が exit 1（red）であり、#③（既存 ADR の front-matter 移行・index 初期生成）完了までは全体 green にできない。したがって本スキルが生成／変更した ADR の検証は、対象 ADR を隔離したディレクトリ（作業用一時ディレクトリ等）に対して lint-adr を実行し、**本スキルが新たなスキーマ違反・相互参照違反を導入しないこと**（exit 0）で確認する。`docs/adr` 本体での全体 green 化は #③ 完了後に持ち越す。
+`lint-adr.sh` の exit code: `0`＝違反0件／`1`＝違反検出／`2`＝対象ディレクトリ不在。隔離ディレクトリは使い捨てで、成果物は `docs/adr` 側の実 ADR ファイルである。
+
+本自己検証は #①成果物（`scripts/lint-adr.sh`／`scripts/gen-adr-index.sh`）に依存する。`docs/adr` 本体での全体 green 化は #③（front-matter 移行・index 初期生成）完了後に持ち越す。#③ 完了後は `docs/adr` を直接検証する方式へ簡素化しうる（本節の隔離コピーは #③ 未完了の過渡措置）。
