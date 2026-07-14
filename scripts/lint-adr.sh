@@ -80,7 +80,11 @@ split_csv() {
     IFS=',' read -ra raw <<<"$input"
     for elem in ${raw[@]+"${raw[@]}"}; do
         elem="$(trim "$elem")"
-        [ -n "$elem" ] && SPLIT_RESULT+=("$elem")
+        # `if` で追加する（`[ ... ] && ...` だと最終要素が空のとき AND-list が
+        #  非0を返し、set -e 下で呼び出し元が異常終了するため）
+        if [ -n "$elem" ]; then
+            SPLIT_RESULT+=("$elem")
+        fi
     done
 }
 
@@ -262,6 +266,16 @@ for i in "${!xref_sources[@]}"; do
 
     # superseded-by をカンマ分割し、各後継 stem を独立に照合する（リスト値 1→N 対応）
     split_csv "${xref_targets[$i]}"
+
+    # superseded-by は非空だが有効な参照先 stem を1つも含まない（カンマ・空白のみ）
+    # 場合、「validity=上書き済み ⟹ 少なくとも1件の後継が照合される」不変条件が
+    # 崩れるため違反とする（レイヤ1の空判定は raw 値が非空のため通過してしまう）
+    if [ "${#SPLIT_RESULT[@]}" -eq 0 ]; then
+        printf '%s: 相互参照違反（superseded-by=%s に有効な参照先 stem がありません）\n' "$a_file" "${xref_targets[$i]}"
+        violations=$((violations + 1))
+        continue
+    fi
+
     for b_stem in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
         b_file="$ADR_DIR/$b_stem.md"
 

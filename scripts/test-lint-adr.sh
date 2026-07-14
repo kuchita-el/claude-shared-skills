@@ -628,6 +628,21 @@ run_xref_list_case \
     "contains:が見つかりません" \
     "notcontains:ADR-20261011-xref-list-fm-new-a"
 
+# PRレビュー反映(空要素のみ): superseded-by がカンマ・空白のみで有効な参照先 stem を
+# 1つも含まない病的値は、レイヤ1の raw 空判定を通過し forward 分割結果が0件になる。
+# 「validity=上書き済み ⟹ 少なくとも1件の後継が照合される」不変条件を回復するため
+# 独立違反として検出する（かつ set -e 下でスクリプトが異常終了せず exit 1 を返す）。
+run_xref_list_case \
+    "$FIXTURES_DIR/invalid/11-xref-list-empty-superseded" 1 \
+    "#497(空要素のみ): 有効な参照先stem 0件を違反として検出" \
+    "contains:有効な参照先 stem がありません"
+
+# PRレビュー反映(末尾カンマ): 末尾カンマ由来の空要素はスキップされ、有効な後継1本が
+# 正しく照合される（末尾カンマは無害）。空要素処理が後方互換を壊さないことの回帰。
+run_xref_list_case \
+    "$FIXTURES_DIR/valid/05-xref-list-trailing-comma" 0 \
+    "#497(末尾カンマ): 末尾カンマは無害で exit 0"
+
 # ==== AC5: docs/adr/README.md の新スキーマ改訂（decision tree・3段構え対応表の存在、旧記述の除去） ====
 
 README_ADR="$REPO_ROOT/docs/adr/README.md"
