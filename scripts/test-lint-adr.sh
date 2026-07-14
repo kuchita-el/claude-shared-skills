@@ -545,6 +545,89 @@ run_layer3_xref_nested_bullet_valid() {
 
 run_layer3_xref_nested_bullet_valid
 
+# ==== #497: レイヤ3を list-aware N対1 検査へ拡張（リスト値 superseded-by の 1→N 分割対応） ====
+# 正本 ADR-20260711-3 決定5: 分割による 1→N は A が複数後継を列挙し、各後継が A を
+# 逆参照する N対1。従来は superseded-by を行まるごと単一 stem として扱っていたため、
+# 正当な分割（リスト値）を相互参照違反として誤検出していた。
+
+# 汎用ランナー: corpus を lint し exit code と（任意の）含む/含まない部分文字列をアサート
+# 引数: corpus_path 期待exit ラベル [contains:文字列 | notcontains:文字列 ...]
+run_xref_list_case() {
+    local corpus="$1" expect_rc="$2" label="$3"
+    shift 3
+
+    if [ ! -f "$LINT_ADR" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] %s: lint-adr.sh not found: %s\n' "$label" "$LINT_ADR"
+        return
+    fi
+
+    if [ ! -d "$corpus" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] %s: missing fixture corpus: %s\n' "$label" "$corpus"
+        return
+    fi
+
+    local output rc
+    set +e
+    output=$(bash "$LINT_ADR" "$corpus" 2>&1)
+    rc=$?
+    set -e
+
+    total=$((total + 1))
+    if [ "$rc" -eq "$expect_rc" ]; then
+        printf '[PASS] %s: exit %d\n' "$label" "$expect_rc"
+        passed=$((passed + 1))
+    else
+        printf '[FAIL] %s: exit %d を期待したが %d\n  output:\n%s\n' "$label" "$expect_rc" "$rc" "$output"
+        failed=$((failed + 1))
+    fi
+
+    local spec kind needle
+    for spec in "$@"; do
+        kind="${spec%%:*}"
+        needle="${spec#*:}"
+        case "$kind" in
+            contains) assert_contains "$output" "$needle" "$label: \"$needle\" を含む" ;;
+            notcontains) assert_not_contains "$output" "$needle" "$label: \"$needle\" を含まない" ;;
+        esac
+    done
+}
+
+# AC1: リスト値の正常分割（A・B 両ファイル存在＋双方が本文逆参照）は違反0件で exit 0
+run_xref_list_case \
+    "$FIXTURES_DIR/valid/04-xref-list" 0 \
+    "#497(AC1): リスト値正常分割は exit 0"
+
+# AC2(forward逆参照欠落): 後継Bのみ本文逆参照を欠く → Bのエッジのみ forward 違反、
+# 充足側の後継Aは違反メッセージに現れない
+run_xref_list_case \
+    "$FIXTURES_DIR/invalid/08-xref-list-forward-missing" 1 \
+    "#497(AC2-forward): 後継Bのみ forward 違反" \
+    "contains:相互参照違反" \
+    "contains:ADR-20260812-xref-list-fwd-new-b.md" \
+    "notcontains:ADR-20260811-xref-list-fwd-new-a"
+
+# AC3(reverse列挙欠落): 非列挙の第三ADR Cが本文で old を Supersedes 宣言 →
+# Cのエッジが reverse 違反、列挙済みのA・Bは違反にならない
+run_xref_list_case \
+    "$FIXTURES_DIR/invalid/09-xref-list-reverse-missing" 1 \
+    "#497(AC3-reverse): 非列挙Cのみ reverse 違反" \
+    "contains:相互参照違反（逆方向" \
+    "contains:ADR-20260913-xref-list-rev-extra-c" \
+    "notcontains:ADR-20260911-xref-list-rev-new-a.md の本文"
+
+# AC2(forwardファイル不在・リスト要素単位): 後継Bの実ファイルが存在しない →
+# Bのエッジのみ「参照先が見つかりません」違反、実在する後継Aは独立して照合へ進み違反にならない
+run_xref_list_case \
+    "$FIXTURES_DIR/invalid/10-xref-list-forward-file-missing" 1 \
+    "#497(AC2-file-missing): 後継Bのみ参照先不在違反" \
+    "contains:ADR-20261012-xref-list-fm-missing-b" \
+    "contains:が見つかりません" \
+    "notcontains:ADR-20261011-xref-list-fm-new-a"
+
 # ==== AC5: docs/adr/README.md の新スキーマ改訂（decision tree・3段構え対応表の存在、旧記述の除去） ====
 
 README_ADR="$REPO_ROOT/docs/adr/README.md"

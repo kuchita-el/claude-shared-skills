@@ -69,6 +69,21 @@ trim() {
     printf '%s' "$s"
 }
 
+# カンマ区切りの superseded-by 値を各要素トリム・空要素スキップで
+# グローバル配列 SPLIT_RESULT へ分割する（リスト値 1→N 分割 ADR 対応）。
+# 単一値はカンマを含まないため要素数1の配列となり、従来の完全一致挙動を保つ。
+# 末尾・連続カンマ由来の空要素はトリム後スキップする（堅牢性目的の防御）。
+split_csv() {
+    local input="$1" elem
+    local raw
+    SPLIT_RESULT=()
+    IFS=',' read -ra raw <<<"$input"
+    for elem in ${raw[@]+"${raw[@]}"}; do
+        elem="$(trim "$elem")"
+        [ -n "$elem" ] && SPLIT_RESULT+=("$elem")
+    done
+}
+
 # front-matter を持つか判定し、持つ場合は status/validity/superseded-by を
 # グローバル変数 FM_STATUS/FM_VALIDITY/FM_SUPERSEDED_BY へトリム済みの値で
 # 格納する（キー省略・値空はいずれも空文字）。
@@ -243,20 +258,24 @@ fi
 # レイヤ3 forward: front-matter superseded-by 起点で本文 Supersedes 逆参照を照合
 for i in "${!xref_sources[@]}"; do
     a_file="${xref_sources[$i]}"
-    b_stem="${xref_targets[$i]}"
     a_stem="$(basename "$a_file" .md)"
-    b_file="$ADR_DIR/$b_stem.md"
 
-    if [ ! -f "$b_file" ]; then
-        printf '%s: 相互参照違反（superseded-by=%s だが参照先 %s が見つかりません）\n' "$a_file" "$b_stem" "$b_file"
-        violations=$((violations + 1))
-        continue
-    fi
+    # superseded-by をカンマ分割し、各後継 stem を独立に照合する（リスト値 1→N 対応）
+    split_csv "${xref_targets[$i]}"
+    for b_stem in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
+        b_file="$ADR_DIR/$b_stem.md"
 
-    if ! body_has_supersedes "$b_file" "$a_stem"; then
-        printf '%s: 相互参照違反（%s の本文 "## 関連ADR" に "Supersedes: %s" が見つかりません）\n' "$a_file" "$b_file" "$a_stem"
-        violations=$((violations + 1))
-    fi
+        if [ ! -f "$b_file" ]; then
+            printf '%s: 相互参照違反（superseded-by=%s だが参照先 %s が見つかりません）\n' "$a_file" "$b_stem" "$b_file"
+            violations=$((violations + 1))
+            continue
+        fi
+
+        if ! body_has_supersedes "$b_file" "$a_stem"; then
+            printf '%s: 相互参照違反（%s の本文 "## 関連ADR" に "Supersedes: %s" が見つかりません）\n' "$a_file" "$b_file" "$a_stem"
+            violations=$((violations + 1))
+        fi
+    done
 done
 
 # レイヤ3 reverse: 本文 Supersedes 宣言起点で front-matter superseded-by を照合
@@ -278,8 +297,17 @@ for c_file in "${sorted[@]}"; do
             continue
         fi
 
-        actual_superseded_by="${FM_SB_BY_STEM[$t_stem]:-}"
-        if [ "$actual_superseded_by" != "$c_stem" ]; then
+        # T の superseded-by をリスト分割した集合に c_stem が含まれるかで判定する
+        # （完全一致から集合メンバシップへ。単一値は要素数1集合となり従来と等価＝後方互換）
+        split_csv "${FM_SB_BY_STEM[$t_stem]:-}"
+        member=0
+        for s in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
+            if [ "$s" = "$c_stem" ]; then
+                member=1
+                break
+            fi
+        done
+        if [ "$member" -eq 0 ]; then
             printf '%s: 相互参照違反（逆方向: %s の本文 "## 関連ADR" が "Supersedes: %s" を宣言していますが、%s の front-matter superseded-by がそれを指していません）\n' "$t_file" "$c_file" "$t_stem" "$t_file"
             violations=$((violations + 1))
         fi
