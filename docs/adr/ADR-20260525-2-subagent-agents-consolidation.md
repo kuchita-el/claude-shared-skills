@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260525-2: サブエージェント定義はプラグインルート agents/ に集約する
-
-## Status
-
-Accepted
 
 ## Context
 

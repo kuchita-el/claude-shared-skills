@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260705-2: growth ループの学習/仮説検証フレームと語彙統一
-
-## Status
-
-Accepted
 
 ## Context
 

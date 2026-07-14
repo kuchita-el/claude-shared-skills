@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260606: 保護手段の優先（2軸マップとコスト×価値ゲート）
-
-## Status
-
-Accepted
 
 ## Context
 

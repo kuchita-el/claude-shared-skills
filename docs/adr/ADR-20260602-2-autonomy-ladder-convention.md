@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260602-2: 自律度モデル L0–L3 の規約（提案→承認二段・L0/L3 縮退形）
-
-## Status
-
-Accepted
 
 ## Context
 

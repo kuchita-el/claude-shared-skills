@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260406: レビュー契約の所在を plan-issue に移行する
-
-## Status
-
-Accepted
 
 ## Context
 

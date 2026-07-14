@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260629: distill の入力契約拡張と既存ルール台帳突合
-
-## Status
-
-Accepted
 
 ## Context
 

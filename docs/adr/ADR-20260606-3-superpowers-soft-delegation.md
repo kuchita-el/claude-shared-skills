@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260606-3: superpowers 委譲をソフト/任意依存とし、フォールバック方針 C で実現する
-
-## Status
-
-Accepted
 
 ## Context
 

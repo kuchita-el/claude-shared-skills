@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260618: Issue種別軸の導入とコアDoR改訂方針
-
-## Status
-
-Accepted
 
 ## Context
 

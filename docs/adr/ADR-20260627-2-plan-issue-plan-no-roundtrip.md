@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260627-2: plan-issue の plan 本文をメイン context に往復させない生成〜修正ループ
-
-## Status
-
-Accepted
 
 ## Context
 

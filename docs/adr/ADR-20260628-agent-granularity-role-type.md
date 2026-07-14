@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260628: エージェント定義の粒度モデル — ロール型（能力／知識ドメイン粒度）を正とする
-
-## Status
-
-Accepted
 
 ## Context
 

@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260629: プランファイルの所在解決を worktree／メイン横断で一意化する
-
-## Status
-
-Accepted
 
 ## Context
 

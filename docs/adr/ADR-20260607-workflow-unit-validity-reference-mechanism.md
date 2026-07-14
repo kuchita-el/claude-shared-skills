@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260607: dev-loop / plan-issue の単位は現状維持とし、参照機構②/③・検証ゲート主担い・ポリシー実現方式を確定する
-
-## Status
-
-Accepted
 
 ## Context
 

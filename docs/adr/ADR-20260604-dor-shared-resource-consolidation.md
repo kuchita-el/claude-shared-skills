@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260604: 複数スキルが共有する参照資源はプラグインルート references/ に集約する（DoR定義の単一ソース化）
-
-## Status
-
-Accepted
 
 ## Context
 

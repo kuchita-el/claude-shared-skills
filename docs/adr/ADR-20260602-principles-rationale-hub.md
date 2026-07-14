@@ -1,10 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260602: principles.md（旧 workflow-design.md）の責務 = Explanation 根拠ハブ／原則の射程は全ライフサイクル横断（ADR-20260531-2 を Supersede）
-
-## Status
-
-Accepted
-
-Supersedes: ADR-20260531-2-workflow-design-rationale-hub
 
 ## Context
 

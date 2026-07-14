@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260711-3: ADR 運用モデルの再設計（承認軸と有効性軸の2軸分離・導出ビュー index・編集機構）
-
-## Status
-
-Accepted
 
 ## Context
 
