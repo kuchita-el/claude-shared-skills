@@ -1,10 +1,15 @@
+---
+status: 承認済み
+validity: 上書き済み
+superseded-by: ADR-20260602-principles-rationale-hub
+---
+
 # ADR-20260531-2: workflow-design.md を Explanation 根拠ハブへ縮退（責務再定義）
 
 ## Status
 
-Superseded
-
-Superseded by: ADR-20260602-principles-rationale-hub（スコープ文面の曖昧さ＝「広さ」と「原則の射程」の混同を解消。責務定義は新 ADR が継承）
+<!-- 状態系は front-matter を正とする（ADR-20260711-3）。以下は過渡期の可読表示。 -->
+承認済み（validity: 上書き済み — Superseded by: ADR-20260602-principles-rationale-hub。スコープ文面の曖昧さ＝「広さ」と「原則の射程」の混同を解消。責務定義は後継が継承）
 
 ## Context
 

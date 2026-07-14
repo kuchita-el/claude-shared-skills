@@ -1,10 +1,15 @@
+---
+status: 承認済み
+validity: 上書き済み
+superseded-by: ADR-20260711-3-adr-two-axis-status-validity-model
+---
+
 # ADR-20260511: 技術的意思決定集約の運用基盤（採番方式・配置・ライフサイクル・廃止扱い）
 
 ## Status
 
-Superseded
-
-Superseded by: ADR-20260711-3-adr-two-axis-status-validity-model
+<!-- 状態系は front-matter を正とする（ADR-20260711-3）。以下は過渡期の可読表示。 -->
+承認済み（validity: 上書き済み — Superseded by: ADR-20260711-3-adr-two-axis-status-validity-model。状態モデル〔4状態・英文表記〕と廃止扱いを2軸分離モデルへ再設計。採番方式・配置は後継が不変で継承）
 
 ## Context
 
