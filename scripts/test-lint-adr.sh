@@ -225,6 +225,26 @@ run_layer1_invalid "01-status-missing" "status が空です" "AC1: status 欠落
 run_layer1_invalid "02-validity-missing" "validity が空です" "AC1: status=承認済み かつ validity 欠落"
 run_layer1_invalid "03-superseded-by-missing" "superseded-by が空です" "AC1: validity=上書き済み かつ superseded-by 欠落"
 
+# ==== #500: レイヤ1へ語彙メンバシップ検査＋遷移表の組み合わせ検査を追加 ====
+#
+# ADR-20260711-3 決定5 は レイヤ1 を「決定2 のスキーマ必須ルール（遷移表）を
+# 満たすこと」と定義するが、実装は空判定3件のみで語彙・組み合わせを検査して
+# いなかった。以下はその欠落を塞ぐ回帰ケース。
+#
+# 語彙メンバシップ: 値が非空でも正本の語彙に属さなければ違反にする。
+# `gen-adr-index.sh` は `validity: 有効` の完全一致でしか採録しないため、
+# 語彙外の値は index から静かに脱落する一方、旧実装では lint を通過していた
+# （新規追加時はコミット済み index と再生成 index の双方に載らず一致するため
+#  レイヤ2 も原理的に発火しない）。
+run_layer1_invalid "12-status-unknown-vocab" "status の値 \"Accepted\" が語彙にありません" "AC1(#500): status 語彙外（旧英文状態）"
+run_layer1_invalid "13-validity-unknown-vocab" "validity の値 \"有郊\" が語彙にありません" "AC1(#500): validity 語彙外（誤字）"
+
+# 組み合わせ: 語彙に属する値どうしでも、決定2 の遷移表に無い行は違反にする。
+run_layer1_invalid "14-proposed-with-validity" "status=提案中 だが validity が空ではありません" "AC1(#500): 提案中 かつ validity 非空"
+run_layer1_invalid "15-rejected-with-validity" "status=却下 だが validity が空ではありません" "AC1(#500): 却下 かつ validity 非空"
+run_layer1_invalid "16-active-with-superseded-by" "validity=有効 だが superseded-by が空ではありません" "AC1(#500): 有効 かつ superseded-by 非空"
+run_layer1_invalid "17-abandoned-with-superseded-by" "validity=廃止済み だが superseded-by が空ではありません" "AC1(#500): 廃止済み かつ superseded-by 非空"
+
 # ADR_DIR が存在しない場合は exit 2（fixture 不要、不在パスを渡すだけ）
 run_layer1_missing_dir() {
     local corpus="$FIXTURES_DIR/invalid/__nonexistent__"
