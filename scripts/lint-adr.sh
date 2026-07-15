@@ -11,15 +11,38 @@
 # トリムして判定する（末尾空白等で完全一致が静かに崩れるのを防ぐ）。
 # キー省略と「キーあり値空」は同じ「空」として扱う。
 #
+# レイヤ1（front-matter スキーマ検証）は ADR-20260711-3 決定5 により
+# 「決定2 のスキーマ必須ルールを満たすこと」と定義される。決定2 の必須ルールは
+# 次の遷移表であり、レイヤ1はこの表に無い行を違反として検出する。
+#
+#   | 遷移 | status       | validity   | superseded-by |
+#   |------|--------------|------------|---------------|
+#   | 起票 | 提案中       | （無し）   | （無し）      |
+#   | 承認 | 承認済み     | 有効       | （無し）      |
+#   | 上書き| 承認済み     | 上書き済み | 必須          |
+#   | 廃止 | 承認済み     | 廃止済み   | （無し）      |
+#   | 却下 | 却下         | （無し）   | （無し）      |
+#
 # レイヤ1違反種別:
 #   1. status 欠落（空）
 #   2. status=承認済み かつ validity 欠落（空）
 #   3. validity=上書き済み かつ superseded-by 欠落（空）
+#   4. status の値が語彙外（提案中 / 承認済み / 却下 以外）
+#   5. validity の値が語彙外（有効 / 上書き済み / 廃止済み 以外。空は合法）
+#   6. status=提案中 または 却下 かつ validity が非空（表では「（無し）」）
+#   7. status=提案中 または 却下 かつ superseded-by が非空（表では「（無し）」）
+#   8. validity=有効 または 廃止済み かつ superseded-by が非空（表では「（無し）」）
+#
+# 種別4・5（語彙）を空判定と別に持つのは、値が非空でも語彙外なら
+# gen-adr-index.sh の `validity: 有効` 完全一致から外れて index から静かに
+# 脱落する一方、空判定だけでは検出できないため（例: 旧英文の `status: Accepted`、
+# `有効` の誤字 `有郊`）。新規 ADR の追加では、コミット済み index と再生成 index の
+# 双方に当該 ADR が載らず一致するため、レイヤ2 も backstop として発火しない。
 #
 # 合法（違反にしない）:
-#   - status=提案中 かつ validity 空
-#   - status=却下 かつ validity 空
-#   - validity=廃止済み かつ superseded-by 無し
+#   - status=提案中 かつ validity 空 かつ superseded-by 空（起票）
+#   - status=却下 かつ validity 空 かつ superseded-by 空（却下）
+#   - validity=廃止済み かつ superseded-by 無し（廃止）
 #
 # レイヤ2（index 同期）: scripts/gen-adr-index.sh を ADR_DIR に対して実行し、
 # その出力を ADR_DIR/index.md と比較する。差分あり、または index.md が
@@ -60,6 +83,25 @@ if [ ! -d "$ADR_DIR" ]; then
     echo "エラー: ディレクトリが見つかりません: $ADR_DIR" >&2
     exit 2
 fi
+
+# ADR-20260711-3 決定1 が定める状態語彙（front-matter の値側）。
+# 正本の語彙が変わったときの追随点を1箇所に集約する。
+STATUS_VOCAB=("提案中" "承認済み" "却下")
+VALIDITY_VOCAB=("有効" "上書き済み" "廃止済み")
+
+# 値 $1 が第2引数以降の語彙集合に含まれるかを判定する。
+# 戻り値: 含まれれば 0、含まれなければ 1
+in_vocab() {
+    local needle="$1"
+    shift
+    local candidate
+    for candidate in "$@"; do
+        if [ "$candidate" = "$needle" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
 
 # 前後の空白（スペース・タブ）をトリムする
 trim() {
@@ -221,8 +263,19 @@ for file in "${sorted[@]}"; do
 
     FM_SB_BY_STEM["$(basename "$file" .md)"]="$FM_SUPERSEDED_BY"
 
+    # 種別1・4: status の存在と語彙
+    # 空のときは種別1のみを報告する（語彙違反として二重に数えない）
     if [ -z "$FM_STATUS" ]; then
         printf '%s: status が空です（front-matter に status キーの値が必要）\n' "$file"
+        violations=$((violations + 1))
+    elif ! in_vocab "$FM_STATUS" "${STATUS_VOCAB[@]}"; then
+        printf '%s: status の値 "%s" が語彙にありません（提案中 / 承認済み / 却下 のいずれかが必要）\n' "$file" "$FM_STATUS"
+        violations=$((violations + 1))
+    fi
+
+    # 種別5: validity の語彙（空は起票・却下で合法のため語彙検査の対象外）
+    if [ -n "$FM_VALIDITY" ] && ! in_vocab "$FM_VALIDITY" "${VALIDITY_VOCAB[@]}"; then
+        printf '%s: validity の値 "%s" が語彙にありません（有効 / 上書き済み / 廃止済み のいずれか、または空が必要）\n' "$file" "$FM_VALIDITY"
         violations=$((violations + 1))
     fi
 
@@ -234,6 +287,29 @@ for file in "${sorted[@]}"; do
     if [ "$FM_VALIDITY" = "上書き済み" ] && [ -z "$FM_SUPERSEDED_BY" ]; then
         printf '%s: validity=上書き済み だが superseded-by が空です（superseded-by キーの値が必要）\n' "$file"
         violations=$((violations + 1))
+    fi
+
+    # 種別6・7: 起票（提案中）・却下 の行は validity・superseded-by とも「（無し）」。
+    # 承認軸が終端（却下）または未承認（提案中）の ADR は有効性軸を持たない。
+    if [ "$FM_STATUS" = "提案中" ] || [ "$FM_STATUS" = "却下" ]; then
+        if [ -n "$FM_VALIDITY" ]; then
+            printf '%s: status=%s だが validity が空ではありません（値 "%s"。スキーマ表では起票・却下の validity は「（無し）」）\n' "$file" "$FM_STATUS" "$FM_VALIDITY"
+            violations=$((violations + 1))
+        fi
+        if [ -n "$FM_SUPERSEDED_BY" ]; then
+            printf '%s: status=%s だが superseded-by が空ではありません（値 "%s"。スキーマ表では起票・却下の superseded-by は「（無し）」）\n' "$file" "$FM_STATUS" "$FM_SUPERSEDED_BY"
+            violations=$((violations + 1))
+        fi
+    fi
+
+    # 種別8: 承認（有効）・廃止（廃止済み）の行は superseded-by「（無し）」。
+    # 後継を指すなら上書き済みであるべきで、有効のままなら原 ADR と後継が
+    # 同時に index へ並ぶ。廃止済みは決定1 で「後継なしで放棄された」と定義される。
+    if [ "$FM_VALIDITY" = "有効" ] || [ "$FM_VALIDITY" = "廃止済み" ]; then
+        if [ -n "$FM_SUPERSEDED_BY" ]; then
+            printf '%s: validity=%s だが superseded-by が空ではありません（値 "%s"。スキーマ表では承認・廃止の superseded-by は「（無し）」）\n' "$file" "$FM_VALIDITY" "$FM_SUPERSEDED_BY"
+            violations=$((violations + 1))
+        fi
     fi
 
     if [ -n "$FM_SUPERSEDED_BY" ]; then
