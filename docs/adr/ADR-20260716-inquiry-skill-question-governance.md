@@ -1,6 +1,6 @@
 ---
-status: 提案中
-validity:
+status: 承認済み
+validity: 有効
 superseded-by:
 ---
 
@@ -8,8 +8,8 @@ superseded-by:
 
 ## Status（承認軸／有効性軸）
 
-- **承認軸**（`status`）: `提案中`
-- **有効性軸**（`validity`）: 空（`提案中` のため）
+- **承認軸**（`status`）: `承認済み`（PR #502 のレビュー2巡を経て承認）
+- **有効性軸**（`validity`）: `有効`
 - **`superseded-by`**: 空
 
 ## Context
