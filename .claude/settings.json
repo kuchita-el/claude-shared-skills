@@ -15,7 +15,7 @@
           },
           {
             "type": "command",
-            "command": "bash scripts/lint-adr.sh"
+            "command": "bash scripts/lint-adr.sh >&2 || exit 2"
           }
         ]
       }
