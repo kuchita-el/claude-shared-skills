@@ -9,7 +9,8 @@ superseded-by:
 - 状態は上記 front-matter（status / validity / superseded-by）が唯一の権威。本文に `## Status` 節を置かない。
   front-matter が唯一の権威である以上、本文の状態記述は定義上すべて重複であり、遷移時に取り残されて drift の源になるため。
 - front-matter 内には値の説明・トレーリングコメントを書かない（純粋な `key: value` のみ、lint パーサが行全体を値として取り込むため）。
-- 値域・遷移表・front-matter スキーマの必須ルールの正本は ADR-20260711-3 決定2。本雛形には再掲しない。
+- 値域（各軸の値とその定義）の正本は ADR-20260711-3 決定1。本雛形には再掲しない。
+- 遷移表・front-matter スキーマの必須ルールの正本は ADR-20260711-3 決定2。本雛形には再掲しない。
 - 遷移（承認・上書き・廃止・却下）の実施手順は manage-adr スキル、および docs/adr/README.md「廃止・上書き手順」を参照。
 -->
 
