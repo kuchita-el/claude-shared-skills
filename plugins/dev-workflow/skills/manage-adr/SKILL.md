@@ -57,6 +57,7 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 
 ## 手順の参照（各 references を直接参照）
 
+- `${CLAUDE_SKILL_DIR}/references/template.md` — 新規 ADR の雛形（front-matter＋見出し骨格。起票時にこの構成へ準拠する）
 - `${CLAUDE_SKILL_DIR}/references/transitions.md` — 5遷移の front-matter 写入・採番規則・双方向相互参照の手順
 - `${CLAUDE_SKILL_DIR}/references/edit-decision.md` — core／非core／些末 の判定と `AskUserQuestion` 問い設計・操作分岐
 - `${CLAUDE_SKILL_DIR}/references/io-examples.md` — 起票・承認・上書きの入出力例

@@ -48,7 +48,7 @@ superseded-by: <後継ADRの識別子 | （空）>
 
 ## 起票（提案中）
 
-新規 ADR ファイルを生成する。骨格は `docs/adr/template.md` の構成（front-matter＋`## Status`／`## Context`／`## Decision`／`## Consequences`／`## 関連ADR` の見出し）に準拠しつつ、**見出し骨格＋空プレースホルダを新規に組み立てる**。決定内容の本文（Context／Decision／Consequences の中身）は上位／人間が埋める前提で、空プレースホルダのまま残す。
+新規 ADR ファイルを生成する。骨格は SKILL.md が指す雛形の構成（front-matter＋`## Context`／`## Decision`／`## Consequences`／`## 関連ADR` の見出し）に準拠しつつ、**見出し骨格＋空プレースホルダを新規に組み立てる**。決定内容の本文（Context／Decision／Consequences の中身）は上位／人間が埋める前提で、空プレースホルダのまま残す。
 
 - front-matter: `status: 提案中`、`validity:`（空）、`superseded-by:`（空）
 - ファイル名を採番規則で決定する。
