@@ -35,3 +35,5 @@
 - [ADR-20260711-4-capture-timestamp-identity-rule](./ADR-20260711-4-capture-timestamp-identity-rule.md): capture 見出しキーの同定規則（実行時刻＋run 内序数サフィックス）
 - [ADR-20260712-captures-bounded-retention-aging](./ADR-20260712-captures-bounded-retention-aging.md): 生観測の有界保持（経年削除）と work-queue／retention の2軸分離
 - [ADR-20260713-captures-stateless-candidate-side-state](./ADR-20260713-captures-stateless-candidate-side-state.md): 個人 store 状態モデル — captures 無状態化と状態の候補側集約
+- [ADR-20260716-2-completion-judgment-inquiry-value-range](./ADR-20260716-2-completion-judgment-inquiry-value-range.md): completion-judgment の判定値域を調査の問いへ拡張する
+- [ADR-20260716-inquiry-skill-question-governance](./ADR-20260716-inquiry-skill-question-governance.md): inquiry スキルによる問いの統治と spike の下流非伝播
