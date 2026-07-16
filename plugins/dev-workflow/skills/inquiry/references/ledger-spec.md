@@ -104,7 +104,7 @@ git rev-parse --path-format=absolute --git-common-dir
 - kind: コードベース内の事実調査
 - implies: Q1 → Q3
 - pivot: yes
-- pivot-rationale: Q3（総コスト）を決めるため到達数が最大
+- pivot-rationale: Q3（総コスト）へ到達する。Q2 と到達数は同数だが、改修量が総コストの支配項であり Q3 の解を実質的に決めるため pivot とする
 - answer: A 方式は既存の認証ミドルウェアを流用でき改修量が小さい
 
 ### Q2: 各方式の運用実績・既知の脆弱性はどうか
