@@ -1,7 +1,7 @@
 ---
 name: test-designer
 description: 入力ソースからテスト仕様を設計する読み取り専用エージェント。テストコードは生成せず、検証すべき振る舞いをテストケース単位の仕様に変換する。
-model: sonnet
+model: opus
 color: cyan
 ---
 

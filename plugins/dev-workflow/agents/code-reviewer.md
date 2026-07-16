@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 description: 差分を懐疑的にレビューする読み取り専用エージェント。要件充足・バグ/セキュリティ・規約違反・スコープ逸脱・コード重複・テスト品質をブロッカー/改善提案に分類して報告する。
-model: sonnet
+model: opus
 color: green
 ---
 
