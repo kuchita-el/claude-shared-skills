@@ -44,16 +44,6 @@ allowed-tools:
 
 **`allowed-tools` の原則**: 必要最小限のツールのみ許可する。Bashは `Bash(コマンドパターン*)` でワイルドカード指定し、スキルが実行できるシェルコマンドを制限する。
 
-### Skill Categories
-
-| カテゴリ | スキル |
-|---|---|
-| Issue管理 | `create-issue`, `refine-issue` |
-| 計画 | `plan-issue` |
-| 実装 | `implementation` |
-| ドメイン設計 | `event-storming` |
-| 依存関係 | `dependency-check` |
-
 ### DoR Framework
 
 `create-issue`（作成時の前倒し充足）と `refine-issue`（作成後の精査）が同一のDoR定義を共有参照する。読み込み優先順位:
