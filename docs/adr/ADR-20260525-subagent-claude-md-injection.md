@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260525: サブエージェント起動時の CLAUDE.md 取得方針
-
-## Status
-
-Accepted
 
 ## Context
 

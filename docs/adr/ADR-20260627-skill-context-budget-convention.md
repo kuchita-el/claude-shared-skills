@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260627: スキル実行時のコンテキスト予算規約をプラグイン共有 references で単一出典化する
-
-## Status
-
-Accepted
 
 ## Context
 

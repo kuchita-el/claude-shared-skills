@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260621: 「人間判断要観点」の語彙・データ構造（正準用語「判断依頼」の確定）
-
-## Status
-
-Accepted
 
 ## Context
 

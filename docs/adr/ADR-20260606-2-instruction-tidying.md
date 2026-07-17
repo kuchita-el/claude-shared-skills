@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260606-2: 指示の棚卸し（保護手段の優先の削除方向）
-
-## Status
-
-Accepted
 
 ## Context
 

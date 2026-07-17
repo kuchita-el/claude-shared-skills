@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260415: DDDドキュメント整合性レビューでの責務境界考慮
-
-## Status
-
-Accepted
 
 ## Context
 

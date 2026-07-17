@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260402: workflow-design.md v2 構造選定（Discovery追加・用語フレームワーク非依存化・フロー/ストック軸分離）
-
-## Status
-
-Accepted
 
 ## Context
 

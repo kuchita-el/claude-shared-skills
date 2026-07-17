@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260407: dev-loop の正規パス/簡易パス入力分岐
-
-## Status
-
-Accepted
 
 ## Context
 

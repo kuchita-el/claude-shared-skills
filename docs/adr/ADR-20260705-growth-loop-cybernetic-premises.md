@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260705: growth ループのサイバネティック設計前提の単一出典化
-
-## Status
-
-Accepted
 
 ## Context
 

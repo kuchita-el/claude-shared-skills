@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260626: 内省機能を独立プラグイン growth として分離
-
-## Status
-
-Accepted
 
 ## Context
 

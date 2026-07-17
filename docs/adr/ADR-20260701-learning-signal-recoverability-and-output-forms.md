@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260701: 学習シグナルの復元不能性基準と distill 出力形の2系統分離
-
-## Status
-
-Accepted
 
 ## Context
 

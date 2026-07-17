@@ -1,8 +1,9 @@
+---
+status: 承認済み
+validity: 有効
+---
+
 # ADR-20260628-2: career 決定モデルの再設計（distill 仮説 ＋ 集約点裁定）
-
-## Status
-
-Accepted
 
 ## Context
 
