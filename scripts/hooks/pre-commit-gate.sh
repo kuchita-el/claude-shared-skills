@@ -18,10 +18,24 @@
 #   2: lint 違反、または前提が壊れている（commit をブロックする）
 #
 # exit 2 のとき Claude へ渡るのは stderr のみのため、各 lint の出力は >&2 で振り替える。
+#
+# 既知の穴: `git -C <path> commit` は `if` にも下記の判定にも一致せず素通りする。本ゲートは
+# 事故を防ぐガードレールであってセキュリティ境界ではないため、意図的な回避までは塞がない。
 set -uo pipefail
 
 input=$(cat)
-command=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null || true)
+
+# コマンド文字列の抽出。jq が不在・失敗しても「対象外」へ畳まないこと。畳むと lint が
+# 一度も走らないまま commit が通り、しかも警告が出ない（＝本PRが潰してきた silent
+# fail-open の再生産になる）。判定不能なときは生の JSON 全体を判定対象にして fail-safe
+# 側へ倒す。JSON は git commit のときだけ "git commit" を含むため、退避しても無関係な
+# コマンドを巻き込まない。
+# `command -v jq` の有無だけでは「jq はあるが失敗する」場合を取り逃すため、終了ステータスで分岐する。
+if extracted=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null); then
+    command="$extracted"
+else
+    command="$input"
+fi
 
 # git commit を含まないコマンドは対象外。`if` の fail-open をここで吸収する。
 case "$command" in
@@ -31,7 +45,13 @@ esac
 
 # フックの cwd に依存しない。両 lint とも相対パス前提であり、とくに validate-skills.sh は
 # glob がリポジトリルート以外で空振りし errors=0 のまま exit 0 を返す（検査が素通りする）。
-cd "${CLAUDE_PROJECT_DIR:?CLAUDE_PROJECT_DIR が未設定}" || exit 2
+# `${VAR:?}` は set -u 下では展開時点でシェルを終了させ exit 127 になる。PreToolUse は
+# exit 2 以外を非ブロックとして扱うため、それでは前提が壊れているのに commit が通る。
+if [ -z "${CLAUDE_PROJECT_DIR:-}" ]; then
+    echo "pre-commit-gate: CLAUDE_PROJECT_DIR が未設定のため検査できません" >&2
+    exit 2
+fi
+cd "$CLAUDE_PROJECT_DIR" || exit 2
 
 # 片方が落ちても両方走らせてから判定する（lint-adr.sh の「全違反を列挙してから
 # 非0 exit する」方針に合わせ、1回の commit で全ての違反を見せる）。
