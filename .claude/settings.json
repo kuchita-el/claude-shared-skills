@@ -12,12 +12,7 @@
           {
             "type": "command",
             "if": "Bash(git commit:*)",
-            "command": "cd \"${CLAUDE_PROJECT_DIR}\" && bash scripts/validate-skills.sh >&2 || exit 2"
-          },
-          {
-            "type": "command",
-            "if": "Bash(git commit:*)",
-            "command": "cd \"${CLAUDE_PROJECT_DIR}\" && bash scripts/lint-adr.sh >&2 || exit 2"
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/scripts/hooks/pre-commit-gate.sh\""
           }
         ]
       }
