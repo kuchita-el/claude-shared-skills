@@ -62,7 +62,7 @@ ADR-20260531-2 は次の2決定を併記していた。
 ## 関連ADR
 
 - Supersedes: ADR-20260531-2-workflow-design-rationale-hub（責務定義を継承し、スコープ文面の曖昧さ＝「広さ」と「原則の射程」の混同を解消）
-- Amends: ADR-20260402-workflow-design-v2-structure（責務定義 facet を改訂。構造・操作・根拠を集約した設計図 → Explanation 根拠ハブへ。残り5決定は有効。ADR-20260531-2 から継承）
+- Supersedes: ADR-20260402-workflow-design-v2-structure（責務定義 facet を継承。構造・操作・根拠を集約した設計図 → Explanation 根拠ハブへ。残り5決定は ADR-20260718-workflow-design-v2-terminology-flow-stock-axes へ分割継承。ADR-20260531-2 から継承）
 - Related: ADR-20260513-workflow-design-scope-team（スコープ・チーム規模方針）、ADR-20260531-superpowers-delegation-boundary（Delivery 散文の接続契約化・スキル委譲）、ADR-20260601-autonomy-approval-gate-alignment（principles.md 責任分担マトリクスへの承認ゲート軸追加＝横断原則の実例）
 
 関連Issue: #221（principles.md 縮退・再編本体）、#233（本 Supersede の契機＝横断原則の追記）、#232（承認ゲート軸で横断原則を実例化）

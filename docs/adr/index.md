@@ -1,7 +1,6 @@
 <!-- このファイルは scripts/gen-adr-index.sh による生成物。手動編集禁止。 -->
 # 有効 ADR インデックス
 
-- [ADR-20260402-workflow-design-v2-structure](./ADR-20260402-workflow-design-v2-structure.md): workflow-design.md v2 構造選定（Discovery追加・用語フレームワーク非依存化・フロー/ストック軸分離）
 - [ADR-20260406-review-contract-in-plan-issue](./ADR-20260406-review-contract-in-plan-issue.md): レビュー契約の所在を plan-issue に移行する
 - [ADR-20260407-dev-loop-input-path-split](./ADR-20260407-dev-loop-input-path-split.md): dev-loop の正規パス/簡易パス入力分岐
 - [ADR-20260415-ddd-review-context-boundary](./ADR-20260415-ddd-review-context-boundary.md): DDDドキュメント整合性レビューでの責務境界考慮
@@ -37,3 +36,4 @@
 - [ADR-20260713-captures-stateless-candidate-side-state](./ADR-20260713-captures-stateless-candidate-side-state.md): 個人 store 状態モデル — captures 無状態化と状態の候補側集約
 - [ADR-20260716-2-completion-judgment-inquiry-value-range](./ADR-20260716-2-completion-judgment-inquiry-value-range.md): completion-judgment の判定値域を調査の問いへ拡張する
 - [ADR-20260716-inquiry-skill-question-governance](./ADR-20260716-inquiry-skill-question-governance.md): inquiry スキルによる問いの統治と spike の下流非伝播
+- [ADR-20260718-workflow-design-v2-terminology-flow-stock-axes](./ADR-20260718-workflow-design-v2-terminology-flow-stock-axes.md): workflow-design.md v2 構造 — 用語のフレームワーク非依存化とフロー／ストック軸の分離
