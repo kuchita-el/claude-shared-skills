@@ -62,6 +62,6 @@ L0–L3 を固定的な序列として扱うと、運用実態を取り違える
 
 - Related: ADR-20260601-autonomy-approval-gate-alignment（承認ゲート軸の整合方針。本 ADR はその留保事項である L0–L3 正式定義・二段方針・縮退形を確定する規約 ADR）
 - Related: ADR-20260421-agent-modeling-principle（自律度をドメインモデルへ持ち込まないドメイン構造層の決定。本 ADR は Explanation 層の規約であり層が異なる）
-- Related: ADR-20260511-technical-decision-aggregate-foundation（提案→承認二段の実装済み雛形＝Proposed→Accepted ライフサイクル）
+- Related: ADR-20260711-3-adr-two-axis-status-validity-model（提案→承認二段の実装済み雛形＝決定1 の承認軸 `提案中`→`承認済み`。上書き済みの ADR-20260511 は同じ二段を `Proposed / Accepted / Deprecated / Superseded` の英文4状態ライフサイクルの一部として定めていたが、同決定がこれを日本語の承認軸へ置き換えた）
 
 関連Issue: #238（本Issue）, #232（親トラッカー）, #237（整合方針、CLOSED）, #239（判定ルーブリック）, #240（ゲート二段表現規約／記法拡張）

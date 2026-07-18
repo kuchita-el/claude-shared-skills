@@ -41,6 +41,6 @@ Issue #232 の確定設計判断①で **非重複形** の採用が決定され
 ## 関連ADR
 
 - Related: ADR-20260421-agent-modeling-principle（ドメインモデル層の決定。本 ADR は Explanation 層で非重複に補完する）
-- Related: ADR-20260511-technical-decision-aggregate-foundation（承認ゲート二段表現の実装済み雛形）
+- Related: ADR-20260711-3-adr-two-axis-status-validity-model（承認ゲート二段表現の実装済み雛形。二段は決定1 の承認軸 `提案中`→`承認済み` として現行 ADR にある。上書き済みの ADR-20260511 が英文4状態で定めていたものを、同決定が日本語の承認軸へ置き換えた）
 
 関連Issue: #237（本Issue）, #232（親トラッカー）, #238（自律度モデル L0–L3 規約 ADR）, #239（判定ルーブリック）, #240（ゲート二段表現規約／記法拡張）, #227（保全媒体、CLOSED）

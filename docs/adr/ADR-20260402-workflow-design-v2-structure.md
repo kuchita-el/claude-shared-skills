@@ -51,7 +51,7 @@ validity: 有効
 
 Amended by: ADR-20260602-principles-rationale-hub（責務定義 facet を改訂。本ADRは Accepted 維持・残り5決定は有効。初版 amend は ADR-20260531-2 だが同 ADR は ADR-20260602 に Superseded されたため、現行の amend 元は ADR-20260602）
 
-Related: ADR-20260511-technical-decision-aggregate-foundation（ADR採番方式は本ADRの旧記述を上書き）
+Related: ADR-20260711-3-adr-two-axis-status-validity-model（ADR採番方式 `ADR-YYYYMMDD[-N]` は本ADRの旧記述を上書き。同方式は上書き済みの ADR-20260511 が定めたもので、決定8「採番方式・配置（ADR-20260511 から不変で引き継ぐ）」として現行 ADR へ不変のまま引き継がれた）
 
 関連Issue: PR #89（workflow-design.md v2 改訂本体）、#94（Delivery→Discovery フィードバックループ）、#95（spec.md ライフサイクル）、#100（AIエラー時の再開・引き継ぎ）
 
