@@ -1,11 +1,11 @@
 # 入出力例（io-examples.md）
 
-起票・承認・上書きの代表的な入出力例。front-matter の before→after、ファイル名、相互参照の具体値を示す。スキーマの正本は `docs/adr/ADR-20260711-3-adr-two-axis-status-validity-model.md` 決定2。
+起票・承認・上書きの代表的な入出力例。front-matter の before→after、ファイル名、相互参照の具体値を示す。front-matter のスキーマ・値域・遷移ごとの必須ルールそのものは SKILL.md が指す状態モデルの規約が実体を持つため、本ファイルではそれらを再定義せず、規約に従う具体値のみを示す。
 
 ## 例1: 起票
 
-- **入力**: 新規決定「X を採用する」、起票日 2026-07-13、slug `adopt-x`、同日に既存 ADR なし
-- **出力ファイル**: `ADR-20260713-adopt-x.md`（同日1件目のため `-N` なし）
+- **入力**: 新規決定「X を採用する」、起票日 2031-04-15、slug `adopt-x`、同日に既存 ADR なし
+- **出力ファイル**: `ADR-20310415-adopt-x.md`（同日1件目のため `-N` なし）
 - **出力（front-matter）**:
   ```yaml
   ---
@@ -14,13 +14,13 @@
   superseded-by:
   ---
   ```
-- **出力（本文骨格）**: `# ADR-20260713: X を採用する` ＋ `## Context`／`## Decision`／`## Consequences`／`## 関連ADR` の見出しと空プレースホルダ（決定内容は人間が埋める）。状態は front-matter のみで表現し、本文に状態記述の見出し節を置かない。
+- **出力（本文骨格）**: `# ADR-20310415: X を採用する` ＋ `## Context`／`## Decision`／`## Consequences`／`## 関連ADR` の見出しと空プレースホルダ（決定内容は人間が埋める）。状態は front-matter のみで表現し、本文に状態記述の見出し節を置かない。
 
-**採番衝突例**: 同日に `ADR-20260713`・`ADR-20260713-2` が既存なら、次の起票は `ADR-20260713-3-<slug>.md`（当日最大番号 +1）。
+**採番衝突例**: 同日に `ADR-20310415`・`ADR-20310415-2` が既存なら、次の起票は `ADR-20310415-3-<slug>.md`（当日最大番号 +1）。
 
 ## 例2: 承認
 
-- **入力**: `ADR-20260713-adopt-x.md`（`status: 提案中`）を承認
+- **入力**: `ADR-20310415-adopt-x.md`（`status: 提案中`）を承認
 - **出力（front-matter, before→after）**:
   ```yaml
   # before
@@ -36,8 +36,8 @@
 
 ## 例3: 上書き（双方向相互参照）
 
-- **入力**: 旧 `ADR-20260701-foo.md`（`status: 承認済み`／`validity: 有効`）を、後継 `ADR-20260713-2-bar`（起票・承認済み）で置換
-- **出力（旧側 `ADR-20260701-foo.md` の front-matter, before→after）**:
+- **入力**: 旧 `ADR-20310409-foo.md`（`status: 承認済み`／`validity: 有効`）を、後継 `ADR-20310415-2-bar`（起票・承認済み）で置換
+- **出力（旧側 `ADR-20310409-foo.md` の front-matter, before→after）**:
   ```yaml
   # before
   status: 承認済み
@@ -46,13 +46,13 @@
   # after
   status: 承認済み        # 不変
   validity: 上書き済み
-  superseded-by: ADR-20260713-2-bar
+  superseded-by: ADR-20310415-2-bar
   ```
-- **出力（後継側 `ADR-20260713-2-bar.md` の本文 `## 関連ADR`）**: 次の1行を追加（行頭 `- `、full slug 完全一致）
+- **出力（後継側 `ADR-20310415-2-bar.md` の本文 `## 関連ADR`）**: 次の1行を追加（行頭 `- `、full slug 完全一致）
   ```markdown
   ## 関連ADR
 
-  - Supersedes: ADR-20260701-foo
+  - Supersedes: ADR-20310409-foo
   ```
 - 旧側 `superseded-by`（後継 stem）と後継側 `Supersedes:`（旧 stem）が双方向で揃うことで、lint-adr レイヤ3（forward・reverse）が違反を出さない。
 
