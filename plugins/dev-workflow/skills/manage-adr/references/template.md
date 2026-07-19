@@ -19,7 +19,7 @@ superseded-by:
 <!--
 ファイル名規則: ADR-YYYYMMDD[-N]-<slug>.md
 - 同日1件目は `-N` なし、2件目以降は `-2` から付与
-- `<slug>` は短い英数字ハイフン区切り（例: technical-decision-aggregate-foundation）
+- `<slug>` は内容を表す短い英数字ハイフン区切り（例: cache-layer-replacement）
 詳細は manage-adr スキルを参照
 -->
 
@@ -43,7 +43,7 @@ superseded-by:
 - Superseded by: ADR-YYYYMMDD[-N]-<slug> （本ADRが後継ADRに全体上書きされた場合。本ADR自身の front-matter superseded-by にも後継の識別子を記載する）
 - Related: ADR-YYYYMMDD[-N]-<slug>       （直接の上書き関係はない関連ADR）
 - Amends / Amended by: 凍結された歴史的相互参照。旧運用で使われ、現行スキーマでは廃止済みの表記。既存ファイルの記載は遡及編集せず保持するが、新規起票では使わない。
-該当なしの場合は「該当なし」と記述。関連Issueも併記可（例: 関連Issue: #130, #169）
+該当なしの場合は「該当なし」と記述。関連Issueも併記可（書式: `関連Issue: #<番号>`、複数件はカンマ区切り）
 -->
 
 <先行ADR・後継ADR・関連ADRの識別子を列挙。該当なしの場合は「該当なし」と明記>
