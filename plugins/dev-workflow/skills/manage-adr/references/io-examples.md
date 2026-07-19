@@ -44,10 +44,11 @@
   validity: 有効
   superseded-by:
   # after
-  status: 承認済み        # 不変
+  status: 承認済み
   validity: 上書き済み
   superseded-by: ADR-20310415-2-bar
   ```
+  旧側の `status: 承認済み` は上書きでも不変（承認は歴史事実）。front-matter 行に説明のトレーリングコメントを書かない規約のため、この注記はコードブロック外で述べる。
 - **出力（後継側 `ADR-20310415-2-bar.md` の本文 `## 関連ADR`）**: 次の1行を追加（行頭 `- `、full slug 完全一致）
   ```markdown
   ## 関連ADR
