@@ -14,7 +14,7 @@ superseded-by: ADR-20260602-principles-rationale-hub
 - **操作層**: spec.md 構成例、デリバリーアイテム粒度ガイドライン、ADR 記録の判断基準、テスト方針、ドキュメンテーション戦略、ドキュメント間結合度原則、スキルとフェーズの対応、作業単位の階層・Sprint 運用
 - **根拠層**: 基本原則①②③、なぜ事前にドメイン構造が必要か（70%見通し）、変更パターン A/B/C、責任分担マトリクス、アンチパターン
 
-構造層・操作層には他に SoT が存在する（構造は `docs/development/event-storming.md` / domain-model、操作は各 SKILL.md・`CLAUDE.md`・`docs/adr/README.md`・`docs/references/`）。これらを workflow-design.md が二重に抱えることが、構造ドリフトの温床になっていた。一方、根拠層には固有のホームが無い。
+構造層・操作層には他に SoT が存在する（構造は `docs/development/event-storming.md` / domain-model、操作は各 SKILL.md・`CLAUDE.md`・ADR 運用ルール・`docs/references/`）。これらを workflow-design.md が二重に抱えることが、構造ドリフトの温床になっていた。一方、根拠層には固有のホームが無い。
 
 当初 #221 は「workflow-design.md と event-storming/domain-model 間の構造ドリフト同期」を想定したが、両者を突き合わせた結果この前提は不成立と判明した（workflow-design.md は具体的な集約名・状態名・ポリシーを記述しておらず、粗い散文要約に留まる。明確な構造の二重定義は検証ゲート構成定義のみ）。よって #221 を「workflow-design.md の縮退・再定義」へ再定義した。
 
