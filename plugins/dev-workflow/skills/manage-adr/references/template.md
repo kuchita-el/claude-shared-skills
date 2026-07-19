@@ -40,10 +40,10 @@ superseded-by:
 <!--
 表記規約:
 - Supersedes: ADR-YYYYMMDD[-N]-<slug>   （本ADRが旧ADRを全体上書きする場合。旧ADR側 front-matter の superseded-by が本ADRを指す）
-- Superseded by: ADR-YYYYMMDD[-N]-<slug> （本ADRが後継ADRに全体上書きされた場合。本ADR自身の front-matter superseded-by にも後継の識別子を記載する）
+- Superseded by: ADR-YYYYMMDD[-N]-<slug> （本ADRが後継ADRに全体上書きされた場合。本ADR自身の front-matter superseded-by にも後継の full slug を記載する）
 - Related: ADR-YYYYMMDD[-N]-<slug>       （直接の上書き関係はない関連ADR）
 - Amends / Amended by: 凍結された歴史的相互参照。旧運用で使われ、現行スキーマでは廃止済みの表記。既存ファイルの記載は遡及編集せず保持するが、新規起票では使わない。
 該当なしの場合は「該当なし」と記述。関連Issueも併記可（書式: `関連Issue: #<番号>`、複数件はカンマ区切り）
 -->
 
-<先行ADR・後継ADR・関連ADRの識別子を列挙。該当なしの場合は「該当なし」と明記>
+<先行ADR・後継ADR・関連ADRを full slug で列挙。該当なしの場合は「該当なし」と明記>
