@@ -10,7 +10,7 @@ superseded-by: ADR-20260711-3-adr-two-axis-status-validity-model
 
 ホットスポット H4「ADR（Architecture Decision Records）のライフサイクル管理が未定義。横断的技術方針の蓄積・参照・廃止の仕組みがない」由来の決定。Issue #130 で技術的意思決定を独立集約として正式モデル化し（旧「横断的技術方針」を改名）、状態遷移・コマンド・イベントを確定した。しかし集約の実体（ADR ファイル）を運用するための採番方式・配置場所・ライフサイクル状態名・後継参照の扱いが Issue #130 と Issue #169 にまたがって決定されており、ADR として一括参照可能な単一の根拠ドキュメントが存在しない状態だった。
 
-本 ADR は Issue #130 で確定した4項目（採番方式・配置・ライフサイクル状態・廃止時の扱い）を ADR 形式で正式化し、`docs/development/event-storming.md`「技術的意思決定」集約および `docs/adr/README.md` 運用ルールの根拠として位置付ける。
+本 ADR は Issue #130 で確定した4項目（採番方式・配置・ライフサイクル状態・廃止時の扱い）を ADR 形式で正式化し、`docs/development/event-storming.md`「技術的意思決定」集約および本リポジトリの ADR 運用ルールの根拠として位置付ける。
 
 関連ホットスポット: H4（Issue #130 で部分解消、運用基盤は Issue #169 で確定）
 

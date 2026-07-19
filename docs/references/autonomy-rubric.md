@@ -6,7 +6,7 @@
 
 - **自律度レベル L0–L3 の正式定義（名称・判定基準）の唯一の情報源（SoT）は規約 ADR（#238）である。** 本書は #238 が確定するまで [docs/principles.md](../principles.md)「承認ゲート軸（自律度レベル別）」の暫定定義を判定対象として参照し、正式定義を上書きしない。#238 確定後に齟齬があれば本書を同期する。
 - 自律度を責任分担マトリクス（Explanation 層）で表現し、ドメインモデルへ持ち込まない方針の根拠は [ADR-20260601](../adr/ADR-20260601-autonomy-approval-gate-alignment.md) を参照。
-- 本ルーブリックの5要因は、ADR 粒度判定の4項目チェックリスト（[docs/adr/README.md](../adr/README.md)）を発想元とする（後述。厳密な同型ではない）。
+- 本ルーブリックの5要因は、ADR 粒度判定の4項目チェックリスト（[ADR-20260719](../adr/ADR-20260719-adr-scoping-criteria-and-record-reference-principle.md) 決定1）を発想元とする（後述。厳密な同型ではない）。
 
 ## 5要因スコアリング
 
@@ -123,7 +123,7 @@
 
 ## ADR 粒度判定との発想上の対応
 
-本ルーブリックの5要因は、ADR 化要否を判定する4項目チェックリスト（[docs/adr/README.md](../adr/README.md)「粒度判定基準」）を発想元としている。両者は「後戻りコストと波及の広さで関与の度合いを決める」という発想を共有するが、**厳密な1対1の同型ではない**（同型性の証明は本書の目的としない）。
+本ルーブリックの5要因は、ADR 化要否を判定する4項目チェックリスト（[ADR-20260719](../adr/ADR-20260719-adr-scoping-criteria-and-record-reference-principle.md) 決定1「粒度判定基準」）を発想元としている。両者は「後戻りコストと波及の広さで関与の度合いを決める」という発想を共有するが、**厳密な1対1の同型ではない**（同型性の証明は本書の目的としない）。
 
 | 5要因 | ADR 粒度判定の対応項目 | 対応の有無 |
 |---|---|---|
@@ -143,5 +143,5 @@
 
 - [docs/principles.md](../principles.md)「承認ゲート軸（自律度レベル別）」 — L0–L3 の暫定定義と承認ゲート軸。本ルーブリックの判定対象
 - [ADR-20260601](../adr/ADR-20260601-autonomy-approval-gate-alignment.md) — 自律度を Explanation 層で表現する整合方針
-- [docs/adr/README.md](../adr/README.md)「粒度判定基準」 — 5要因の発想元（4項目チェックリスト）
+- [ADR-20260719](../adr/ADR-20260719-adr-scoping-criteria-and-record-reference-principle.md) 決定1「粒度判定基準」 — 5要因の発想元（4項目チェックリスト）
 - 規約 ADR（#238） — L0–L3 の正式定義の SoT（作成予定）

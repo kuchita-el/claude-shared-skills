@@ -17,7 +17,7 @@ validity: 有効
 
 内省機能（growth の学習ループ: 内省 → 仮説 → 検証 → 配布）を dev-workflow プラグインに混在させず、独立したプラグイン `plugins/growth/` として分離する。marketplace カタログには dev-workflow とは別エントリ（`source: ./plugins/growth`）として登録し、単独で導入・無効化できる配布単位とする。
 
-この分離は、関心の分離（開発ワークフローと学習メタ機構の責務境界）に加え、**常時ロードの分離（コンテキスト効率）** を理由とする。Claude Code のスキルはセッション開始時に description（name＋説明）のみが常時ロードされ、`SKILL.md` 本体は呼び出し時の on-demand ロードである。growth を dev-workflow に同梱すると growth の各スキル description が dev-workflow 利用者のセッションに常時加算されるため、独立プラグイン化して growth を必要とする利用者だけがその description をロードする構成とする。本判断はコンテキスト膨張・トークン効率対策にあたる（設計要素別の逆引きは各 ADR 本文を参照する。`docs/adr/README.md`「設計判断の意味的な逆引き」）。
+この分離は、関心の分離（開発ワークフローと学習メタ機構の責務境界）に加え、**常時ロードの分離（コンテキスト効率）** を理由とする。Claude Code のスキルはセッション開始時に description（name＋説明）のみが常時ロードされ、`SKILL.md` 本体は呼び出し時の on-demand ロードである。growth を dev-workflow に同梱すると growth の各スキル description が dev-workflow 利用者のセッションに常時加算されるため、独立プラグイン化して growth を必要とする利用者だけがその description をロードする構成とする。本判断はコンテキスト膨張・トークン効率対策にあたる（設計要素別の逆引きは各 ADR 本文を参照する。ADR-20260711-3 決定7）。
 
 ## Consequences
 
