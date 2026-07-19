@@ -37,3 +37,4 @@
 - [ADR-20260716-2-completion-judgment-inquiry-value-range](./ADR-20260716-2-completion-judgment-inquiry-value-range.md): completion-judgment の判定値域を調査の問いへ拡張する
 - [ADR-20260716-inquiry-skill-question-governance](./ADR-20260716-inquiry-skill-question-governance.md): inquiry スキルによる問いの統治と spike の下流非伝播
 - [ADR-20260718-workflow-design-v2-terminology-flow-stock-axes](./ADR-20260718-workflow-design-v2-terminology-flow-stock-axes.md): workflow-design.md v2 構造 — 用語のフレームワーク非依存化とフロー／ストック軸の分離
+- [ADR-20260719-adr-scoping-criteria-and-record-reference-principle](./ADR-20260719-adr-scoping-criteria-and-record-reference-principle.md): ADR 化判断の3基準を決定として確定し、記録は可変文書を現在の参照先として指さない
