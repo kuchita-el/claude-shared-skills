@@ -30,7 +30,7 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 |---|---|
 | 起票 | 採番規則で新規 ADR ファイルを生成し `status: 提案中`（`validity`/`superseded-by` は空） |
 | 承認 | `status: 承認済み`・`validity: 有効`（`superseded-by` は空のまま） |
-| 上書き | 旧 ADR に `validity: 上書き済み`・`superseded-by: <後継>`、後継本文 `## 関連ADR` に `Supersedes: <旧>`（双方向） |
+| 上書き | 旧 ADR に `validity: 上書き済み`・`superseded-by: <後継>`、後継本文 `## 関連ADR` に `Supersedes: <旧>`（双方向）、旧 ADR 本文 `## 関連ADR` に `Superseded by: <後継>` |
 | 廃止 | `validity: 廃止済み`（`superseded-by` は付与しない） |
 | 却下 | `status: 却下`（`validity`・`superseded-by` は付与しない） |
 

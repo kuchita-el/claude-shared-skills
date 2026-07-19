@@ -54,7 +54,11 @@
 
   - Supersedes: ADR-20310409-foo
   ```
-- 旧側 `superseded-by`（後継 stem）と後継側 `Supersedes:`（旧 stem）が双方向で揃うことで、lint-adr レイヤ3（forward・reverse）が違反を出さない。
+- **出力（旧側 `ADR-20310409-foo.md` の本文 `## 関連ADR`）**: 次の1行を追加
+  ```markdown
+  - Superseded by: ADR-20310415-2-bar
+  ```
+- 旧側 `superseded-by`（後継 stem）と後継側 `Supersedes:`（旧 stem）が双方向で揃うことで、lint-adr レイヤ3（forward・reverse）が違反を出さない。旧側本文の `Superseded by:` は lint の走査対象外のため、記載漏れは exit 0 のまま素通りする。
 
 ## 例4: 廃止・却下（superseded-by を付けない）
 
