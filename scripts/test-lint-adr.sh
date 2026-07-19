@@ -668,6 +668,8 @@ run_xref_list_case \
 # 存在検査の対象を移設先（edit-decision.md）へ張り替える。除去検査は、旧記述が再混入
 # しうる面が「旧在処＝README」と「新在処＝manage-adr のスキル面」の双方に広がったため、
 # 両者を連結した面に対して行う（README だけを見ると新在処への再混入を取り逃がす）。
+# 除去検査の検査語は必ず見出しでアンカーする。裸の部分文字列にすると「節の復活」ではなく
+# 「節を名指しすること」を禁じてしまい、廃止の経緯を説明する散文まで書けなくなるため。
 
 README_ADR="$REPO_ROOT/docs/adr/README.md"
 MANAGE_ADR_DIR="$REPO_ROOT/plugins/dev-workflow/skills/manage-adr"
@@ -690,7 +692,7 @@ run_ac5_edit_mechanism() {
 
     assert_contains "$edit_content" "3段構え" "AC5: 3段構え編集機構の対応表が edit-decision.md に存在する"
     assert_contains "$edit_content" "些末" "AC5: decision tree（些末/非core/core 判定フロー）が edit-decision.md に存在する"
-    assert_not_contains "$surface" "モデル制約由来の設計判断インデックス" "AC5: 旧モデル制約由来の設計判断インデックス節が README・manage-adr の双方から除去されている"
+    assert_not_contains "$surface" "## モデル制約由来の設計判断インデックス" "AC5: 旧モデル制約由来の設計判断インデックス節が README・manage-adr の双方から除去されている"
     assert_not_contains "$surface" "### Amended（部分改訂）" "AC5: 旧 Amended（部分改訂）手順節が README・manage-adr の双方から除去されている"
 }
 
