@@ -43,7 +43,7 @@ validity: 有効
 
 ## 関連ADR
 
-Related: ADR-20260402-workflow-design-v2-structure（workflow-design.md v2 構造選定。本ADRは v2 のスコープを限定する補足判定）
+Related: ADR-20260602-principles-rationale-hub（workflow-design.md の責務定義 facet の現行の住処。旧 ADR-20260402 の決定1の後継。本ADRの決定根拠〔文書の責務は協働の作業フローと品質ゲートであり、人間チーム内の合意形成は別の関心事〕が依拠するのは当時の責務定義であり、ADR-20260602 は当該責務を Diátaxis の Explanation（根拠ハブ）へ再定義しているため、現行の定義をそのまま引き継ぐ関係ではない）、ADR-20260718-workflow-design-v2-terminology-flow-stock-axes（v2 構造のうち生存する決定群の現行の住処。本ADRは v2 のスコープを限定する補足判定。ADR分割以前は上書き済みの ADR-20260402-workflow-design-v2-structure を指していた）
 
 関連Issue: #284（プラグイン共通: チーム規模別ワークフロー運用ガイド `team-workflow-patterns.md` の設計・作成、OPEN）／#118（パターン別ワークフロー定義 `workflow-patterns.md` の設計・作成。本ADRが想定したチーム規模軸の切り出し先を再定義、CLOSED）
 

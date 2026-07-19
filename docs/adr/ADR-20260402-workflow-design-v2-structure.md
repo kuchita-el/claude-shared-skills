@@ -1,6 +1,7 @@
 ---
 status: 承認済み
-validity: 有効
+validity: 上書き済み
+superseded-by: ADR-20260602-principles-rationale-hub, ADR-20260718-workflow-design-v2-terminology-flow-stock-axes
 ---
 
 # ADR-20260402: workflow-design.md v2 構造選定（Discovery追加・用語フレームワーク非依存化・フロー/ストック軸分離）
@@ -49,7 +50,7 @@ validity: 有効
 
 ## 関連ADR
 
-Amended by: ADR-20260602-principles-rationale-hub（責務定義 facet を改訂。本ADRは Accepted 維持・残り5決定は有効。初版 amend は ADR-20260531-2 だが同 ADR は ADR-20260602 に Superseded されたため、現行の amend 元は ADR-20260602）
+Superseded by: ADR-20260602-principles-rationale-hub（責務定義 facet を継承）、ADR-20260718-workflow-design-v2-terminology-flow-stock-axes（生存5決定を継承。多決定 ADR の部分 core 反転による分割後継）
 
 Related: ADR-20260711-3-adr-two-axis-status-validity-model（ADR採番方式 `ADR-YYYYMMDD[-N]` は本ADRの旧記述を上書き。同方式は上書き済みの ADR-20260511 が定めたもので、決定8「採番方式・配置（ADR-20260511 から不変で引き継ぐ）」として現行 ADR へ不変のまま引き継がれた）
 
