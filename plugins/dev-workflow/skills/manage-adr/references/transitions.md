@@ -144,6 +144,6 @@ SKILL.md の「各操作後の自己検証」は、live `docs/adr`（#③ 完了
 
 ## 入出力例（上書き遷移）
 
-- **入力**: 旧 `ADR-20310409-foo.md`（`status: 承認済み`／`validity: 有効`）、後継 `ADR-20310415-2-bar`（起票・承認済みで識別子が確定している）
+- **入力**: 旧 `ADR-20310409-foo.md`（`status: 承認済み`／`validity: 有効`）、後継 `ADR-20310415-2-bar`（起票・承認済みで full slug が確定している）
 - **出力（旧側 front-matter）**: `status: 承認済み`（不変）／`validity: 上書き済み`／`superseded-by: ADR-20310415-2-bar`
 - **出力（後継側 `## 関連ADR`）**: `- Supersedes: ADR-20310409-foo` を1行追加
