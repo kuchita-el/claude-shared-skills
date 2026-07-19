@@ -11,7 +11,7 @@ growth の capture/distill が生成した store を評価したところ、`can
 
 #417 は distill に「観察の分類（環境摩擦 vs 判断誤り）・user 訂正の重み付け・スコープ別の既存ルール台帳との突合・既存ルール再発の知見化」を加え、`candidates.md` の信号対雑音比を高めることを目的とする。このうち台帳突合と再発の知見化は、distill が既存ルール台帳（user/project 2層の `CLAUDE.md`・`learnings.md`・`candidates.md` 自身）の**現在の状態**を読むことを必要とする。
 
-しかし現行の distill の入力契約は「入力源は正準パス `captures.md` のみ。in-repo の `plugins/growth/.local/` は走査しない」と定めている（`personal-store-spec.md`「構成上の保証」、`distill-procedure.md` §2、`distill/SKILL.md` Phase 1 スコープ）。台帳突合はこの入力契約の拡大であり、`docs/adr/README.md` の粒度判定4項目（影響範囲・不可逆性・トレードオフ・横断性）すべてに該当する構造的判断のため、本 ADR で束ねる。#417 本文自身も「責務線引き＋distill 入力範囲の拡大が ADR 級か判定する。該当すれば本線引きを束ねる ADR を起票する」と求めている。
+しかし現行の distill の入力契約は「入力源は正準パス `captures.md` のみ。in-repo の `plugins/growth/.local/` は走査しない」と定めている（`personal-store-spec.md`「構成上の保証」、`distill-procedure.md` §2、`distill/SKILL.md` Phase 1 スコープ）。台帳突合はこの入力契約の拡大であり、ADR-20260719 決定1 の粒度判定4項目（影響範囲・不可逆性・トレードオフ・横断性）すべてに該当する構造的判断のため、本 ADR で束ねる。#417 本文自身も「責務線引き＋distill 入力範囲の拡大が ADR 級か判定する。該当すれば本線引きを束ねる ADR を起票する」と求めている。
 
 ## Decision
 

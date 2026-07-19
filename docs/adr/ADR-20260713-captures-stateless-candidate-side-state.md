@@ -9,7 +9,7 @@ validity: 有効
 
 - **承認軸**（`status`）: `承認済み`（不変）。本 ADR の決定1〜3 は ADR-20260711-store-state-model-captures-stateless で承認済みの決定を、ADR分割（ADR-20260711-3 決定3）により逐語 restate で re-home したものであり、内容の再決定ではない。
 - **有効性軸**（`validity`）: `有効`。
-- 状態の権威は本ファイル冒頭の front-matter。分割の経緯・スキーマの正本は ADR-20260711-3、手順は `docs/adr/README.md`「廃止・上書き手順」を参照。
+- 状態の権威は本ファイル冒頭の front-matter。分割の経緯・スキーマの正本は ADR-20260711-3、上書き・廃止の遷移規定は同 ADR 決定2 を参照。
 
 ## Context
 

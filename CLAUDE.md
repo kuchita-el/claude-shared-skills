@@ -88,8 +88,8 @@ Issueサイズ（Small/Medium/Large）に応じてチェック項目が段階的
 ### ADR（設計判断の記録）
 
 - 設計議論を始める前に `docs/adr/` 配下のADR一覧を確認する
-- 設計判断を行ったら、`docs/adr/README.md` の粒度判定基準（4項目チェックリスト）に照らして ADR 化要否を判定する
-- 既存ADRと矛盾する設計判断を行う場合は、Superseded 手続きを行う（詳細手順は `docs/adr/README.md`「廃止・上書き手順」参照）
+- 設計判断を行ったら、ADR-20260719 決定1 の粒度判定基準（4項目チェックリスト）に照らして ADR 化要否を判定する
+- 既存ADRと矛盾する設計判断を行う場合は、Superseded 手続きを行う（詳細手順は `manage-adr` スキルの `references/transitions.md` 参照）
 
 ## Adding a New Skill
 
