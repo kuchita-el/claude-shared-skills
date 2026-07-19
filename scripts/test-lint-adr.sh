@@ -675,20 +675,52 @@ README_ADR="$REPO_ROOT/docs/adr/README.md"
 MANAGE_ADR_DIR="$REPO_ROOT/plugins/dev-workflow/skills/manage-adr"
 EDIT_DECISION="$MANAGE_ADR_DIR/references/edit-decision.md"
 
+# 除去検査の対象面を構成するファイルを明示列挙する。surface を glob（references/*.md）
+# で組み立てると、ファイルが削除されても glob が静かに縮小するだけで検査が素通りし、
+# 対象面が無言で狭まる。glob 結果に存在チェックを掛けても同じ理由で検知できないため、
+# 期待リストを固定し、存在チェックと surface の構成元をこのリストに一致させる。
+AC5_SURFACE_FILES=(
+    "$README_ADR"
+    "$MANAGE_ADR_DIR/SKILL.md"
+    "$MANAGE_ADR_DIR/references/adr-model.md"
+    "$MANAGE_ADR_DIR/references/adr-scoping.md"
+    "$EDIT_DECISION"
+    "$MANAGE_ADR_DIR/references/io-examples.md"
+    "$MANAGE_ADR_DIR/references/template.md"
+    "$MANAGE_ADR_DIR/references/transitions.md"
+)
+
 run_ac5_edit_mechanism() {
-    local f
-    for f in "$README_ADR" "$EDIT_DECISION" "$MANAGE_ADR_DIR/SKILL.md"; do
+    local f actual
+    for f in "${AC5_SURFACE_FILES[@]}"; do
         if [ ! -f "$f" ]; then
             total=$((total + 1))
             failed=$((failed + 1))
-            printf '[FAIL] AC5: file not found: %s\n' "$f"
+            printf '[FAIL] AC5: surface file not found: %s\n' "$f"
             return
         fi
     done
 
+    # 逆向きの縮小（参照ファイルが増えたのに期待リストへ未登録＝その面だけ検査から漏れる）
+    # も検知する。nullglob で空マッチ時にリテラルが残らないことを明示する。
+    shopt -s nullglob
+    local actual_refs=( "$MANAGE_ADR_DIR"/references/*.md )
+    shopt -u nullglob
+    for actual in "${actual_refs[@]}"; do
+        case " ${AC5_SURFACE_FILES[*]} " in
+            *" $actual "*) ;;
+            *)
+                total=$((total + 1))
+                failed=$((failed + 1))
+                printf '[FAIL] AC5: surface file list does not cover: %s\n' "$actual"
+                return
+                ;;
+        esac
+    done
+
     local edit_content surface
     edit_content=$(cat "$EDIT_DECISION")
-    surface=$(cat "$README_ADR" "$MANAGE_ADR_DIR/SKILL.md" "$MANAGE_ADR_DIR"/references/*.md)
+    surface=$(cat "${AC5_SURFACE_FILES[@]}")
 
     assert_contains "$edit_content" "3段構え" "AC5: 3段構え編集機構の対応表が edit-decision.md に存在する"
     assert_contains "$edit_content" "些末" "AC5: decision tree（些末/非core/core 判定フロー）が edit-decision.md に存在する"
