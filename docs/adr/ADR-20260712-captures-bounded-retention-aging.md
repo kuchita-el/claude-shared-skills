@@ -103,5 +103,5 @@ retention horizon の単位（直近 N セッション／M 日）・サイズ、
 
 - Supersedes: ADR-20260711-2-distill-highwater-cursor（retention 射程を「全履歴到達」から「有界 retention horizon」へ改め、生観測に経年削除を導入。カーソル機構〔guarantee-once・provenance 重複排除・欠損時既定〕は本 ADR に restate して引き継ぐ）
 - Supersedes: ADR-20260711-store-state-model-captures-stateless（決定4「観測は削除しない／retention＝再導出のため保持」を本 ADR で改訂〔有界保持＋経年削除へ〕。ADR分割〔ADR-20260711-3 決定3〕により本 ADR は原 ADR の決定4 facet を担う後継として `Supersedes` を宣言し、原 ADR の `superseded-by` に列挙される。決定1〜3〔captures 無状態・状態の候補側集約・処理源選択〕は ADR-20260713-captures-stateless-candidate-side-state へ re-home され不変で存続）
-- Related: ADR-20260629-distill-input-contract-and-ledger-matching（入力契約の処理源／参照源2分。本決定で反転せず不変）
+- Related: ADR-20260713-captures-stateless-candidate-side-state（入力契約の処理源 facet〔work-queue 選択〕の後継。629 決定1 の処理源を provenance＋recency 導出へ上書き）、ADR-20260720-distill-ledger-as-explicit-input（入力契約の参照源 facet〔既存ルール台帳〕の後継。629 決定1b・決定2 を引き取る）。処理源／参照源の2分は本決定で反転せず不変（分割以前は退役した ADR-20260629-distill-input-contract-and-ledger-matching を指していた）
 - 関連Issue: #451（本決定）, #434（論点3 の独立元）, #463（ADR 運用2軸モデル）
