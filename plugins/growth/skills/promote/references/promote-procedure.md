@@ -127,7 +127,7 @@ Issue 本文に含める career 注記欄の書式:
 | Yes | No（失敗） | しない（`pending` のまま） |
 | Yes | Yes | する（`pending → promoted`） |
 
-- `candidate-status` は `pending` から `rejected` / `promoted` への一方向遷移であり、`rejected` / `promoted` はいずれも不可侵の終端（再走査対象から除外。ADR-20260629 決定3）。誤って `promoted` を先に付与すると起票失敗時の再実行判定を壊すため、起票成功を確認してから前進する順序を厳守する。
+- `candidate-status` は `pending` から `rejected` / `promoted` への一方向遷移であり、`rejected` / `promoted` はいずれも不可侵の終端（再走査対象から除外。ADR-20260720-2 決定1）。誤って `promoted` を先に付与すると起票失敗時の再実行判定を壊すため、起票成功を確認してから前進する順序を厳守する。
 
 ## 7. エラー・境界処理
 

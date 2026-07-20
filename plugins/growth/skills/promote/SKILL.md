@@ -43,7 +43,7 @@ distill が仮説ファイル（`candidates.md`）へ永続化した仮説を検
 candidates: ~/.claude/projects/-home-user-myproject/growth/candidates.md
 ```
 
-起票に失敗した仮説は `candidate-status: pending` のまま残り、再実行可能な状態を保つ。検証で棄却した仮説は `candidate-status: rejected` として確定し（ADR-20260629 決定3、不可侵）、再提示されない。
+起票に失敗した仮説は `candidate-status: pending` のまま残り、再実行可能な状態を保つ。検証で棄却した仮説は `candidate-status: rejected` として確定し（ADR-20260720-2 決定1、不可侵）、再提示されない。
 
 ## 関連
 
