@@ -1,5 +1,5 @@
 ---
-description: ADR のライフサイクル操作（起票・承認・上書き・廃止・却下の5遷移）を実行し、front-matter（`status`/`validity`/`superseded-by`）と相互参照をスキーマに従って書き込む。既存 ADR を編集する際は core／非core／些末の判定フローで変更種別を確定し、core 変更は新規 ADR 起票＋旧 ADR 上書きへ、非core／些末は直接編集へ導く。ADR 化要否も判定する。各操作後は lint-adr で自己検証する。ADR 化すべきか迷う・ADR を新規に起こしたい・承認や上書き等で状態を変えたい・既存 ADR を編集したいときに使用。
+description: ADR のライフサイクル操作（起票・承認・上書き・廃止・却下の5遷移）と多決定 ADR の分割（1→N の部分上書き）を実行し、front-matter（`status`/`validity`/`superseded-by`）と相互参照をスキーマに従い書き込む。既存 ADR の編集は core／非core／些末で変更種別を確定し、core は新規起票＋旧 ADR 上書き、非core／些末は直接編集へ導く。ADR 化要否も判定し、各操作後は lint-adr で自己検証する。ADR 化を迷う・新規に起こす・承認や上書きで状態を変える・分割する・既存 ADR を編集したいときに使用。
 allowed-tools:
   - Read
   - Grep
@@ -19,7 +19,7 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 
 ## 引数
 
-- 操作種別（`起票`／`承認`／`上書き`／`廃止`／`却下`／`編集`）と対象 ADR の識別子・パス
+- 操作種別（`起票`／`承認`／`上書き`／`分割`／`廃止`／`却下`／`編集`）と対象 ADR の識別子・パス
 - 省略時は会話コンテキストから意図を判定する。操作種別・対象が特定できなければ、その1点のみ質問する
 
 ## 対象操作
@@ -34,7 +34,15 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 | 廃止 | `validity: 廃止済み`（`superseded-by` は付与しない） |
 | 却下 | `status: 却下`（`validity`・`superseded-by` は付与しない） |
 
-各遷移後の front-matter 最終状態は `${CLAUDE_SKILL_DIR}/references/adr-model.md` の必須ルール表に一致させる。採番規則・写入手順・上書きの双方向相互参照の書き込みは `${CLAUDE_SKILL_DIR}/references/transitions.md` を参照する。ADR 本文へ他文書への参照を書く場合（起票時を含む）は、`${CLAUDE_SKILL_DIR}/references/edit-decision.md` の「記録の参照原則」に従う。
+各遷移後の front-matter 最終状態は `${CLAUDE_SKILL_DIR}/references/adr-model.md` の必須ルール表に一致させる。採番規則・写入手順・上書きの双方向相互参照の書き込みは `${CLAUDE_SKILL_DIR}/references/transitions.md` を参照する。ADR 本文へ他文書への参照を書く場合（起票時を含む）は、`${CLAUDE_SKILL_DIR}/references/edit-decision.md` の「記録の参照原則」に従う。原 ADR の一部決定だけが反転する 1→N（部分上書き）は、5遷移ではなく下記「分割」を扱う。
+
+### 分割（多決定 ADR の部分上書き。5遷移とは別軸の構造操作）
+
+複数の決定を束ねた ADR の一部だけが core 反転して残りが生存する場合（1→N の部分上書き）、または束ね ADR を予防的に分解する場合（衛生的分割）に使う。原 ADR 全体を `上書き済み` にすると生存決定を誤って退役させるため、生存決定を後継へ逐語 restate してから原 ADR を上書きする。
+
+分割は5遷移（front-matter 状態遷移）の一種ではない。決定のファイル間再配置という別軸の構造操作であり、本文編集の core／非core／些末分類でもなくリファクタリングに相当する（根拠: ADR-20260711-3 決定3）。終端 front-matter は上書きと同型（原 ADR `validity: 上書き済み`・`superseded-by` に全後継を列挙）だが、後継が複数（1→N）で生存決定の救出を伴う点で上書き（1→1）と操作が異なる。
+
+手順の実体（起票・逐語 restate・開示・相互参照の7ステップと締めの検査4項目）は `${CLAUDE_SKILL_DIR}/references/transitions.md`「分割（多決定 ADR の部分上書き）」節を参照する。
 
 ### 編集判定フロー（既存 ADR の変更）
 
