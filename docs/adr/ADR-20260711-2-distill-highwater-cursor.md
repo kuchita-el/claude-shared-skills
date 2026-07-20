@@ -6,11 +6,6 @@ superseded-by: ADR-20260712-captures-bounded-retention-aging
 
 # ADR-20260711-2: distill 処理源の有界化を recency 窓から処理済みカーソル（high-water mark）へ
 
-## Status
-
-<!-- 状態系は front-matter を正とする（ADR-20260711-3）。以下は過渡期の可読表示。 -->
-承認済み（validity: 上書き済み — Superseded by: ADR-20260712-captures-bounded-retention-aging。retention 射程 facet を上書き、カーソル機構は同 ADR に restate）
-
 ## Context
 
 ADR-20260711 決定3 は distill の処理源選択を「provenance 導出 ＋ recency 窓」と定め、窓のサイズ・選択述語の具体化を follow-up 実装 Issue（#459）へ委ねた。#459 の実装計画中、窓のサイズ（直近 N セッション／N 日）を決める段で、recency 窓という機構そのものの妥当性を再検討した。

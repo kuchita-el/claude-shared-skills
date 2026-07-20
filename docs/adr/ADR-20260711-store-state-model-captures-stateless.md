@@ -6,12 +6,6 @@ superseded-by: ADR-20260713-captures-stateless-candidate-side-state, ADR-2026071
 
 # ADR-20260711: 個人 store 状態モデル — captures 無状態化と状態の候補側集約
 
-## Status（承認軸／有効性軸）
-
-- **承認軸**（`status`）: `承認済み`（不変の履歴事実）。
-- **有効性軸**（`validity`）: `上書き済み`。**ADR分割**（ADR-20260711-3 決定3「多決定 ADR の部分 core 反転」）により、本 ADR の生存決定1〜3 は ADR-20260713-captures-stateless-candidate-side-state へ逐語 restate で re-home し、決定4（retention 姿勢）は ADR-20260712-captures-bounded-retention-aging が改訂して引き継いだ。`superseded-by` は両後継を列挙する。
-- 状態の権威は本ファイル冒頭の front-matter。以後、本 ADR は凍結された歴史的成果物として本文を編集しない。スキーマの正本は ADR-20260711-3、上書き・廃止の遷移規定は同 ADR 決定2 を参照。
-
 ## Context
 
 growth 学習ループの「distill の再走査抑止」責務が、候補の帰結によって2つのファイル・フィールドに分裂していた（#455）。

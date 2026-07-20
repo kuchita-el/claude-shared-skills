@@ -5,12 +5,6 @@ validity: 有効
 
 # ADR-20260713: 個人 store 状態モデル — captures 無状態化と状態の候補側集約
 
-## Status（承認軸／有効性軸）
-
-- **承認軸**（`status`）: `承認済み`（不変）。本 ADR の決定1〜3 は ADR-20260711-store-state-model-captures-stateless で承認済みの決定を、ADR分割（ADR-20260711-3 決定3）により逐語 restate で re-home したものであり、内容の再決定ではない。
-- **有効性軸**（`validity`）: `有効`。
-- 状態の権威は本ファイル冒頭の front-matter。分割の経緯・スキーマの正本は ADR-20260711-3、上書き・廃止の遷移規定は同 ADR 決定2 を参照。
-
 ## Context
 
 growth 学習ループの「distill の再走査抑止」責務が、候補の帰結によって2つのファイル・フィールドに分裂していた（#455）。
