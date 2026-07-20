@@ -39,4 +39,5 @@
 - [ADR-20260719-adr-scoping-criteria-and-record-reference-principle](./ADR-20260719-adr-scoping-criteria-and-record-reference-principle.md): ADR 化判断の3基準を決定として確定し、記録は可変文書を現在の参照先として指さない
 - [ADR-20260720-2-distill-pending-reevaluation-policy](./ADR-20260720-2-distill-pending-reevaluation-policy.md): distill の pending 候補再評価ポリシー
 - [ADR-20260720-3-distill-ledger-matching-responsibility-boundary](./ADR-20260720-3-distill-ledger-matching-responsibility-boundary.md): 台帳突合の責務境界 — distill と promote の線引き
+- [ADR-20260720-4-adr-parked-decision-section](./ADR-20260720-4-adr-parked-decision-section.md): ADR スキーマに「保留した決定」セクション（意図的な非決定のスナップショット）を導入する
 - [ADR-20260720-distill-ledger-as-explicit-input](./ADR-20260720-distill-ledger-as-explicit-input.md): distill の入力定義の拡張 — 既存ルール台帳を明示的入力とする
