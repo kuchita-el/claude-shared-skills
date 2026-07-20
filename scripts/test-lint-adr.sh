@@ -818,6 +818,37 @@ run_layer4_park_link_dedup() {
 
 run_layer4_park_link_dedup
 
+# #522(related dup dedup): 同一 source が複数の `Related:` 行から同じ退役 ADR を指しても
+# 参照先退役違反は1回のみ報告する（extract_body_related のファイル内 dedup。park 側
+# run_layer4_park_link_dedup と対称の保護。dedup を外すと二重報告に戻る）。
+run_layer4_related_dup_dedup() {
+    local corpus="$FIXTURES_DIR/invalid/23-related-dup-report"
+
+    if [ ! -d "$corpus" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] #522(related dup dedup): missing fixture corpus: %s\n' "$corpus"
+        return
+    fi
+
+    local output count
+    set +e
+    output=$(bash "$LINT_ADR" "$corpus" 2>&1)
+    count=$(printf '%s\n' "$output" | grep -c "ADR-20261402-related-dup-target")
+    set -e
+
+    total=$((total + 1))
+    if [ "$count" -eq 1 ]; then
+        printf '[PASS] #522(related dup dedup): 複数Related行が同一退役ADRを指しても違反は1回のみ（count=%d）\n' "$count"
+        passed=$((passed + 1))
+    else
+        printf '[FAIL] #522(related dup dedup): 1回報告を期待したが %d 回\n  output:\n%s\n' "$count" "$output"
+        failed=$((failed + 1))
+    fi
+}
+
+run_layer4_related_dup_dedup
+
 run_real_corpus_clean() {
     local corpus="$REPO_ROOT/docs/adr"
 
