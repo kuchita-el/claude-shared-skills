@@ -6,12 +6,6 @@ superseded-by:
 
 # ADR-20260716: inquiry スキルによる問いの統治と spike の下流非伝播
 
-## Status（承認軸／有効性軸）
-
-- **承認軸**（`status`）: `承認済み`（PR #502 のレビュー2巡を経て承認）
-- **有効性軸**（`validity`）: `有効`
-- **`superseded-by`**: 空
-
 ## Context
 
 ### 起票時点の構造的空白
