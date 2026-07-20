@@ -778,6 +778,37 @@ run_xref_list_case \
 # AC4/AC9: レイヤ4追加後も実 docs/adr が exit 0（退役・dangling ゼロ）。追加検査が既存の
 # 有効参照を誤検出しないこと、および検査有効化前提として現行 corpus がクリーンであること
 # （Task 1 の短縮参照 full slug 展開を含む）の恒久ガード。
+# #522(park link dedup): park 参照が markdown リンク形式（`[stem](./stem.md)`）でも
+# dangling 違反は1回のみ報告する（ラベル部とパス部で同一 stem を二重報告しない回帰。
+# invalid/21 の park 参照はリンク形式）。
+run_layer4_park_link_dedup() {
+    local corpus="$FIXTURES_DIR/invalid/21-park-dangling"
+
+    if [ ! -d "$corpus" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] #522(park link dedup): missing fixture corpus: %s\n' "$corpus"
+        return
+    fi
+
+    local output count
+    set +e
+    output=$(bash "$LINT_ADR" "$corpus" 2>&1)
+    count=$(printf '%s\n' "$output" | grep -c "ADR-20261298-park-missing")
+    set -e
+
+    total=$((total + 1))
+    if [ "$count" -eq 1 ]; then
+        printf '[PASS] #522(park link dedup): リンク形式 park dangling は1回のみ報告（count=%d）\n' "$count"
+        passed=$((passed + 1))
+    else
+        printf '[FAIL] #522(park link dedup): リンク形式 park dangling は1回報告を期待したが %d 回\n  output:\n%s\n' "$count" "$output"
+        failed=$((failed + 1))
+    fi
+}
+
+run_layer4_park_link_dedup
+
 run_real_corpus_clean() {
     local corpus="$REPO_ROOT/docs/adr"
 

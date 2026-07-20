@@ -80,8 +80,12 @@
 #   - パーク欄は dangling 検査のみ（退役検査は非適用）。パーク欄は凍結スナップショット
 #     で後から編集不能なため、参照先が後に退役しても修復不能な違反を作らない
 #     （§3 が `Related:` 双方向を強制しない論理と同型。Issue #522 J4）。
-#   - source は有効 ADR のみ（退役・提案中・却下・旧形式は走査対象外）。双方向性は
-#     強制しない（一方向 `Related:` は合法。§3）。パークの open/resolved 状態・
+#   - source は有効 ADR のみに限定する。ADR-20260720-4 §3 は検査対象を「front-matter
+#     を持つ ADR」と広く書くが、退役（凍結）ADR は編集不能で dangling/退役参照を修復
+#     できず修復不能な違反を課すことになる（パーク欄を退役検査から外すのと同じ理由。
+#     Issue #522 J4）。提案中・却下 ADR の参照はまだ確定した決定の一部でないため対象外と
+#     する。結果として検査対象は Issue #522 タイトル「有効ADRの…」に一致する。
+#   - 双方向性は強制しない（一方向 `Related:` は合法。§3）。パークの open/resolved 状態・
 #     Issue 番号参照（`#<番号>`）は検査しない（§3 の不検査）。
 #   - パーク欄の参照先抽出は節内の ADR トークンを全抽出する（J3）。将来パーク欄の
 #     説明散文が退役/不在 ADR を引用すると誤検出しうる点に注意。
@@ -287,7 +291,7 @@ extract_body_related() {
 # ADR トークンを全抽出する（Issue #522 J3）。Issue 番号参照（`#<番号>`）は対象外。
 extract_park_adr_refs() {
     local file="$1"
-    local line in_section=0 rest
+    local line in_section=0 rest stem existing dup
 
     PARK_ADR_TARGETS=()
 
@@ -303,8 +307,21 @@ extract_park_adr_refs() {
         if [ "$in_section" -eq 1 ]; then
             rest="$line"
             while [[ "$rest" =~ (ADR-[A-Za-z0-9-]+) ]]; do
-                PARK_ADR_TARGETS+=("${BASH_REMATCH[1]}")
-                rest="${rest#*"${BASH_REMATCH[1]}"}"
+                stem="${BASH_REMATCH[1]}"
+                rest="${rest#*"$stem"}"
+                # 同一 stem の重複登録を避ける。markdown リンク形式 `[stem](./stem.md)` は
+                # 1参照でラベル部とパス部に同一 stem が2回現れるため、dedup しないと違反を
+                # 二重報告する。抽出は最長トークン（`+` 貪欲）ゆえ prefix 衝突は起きない。
+                dup=0
+                for existing in ${PARK_ADR_TARGETS[@]+"${PARK_ADR_TARGETS[@]}"}; do
+                    if [ "$existing" = "$stem" ]; then
+                        dup=1
+                        break
+                    fi
+                done
+                if [ "$dup" -eq 0 ]; then
+                    PARK_ADR_TARGETS+=("$stem")
+                fi
             done
         fi
     done <"$file"
