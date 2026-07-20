@@ -753,6 +753,15 @@ run_xref_list_case \
     "contains:ADR-20261112-related-retired-link-old" \
     "notcontains:相互参照違反"
 
+# gap1(セルフレビュー反映): リンクラベルが説明文で stem がパス部のみの Related
+# （`- Related: [詳細](./ADR-X.md)`）でも先頭 stem 抽出で退役を検出する（書式非依存の
+# 適用範囲＝リンクラベル書式。旧実装は `Related:` 直後の stem 隣接を前提とし取り漏らした）
+run_xref_list_case \
+    "$FIXTURES_DIR/invalid/22-related-link-label" 1 \
+    "#522(gap1-リンクラベル書式): リンクラベルが説明文でも先頭stem抽出で退役検出" \
+    "contains:参照先退役違反" \
+    "contains:ADR-20261302-related-linklabel-target"
+
 # AC6/AC8: Related が非存在 slug を指す → dangling 参照違反（解決不能＝fail-safe を統合）
 run_xref_list_case \
     "$FIXTURES_DIR/invalid/20-related-dangling" 1 \

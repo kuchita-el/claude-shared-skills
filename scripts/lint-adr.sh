@@ -69,10 +69,12 @@
 # 関係の参照妥当性 lint）＋ Issue #522。有効 ADR（validity=有効）の本文
 # `## 関連ADR` の `Related:` 行、および `## 保留した決定`（パーク欄）が指す ADR
 # 参照先について、参照先の生存性（退役）・実在性（dangling）を検証する。
-#   - 判定単位（書式非依存）: `Related:` 以降の最初の ADR stem を、行頭バレット
-#     （`-`）の有無・markdown リンク（`[stem](...)`）の有無を問わず抽出する
-#     （Issue #522 穴1・穴2）。判定単位はどの ADR にも成文化されておらず、本実装＋
-#     fixture（scripts/fixtures/lint-adr/）を正とする。#491 決定2 の遡及改稿はしない。
+#   - 判定単位（書式非依存）: `Related:` 以降で最初に現れる ADR stem を抽出する。行頭
+#     バレット（`-`）の有無・markdown リンク（`[stem](...)`）の有無・リンクラベルが stem
+#     か説明文か（`- Related: [詳細](./ADR-X.md)` も ADR-X を取る）を問わない
+#     （Issue #522 穴1・穴2＋リンクラベル書式）。説明散文中の後続 stem は先頭優先で拾わない
+#     （誤検出回避）。判定単位はどの ADR にも成文化されておらず、本実装＋fixture
+#     （scripts/fixtures/lint-adr/）を正とする。#491 決定2 の遡及改稿はしない。
 #   - 参照先退役違反: `Related:` 参照先が実在し、かつ validity が 上書き済み／
 #     廃止済み（RETIRED_VALIDITY）なら違反（有効 ADR が退役 ADR を指す参照を残さない）。
 #   - dangling 参照違反: `Related:`／パーク欄の参照先 `<slug>.md` が実在しなければ
@@ -89,6 +91,11 @@
 #     Issue 番号参照（`#<番号>`）は検査しない（§3 の不検査）。
 #   - パーク欄の参照先抽出は節内の ADR トークンを全抽出する（J3）。将来パーク欄の
 #     説明散文が退役/不在 ADR を引用すると誤検出しうる点に注意。
+#   - 既知の限界（意図的）: (a) 1つの `Related:` 行に複数 ADR を列挙した場合は先頭 stem
+#     のみ検査する（#491 決定2 の判定単位＝先頭 stem を継承。2件目以降は対象外）。
+#     (b) 参照先が旧形式（front-matter 無し）・validity 空（提案中/却下）の場合は退役でも
+#     dangling でもないとして違反にしない（fail-open。RETIRED_VALIDITY＝上書き済み/廃止済み
+#     の完全一致のみを退役とみなす）。旧形式ADRはレイヤ1でも検査対象外である点と整合する。
 #
 # 全違反を列挙してから最後に非0 exitする（早期returnで打ち切らない）。
 #
@@ -265,8 +272,7 @@ extract_body_supersedes() {
 # （誤検出回避の要）。
 extract_body_related() {
     local file="$1"
-    local line in_section=0
-    local re='^[[:space:]]*(-[[:space:]]*)?Related:[[:space:]]*\[?(ADR-[A-Za-z0-9-]+)'
+    local line in_section=0 after stem existing dup
 
     BODY_RELATED_TARGETS=()
 
@@ -279,8 +285,28 @@ extract_body_related() {
             in_section=0
             continue
         fi
-        if [ "$in_section" -eq 1 ] && [[ "$line" =~ $re ]]; then
-            BODY_RELATED_TARGETS+=("${BASH_REMATCH[2]}")
+        # `Related:` 行（行頭バレット任意）から「`Related:` 以降で最初に現れる ADR stem」を
+        # 1件抽出する。`${line#*Related:}` で `Related:` 以降へ絞り、そこから最左の
+        # `ADR-<stem>` を取ることで、バレット有無・リンク有無・リンクラベルが stem か
+        # 説明文か（`[詳細](./ADR-X.md)`）を問わず先頭 stem を得る。説明散文中の後続 stem は
+        # 先頭優先で拾わない（誤検出回避）。
+        if [ "$in_section" -eq 1 ] && [[ "$line" =~ ^[[:space:]]*(-[[:space:]]*)?Related: ]]; then
+            after="${line#*Related:}"
+            if [[ "$after" =~ (ADR-[A-Za-z0-9-]+) ]]; then
+                stem="${BASH_REMATCH[1]}"
+                # 同一 stem の重複登録を避ける（複数 `Related:` 行が同じ退役/非存在 ADR を
+                # 指す場合の二重報告を防ぐ。extract_park_adr_refs の dedup と対称）。
+                dup=0
+                for existing in ${BODY_RELATED_TARGETS[@]+"${BODY_RELATED_TARGETS[@]}"}; do
+                    if [ "$existing" = "$stem" ]; then
+                        dup=1
+                        break
+                    fi
+                done
+                if [ "$dup" -eq 0 ]; then
+                    BODY_RELATED_TARGETS+=("$stem")
+                fi
+            fi
         fi
     done <"$file"
 }
