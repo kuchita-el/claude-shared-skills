@@ -356,4 +356,3 @@ git status --porcelain plugins/growth/.local/   # 出力が空であること
 ## 関連
 
 - `plugins/growth/DESIGN.md` — 設計母艦（決定事項3・§3 保存設計・二段ゲート・Capture シグナル定義）
-- `docs/adr/ADR-20260601-autonomy-approval-gate-alignment.md` / `docs/adr/ADR-20260602-2-autonomy-ladder-convention.md` — 二段ゲートが依拠する自律度 L0–L3 / 承認ゲート軸
