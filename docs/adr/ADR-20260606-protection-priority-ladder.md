@@ -62,7 +62,7 @@ validity: 有効
 
 ## 関連ADR
 
-- Related: ADR-20260602（principles を根拠ハブと位置づけ。本ADRの内容は principles.md 本体に置く方針の前提）
-- Related: ADR-20260602-2（自律度ラダーの二層構造＝本体ストック＋ADR採用決定。本ADRが倣った前例）
+- Related: ADR-20260602-principles-rationale-hub（principles を根拠ハブと位置づけ。本ADRの内容は principles.md 本体に置く方針の前提）
+- Related: ADR-20260602-2-autonomy-ladder-convention（自律度ラダーの二層構造＝本体ストック＋ADR採用決定。本ADRが倣った前例）
 - Related: ADR-20260606-2-instruction-tidying（本ADRの既存5決定は不変で、606-2 が6番目＝棚卸し（削除方向）の決定を追加。上書きでない）
 - 関連Issue: #228, #157

@@ -730,6 +730,172 @@ run_ac5_edit_mechanism() {
 
 run_ac5_edit_mechanism
 
+# ==== #522: レイヤ4（有効ADRの Related/park 参照の退役・dangling 検査） ====
+# 出典 ADR-20260720-4 §3（非 Supersede 参照妥当性 lint）＋ Issue #522（退役参照検査・
+# 判定単位の書式非依存化）。有効 ADR の `## 関連ADR`（Related:）／`## 保留した決定`（park）
+# の先頭 ADR stem を、行頭バレット有無・markdown リンク形式有無を問わず抽出し、参照先が
+# 退役（上書き済み/廃止済み）なら参照先退役違反、非存在なら dangling 参照違反として報告する。
+# park は dangling のみ（退役非適用＝J4）。ラベルは #522 併記で既存 run_ac5_edit_mechanism
+# （#515 の別 AC5）との混同を避ける。
+
+# AC1/AC2(穴1): バレット無し＋plain の Related が廃止済みADRを指す → 参照先退役違反
+run_xref_list_case \
+    "$FIXTURES_DIR/invalid/18-related-retired-no-bullet" 1 \
+    "#522(AC1/AC2-穴1): バレット無し Related が退役ADRを指すと参照先退役違反" \
+    "contains:参照先退役違反" \
+    "contains:ADR-20261102-related-retired-nb-target"
+
+# AC1/AC2(穴2): リンク形式の Related が上書き済みADRを指す → 参照先退役違反（相互参照違反は出ない）
+run_xref_list_case \
+    "$FIXTURES_DIR/invalid/19-related-retired-link" 1 \
+    "#522(AC1/AC2-穴2): リンク形式 Related が退役ADRを指すと参照先退役違反" \
+    "contains:参照先退役違反" \
+    "contains:ADR-20261112-related-retired-link-old" \
+    "notcontains:相互参照違反"
+
+# gap1(セルフレビュー反映): リンクラベルが説明文で stem がパス部のみの Related
+# （`- Related: [詳細](./ADR-X.md)`）でも先頭 stem 抽出で退役を検出する（書式非依存の
+# 適用範囲＝リンクラベル書式。旧実装は `Related:` 直後の stem 隣接を前提とし取り漏らした）
+run_xref_list_case \
+    "$FIXTURES_DIR/invalid/22-related-link-label" 1 \
+    "#522(gap1-リンクラベル書式): リンクラベルが説明文でも先頭stem抽出で退役検出" \
+    "contains:参照先退役違反" \
+    "contains:ADR-20261302-related-linklabel-target"
+
+# AC6/AC8: Related が非存在 slug を指す → dangling 参照違反（解決不能＝fail-safe を統合）
+run_xref_list_case \
+    "$FIXTURES_DIR/invalid/20-related-dangling" 1 \
+    "#522(AC6/AC8): Related が非存在slugを指すと dangling 参照違反" \
+    "contains:dangling 参照違反" \
+    "contains:ADR-20261299-does-not-exist"
+
+# AC6/AC7: park 欄が非存在 slug を指す → dangling 参照違反（park も dangling 検査の対象）
+run_xref_list_case \
+    "$FIXTURES_DIR/invalid/21-park-dangling" 1 \
+    "#522(AC6/AC7): 保留した決定が非存在slugを指すと dangling 参照違反" \
+    "contains:dangling 参照違反" \
+    "contains:ADR-20261298-park-missing"
+
+# AC2/AC7(誤検出回避): 全4書式の有効参照・散文の退役引用・park→有効/退役(存在)は
+# いずれも違反にならず exit 0（先頭stem抽出の要、park は dangling のみ＝J4 の正方向固定）
+run_xref_list_case \
+    "$FIXTURES_DIR/valid/06-related-valid" 0 \
+    "#522(AC2/AC7-誤検出回避): 全書式の有効参照・散文退役引用・park退役(存在)は exit 0" \
+    "notcontains:参照先退役違反" \
+    "notcontains:dangling 参照違反"
+
+# AC4/AC9: レイヤ4追加後も実 docs/adr が exit 0（退役・dangling ゼロ）。追加検査が既存の
+# 有効参照を誤検出しないこと、および検査有効化前提として現行 corpus がクリーンであること
+# （Task 1 の短縮参照 full slug 展開を含む）の恒久ガード。
+# #522(park link dedup): park 参照が markdown リンク形式（`[stem](./stem.md)`）でも
+# dangling 違反は1回のみ報告する（ラベル部とパス部で同一 stem を二重報告しない回帰。
+# invalid/21 の park 参照はリンク形式）。
+run_layer4_park_link_dedup() {
+    local corpus="$FIXTURES_DIR/invalid/21-park-dangling"
+
+    if [ ! -d "$corpus" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] #522(park link dedup): missing fixture corpus: %s\n' "$corpus"
+        return
+    fi
+
+    local output count
+    set +e
+    output=$(bash "$LINT_ADR" "$corpus" 2>&1)
+    count=$(printf '%s\n' "$output" | grep -c "ADR-20261298-park-missing")
+    set -e
+
+    total=$((total + 1))
+    if [ "$count" -eq 1 ]; then
+        printf '[PASS] #522(park link dedup): リンク形式 park dangling は1回のみ報告（count=%d）\n' "$count"
+        passed=$((passed + 1))
+    else
+        printf '[FAIL] #522(park link dedup): リンク形式 park dangling は1回報告を期待したが %d 回\n  output:\n%s\n' "$count" "$output"
+        failed=$((failed + 1))
+    fi
+}
+
+run_layer4_park_link_dedup
+
+# #522(related dup dedup): 同一 source が複数の `Related:` 行から同じ退役 ADR を指しても
+# 参照先退役違反は1回のみ報告する（extract_body_related のファイル内 dedup。park 側
+# run_layer4_park_link_dedup と対称の保護。dedup を外すと二重報告に戻る）。
+run_layer4_related_dup_dedup() {
+    local corpus="$FIXTURES_DIR/invalid/23-related-dup-report"
+
+    if [ ! -d "$corpus" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] #522(related dup dedup): missing fixture corpus: %s\n' "$corpus"
+        return
+    fi
+
+    local output count
+    set +e
+    output=$(bash "$LINT_ADR" "$corpus" 2>&1)
+    count=$(printf '%s\n' "$output" | grep -c "ADR-20261402-related-dup-target")
+    set -e
+
+    total=$((total + 1))
+    if [ "$count" -eq 1 ]; then
+        printf '[PASS] #522(related dup dedup): 複数Related行が同一退役ADRを指しても違反は1回のみ（count=%d）\n' "$count"
+        passed=$((passed + 1))
+    else
+        printf '[FAIL] #522(related dup dedup): 1回報告を期待したが %d 回\n  output:\n%s\n' "$count" "$output"
+        failed=$((failed + 1))
+    fi
+}
+
+run_layer4_related_dup_dedup
+
+run_real_corpus_clean() {
+    local corpus="$REPO_ROOT/docs/adr"
+
+    if [ ! -f "$LINT_ADR" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] #522(AC4/AC9): lint-adr.sh not found: %s\n' "$LINT_ADR"
+        return
+    fi
+
+    local output rc
+    set +e
+    output=$(bash "$LINT_ADR" "$corpus" 2>&1)
+    rc=$?
+    set -e
+
+    total=$((total + 1))
+    if [ "$rc" -eq 0 ]; then
+        printf '[PASS] #522(AC4/AC9): 実 docs/adr はレイヤ4追加後も exit 0\n'
+        passed=$((passed + 1))
+    else
+        printf '[FAIL] #522(AC4/AC9): 実 docs/adr は exit 0 を期待したが %d\n  output:\n%s\n' "$rc" "$output"
+        failed=$((failed + 1))
+    fi
+}
+
+run_real_corpus_clean
+
+# AC5: レイヤ4仕様のヘッダ成文化。判定単位の書式非依存化・退役/dangling 検査の仕様を
+# lint-adr.sh ヘッダに既存レイヤ1〜3 と同形式（決定を ADR 参照で明示）で成文化する。
+# 決定出典は ADR-20260720-4 §3。削除で red 化する必須アサート（run_ac5_edit_mechanism に倣う）。
+run_layer4_header_spec() {
+    if [ ! -f "$LINT_ADR" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] #522(AC5): lint-adr.sh not found: %s\n' "$LINT_ADR"
+        return
+    fi
+
+    local content
+    content=$(cat "$LINT_ADR")
+    assert_contains "$content" "レイヤ4" "#522(AC5): ヘッダにレイヤ4の記述が存在する"
+    assert_contains "$content" "ADR-20260720-4" "#522(AC5): ヘッダにレイヤ4の決定出典 ADR-20260720-4 が明記されている"
+}
+
+run_layer4_header_spec
+
 echo
 if [ "$failed" -eq 0 ]; then
     printf 'All tests passed: %d/%d\n' "$passed" "$total"
