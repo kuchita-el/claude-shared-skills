@@ -25,7 +25,6 @@
 - [ADR-20260627-skill-context-budget-convention](./ADR-20260627-skill-context-budget-convention.md): スキル実行時のコンテキスト予算規約をプラグイン共有 references で単一出典化する
 - [ADR-20260628-2-career-decision-model](./ADR-20260628-2-career-decision-model.md): career 決定モデルの再設計（distill 仮説 ＋ 集約点裁定）
 - [ADR-20260628-agent-granularity-role-type](./ADR-20260628-agent-granularity-role-type.md): エージェント定義の粒度モデル — ロール型（能力／知識ドメイン粒度）を正とする
-- [ADR-20260629-distill-input-contract-and-ledger-matching](./ADR-20260629-distill-input-contract-and-ledger-matching.md): distill の入力契約拡張と既存ルール台帳突合
 - [ADR-20260629-plan-location-resolution](./ADR-20260629-plan-location-resolution.md): プランファイルの所在解決を worktree／メイン横断で一意化する
 - [ADR-20260701-learning-signal-recoverability-and-output-forms](./ADR-20260701-learning-signal-recoverability-and-output-forms.md): 学習シグナルの復元不能性基準と distill 出力形の2系統分離
 - [ADR-20260705-2-growth-learning-vocabulary-frame](./ADR-20260705-2-growth-learning-vocabulary-frame.md): growth ループの学習/仮説検証フレームと語彙統一
@@ -38,3 +37,6 @@
 - [ADR-20260716-inquiry-skill-question-governance](./ADR-20260716-inquiry-skill-question-governance.md): inquiry スキルによる問いの統治と spike の下流非伝播
 - [ADR-20260718-workflow-design-v2-terminology-flow-stock-axes](./ADR-20260718-workflow-design-v2-terminology-flow-stock-axes.md): workflow-design.md v2 構造 — 用語のフレームワーク非依存化とフロー／ストック軸の分離
 - [ADR-20260719-adr-scoping-criteria-and-record-reference-principle](./ADR-20260719-adr-scoping-criteria-and-record-reference-principle.md): ADR 化判断の3基準を決定として確定し、記録は可変文書を現在の参照先として指さない
+- [ADR-20260720-2-distill-pending-reevaluation-policy](./ADR-20260720-2-distill-pending-reevaluation-policy.md): distill の pending 候補再評価ポリシー
+- [ADR-20260720-3-distill-ledger-matching-responsibility-boundary](./ADR-20260720-3-distill-ledger-matching-responsibility-boundary.md): 台帳突合の責務境界 — distill と promote の線引き
+- [ADR-20260720-distill-ledger-as-explicit-input](./ADR-20260720-distill-ledger-as-explicit-input.md): distill の入力定義の拡張 — 既存ルール台帳を明示的入力とする
