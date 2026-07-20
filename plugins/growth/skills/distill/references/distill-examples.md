@@ -493,7 +493,7 @@ candidates.md 事後: `promoted`「Co-Authored-By」・`pending`「git switch」
 
 ## 例H: 巻き戻し再導出＋rejected 不可侵（B3・B5）
 
-distiller 改善時（candidates.md は健在）・candidates.md 消失時の2つの巻き戻しトリガー（§2.1 巻き戻し・§9）を検証する。巻き戻し再導出でも provenance 導出が live 候補（`promoted`/`pending`）の重複を止め、`candidate-status: rejected` 不可侵（§7.4・ADR-20260629 決定3）が棄却済み**同一**仮説の pending 復活を止める。
+distiller 改善時（candidates.md は健在）・candidates.md 消失時の2つの巻き戻しトリガー（§2.1 巻き戻し・§9）を検証する。巻き戻し再導出でも provenance 導出が live 候補（`promoted`/`pending`）の重複を止め、`candidate-status: rejected` 不可侵（§7.4・ADR-20260720-2 決定1）が棄却済み**同一**仮説の pending 復活を止める。
 
 ### ケースH-1: distiller 改善による巻き戻し（candidates.md 健在）
 
