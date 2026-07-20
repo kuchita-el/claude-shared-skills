@@ -47,5 +47,5 @@ validity: 有効
 
 ## 関連ADR
 
-- Amends: ADR-20260606-protection-priority-ladder（削除方向＝棚卸しの決定を追加。親ADRは Accepted 維持・既存5決定は不変）
+- Related: ADR-20260606-protection-priority-ladder（606 の既存5決定は不変で、本ADRが6番目＝棚卸し（削除方向）の決定を追加。上書きでない）
 - 関連Issue: #229
