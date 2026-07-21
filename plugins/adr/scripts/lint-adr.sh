@@ -7,12 +7,12 @@
 # 持たない旧 `## Status` 形式は検査対象外としてスキップする（違反に数えない）。
 #
 # front-matter の抽出は yq/jq 等のパーサを使わず行走査で行う
-# （scripts/gen-adr-index.sh の抽出方式に整合）。値は前後空白を
+# （gen-adr-index.sh の抽出方式に整合）。値は前後空白を
 # トリムして判定する（末尾空白等で完全一致が静かに崩れるのを防ぐ）。
 # キー省略と「キーあり値空」は同じ「空」として扱う。
 #
-# レイヤ1（front-matter スキーマ検証）は ADR-20260711-3 決定5 により
-# 「決定2 のスキーマ必須ルールを満たすこと」と定義される。決定2 の必須ルールは
+# レイヤ1（front-matter スキーマ検証）は front-matter が
+# スキーマ必須ルールを満たすことを検証する。必須ルールは
 # 次の遷移表であり、レイヤ1はこの表に無い行を違反として検出する。
 #
 #   | 遷移 | status       | validity   | superseded-by |
@@ -44,7 +44,7 @@
 #   - status=却下 かつ validity 空 かつ superseded-by 空（却下）
 #   - validity=廃止済み かつ superseded-by 無し（廃止）
 #
-# レイヤ2（index 同期）: scripts/gen-adr-index.sh を ADR_DIR に対して実行し、
+# レイヤ2（index 同期）: gen-adr-index.sh を ADR_DIR に対して実行し、
 # その出力を ADR_DIR/index.md と比較する。差分あり、または index.md が
 # 不在の場合は同期違反とする。
 #
@@ -65,34 +65,34 @@
 # `Supersedes:` 行は行頭空白（入れ子/インデントされたバレット）を許容して
 # 抽出する（forward の照合・reverse の抽出のいずれも同一の緩和を適用）。
 #
-# レイヤ4（Related/park 参照の生存性・実在性）: ADR-20260720-4 §3（非 Supersede
-# 関係の参照妥当性 lint）＋ Issue #522。有効 ADR（validity=有効）の本文
+# レイヤ4（Related/park 参照の生存性・実在性）: 非 Supersede 関係の
+# 参照妥当性を lint する。有効 ADR（validity=有効）の本文
 # `## 関連ADR` の `Related:` 行、および `## 保留した決定`（パーク欄）が指す ADR
 # 参照先について、参照先の生存性（退役）・実在性（dangling）を検証する。
 #   - 判定単位（書式非依存）: `Related:` 以降で最初に現れる ADR stem を抽出する。行頭
 #     バレット（`-`）の有無・markdown リンク（`[stem](...)`）の有無・リンクラベルが stem
 #     か説明文か（`- Related: [詳細](./ADR-X.md)` も ADR-X を取る）を問わない
-#     （Issue #522 穴1・穴2＋リンクラベル書式）。説明散文中の後続 stem は先頭優先で拾わない
+#     （バレット無し・リンク形式・リンクラベル書式を同一に扱う）。説明散文中の後続 stem は先頭優先で拾わない
 #     （誤検出回避）。判定単位はどの ADR にも成文化されておらず、本実装＋fixture
-#     （scripts/fixtures/lint-adr/）を正とする。#491 決定2 の遡及改稿はしない。
+#     （fixtures/lint-adr/）を正とする。
 #   - 参照先退役違反: `Related:` 参照先が実在し、かつ validity が 上書き済み／
 #     廃止済み（RETIRED_VALIDITY）なら違反（有効 ADR が退役 ADR を指す参照を残さない）。
 #   - dangling 参照違反: `Related:`／パーク欄の参照先 `<slug>.md` が実在しなければ
 #     違反（full slug 完全一致で解決。解決不能な参照先＝AC8 fail-safe をここに統合）。
 #   - パーク欄は dangling 検査のみ（退役検査は非適用）。パーク欄は凍結スナップショット
 #     で後から編集不能なため、参照先が後に退役しても修復不能な違反を作らない
-#     （§3 が `Related:` 双方向を強制しない論理と同型。Issue #522 J4）。
-#   - source は有効 ADR のみに限定する。ADR-20260720-4 §3 は検査対象を「front-matter
+#     （`Related:` 双方向を強制しないのと同型）。
+#   - source は有効 ADR のみに限定する。検査対象を「front-matter
 #     を持つ ADR」と広く書くが、退役（凍結）ADR は編集不能で dangling/退役参照を修復
-#     できず修復不能な違反を課すことになる（パーク欄を退役検査から外すのと同じ理由。
-#     Issue #522 J4）。提案中・却下 ADR の参照はまだ確定した決定の一部でないため対象外と
-#     する。結果として検査対象は Issue #522 タイトル「有効ADRの…」に一致する。
-#   - 双方向性は強制しない（一方向 `Related:` は合法。§3）。パークの open/resolved 状態・
-#     Issue 番号参照（`#<番号>`）は検査しない（§3 の不検査）。
+#     できず修復不能な違反を課すことになる（パーク欄を退役検査から外すのと同じ理由）。
+#     提案中・却下 ADR の参照はまだ確定した決定の一部でないため対象外と
+#     する。結果として検査対象は有効 ADR に限定される。
+#   - 双方向性は強制しない（一方向 `Related:` は合法）。パークの open/resolved 状態・
+#     Issue 番号参照（`#<番号>`）は検査しない。
 #   - パーク欄の参照先抽出は節内の ADR トークンを全抽出する（J3）。将来パーク欄の
 #     説明散文が退役/不在 ADR を引用すると誤検出しうる点に注意。
 #   - 既知の限界（意図的）: (a) 1つの `Related:` 行に複数 ADR を列挙した場合は先頭 stem
-#     のみ検査する（#491 決定2 の判定単位＝先頭 stem を継承。2件目以降は対象外）。
+#     のみ検査する（判定単位＝先頭 stem。2件目以降は対象外）。
 #     (b) 参照先が旧形式（front-matter 無し）・validity 空（提案中/却下）の場合は退役でも
 #     dangling でもないとして違反にしない（fail-open。RETIRED_VALIDITY＝上書き済み/廃止済み
 #     の完全一致のみを退役とみなす）。旧形式ADRはレイヤ1でも検査対象外である点と整合する。
@@ -100,7 +100,7 @@
 # 全違反を列挙してから最後に非0 exitする（早期returnで打ち切らない）。
 #
 # 使い方:
-#   bash scripts/lint-adr.sh [ADR_DIR]   # 既定 ADR_DIR は docs/adr/
+#   bash lint-adr.sh [ADR_DIR]   # 既定 ADR_DIR は docs/adr/
 #
 # exit code:
 #   0: 違反0件
@@ -116,11 +116,11 @@ if [ ! -d "$ADR_DIR" ]; then
     exit 2
 fi
 
-# ADR-20260711-3 決定1 が定める状態語彙（front-matter の値側）。
+# 状態語彙（front-matter の値側）。
 # 正本の語彙が変わったときの追随点を1箇所に集約する。
 STATUS_VOCAB=("提案中" "承認済み" "却下")
 VALIDITY_VOCAB=("有効" "上書き済み" "廃止済み")
-# レイヤ4（Issue #522）で「退役」とみなす validity 値（VALIDITY_VOCAB の部分集合）。
+# レイヤ4で「退役」とみなす validity 値（VALIDITY_VOCAB の部分集合）。
 # 正本語彙が変わった際の追随点を1箇所へ集約する。
 RETIRED_VALIDITY=("上書き済み" "廃止済み")
 
@@ -313,8 +313,8 @@ extract_body_related() {
 
 # ファイル file の本文 `## 保留した決定` 節（次の `## ` 見出しまたはファイル末尾まで）に
 # ある ADR stem（`ADR-<...>`）を全て抽出し、グローバル配列 PARK_ADR_TARGETS へ格納する
-# （0件なら空配列）。ADR-20260720-4 §3「パーク欄が ADR を指す <slug>」の字義に従い節内の
-# ADR トークンを全抽出する（Issue #522 J3）。Issue 番号参照（`#<番号>`）は対象外。
+# （0件なら空配列）。「パーク欄が ADR を指す <slug>」の字義に従い節内の
+# ADR トークンを全抽出する。Issue 番号参照（`#<番号>`）は対象外。
 extract_park_adr_refs() {
     local file="$1"
     local line in_section=0 rest stem existing dup
@@ -534,7 +534,7 @@ for c_file in "${sorted[@]}"; do
 done
 
 # レイヤ4: 有効ADRの Related/park 参照の退役・dangling 検査
-# （Issue #522, ADR-20260720-4 §3。判定単位は書式非依存の先頭 stem 抽出）
+# （判定単位は書式非依存の先頭 stem 抽出）
 for src_file in "${sorted[@]}"; do
     src_stem="$(basename "$src_file" .md)"
     # source は有効 ADR のみ（退役・提案中・却下・旧形式は検査対象外）

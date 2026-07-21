@@ -225,25 +225,25 @@ run_layer1_invalid "01-status-missing" "status が空です" "AC1: status 欠落
 run_layer1_invalid "02-validity-missing" "validity が空です" "AC1: status=承認済み かつ validity 欠落"
 run_layer1_invalid "03-superseded-by-missing" "superseded-by が空です" "AC1: validity=上書き済み かつ superseded-by 欠落"
 
-# ==== #500: レイヤ1へ語彙メンバシップ検査＋遷移表の組み合わせ検査を追加 ====
+# ==== レイヤ1: 語彙メンバシップ検査＋遷移表の組み合わせ検査 ====
 #
-# ADR-20260711-3 決定5 は レイヤ1 を「決定2 のスキーマ必須ルール（遷移表）を
-# 満たすこと」と定義するが、実装は空判定3件のみで語彙・組み合わせを検査して
-# いなかった。以下はその欠落を塞ぐ回帰ケース。
+# レイヤ1 は front-matter がスキーマ必須ルール（遷移表）を満たすことを
+# 検証する。空判定3件のみでは語彙・組み合わせを検査できないため、
+# 以下でその欠落を塞ぐ。
 #
 # 語彙メンバシップ: 値が非空でも正本の語彙に属さなければ違反にする。
 # `gen-adr-index.sh` は `validity: 有効` の完全一致でしか採録しないため、
 # 語彙外の値は index から静かに脱落する一方、旧実装では lint を通過していた
 # （新規追加時はコミット済み index と再生成 index の双方に載らず一致するため
 #  レイヤ2 も原理的に発火しない）。
-run_layer1_invalid "12-status-unknown-vocab" "status の値 \"Accepted\" が語彙にありません" "AC1(#500): status 語彙外（旧英文状態）"
-run_layer1_invalid "13-validity-unknown-vocab" "validity の値 \"有郊\" が語彙にありません" "AC1(#500): validity 語彙外（誤字）"
+run_layer1_invalid "12-status-unknown-vocab" "status の値 \"Accepted\" が語彙にありません" "AC1: status 語彙外（旧英文状態）"
+run_layer1_invalid "13-validity-unknown-vocab" "validity の値 \"有郊\" が語彙にありません" "AC1: validity 語彙外（誤字）"
 
 # 組み合わせ: 語彙に属する値どうしでも、決定2 の遷移表に無い行は違反にする。
-run_layer1_invalid "14-proposed-with-validity" "status=提案中 だが validity が空ではありません" "AC1(#500): 提案中 かつ validity 非空"
-run_layer1_invalid "15-rejected-with-validity" "status=却下 だが validity が空ではありません" "AC1(#500): 却下 かつ validity 非空"
-run_layer1_invalid "16-active-with-superseded-by" "validity=有効 だが superseded-by が空ではありません" "AC1(#500): 有効 かつ superseded-by 非空"
-run_layer1_invalid "17-abandoned-with-superseded-by" "validity=廃止済み だが superseded-by が空ではありません" "AC1(#500): 廃止済み かつ superseded-by 非空"
+run_layer1_invalid "14-proposed-with-validity" "status=提案中 だが validity が空ではありません" "AC1: 提案中 かつ validity 非空"
+run_layer1_invalid "15-rejected-with-validity" "status=却下 だが validity が空ではありません" "AC1: 却下 かつ validity 非空"
+run_layer1_invalid "16-active-with-superseded-by" "validity=有効 だが superseded-by が空ではありません" "AC1: 有効 かつ superseded-by 非空"
+run_layer1_invalid "17-abandoned-with-superseded-by" "validity=廃止済み だが superseded-by が空ではありません" "AC1: 廃止済み かつ superseded-by 非空"
 
 # ADR_DIR が存在しない場合は exit 2（fixture 不要、不在パスを渡すだけ）
 run_layer1_missing_dir() {
@@ -489,7 +489,7 @@ run_layer3_mixed_validity_still_passes() {
 run_layer3_mixed_validity_still_passes
 
 # ==== PRレビュー反映: レイヤ3を真の双方向（⟺）にする ====
-# 正本 ADR-20260711-3 決定5: A.superseded-by=B ⟺ B本文 Supersedes: A。
+# 仕様: A.superseded-by=B ⟺ B本文 Supersedes: A。
 # 従来は front-matter 起点（forward）のみの片方向照合だったため、
 # 本文で Supersedes 宣言したが front-matter 更新を忘れたケース（逆方向の
 # ドリフト）を検出できなかった。逆方向（本文 Supersedes 起点で
@@ -565,8 +565,8 @@ run_layer3_xref_nested_bullet_valid() {
 
 run_layer3_xref_nested_bullet_valid
 
-# ==== #497: レイヤ3を list-aware N対1 検査へ拡張（リスト値 superseded-by の 1→N 分割対応） ====
-# 正本 ADR-20260711-3 決定5: 分割による 1→N は A が複数後継を列挙し、各後継が A を
+# ==== レイヤ3: list-aware N対1 検査（リスト値 superseded-by の 1→N 分割対応） ====
+# 仕様: 分割による 1→N は A が複数後継を列挙し、各後継が A を
 # 逆参照する N対1。従来は superseded-by を行まるごと単一 stem として扱っていたため、
 # 正当な分割（リスト値）を相互参照違反として誤検出していた。
 
@@ -619,13 +619,13 @@ run_xref_list_case() {
 # AC1: リスト値の正常分割（A・B 両ファイル存在＋双方が本文逆参照）は違反0件で exit 0
 run_xref_list_case \
     "$FIXTURES_DIR/valid/04-xref-list" 0 \
-    "#497(AC1): リスト値正常分割は exit 0"
+    "(AC1): リスト値正常分割は exit 0"
 
 # AC2(forward逆参照欠落): 後継Bのみ本文逆参照を欠く → Bのエッジのみ forward 違反、
 # 充足側の後継Aは違反メッセージに現れない
 run_xref_list_case \
     "$FIXTURES_DIR/invalid/08-xref-list-forward-missing" 1 \
-    "#497(AC2-forward): 後継Bのみ forward 違反" \
+    "(AC2-forward): 後継Bのみ forward 違反" \
     "contains:相互参照違反" \
     "contains:ADR-20260812-xref-list-fwd-new-b.md" \
     "notcontains:ADR-20260811-xref-list-fwd-new-a"
@@ -634,7 +634,7 @@ run_xref_list_case \
 # Cのエッジが reverse 違反、列挙済みのA・Bは違反にならない
 run_xref_list_case \
     "$FIXTURES_DIR/invalid/09-xref-list-reverse-missing" 1 \
-    "#497(AC3-reverse): 非列挙Cのみ reverse 違反" \
+    "(AC3-reverse): 非列挙Cのみ reverse 違反" \
     "contains:相互参照違反（逆方向" \
     "contains:ADR-20260913-xref-list-rev-extra-c" \
     "notcontains:ADR-20260911-xref-list-rev-new-a.md の本文"
@@ -643,7 +643,7 @@ run_xref_list_case \
 # Bのエッジのみ「参照先が見つかりません」違反、実在する後継Aは独立して照合へ進み違反にならない
 run_xref_list_case \
     "$FIXTURES_DIR/invalid/10-xref-list-forward-file-missing" 1 \
-    "#497(AC2-file-missing): 後継Bのみ参照先不在違反" \
+    "(AC2-file-missing): 後継Bのみ参照先不在違反" \
     "contains:ADR-20261012-xref-list-fm-missing-b" \
     "contains:が見つかりません" \
     "notcontains:ADR-20261011-xref-list-fm-new-a"
@@ -654,19 +654,19 @@ run_xref_list_case \
 # 独立違反として検出する（かつ set -e 下でスクリプトが異常終了せず exit 1 を返す）。
 run_xref_list_case \
     "$FIXTURES_DIR/invalid/11-xref-list-empty-superseded" 1 \
-    "#497(空要素のみ): 有効な参照先stem 0件を違反として検出" \
+    "(空要素のみ): 有効な参照先stem 0件を違反として検出" \
     "contains:有効な参照先 stem がありません"
 
 # PRレビュー反映(末尾カンマ): 末尾カンマ由来の空要素はスキップされ、有効な後継1本が
 # 正しく照合される（末尾カンマは無害）。空要素処理が後方互換を壊さないことの回帰。
 run_xref_list_case \
     "$FIXTURES_DIR/valid/05-xref-list-trailing-comma" 0 \
-    "#497(末尾カンマ): 末尾カンマは無害で exit 0"
+    "(末尾カンマ): 末尾カンマは無害で exit 0"
 
 # ==== AC5: 新スキーマの編集機構（decision tree・3段構え対応表）の文書化と旧記述の除去 ====
-# #515 で運用ルールの正本が docs/adr/README.md から manage-adr スキルへ反転したため、
+# 運用ルールの正本は docs/adr/README.md ではなく manage-adr スキル側にあるため、
 # 存在検査の対象を移設先（edit-decision.md）へ張り替える。除去検査は、旧記述が再混入
-# しうる面＝manage-adr のスキル面（#515 反転後の新在処）に対して行う。host 固有の
+# しうる面＝manage-adr のスキル面（正本の在処）に対して行う。host 固有の
 # docs/adr/README.md はプラグイン非搭載のため、可搬な本テストの surface からは除外する。
 # 除去検査の検査語は必ず見出しでアンカーする。裸の部分文字列にすると「節の復活」ではなく
 # 「節を名指しすること」を禁じてしまい、廃止の経緯を説明する散文まで書けなくなるため。
@@ -728,25 +728,25 @@ run_ac5_edit_mechanism() {
 
 run_ac5_edit_mechanism
 
-# ==== #522: レイヤ4（有効ADRの Related/park 参照の退役・dangling 検査） ====
-# 出典 ADR-20260720-4 §3（非 Supersede 参照妥当性 lint）＋ Issue #522（退役参照検査・
-# 判定単位の書式非依存化）。有効 ADR の `## 関連ADR`（Related:）／`## 保留した決定`（park）
+# ==== レイヤ4: 有効ADRの Related/park 参照の退役・dangling 検査 ====
+# 非 Supersede 参照妥当性 lint（退役参照検査・判定単位の書式非依存化）。
+# 有効 ADR の `## 関連ADR`（Related:）／`## 保留した決定`（park）
 # の先頭 ADR stem を、行頭バレット有無・markdown リンク形式有無を問わず抽出し、参照先が
 # 退役（上書き済み/廃止済み）なら参照先退役違反、非存在なら dangling 参照違反として報告する。
-# park は dangling のみ（退役非適用＝J4）。ラベルは #522 併記で既存 run_ac5_edit_mechanism
-# （#515 の別 AC5）との混同を避ける。
+# park は dangling のみ（退役非適用）。ラベルはレイヤ4併記で既存 run_ac5_edit_mechanism
+# （別 AC5）との混同を避ける。
 
 # AC1/AC2(穴1): バレット無し＋plain の Related が廃止済みADRを指す → 参照先退役違反
 run_xref_list_case \
     "$FIXTURES_DIR/invalid/18-related-retired-no-bullet" 1 \
-    "#522(AC1/AC2-穴1): バレット無し Related が退役ADRを指すと参照先退役違反" \
+    "(AC1/AC2-穴1): バレット無し Related が退役ADRを指すと参照先退役違反" \
     "contains:参照先退役違反" \
     "contains:ADR-20261102-related-retired-nb-target"
 
 # AC1/AC2(穴2): リンク形式の Related が上書き済みADRを指す → 参照先退役違反（相互参照違反は出ない）
 run_xref_list_case \
     "$FIXTURES_DIR/invalid/19-related-retired-link" 1 \
-    "#522(AC1/AC2-穴2): リンク形式 Related が退役ADRを指すと参照先退役違反" \
+    "(AC1/AC2-穴2): リンク形式 Related が退役ADRを指すと参照先退役違反" \
     "contains:参照先退役違反" \
     "contains:ADR-20261112-related-retired-link-old" \
     "notcontains:相互参照違反"
@@ -756,21 +756,21 @@ run_xref_list_case \
 # 適用範囲＝リンクラベル書式。旧実装は `Related:` 直後の stem 隣接を前提とし取り漏らした）
 run_xref_list_case \
     "$FIXTURES_DIR/invalid/22-related-link-label" 1 \
-    "#522(gap1-リンクラベル書式): リンクラベルが説明文でも先頭stem抽出で退役検出" \
+    "(gap1-リンクラベル書式): リンクラベルが説明文でも先頭stem抽出で退役検出" \
     "contains:参照先退役違反" \
     "contains:ADR-20261302-related-linklabel-target"
 
 # AC6/AC8: Related が非存在 slug を指す → dangling 参照違反（解決不能＝fail-safe を統合）
 run_xref_list_case \
     "$FIXTURES_DIR/invalid/20-related-dangling" 1 \
-    "#522(AC6/AC8): Related が非存在slugを指すと dangling 参照違反" \
+    "(AC6/AC8): Related が非存在slugを指すと dangling 参照違反" \
     "contains:dangling 参照違反" \
     "contains:ADR-20261299-does-not-exist"
 
 # AC6/AC7: park 欄が非存在 slug を指す → dangling 参照違反（park も dangling 検査の対象）
 run_xref_list_case \
     "$FIXTURES_DIR/invalid/21-park-dangling" 1 \
-    "#522(AC6/AC7): 保留した決定が非存在slugを指すと dangling 参照違反" \
+    "(AC6/AC7): 保留した決定が非存在slugを指すと dangling 参照違反" \
     "contains:dangling 参照違反" \
     "contains:ADR-20261298-park-missing"
 
@@ -778,11 +778,11 @@ run_xref_list_case \
 # いずれも違反にならず exit 0（先頭stem抽出の要、park は dangling のみ＝J4 の正方向固定）
 run_xref_list_case \
     "$FIXTURES_DIR/valid/06-related-valid" 0 \
-    "#522(AC2/AC7-誤検出回避): 全書式の有効参照・散文退役引用・park退役(存在)は exit 0" \
+    "(AC2/AC7-誤検出回避): 全書式の有効参照・散文退役引用・park退役(存在)は exit 0" \
     "notcontains:参照先退役違反" \
     "notcontains:dangling 参照違反"
 
-# #522(park link dedup): park 参照が markdown リンク形式（`[stem](./stem.md)`）でも
+# (park link dedup): park 参照が markdown リンク形式（`[stem](./stem.md)`）でも
 # dangling 違反は1回のみ報告する（ラベル部とパス部で同一 stem を二重報告しない回帰。
 # invalid/21 の park 参照はリンク形式）。
 run_layer4_park_link_dedup() {
@@ -791,7 +791,7 @@ run_layer4_park_link_dedup() {
     if [ ! -d "$corpus" ]; then
         total=$((total + 1))
         failed=$((failed + 1))
-        printf '[FAIL] #522(park link dedup): missing fixture corpus: %s\n' "$corpus"
+        printf '[FAIL] (park link dedup): missing fixture corpus: %s\n' "$corpus"
         return
     fi
 
@@ -803,17 +803,17 @@ run_layer4_park_link_dedup() {
 
     total=$((total + 1))
     if [ "$count" -eq 1 ]; then
-        printf '[PASS] #522(park link dedup): リンク形式 park dangling は1回のみ報告（count=%d）\n' "$count"
+        printf '[PASS] (park link dedup): リンク形式 park dangling は1回のみ報告（count=%d）\n' "$count"
         passed=$((passed + 1))
     else
-        printf '[FAIL] #522(park link dedup): リンク形式 park dangling は1回報告を期待したが %d 回\n  output:\n%s\n' "$count" "$output"
+        printf '[FAIL] (park link dedup): リンク形式 park dangling は1回報告を期待したが %d 回\n  output:\n%s\n' "$count" "$output"
         failed=$((failed + 1))
     fi
 }
 
 run_layer4_park_link_dedup
 
-# #522(related dup dedup): 同一 source が複数の `Related:` 行から同じ退役 ADR を指しても
+# (related dup dedup): 同一 source が複数の `Related:` 行から同じ退役 ADR を指しても
 # 参照先退役違反は1回のみ報告する（extract_body_related のファイル内 dedup。park 側
 # run_layer4_park_link_dedup と対称の保護。dedup を外すと二重報告に戻る）。
 run_layer4_related_dup_dedup() {
@@ -822,7 +822,7 @@ run_layer4_related_dup_dedup() {
     if [ ! -d "$corpus" ]; then
         total=$((total + 1))
         failed=$((failed + 1))
-        printf '[FAIL] #522(related dup dedup): missing fixture corpus: %s\n' "$corpus"
+        printf '[FAIL] (related dup dedup): missing fixture corpus: %s\n' "$corpus"
         return
     fi
 
@@ -834,10 +834,10 @@ run_layer4_related_dup_dedup() {
 
     total=$((total + 1))
     if [ "$count" -eq 1 ]; then
-        printf '[PASS] #522(related dup dedup): 複数Related行が同一退役ADRを指しても違反は1回のみ（count=%d）\n' "$count"
+        printf '[PASS] (related dup dedup): 複数Related行が同一退役ADRを指しても違反は1回のみ（count=%d）\n' "$count"
         passed=$((passed + 1))
     else
-        printf '[FAIL] #522(related dup dedup): 1回報告を期待したが %d 回\n  output:\n%s\n' "$count" "$output"
+        printf '[FAIL] (related dup dedup): 1回報告を期待したが %d 回\n  output:\n%s\n' "$count" "$output"
         failed=$((failed + 1))
     fi
 }
@@ -845,20 +845,20 @@ run_layer4_related_dup_dedup() {
 run_layer4_related_dup_dedup
 
 # AC5: レイヤ4仕様のヘッダ成文化。判定単位の書式非依存化・退役/dangling 検査の仕様を
-# lint-adr.sh ヘッダに既存レイヤ1〜3 と同形式（決定を ADR 参照で明示）で成文化する。
-# 決定出典は ADR-20260720-4 §3。削除で red 化する必須アサート（run_ac5_edit_mechanism に倣う）。
+# lint-adr.sh ヘッダに既存レイヤ1〜3 と同形式で成文化する。
+# 削除で red 化する必須アサート（run_ac5_edit_mechanism に倣う）。
 run_layer4_header_spec() {
     if [ ! -f "$LINT_ADR" ]; then
         total=$((total + 1))
         failed=$((failed + 1))
-        printf '[FAIL] #522(AC5): lint-adr.sh not found: %s\n' "$LINT_ADR"
+        printf '[FAIL] (AC5): lint-adr.sh not found: %s\n' "$LINT_ADR"
         return
     fi
 
     local content
     content=$(cat "$LINT_ADR")
-    assert_contains "$content" "レイヤ4" "#522(AC5): ヘッダにレイヤ4の記述が存在する"
-    assert_contains "$content" "ADR-20260720-4" "#522(AC5): ヘッダにレイヤ4の決定出典 ADR-20260720-4 が明記されている"
+    assert_contains "$content" "レイヤ4" "(AC5): ヘッダにレイヤ4の記述が存在する"
+    assert_contains "$content" "dangling 参照違反" "(AC5): ヘッダにレイヤ4の dangling 参照検査仕様が成文化されている"
 }
 
 run_layer4_header_spec

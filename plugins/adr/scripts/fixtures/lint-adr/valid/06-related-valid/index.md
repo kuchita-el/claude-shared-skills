@@ -1,4 +1,4 @@
-<!-- このファイルは scripts/gen-adr-index.sh による生成物。手動編集禁止。 -->
+<!-- このファイルは gen-adr-index.sh による生成物。手動編集禁止。 -->
 # 有効 ADR インデックス
 
 - [ADR-20261231-related-valid-source](./ADR-20261231-related-valid-source.md): 全書式の Related が有効先を指す source

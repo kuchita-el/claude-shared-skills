@@ -8,7 +8,7 @@
 #   先頭行が `---` でなければ旧 `## Status` 形式とみなし validity 無しとして扱う）。
 #
 # 使い方:
-#   bash scripts/gen-adr-index.sh [ADR_DIR]   # 既定 ADR_DIR は docs/adr/
+#   bash gen-adr-index.sh [ADR_DIR]   # 既定 ADR_DIR は docs/adr/
 #
 # exit code:
 #   0: 正常終了（有効 ADR が0件でも0）
@@ -23,7 +23,7 @@ if [ ! -d "$ADR_DIR" ]; then
     exit 2
 fi
 
-# 前後の空白（スペース・タブ）をトリムする（scripts/lint-adr.sh の trim と同一実装）
+# 前後の空白（スペース・タブ）をトリムする（lint-adr.sh の trim と同一実装）
 trim() {
     local s="$1"
     s="${s#"${s%%[![:space:]]*}"}"
@@ -97,7 +97,7 @@ if [ "${#files[@]}" -gt 0 ]; then
     done < <(printf '%s\n' "${files[@]}" | LC_ALL=C sort)
 fi
 
-echo '<!-- このファイルは scripts/gen-adr-index.sh による生成物。手動編集禁止。 -->'
+echo '<!-- このファイルは gen-adr-index.sh による生成物。手動編集禁止。 -->'
 echo '# 有効 ADR インデックス'
 echo ''
 

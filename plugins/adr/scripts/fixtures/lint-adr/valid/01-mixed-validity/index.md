@@ -1,4 +1,4 @@
-<!-- このファイルは scripts/gen-adr-index.sh による生成物。手動編集禁止。 -->
+<!-- このファイルは gen-adr-index.sh による生成物。手動編集禁止。 -->
 # 有効 ADR インデックス
 
 - [ADR-20260101-sample-decision](./ADR-20260101-sample-decision.md): サンプル決定
