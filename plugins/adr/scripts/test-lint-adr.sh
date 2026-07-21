@@ -666,13 +666,12 @@ run_xref_list_case \
 # ==== AC5: 新スキーマの編集機構（decision tree・3段構え対応表）の文書化と旧記述の除去 ====
 # #515 で運用ルールの正本が docs/adr/README.md から manage-adr スキルへ反転したため、
 # 存在検査の対象を移設先（edit-decision.md）へ張り替える。除去検査は、旧記述が再混入
-# しうる面が「旧在処＝README」と「新在処＝manage-adr のスキル面」の双方に広がったため、
-# 両者を連結した面に対して行う（README だけを見ると新在処への再混入を取り逃がす）。
+# しうる面＝manage-adr のスキル面（#515 反転後の新在処）に対して行う。host 固有の
+# docs/adr/README.md はプラグイン非搭載のため、可搬な本テストの surface からは除外する。
 # 除去検査の検査語は必ず見出しでアンカーする。裸の部分文字列にすると「節の復活」ではなく
 # 「節を名指しすること」を禁じてしまい、廃止の経緯を説明する散文まで書けなくなるため。
 
-README_ADR="$REPO_ROOT/docs/adr/README.md"
-MANAGE_ADR_DIR="$REPO_ROOT/plugins/dev-workflow/skills/manage-adr"
+MANAGE_ADR_DIR="$REPO_ROOT/skills/manage-adr"
 EDIT_DECISION="$MANAGE_ADR_DIR/references/edit-decision.md"
 
 # 除去検査の対象面を構成するファイルを明示列挙する。surface を glob（references/*.md）
@@ -680,7 +679,6 @@ EDIT_DECISION="$MANAGE_ADR_DIR/references/edit-decision.md"
 # 対象面が無言で狭まる。glob 結果に存在チェックを掛けても同じ理由で検知できないため、
 # 期待リストを固定し、存在チェックと surface の構成元をこのリストに一致させる。
 AC5_SURFACE_FILES=(
-    "$README_ADR"
     "$MANAGE_ADR_DIR/SKILL.md"
     "$MANAGE_ADR_DIR/references/adr-model.md"
     "$MANAGE_ADR_DIR/references/adr-scoping.md"
@@ -724,8 +722,8 @@ run_ac5_edit_mechanism() {
 
     assert_contains "$edit_content" "3段構え" "AC5: 3段構え編集機構の対応表が edit-decision.md に存在する"
     assert_contains "$edit_content" "些末" "AC5: decision tree（些末/非core/core 判定フロー）が edit-decision.md に存在する"
-    assert_not_contains "$surface" "## モデル制約由来の設計判断インデックス" "AC5: 旧モデル制約由来の設計判断インデックス節が README・manage-adr の双方から除去されている"
-    assert_not_contains "$surface" "### Amended（部分改訂）" "AC5: 旧 Amended（部分改訂）手順節が README・manage-adr の双方から除去されている"
+    assert_not_contains "$surface" "## モデル制約由来の設計判断インデックス" "AC5: 旧モデル制約由来の設計判断インデックス節が manage-adr スキル面から除去されている"
+    assert_not_contains "$surface" "### Amended（部分改訂）" "AC5: 旧 Amended（部分改訂）手順節が manage-adr スキル面から除去されている"
 }
 
 run_ac5_edit_mechanism
@@ -784,9 +782,6 @@ run_xref_list_case \
     "notcontains:参照先退役違反" \
     "notcontains:dangling 参照違反"
 
-# AC4/AC9: レイヤ4追加後も実 docs/adr が exit 0（退役・dangling ゼロ）。追加検査が既存の
-# 有効参照を誤検出しないこと、および検査有効化前提として現行 corpus がクリーンであること
-# （Task 1 の短縮参照 full slug 展開を含む）の恒久ガード。
 # #522(park link dedup): park 参照が markdown リンク形式（`[stem](./stem.md)`）でも
 # dangling 違反は1回のみ報告する（ラベル部とパス部で同一 stem を二重報告しない回帰。
 # invalid/21 の park 参照はリンク形式）。
@@ -848,34 +843,6 @@ run_layer4_related_dup_dedup() {
 }
 
 run_layer4_related_dup_dedup
-
-run_real_corpus_clean() {
-    local corpus="$REPO_ROOT/docs/adr"
-
-    if [ ! -f "$LINT_ADR" ]; then
-        total=$((total + 1))
-        failed=$((failed + 1))
-        printf '[FAIL] #522(AC4/AC9): lint-adr.sh not found: %s\n' "$LINT_ADR"
-        return
-    fi
-
-    local output rc
-    set +e
-    output=$(bash "$LINT_ADR" "$corpus" 2>&1)
-    rc=$?
-    set -e
-
-    total=$((total + 1))
-    if [ "$rc" -eq 0 ]; then
-        printf '[PASS] #522(AC4/AC9): 実 docs/adr はレイヤ4追加後も exit 0\n'
-        passed=$((passed + 1))
-    else
-        printf '[FAIL] #522(AC4/AC9): 実 docs/adr は exit 0 を期待したが %d\n  output:\n%s\n' "$rc" "$output"
-        failed=$((failed + 1))
-    fi
-}
-
-run_real_corpus_clean
 
 # AC5: レイヤ4仕様のヘッダ成文化。判定単位の書式非依存化・退役/dangling 検査の仕様を
 # lint-adr.sh ヘッダに既存レイヤ1〜3 と同形式（決定を ADR 参照で明示）で成文化する。

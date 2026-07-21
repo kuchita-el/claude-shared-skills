@@ -75,8 +75,8 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 
 実 ADR ファイルは `docs/adr` に書き込み、**自己検証も `docs/adr` を直接対象として実行する**。各遷移・編集操作の完了後、以下を実行する。
 
-1. **index 同期**（`validity` を変える操作＝承認・上書き・分割・廃止の後）: `bash scripts/gen-adr-index.sh docs/adr` の出力で `docs/adr/index.md` を再生成する（起票・却下は `validity` を変えないため index 再生成不要）。
-2. **lint 実行**: `bash scripts/lint-adr.sh docs/adr` を実行し exit 0 を確認する。**この exit 0 が合否基準**である。
+1. **index 同期**（`validity` を変える操作＝承認・上書き・分割・廃止の後）: `bash ${CLAUDE_PLUGIN_ROOT}/scripts/gen-adr-index.sh docs/adr` の出力で `docs/adr/index.md` を再生成する（起票・却下は `validity` を変えないため index 再生成不要）。
+2. **lint 実行**: `bash ${CLAUDE_PLUGIN_ROOT}/scripts/lint-adr.sh docs/adr` を実行し exit 0 を確認する。**この exit 0 が合否基準**である。
 3. **フィードバックループ**（exit 0 以外）: lint-adr の出力（レイヤ1 スキーマ／レイヤ2 index 同期 drift／レイヤ3 相互参照）を利用者へ提示し、指摘に応じて ADR を修正する — front-matter（`status`/`validity`/`superseded-by`）または相互参照（旧側 `superseded-by`・後継側 `Supersedes:`）を直す。レイヤ2 drift なら `gen-adr-index.sh` を再実行して index を同期する。再度 lint-adr を実行し、**exit 0 になるまで反復する**。exit 0 を得られないまま操作を完了扱いにしない。
 
 `lint-adr.sh` の exit code: `0`＝違反0件／`1`＝違反検出／`2`＝対象ディレクトリ不在。
