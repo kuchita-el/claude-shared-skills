@@ -11,6 +11,10 @@
     {
       "name": "growth",
       "source": "./plugins/growth"
+    },
+    {
+      "name": "adr",
+      "source": "./plugins/adr"
     }
   ]
 }
