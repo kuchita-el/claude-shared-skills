@@ -1,5 +1,5 @@
 {
   "name": "adr",
   "version": "0.1.0",
-  "description": "Claude Code向けのADR（アーキテクチャ決定記録）運用プラグイン。front-matterスキーマ検証・有効性index生成・drift-lint（commit前ゲート）と、ライフサイクル操作スキル manage-adr を提供する。対象ディレクトリは ADR_DIR（既定 docs/adr）で上書き可能。"
+  "description": "Claude Code向けのADR（アーキテクチャ決定記録）運用プラグイン。front-matterスキーマ検証・有効性index生成・drift-lint（commit前ゲート）と、ライフサイクル操作スキル manage-adr を提供する。検査対象の ADR ディレクトリは lint-adr.sh / gen-adr-index.sh の第1引数（既定 docs/adr）で指定する。"
 }

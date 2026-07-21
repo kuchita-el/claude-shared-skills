@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 # ADR drift-lint のテストランナー
 #
-# scripts/fixtures/lint-adr/{valid,invalid}/ の共有 corpus を使い、
-# gen-adr-index.sh と lint-adr.sh（後続 Task で追加）の振る舞いを検証する。
+# 同ディレクトリの fixtures/lint-adr/{valid,invalid}/ の共有 corpus を使い、
+# gen-adr-index.sh と lint-adr.sh の振る舞いを検証する。
 #
 # 使い方:
-#   bash scripts/test-lint-adr.sh
+#   bash plugins/adr/scripts/test-lint-adr.sh
 #
 # exit code:
 #   0: 全アサーションパス
 #   1: いずれか失敗
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-GEN_INDEX="$REPO_ROOT/scripts/gen-adr-index.sh"
-LINT_ADR="$REPO_ROOT/scripts/lint-adr.sh"
-FIXTURES_DIR="$REPO_ROOT/scripts/fixtures/lint-adr"
+PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+GEN_INDEX="$PLUGIN_ROOT/scripts/gen-adr-index.sh"
+LINT_ADR="$PLUGIN_ROOT/scripts/lint-adr.sh"
+FIXTURES_DIR="$PLUGIN_ROOT/scripts/fixtures/lint-adr"
 
 passed=0
 failed=0
@@ -671,7 +671,7 @@ run_xref_list_case \
 # 除去検査の検査語は必ず見出しでアンカーする。裸の部分文字列にすると「節の復活」ではなく
 # 「節を名指しすること」を禁じてしまい、廃止の経緯を説明する散文まで書けなくなるため。
 
-MANAGE_ADR_DIR="$REPO_ROOT/skills/manage-adr"
+MANAGE_ADR_DIR="$PLUGIN_ROOT/skills/manage-adr"
 EDIT_DECISION="$MANAGE_ADR_DIR/references/edit-decision.md"
 
 # 除去検査の対象面を構成するファイルを明示列挙する。surface を glob（references/*.md）
