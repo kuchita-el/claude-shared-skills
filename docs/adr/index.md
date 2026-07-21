@@ -1,4 +1,4 @@
-<!-- このファイルは scripts/gen-adr-index.sh による生成物。手動編集禁止。 -->
+<!-- このファイルは gen-adr-index.sh による生成物。手動編集禁止。 -->
 # 有効 ADR インデックス
 
 - [ADR-20260406-review-contract-in-plan-issue](./ADR-20260406-review-contract-in-plan-issue.md): レビュー契約の所在を plan-issue に移行する

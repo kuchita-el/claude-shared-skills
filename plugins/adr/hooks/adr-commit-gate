@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# adr プラグインの commit ゲート本体（PreToolUse から run-hook.cmd 経由で起動）。
+#
+# 役割は「本当に git commit のときだけ ADR drift-lint を走らせる」ことに限る。検査の中身は
+# 同梱の lint-adr.sh が持ち、本スクリプトは持たない（validate-skills 等 ADR 無関係の検査は呼ばない）。
+#
+# 入力: PreToolUse の JSON を stdin で受ける（tool_input.command に Bash コマンド文字列）。
+#
+# exit code:
+#   0: git commit でない、または導入先が ADR 未使用（docs/adr 不在）、または lint 適合（commit を通す）
+#   2: lint 違反、または前提が壊れている（commit をブロックする）
+#
+# exit 2 のとき Claude へ渡るのは stderr のみのため、lint の出力は >&2 へ振り替える。
+set -uo pipefail
+
+input=$(cat)
+
+# コマンド文字列の抽出。jq が不在・失敗しても「対象外」へ畳まないこと。畳むと lint が一度も
+# 走らないまま commit が通り、しかも警告が出ない（silent fail-open）。判定不能なときは生の
+# JSON 全体を判定対象にして fail-safe 側へ倒す（JSON は git commit のときだけ "git commit" を含む）。
+if extracted=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null); then
+    command="$extracted"
+else
+    command="$input"
+fi
+
+# git commit を含まないコマンドは対象外（`if` の fail-open をここで吸収する）。
+case "$command" in
+    *"git commit"*) ;;
+    *) exit 0 ;;
+esac
+
+# 同梱スクリプトは $0 から解決する。CLAUDE_PLUGIN_ROOT の env 伝播に依存せず、プラグインの
+# 実配置（--plugin-dir / marketplace / cache のいずれでも）に追随する。
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+LINT_ADR="$SCRIPT_DIR/../scripts/lint-adr.sh"
+
+# 検査対象は導入先プロジェクトの docs/adr。プロジェクトルートは CLAUDE_PROJECT_DIR を優先し、
+# 未設定なら cwd（フックは project root で走る）へフォールバックする。
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+ADR_DIR="$PROJECT_DIR/docs/adr"
+
+# 導入先が ADR を使っていない（docs/adr 不在）場合は no-op で通す。lint-adr.sh は対象 dir 不在時
+# exit 2 でブロックするため、このガードが無いと ADR を持たない host の全 commit が止まる。
+[ -d "$ADR_DIR" ] || exit 0
+
+# 同梱 lint が見つからなければ前提破壊としてブロックする（silent fail-open を作らない）。
+if [ ! -f "$LINT_ADR" ]; then
+    echo "adr-commit-gate: lint-adr.sh が見つかりません: $LINT_ADR" >&2
+    exit 2
+fi
+
+# lint 実行。違反時 exit 1・対象不在時 exit 2 のいずれも「通さない」側へ倒す。
+bash "$LINT_ADR" "$ADR_DIR" >&2 || exit 2
+exit 0
