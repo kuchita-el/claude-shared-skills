@@ -7,7 +7,7 @@ superseded-by: ADR-20260806-active-superseded-by-successor
 
 ## Context
 
-fixture 用。`validity: 有効` でありながら `superseded-by` を持つ ADR。ADR-20260711-3 決定2 のスキーマ表では、承認行の superseded-by は「（無し）」であり、この組み合わせは表に存在しない。レイヤ1の組み合わせ違反を検出させる。
+fixture 用。`validity: 有効` でありながら `superseded-by` を持つ ADR。スキーマ表では、承認行の superseded-by は「（無し）」であり、この組み合わせは表に存在しない。レイヤ1の組み合わせ違反を検出させる。
 
 後継 ADR-20260806-active-superseded-by-successor が本文に逆参照を持つため、レイヤ3（相互参照双方向性）は forward・reverse とも充足し発火しない。これによりレイヤ1の組み合わせ違反のみを単独で観測できる。
 

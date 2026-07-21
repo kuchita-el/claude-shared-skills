@@ -858,7 +858,7 @@ run_layer4_header_spec() {
     local content
     content=$(cat "$LINT_ADR")
     assert_contains "$content" "レイヤ4" "(AC5): ヘッダにレイヤ4の記述が存在する"
-    assert_contains "$content" "dangling 参照違反" "(AC5): ヘッダにレイヤ4の dangling 参照検査仕様が成文化されている"
+    assert_contains "$content" "生存性・実在性" "(AC5): ヘッダにレイヤ4（Related/park 参照の生存性・実在性）仕様が成文化されている"
 }
 
 run_layer4_header_spec
