@@ -14,6 +14,7 @@ Claude Code向けの汎用スキル集です。プロジェクト固有の依存
 
 # プラグインをインストール
 /plugin install dev-workflow@claude-shared-skills
+/plugin install adr@claude-shared-skills   # ADR運用機構（任意）
 ```
 
 スコープを指定してインストール先を選択できます:
@@ -100,7 +101,7 @@ cp plugins/dev-workflow/skills/refine-issue/references/dor-default.md /path/to/y
 ./setup-local.sh
 ```
 
-`claude --plugin-dir ./plugins/dev-workflow` でプラグインとして読み込んだClaude Codeが起動します。各スキルは `/dev-workflow:{skill-name}` のスコープ付き呼び出しで利用できます。
+`claude --plugin-dir ./plugins/dev-workflow --plugin-dir ./plugins/adr` で両プラグインを読み込んだClaude Codeが起動します。各スキルは `/dev-workflow:{skill-name}`・`/adr:{skill-name}` のスコープ付き呼び出しで利用できます。
 
 ## ライセンス
 
