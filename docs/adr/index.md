@@ -41,3 +41,4 @@
 - [ADR-20260720-3-distill-ledger-matching-responsibility-boundary](./ADR-20260720-3-distill-ledger-matching-responsibility-boundary.md): 台帳突合の責務境界 — distill と promote の線引き
 - [ADR-20260720-4-adr-parked-decision-section](./ADR-20260720-4-adr-parked-decision-section.md): ADR スキーマに「保留した決定」セクション（意図的な非決定のスナップショット）を導入する
 - [ADR-20260720-distill-ledger-as-explicit-input](./ADR-20260720-distill-ledger-as-explicit-input.md): distill の入力定義の拡張 — 既存ルール台帳を明示的入力とする
+- [ADR-20260723-adr-machinery-plugin-extraction](./ADR-20260723-adr-machinery-plugin-extraction.md): ADR運用機構を独立プラグイン adr として抽出・配布
