@@ -1,6 +1,6 @@
 ---
-status: 提案中
-validity:
+status: 承認済み
+validity: 有効
 superseded-by:
 ---
 
