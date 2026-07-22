@@ -27,7 +27,7 @@ ADR 運用機構を独立プラグイン `plugins/adr/` へ抽出（#492/#493）
 | 8 | KEEP 資産（scripts・manage-adr）内に本リポ ADR/Issue 番号の provenance backlink が散在。#522 のレイヤ4追加で `lint-adr.sh` コメントの参照が増加 | 対処中（A.12） | Issue/ADR 番号を削除し説明散文は残す。`plugins/adr/` 内に dangling 参照 0 件を目標 |
 | 9 | `test-lint-adr.sh` の `run_real_corpus_clean`（#522 追加）が本リポの実 `docs/adr` を lint | 解消済 | 可搬テストから除去。実 corpus の保護は commit ゲートが担う |
 | 10 | `test-lint-adr.sh` の #522(AC5) が `lint-adr.sh` ヘッダに `ADR-20260720-4` の明記を強制（provenance を要求するテスト） | 対処中（A.12） | provenance 削除に併せてアサートを汎用化 |
-| 11 | ローカルプラグインを消費側リポの `.claude/settings.json` `enabledPlugins` で常時有効化する手段が docs 未明記 | 未確認 | J10 案A の実現可否。fresh session での実地確認を要する。不可なら repo-root shim（案B）へフォールバック |
+| 11 | ローカルプラグインを消費側リポの `.claude/settings.json` `enabledPlugins` で常時有効化する手段が docs 未明記 | 解消済 | J10 案A で実現可を実地確認（2026-07-23・#493）。`enabledPlugins` に `adr@claude-shared-skills` を登録した通常セッション（`setup-local.sh` 非経由）で commit ゲートが発火＝drift 投入でブロック・clean で通過。案B（repo-root shim）フォールバックは不要 |
 | 12 | `gen-adr-index.sh` の生成コメントが `scripts/` パスを焼き込み、生成物 `index.md` に載る | 対処中（A.12） | パスを汎用化し index を再生成 |
 
 ## 未反映（後続・別リポ試用で扱う）
