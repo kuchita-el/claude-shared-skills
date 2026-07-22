@@ -24,11 +24,11 @@ ADR 運用機構を独立プラグイン `plugins/adr/` へ抽出（#492/#493）
 | # | 継ぎ目 | 状態 | 対処 |
 |---|---|---|---|
 | 7 | `test-lint-adr.sh` の AC5 surface が host 固有 `docs/adr/README.md` と可搬な manage-adr スキル面を跨ぐ | 解消済 | README を surface から除外し manage-adr surface を plugin 相対へ rebase（回帰テストは新設しない＝現状 legacy 言及は散文で AC5 の見出し形検査が非発火のため） |
-| 8 | KEEP 資産（scripts・manage-adr）内に本リポ ADR/Issue 番号の provenance backlink が散在。#522 のレイヤ4追加で `lint-adr.sh` コメントの参照が増加 | 対処中（A.12） | Issue/ADR 番号を削除し説明散文は残す。`plugins/adr/` 内に dangling 参照 0 件を目標 |
+| 8 | KEEP 資産（scripts・manage-adr）内に本リポ ADR/Issue 番号の provenance backlink が散在。#522 のレイヤ4追加で `lint-adr.sh` コメントの参照が増加 | 解消済 | A.12 STRIP（PR #546）で実 ADR/Issue 番号の backlink を削除。`plugins/adr/` 内の実リポ ADR/Issue 参照 0 件（残る `ADR-2026…` は合成 fixture stem とその test assert のみ＝不可触） |
 | 9 | `test-lint-adr.sh` の `run_real_corpus_clean`（#522 追加）が本リポの実 `docs/adr` を lint | 解消済 | 可搬テストから除去。実 corpus の保護は commit ゲートが担う |
-| 10 | `test-lint-adr.sh` の #522(AC5) が `lint-adr.sh` ヘッダに `ADR-20260720-4` の明記を強制（provenance を要求するテスト） | 対処中（A.12） | provenance 削除に併せてアサートを汎用化 |
+| 10 | `test-lint-adr.sh` の #522(AC5) が `lint-adr.sh` ヘッダに `ADR-20260720-4` の明記を強制（provenance を要求するテスト） | 解消済 | A.12（PR #546）でアサートを汎用化。`ADR-20260720-4` の明記強制を除去し、レイヤ4仕様の成文化を実 ADR 番号非依存の語（生存性・実在性）で検査 |
 | 11 | ローカルプラグインを消費側リポの `.claude/settings.json` `enabledPlugins` で常時有効化する手段が docs 未明記 | 解消済 | J10 案A で実現可を実地確認（2026-07-23・#493）。`enabledPlugins` に `adr@claude-shared-skills` を登録した通常セッション（`setup-local.sh` 非経由）で commit ゲートが発火＝drift 投入でブロック・clean で通過。案B（repo-root shim）フォールバックは不要 |
-| 12 | `gen-adr-index.sh` の生成コメントが `scripts/` パスを焼き込み、生成物 `index.md` に載る | 対処中（A.12） | パスを汎用化し index を再生成 |
+| 12 | `gen-adr-index.sh` の生成コメントが `scripts/` パスを焼き込み、生成物 `index.md` に載る | 解消済 | A.12（PR #546）でパス焼き込みを汎用化し index 再生成 |
 
 ## 未反映（後続・別リポ試用で扱う）
 
