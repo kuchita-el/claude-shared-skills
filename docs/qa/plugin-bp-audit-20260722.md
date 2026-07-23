@@ -28,13 +28,15 @@
 
 ### A. `${CLAUDE_PLUGIN_ROOT}` のスキル本文内展開に疑義【High・要検証】
 
-dev-workflow 中核4スキルの共有参照 10箇所（DoR定義・種別プロファイル・plan保存先解決・完了判定）と growth の 21箇所が `${CLAUDE_PLUGIN_ROOT}/references/*.md` を Read 対象パスに使っている。一方、一次情報間で記載が割れている:
+dev-workflow 中核4スキルの共有参照 10箇所（DoR定義・種別プロファイル・plan保存先解決・完了判定）と growth の 20箇所が `${CLAUDE_PLUGIN_ROOT}` を Read 対象パスの解決に使っている（件数は各プラグイン `skills/` 配下の `${CLAUDE_PLUGIN_ROOT}` 全出現を `grep -o` で実測。growth 20件の内訳は `references/*.md` 参照15＋`DESIGN.md` 参照5）。一方、一次情報間で記載が割れている:
 
 - [S3] の環境変数節はスキル/エージェント本文での展開を記載
 - [S1] の string substitution 一覧には `${CLAUDE_PLUGIN_ROOT}` が**掲載されていない**（`${CLAUDE_SKILL_DIR}` / `${CLAUDE_PROJECT_DIR}` 等のみ）
 - 本リポジトリの adr プラグイン抽出時（PR #546）に「空展開で黙って壊れる」実害が発生し `${CLAUDE_SKILL_DIR}/../../` 方式へ修正した前例がある
 
-**対応**: 実機検証で展開可否を確定し、破損が確認されたら adr の修正実績に倣い `${CLAUDE_SKILL_DIR}` 相対へ置換する。全プラグインに波及するため最優先の検証項目。（DWC-01, DWC-14）
+**対応（検証方法）**: まず実機検証で展開可否を確定する。検証は Bash 実行経路でなく **`${CLAUDE_PLUGIN_ROOT}` の Read 経路を直接叩く**のが要点 — 本件の指摘対象は全て Read／参照リスト経路であり、in-repo で破損が確認された唯一の前例（PR #546）は Bash 実行経路（`bash ${CLAUDE_PLUGIN_ROOT}/scripts/...` の空展開で `/scripts/...` になる）で、そのまま Read 経路へ転用できない。この一点に絞れば検証コストは小さい。
+
+**対応（修正方法）**: 破損が確認されたら `${CLAUDE_SKILL_DIR}` 相対へ置換する。ただし**置換先の階層に注意する**: 本件の参照先はプラグインルート共有（`plugins/{plugin}/references/`）でスキルから2階層上のため、正しくは `${CLAUDE_SKILL_DIR}/../../references/...` である。adr の *参照* 修正（スキル同梱の `references/` を `${CLAUDE_SKILL_DIR}/references/` で解決し `../../` 不要）をそのまま真似ると、存在しないスキル同梱パスを指し破損を別の破損に置き換えるだけになる。倣うべき in-repo 前例は adr の参照修正ではなく PR #546 の *スクリプト* 修正側（`manage-adr/SKILL.md:79` の `bash ${CLAUDE_SKILL_DIR}/../../scripts/lint-adr.sh` が `../../` でプラグインルートへ抜けている）。全プラグインに波及するため最優先の検証項目。（DWC-01, DWC-14）
 
 ### B. 100行超の参照ファイル 25件に目次がない【High】
 
