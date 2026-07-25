@@ -836,3 +836,27 @@ AC2 の「全6エージェント」が実体とずれる件は変更後の2回�
 - `references/subagent-execution-parameters.md` — 用途による分割の指針、`effort` が `model` の差を埋めるとは限らないこと、実効値の確認方法を追記
 - `docs/superpowers/specs/2026-07-25-subagent-exec-params-design.md` — 決定2・決定3 を修正し「実測による割り当ての修正」節を追加
 - `docs/adr/ADR-20260725-subagent-execution-parameter-pinning.md` — Consequences に実効値の検証手段と、`model` が支配的な要因になる場合がある知見を追記
+
+### 対応後の再検証（Issue #509、1件モード）
+
+分割後の `issue-refiner` で同一 Issue を再度精査した。親モデルは `opus` に揃え、`claude -p` で実行した。
+
+| 項目 | 実測値 |
+|---|---|
+| `agentType` | `dev-workflow:issue-refiner` |
+| 実効 `model` / `effort` | `claude-opus-5` / `medium` |
+| サブエージェントのツール使用 | `Read` 6 回、`Glob` 2 回のみ。エラーなし |
+| メイン側のツール使用 | `Agent` 1 回、`Bash` 4 回 |
+| 出力形式 | `output-format-single.md` に沿う |
+
+変更前が検出し、`sonnet` / `medium` が見落とした 3 項目の再現状況は次のとおり。
+
+| 項目 | 結果 |
+|---|---|
+| AC3 が検証不可（観測手段が未規定） | 回復。観測手段と検証モデルの未規定を指摘し、DoR 表でも「受入条件が検証可能」を ❌ と判定。AC 書き換え案 3 行を出力 |
+| 正当な参照の定義漏れ | 部分的。「制約に対応する AC が不在」は指摘したが、`skill_dir` / `plugin_root` が worktree 外へ解決される点には触れていない |
+| 権限モードの未記録 | 未検出 |
+
+検証可能性の検出、改善提案 3 行、未解決論点 5 件という観測値は結果4 の `opus` / `medium` 行と一致し、再現した。変更前になかった指摘（AC2 が暗黙に「定義側」案を前提しており、プロンプト側案なら反映先が起動側スキルになる）も出ている。
+
+3 項目の完全一致には至らないが、最大の劣化点であった受入条件の検証可能性の誤判定と改善提案の欠落は解消した。判定の核（Not Ready、要分割、主要ブロッカー）も一致している。指摘の集合は実行ごとに揺れる性質があり、結果4 でも `opus` / `medium` は変更前が挙げなかった論点に到達していた。以上から合格と判定した。

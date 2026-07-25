@@ -42,3 +42,5 @@
 - [ADR-20260720-4-adr-parked-decision-section](./ADR-20260720-4-adr-parked-decision-section.md): ADR スキーマに「保留した決定」セクション（意図的な非決定のスナップショット）を導入する
 - [ADR-20260720-distill-ledger-as-explicit-input](./ADR-20260720-distill-ledger-as-explicit-input.md): distill の入力定義の拡張 — 既存ルール台帳を明示的入力とする
 - [ADR-20260723-adr-machinery-plugin-extraction](./ADR-20260723-adr-machinery-plugin-extraction.md): ADR運用機構を独立プラグイン adr として抽出・配布
+- [ADR-20260725-2-execution-parameter-control-point](./ADR-20260725-2-execution-parameter-control-point.md): 実行パラメータの統制点をサブエージェント定義に集約する
+- [ADR-20260725-subagent-execution-parameter-pinning](./ADR-20260725-subagent-execution-parameter-pinning.md): サブエージェントの実行パラメータを front-matter で固定し役割ごとの必要水準として選ぶ
