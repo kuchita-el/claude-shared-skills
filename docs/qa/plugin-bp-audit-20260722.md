@@ -90,7 +90,7 @@ dev-workflow 中核4スキルの共有参照 10箇所（DoR定義・種別プロ
 | ID | 重要度 | 対象 | 指摘 |
 |---|---|---|---|
 | DWR-32 | High | `references/workflow-patterns.md` | 「スキルが実行時に参照するため」と自称するがどの SKILL.md からも参照されない孤立ファイル（grep 再検証済み）。結線・位置づけ明記・削除のいずれかの判断が必要 |
-| DWC-09/13 | Medium | plan-issue 187行 / implementation 178行 | 170行目安超過。plan-issue は「人間レビュー却下後のリカバリ」節（43行）が切り出し候補 |
+| DWC-09/13 | Medium | plan-issue 187行 / implementation 178行 | 170行目安超過。plan-issue は「人間レビュー却下後のリカバリ」節（43行）が切り出し候補。**（本行は全行基準での観測。#557 で計測基準を本文行数へ統一した結果、implementation は本文141行で当初から適合しており対象外。plan-issue は本文173行で超過が残り、#557 で当該節を `references/human-review-recovery.md` へ分離して137行へ縮退・解消済み）** |
 | DWC-05 | Medium | refine-issue allowed-tools | Bashパターンがハンドロール glob で本文の `${CLAUDE_SKILL_DIR}` と不一致。公式推奨の同一変数指定へ揃える |
 | DWC-12 | Medium | implementation allowed-tools | カテゴリ見出しコメント4件が CLAUDE.md の「カテゴリ別コメントの羅列を避け」と字面上矛盾（git 履歴精査の結果、PR #299 の実態は「見出し短縮」であり全廃ではなかった。CLAUDE.md 側の文言修正か見出し撤去かの判断が必要） |
 | DWR-20 | Medium | hooks.json | timeout 未指定（明示推奨） |
@@ -113,7 +113,7 @@ dev-workflow 中核4スキルの共有参照 10箇所（DoR定義・種別プロ
 | ID | 重要度 | 対象 | 指摘 |
 |---|---|---|---|
 | GRW-07 | High | `references/career-promotion-spec.md`（168行） | どのファイルからも参照されない**完全な孤立ファイル**（grep 再検証済み）。#532 で更新された生きた仕様書なのに、ファイル名を知らない限り到達不能。DESIGN.md Distribute 段・姉妹規約 learning-promotion-spec からの導線追加を推奨 |
-| GRW-04 | Medium | `capture/SKILL.md`（206行） | 唯一の170行超過。他3スキルの procedure/examples 分離パターン未踏襲。記述例 約54行を `references/` へ抽出すれば170行前後に収まる |
+| GRW-04 | Medium | `capture/SKILL.md`（206行） | 唯一の170行超過。他3スキルの procedure/examples 分離パターン未踏襲。記述例 約54行を `references/` へ抽出すれば170行前後に収まる。**（#557 で `capture-procedure.md` / `capture-examples.md` へ分離し本文120行へ縮退・解消済み。記載の行数は全行基準の観測値）** |
 | GRW-11 | Medium | `DESIGN.md`（360行） | 内部設計文書が配布物ルートに同居。リポ慣習（設計文書は `docs/` 配下）からの逸脱で、`docs/development/` への移動を検討（実行時 Read 対象でないことは確認済み、移動してもスキル動作に影響なし） |
 | GRW-08 | Medium（要検証） | `*-procedure.md` | 地の文引用による実質2ホップ参照。実行時に誤読が起きるかドッグフーディングでの確認を推奨 |
 | GRW-06 | Medium | `distill-examples.md`（821行） | 分岐網羅のテストケース集として機能しており分割は必須でないが、目次追加は最優先（所見B） |

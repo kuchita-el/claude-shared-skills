@@ -66,7 +66,7 @@ growth の capture/distill を直近の窓（2026-06-29〜30、36 セッショ�
 - **得られる利益**: store の信号対雑音比が向上する。復元可能 telemetry を capture 段で落とし、判断知を文脈ごと（decision-record）保存し、予測誤差の形を持たない偽陰性を判断知検出子で回収する。判断知が平板化・ドロップで失われる二重損失を閉じる。
 - **受容したコスト**: capture に「判断知か否か」「ハーネス強制摩擦か否か」という解釈的・機械的判定が加わり、純摩擦検出より複雑になる（ただしハーネス強制摩擦の判別は決定的）。`candidates.md` のスキーマ拡張が promote（型適応検証）・`personal-store-spec.md`・`learning-promotion-spec.md`（#383、Phase 2 の learnings.md 翻訳規約）へ波及する。
 - **#417 との関係**: 摩擦系の N 再発カウントを保持するため、ADR-20260629（distill の台帳突合・再発知見化）と両立する。Supersede は不要。本 ADR の直交 2 ゲートは、ADR-20260629 が確立した「既知ルール再発の知見化」を判断知側に拡張するものであり、摩擦知側の扱いを変えない。
-- **実装の所在**: 本 ADR の決定は付随する実装（同一 PR #435）で具体化した。判断知検出子の検出基準は `capture/SKILL.md`、`decision-record` のフィールド定義と `candidates.md` 書式は `personal-store-spec.md`、promote の型適応検証の合否境界は `promote-procedure.md`、原理3・シグナル分類体系・distill 出力契約は DESIGN.md 本文と各 SKILL.md・spec で改訂した。
+- **実装の所在**: 本 ADR の決定は付随する実装（同一 PR #435）で具体化した。判断知検出子の検出基準とハーネス強制摩擦の既定除外（決定3）は `capture/SKILL.md`（#557 で判定基準の詳細を分離。現行の単一出典は `capture-procedure.md`）、`decision-record` のフィールド定義と `candidates.md` 書式は `personal-store-spec.md`、promote の型適応検証の合否境界は `promote-procedure.md`、原理3・シグナル分類体系・distill 出力契約は DESIGN.md 本文と各 SKILL.md・spec で改訂した。
 - **Phase 2 へ据え置く範囲**: `learning-promotion-spec.md`（#383）の decision-record 対応拡張（learnings.md への翻訳規約）のみ。本実装は candidates → Issue までを対象とし、learnings.md への物理昇格（Distribute 段）は Phase 2。
 - **将来の留保事項**: 判断知検出子の precision/recall が想定を外す（判断知の取りこぼし継続、または会話の過剰捕捉）場合、検出子の補助化度合い・復元不能性ゲートの判定境界を再調整する。decision-record と behavior-diff の同居が candidates ライフサイクルを複雑化しすぎる場合、ファイル分離を再検討する。
 
