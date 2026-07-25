@@ -23,11 +23,11 @@ Issue の起票から計画・実装・レビューまでを支援するスキ�
 
 ラベルはその役割にとっての意図を表すもので、すべての利用者構成に対して一様に下限や上限として働くことを意味しない。`effort` のモデル既定は `high` であり、設定を変えていない環境ではこれが基準になる。したがって `medium` を指定した 2 本は、既定構成の利用者に対しては引き下げとして働く。`issue-refiner` は `model` の `opus` が下限として、`effort` の `medium` が上限として作用する組み合わせになっている。
 
+`issue-refiner` と `issue-refiner-batch` は用途が異なる。前者は単一 Issue の着手判断が用途で、受入条件が実際に検証可能かまで踏み込む必要があるため `opus` を下限とする。後者は棚卸しが用途で、Ready / Not Ready の判定・主要ブロッカー・分割要否を押さえられればよいため `sonnet` を上限とする。
+
 ### 統制が及ぶ範囲
 
 上記の値が効くのは、そのサブエージェントが `subagent_type` 指定で起動された場合である。本プラグインのスキルが `subagent_type` で起動するのは `plan` / `plan-reviewer` / `issue-refiner` / `issue-refiner-batch` の 4 本で、`code-reviewer` / `test-designer` / `test-spec-validator` / `refactorer` は `@agent-dev-workflow:...` で直接起動したときに効く。`implementation` スキルは実装とレビューを superpowers 側へ委譲しており、その経路のサブエージェントは本プラグインの統制下にない。
-
-`issue-refiner` と `issue-refiner-batch` は用途が異なる。前者は単一 Issue の着手判断が用途で、受入条件が実際に検証可能かまで踏み込む必要があるため `opus` を下限とする。後者は棚卸しが用途で、Ready / Not Ready の判定・主要ブロッカー・分割要否を押さえられればよいため `sonnet` を上限とする。
 
 ### 値を上書きする
 
