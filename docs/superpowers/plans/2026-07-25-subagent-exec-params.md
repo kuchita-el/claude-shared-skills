@@ -6,6 +6,8 @@
 
 **Architecture:** サブエージェント定義の frontmatter を実行パラメータの単一の統制点とする。値は役割ごとの必要最小水準として選び、量が出る Issue 精査のみ許容最大水準として扱う。Agent tool に `effort` 引数がないため、現在 `subagent_type` 未指定で起動している Issue 精査には専用のサブエージェント定義を新設する。
 
+文書は役割で分ける。規約の正本は `references/subagent-execution-parameters.md`、利用者向けの現行値一覧は `README.md`、判断と却下した選択肢の記録は ADR 2 本に置く。値の実体は front-matter であり、正本には値を転記しない。
+
 **Tech Stack:** Markdown + YAML frontmatter。Claude Code のプラグイン機構（`plugins/dev-workflow/agents/`, `plugins/dev-workflow/skills/`）。
 
 **Spec:** [docs/superpowers/specs/2026-07-25-subagent-exec-params-design.md](../specs/2026-07-25-subagent-exec-params-design.md)
@@ -390,7 +392,108 @@ git commit -m "feat(agents): Issue 精査用の issue-refiner を新設し refin
 
 ---
 
-### Task 4: `dev-workflow` プラグインの README 新設
+### Task 4: 規約の正本を新設し `CLAUDE.md` からポインタを張る
+
+本リポジトリでエージェントを追加・変更する者に向けて、実行パラメータの規約を単一出典として置く。値の一覧は持たせない。実体は front-matter であり、同じ値を複数の文書に持たせれば drift の源になる。
+
+**Files:**
+- Create: `plugins/dev-workflow/references/subagent-execution-parameters.md`
+- Modify: `CLAUDE.md`
+
+**Interfaces:**
+- Consumes: Task 1 と Task 3 が確定した front-matter の構成
+- Produces: 規約の正本。Task 6 の ADR がこの文書を参照する
+
+- [ ] **Step 1: 既存の references の書式を確認**
+
+Run:
+
+```bash
+head -12 plugins/dev-workflow/references/context-budget.md
+```
+
+Expected: 冒頭に単一出典であることを述べる文がある。見出しの階層と文体を揃えるための参照であり、内容を写すわけではない。
+
+- [ ] **Step 2: `subagent-execution-parameters.md` を作成**
+
+```markdown
+# サブエージェント実行パラメータ規約（subagent-execution-parameters.md）
+
+サブエージェントの `model` と `effort` をどこに置き、どのような意図で値を選ぶかを定める。本ファイルがこの規約の実体であり、統制点・選定基準をここ以外で独自に再定義しない。
+
+## 統制点
+
+実行パラメータは `agents/{name}.md` の front-matter に置く。SKILL.md の front-matter には置かない。
+
+スキル側の `model` / `effort` は効果がそのターンの残りに限られ、対話や承認の待ち合わせで複数のターンにまたがるスキルでは最初のターンにしか効かない。またサブエージェント側を明示している以上、スキル側の指定はサブエージェントの実行には届かない（解決順で front-matter が優先される）。統制点を 2 箇所に分散させれば、どちらが効いているかの追跡が難しくなる。
+
+## 値を省略しない
+
+配布物であり利用者の親セッションがどのモデル・どの effort で動いているかは不定である。`effort` を省略すると、各サブエージェントの思考深度は利用者側の設定に従属する。検証を担うサブエージェントが低い effort で見落としを出した場合、それは利用者の設定ミスではなくプラグインの欠陥として現れる。
+
+## 値の選定基準
+
+front-matter が表現できるのは固定値のみであり、下限や上限を表す機構は存在しない。したがって値は次のいずれかの意図で選ぶ。
+
+| 意図 | 選び方 | 適用する役割 |
+|---|---|---|
+| 必要最小水準 | その役割が成立するために必要な下限として選ぶ | 生成・検証など、品質が成果を左右する役割 |
+| 許容最大水準 | その役割に対して許容する上限として選ぶ | 定型性が高く、処理量が出る役割 |
+
+必要最小水準を選べば、それを上回る設定で動かしている利用者を引き下げる副作用が生じる。これは許容する。環境変数は front-matter より優先され、`max` はセッション限定で永続しないため、影響は「そのセッションで `/effort max` を選び、かつサブエージェントを起動した」場合に限られる。
+
+## 実装上の制約
+
+`effort` を指定できるのは front-matter を持つ登録済みのサブエージェントに限られる。Agent tool の引数に `effort` は存在しない（引数は `description` / `isolation` / `model` / `prompt` / `run_in_background` / `subagent_type`）。
+
+したがってスキルから `subagent_type` を指定せずに Agent tool を呼ぶ形では `effort` を制御できない。effort を制御したい役割には、専用のサブエージェント定義を設ける。
+
+## 新規サブエージェントを追加するとき
+
+1. `model` と `effort` を front-matter に明示する。省略しない
+2. 値の意図（必要最小水準か許容最大水準か）を決め、`README.md` の表に追記する
+3. `tools` を必要最小限に絞る
+
+## 現行の値
+
+各 `agents/{name}.md` の front-matter が権威である。一覧は [README](../README.md) を参照。本ファイルには値を転記しない。
+```
+
+- [ ] **Step 3: `CLAUDE.md` にポインタ節を追加**
+
+`## スキル設計の token 規律` 節の直後、`## Rules` 節の直前に次を挿入する。
+
+```markdown
+## サブエージェントの実行パラメータ
+
+サブエージェントの `model` / `effort` をどこに置き、どのような意図で値を選ぶかは `plugins/dev-workflow/references/subagent-execution-parameters.md` に単一出典化している。新規サブエージェントを追加する際は `model` と `effort` を front-matter に必ず明示する（本節へ転記しない）。
+```
+
+- [ ] **Step 4: 挿入位置と参照の整合を検証**
+
+Run:
+
+```bash
+grep -n '^## ' CLAUDE.md
+ls plugins/dev-workflow/references/
+grep -c 'subagent-execution-parameters' CLAUDE.md
+```
+
+Expected: 1つ目で `## サブエージェントの実行パラメータ` が `## スキル設計の token 規律` の後、`## Rules` の前に現れる。2つ目に `subagent-execution-parameters.md` が含まれる。3つ目が `1`。
+
+- [ ] **Step 5: コミット**
+
+```bash
+git add plugins/dev-workflow/references/subagent-execution-parameters.md CLAUDE.md
+git commit -m "docs(dev-workflow): 実行パラメータ規約の正本を新設" \
+  -m "統制点の所在、値の選定基準、実装上の制約、新規追加時の手順を単一出典として置く。context-budget.md と同じく references 配下に規約の正本を置く既存の構成に合わせる。" \
+  -m "現行の値は転記せず、front-matter を権威として README を参照させる。CLAUDE.md には正本へのポインタのみを置く。" \
+  -m "Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
+```
+
+---
+
+### Task 5: `dev-workflow` プラグインの README 新設
 
 利用者に対し、各サブエージェントの実行パラメータとその意図、および環境変数による上書き手段を案内する。
 
@@ -476,49 +579,126 @@ git commit -m "docs(dev-workflow): プラグイン README を新設し実行パ�
 
 ---
 
-### Task 5: ADR の起票
+### Task 6: ADR の起票（2 本）
 
-spec の ADR 化判定で 3 点（波及・揮発性・自動強制不可）に達しており、モデル系統の更新は再発が確実である。決定と根拠を ADR に記録する。
+spec の ADR 化判定に従い、独立に反転しうる 2 つの core をそれぞれ ADR に記録する。1 本にまとめない。
 
 **Files:**
-- Create: `docs/adr/ADR-<日付>-<slug>.md`（採番と命名は `manage-adr` スキルの規約に従う）
+- Create: `docs/adr/ADR-<日付>-<slug-α>.md`
+- Create: `docs/adr/ADR-<日付>-2-<slug-β>.md`（同日 2 件目のため `-2` を付す）
+- Modify: `CLAUDE.md`
+- Modify: `plugins/dev-workflow/references/subagent-execution-parameters.md`
+- Modify: `docs/adr/index.md`（`manage-adr` が再生成する）
+
+採番方式・front-matter スキーマ・テンプレートは `manage-adr` スキルの規約に従い、本プランで独自に定義しない。slug は内容を表す英数字ハイフン区切りとする。
 
 **Interfaces:**
-- Consumes: Task 1 から Task 4 で確定した全変更
-- Produces: なし
+- Consumes: Task 1 から Task 5 で確定した全変更
+- Produces: 2 本の ADR の full slug。Step 5 で `CLAUDE.md` と正本に追記する
 
-- [ ] **Step 1: `manage-adr` スキルを起動する**
+- [ ] **Step 1: `manage-adr` スキルで ADR-α を起票する**
 
-`Skill` ツールで `adr:manage-adr` を起動し、新規起票の手順に従う。採番方式・front-matter スキーマ・テンプレートはスキル側の規約に従い、本プランで独自に定義しない。
+`Skill` ツールで `adr:manage-adr` を起動し、新規起票の手順に従って次の内容を渡す。
 
-- [ ] **Step 2: ADR の内容を渡す**
+**タイトル:** サブエージェントの実行パラメータを front-matter で固定し役割ごとの必要水準として選ぶ
 
-1 本の ADR にまとめ、次を含める。
+**Context:**
 
-**決定:** 配布用プラグインのサブエージェントについて、実行パラメータ（`model` / `effort`）を frontmatter で固定値として明示し、値を役割ごとの必要最小水準として選ぶ。処理量が出る役割のみ許容最大水準として扱う。
+- 本リポジトリの成果物は配布用プラグインであり、利用者の親セッションがどのモデル・どの effort で動いているかは不定である
+- `effort` を省略すると各サブエージェントの思考深度が利用者側の設定に従属する。検証を担うサブエージェントが低い effort で見落としを出した場合、それは利用者の設定ミスではなくプラグインの欠陥として現れる
+- front-matter が表現できるのは固定値のみであり、下限や上限を表す機構は存在しない。組織単位の effort 上限は Enterprise 向けの管理者設定として存在するが、これは上限のみである
+- モデル系統の更新は繰り返される。今回の検討自体、前回の選定根拠が残っていなかったため一から議論をやり直したものである
 
-**背景と根拠:**
+**Decision:**
 
-- 配布物であり利用者の親セッション設定が不定であるため、`effort` を無指定にすると各サブエージェントの思考深度が利用者側の設定に従属する。検証系のサブエージェントが低い effort で見落としを出した場合、それはプラグインの欠陥として現れる
-- frontmatter は固定値しか表現できず、下限を表す機構は存在しない。必要最小水準を保証すれば、それを上回る設定の利用者を引き下げる副作用が生じる
-- この副作用は許容する。環境変数は frontmatter より優先され、`max` はセッション限定で永続しないため、影響は「そのセッションで `/effort max` を選び、かつサブエージェントを起動した」場合に限られる
+サブエージェントの `model` と `effort` を親セッションから継承させず、front-matter で固定値として明示する。値は役割ごとの必要最小水準として選ぶ。定型性が高く処理量が出る役割のみ、許容最大水準として選ぶ。
 
-**却下・見送りとした選択肢:**
+**Consequences:**
 
-- `model: inherit` として親セッションに追随させる案 — 親の設定が不定であるため、検証系が Haiku（effort 非対応、文脈長 20 万トークン）で動く可能性を排除できない
-- 判断・検証系のみ `effort` を継承のままにする案 — 高価なモデルを浅い思考で動かす組み合わせが生じる
-- Fable 5 の採用 — 現行の役割はいずれも単発の生成・検証であり、長時間の自律実行を想定した価格に見合わない。`CLAUDE_CODE_SUBAGENT_MODEL` による選択を案内する
-- `maxTurns` の導入 — 適正値の根拠がなく、低すぎれば処理の途中終了として現れる。観測手段を得た段階で再検討する
-- スキル frontmatter への実行パラメータ配置 — 効果がターン単位に限られ、対話を伴うスキルでは最初のターンにしか効かない。統制点はサブエージェント側に集約する
-- `context: fork` の導入 — 実行パラメータではなく文脈設計の論点であり、本 ADR の対象外とする
+- 必要最小水準を保証する結果、それを上回る設定で動かしている利用者を引き下げる副作用が生じる。これは許容する。環境変数（`CLAUDE_CODE_SUBAGENT_MODEL` / `CLAUDE_CODE_EFFORT_LEVEL`）は front-matter より優先され、`max` はセッション限定で永続しないため、影響は「そのセッションで `/effort max` を選び、かつサブエージェントを起動した」場合に限られる
+- Agent tool の引数に `effort` が存在しないため、effort を制御したい役割には登録済みのサブエージェント定義が必要になる。スキルから `subagent_type` を指定せず Agent tool を呼ぶ形では effort を制御できない
+- 規約の正本は `plugins/dev-workflow/references/subagent-execution-parameters.md` に置く。現行の値は各 `agents/{name}.md` の front-matter が権威であり、一覧は `plugins/dev-workflow/README.md` が持つ
 
-- [ ] **Step 3: `lint-adr` で自己検証する**
+**却下した選択肢:**
 
-`manage-adr` スキルの手順に従い、起票後の lint を実行する。front-matter のスキーマ違反や相互参照の不整合が報告された場合は修正する。
+- `model: inherit` として親セッションに追随させる — 親の設定が不定であるため、検証を担うサブエージェントが Haiku（effort 非対応、文脈長 20 万トークン）で動く可能性を排除できない
+- `effort` を指定せずセッション継承のままにする — 配布先の環境によって挙動が変わるという課題が解決しない
+- 判断・検証系のみ `effort` を継承のままにする — 高価なモデルを浅い思考で動かす組み合わせが生じ、消費の効率が最も悪い状態になる
+- 全サブエージェントで `model` を揃え `effort` のみで差をつける — モデル間の単価差を取り逃す
+- Fable 5 を既定に採用する — 現行の役割はいずれも単発の生成・検証であり、長時間の自律実行を想定した価格に見合わない。必要とする利用者は `CLAUDE_CODE_SUBAGENT_MODEL` で選択できる
+- `maxTurns` を導入する — 適正値を決める根拠がなく、低すぎれば処理の途中終了として現れる。これは消費の削減ではなく品質の劣化である
 
-- [ ] **Step 4: 索引を更新してコミット**
+**保留した決定:** なし。節を置かない。
 
-`manage-adr` スキルの手順に従って索引を再生成し、ADR 本体とあわせてコミットする。コミットメッセージは通常文体で書き、`Co-Authored-By` を付す。
+- [ ] **Step 2: `manage-adr` スキルで ADR-β を起票する**
+
+同じ手順で 2 本目を起票する。同日 2 件目のため識別子は `-2` を付す。
+
+**タイトル:** 実行パラメータの統制点をサブエージェント定義に集約する
+
+**Context:**
+
+- SKILL.md の front-matter も `model` と `effort` を受け付けるため、統制点をスキル側に置く選択肢が存在する
+- スキル側の指定は効果がそのターンの残りに限られ、次のプロンプトでセッション値へ戻る
+
+**Decision:**
+
+実行パラメータは `agents/{name}.md` の front-matter にのみ置く。SKILL.md の front-matter には `model` と `effort` を置かない。
+
+**Consequences:**
+
+- 対話や承認の待ち合わせで複数のターンにまたがるスキル（`create-issue` / `domain-modeling` / `event-storming` / `plan-issue` / `manage-adr` / `intake` / `implementation`）でも、統制が一貫する
+- サブエージェント側を明示している以上、スキル側の指定はサブエージェントの実行には届かない（解決順で front-matter が優先される）。統制点を 2 箇所に分散させれば、どちらが効いているかの追跡が難しくなる
+- スキルのメイン側処理（バッチ分割・結果集約・整形）は親セッションの設定で動く。ここを下げる手段は持たない
+
+**保留した決定:**
+
+- `context: fork` の導入。スキル本文をサブエージェントの指示として実行しメイン側の文脈消費を抑える機構だが、実行パラメータではなく文脈設計の論点であり本 ADR では決めない（想定継承先: S3 規律再設定層、または独立した課題として起票）
+
+- [ ] **Step 3: 相互参照を設定する**
+
+両 ADR の `## 関連ADR` 節に、互いを `Related` として記載する。上書き関係ではないため `Supersedes` / `Superseded by` は使わない。
+
+```
+- Related: <相手の full slug>（実行パラメータの統制に関する独立した core。上書きでない）
+```
+
+- [ ] **Step 4: `lint-adr` で自己検証する**
+
+`manage-adr` スキルの手順に従って lint を実行する。front-matter のスキーマ違反、相互参照の不整合、`Related` が指す slug の実在性が検査される。報告があれば修正する。
+
+- [ ] **Step 5: `CLAUDE.md` と正本に ADR の full slug を追記する**
+
+`context-budget.md` が `CLAUDE.md` から `（ADR-20260627）` の形で参照されているのと同じ形に揃える。
+
+`CLAUDE.md` の「サブエージェントの実行パラメータ」節を次に更新する（`<slug-α>` / `<slug-β>` は Step 1・Step 2 で確定した full slug に置き換える）。
+
+```markdown
+## サブエージェントの実行パラメータ
+
+サブエージェントの `model` / `effort` をどこに置き、どのような意図で値を選ぶかは `plugins/dev-workflow/references/subagent-execution-parameters.md` に単一出典化している（ADR-<slug-α> / ADR-<slug-β>）。新規サブエージェントを追加する際は `model` と `effort` を front-matter に必ず明示する（本節へ転記しない）。
+```
+
+正本 `subagent-execution-parameters.md` の末尾に次の節を追加する。
+
+```markdown
+## 関連
+
+- ADR-<slug-α> — 実行パラメータを固定し役割ごとの必要水準として選ぶ決定
+- ADR-<slug-β> — 統制点をサブエージェント定義に集約する決定
+```
+
+- [ ] **Step 6: 索引を再生成してコミット**
+
+`manage-adr` スキルの手順に従って `docs/adr/index.md` を再生成する。索引は front-matter から機械生成される導出ビューであり、人手編集しない。
+
+```bash
+git add docs/adr/ CLAUDE.md plugins/dev-workflow/references/subagent-execution-parameters.md
+git commit -m "docs(adr): 実行パラメータの統制方針を ADR 2 本に記録" \
+  -m "独立に反転しうる 2 つの core を分けて起票する。1 本目は実行パラメータを front-matter で固定し役割ごとの必要水準として選ぶ決定、2 本目は統制点をサブエージェント定義に集約する決定。" \
+  -m "context: fork の導入は 2 本目の保留した決定に記録した。maxTurns は後で決着させる必要のある未決事項ではないため却下した選択肢として扱う。" \
+  -m "Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
+```
 
 ---
 
@@ -534,14 +714,23 @@ Run:
 for f in plugins/dev-workflow/agents/*.md; do printf '%s: ' "$(basename "$f" .md)"; grep -hE '^(model|effort):' "$f" | tr '\n' ' '; echo; done
 grep -rn 'inherit' plugins/dev-workflow/
 grep -rnE 'モデルは親と同じ|モデル: .sonnet.' plugins/dev-workflow/
-git log --oneline -6
+ls plugins/dev-workflow/README.md plugins/dev-workflow/references/subagent-execution-parameters.md
+grep -c 'subagent-execution-parameters' CLAUDE.md
+git log --oneline -7
 ```
 
-Expected: 1つ目が7エージェント分を出力する。2つ目と3つ目は何も出力しない（終了コード 1）。4つ目に Task 1 から Task 5 のコミットが並ぶ。
+Expected: 1つ目が7エージェント分を出力する。2つ目と3つ目は何も出力しない（終了コード 1）。4つ目が2ファイルとも存在すると出力する。5つ目が `1`。6つ目に Task 1 から Task 6 のコミットが並ぶ。
 
 - [ ] **README の表と定義ファイルを突き合わせる**
 
 上の1つ目の出力7行と、`plugins/dev-workflow/README.md` の実行パラメータ表を1行ずつ照合し、`model` と `effort` がすべて一致することを確認する。
+
+- [ ] **文書間の参照が閉じていることを確認する**
+
+- `CLAUDE.md` の「サブエージェントの実行パラメータ」節が正本と 2 本の ADR を指している
+- 正本の「関連」節が 2 本の ADR を指している
+- 正本が値を転記しておらず、README を参照させている
+- 2 本の ADR が互いを `Related` で参照している
 
 - [ ] **手動確認 — 配布先の環境に依存しないこと**
 
