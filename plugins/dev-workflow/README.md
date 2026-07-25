@@ -16,11 +16,14 @@ Issue の起票から計画・実装・レビューまでを支援するスキ�
 | `test-designer` | `opus` | `high` | 必要最小水準 |
 | `test-spec-validator` | `opus` | `high` | 必要最小水準 |
 | `refactorer` | `sonnet` | `high` | 必要最小水準 |
-| `issue-refiner` | `sonnet` | `medium` | 許容最大水準 |
+| `issue-refiner` | `opus` | `medium` | 必要最小水準 |
+| `issue-refiner-batch` | `sonnet` | `medium` | 許容最大水準 |
 
 「必要最小水準」は、その役割が成立するために必要な下限として選んだ値である。セッション側でこれより低い設定を使っていても、その値までは引き上げられる。
 
-「許容最大水準」は逆に、その役割に対して許容する上限として選んだ値である。`issue-refiner` は Issue 精査を担い、全件モードでは 15 件 × 最大 3 並列と処理量が出るため、セッション側で高い設定を使っていても抑制する。
+「許容最大水準」は逆に、その役割に対して許容する上限として選んだ値である。`issue-refiner-batch` は Issue の棚卸しを担い、全件モードでは 15 件 × 最大 3 並列と処理量が出るため、セッション側で高い設定を使っていても抑制する。
+
+`issue-refiner` と `issue-refiner-batch` は用途が異なる。前者は単一 Issue の着手判断が用途で、受入条件が実際に検証可能かまで踏み込む必要があるため `opus` を下限とする。後者は棚卸しが用途で、Ready / Not Ready の判定・主要ブロッカー・分割要否を押さえられればよいため `sonnet` を上限とする。
 
 ### 値を上書きする
 

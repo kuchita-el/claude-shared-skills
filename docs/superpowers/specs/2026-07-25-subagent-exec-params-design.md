@@ -93,21 +93,29 @@ frontmatter が表現できるのは固定値のみであり、必要最小水�
 | `test-spec-validator` | 必要最小水準 | `opus` | `high` | 同上 |
 | `test-designer` | 必要最小水準 | `opus` | `high` | 要件からテストケースへの変換であり、`plan` ほどの探索性はない |
 | `refactorer` | 必要最小水準 | `sonnet` | `high` | 振る舞いの保持を判断しながら進めるため機械的作業には該当しない。Sonnet 5 の coding 能力で必要水準に届く |
-| `issue-refiner`（新設） | **許容最大水準** | `sonnet` | `medium` | DoR 照合が主で定型性が高い。全件モードでは 15 件 × 最大 3 並列と量が出るため、上限を設ける効果が最も大きい |
+| `issue-refiner`（新設） | 必要最小水準 | `opus` | `medium` | 単一 Issue の着手判断が用途。受入条件が実際に検証可能かの分析が要る。実測で `sonnet` では `high` へ上げても届かず、`opus` は `medium` で届くことを確認した |
+| `issue-refiner-batch`（新設） | **許容最大水準** | `sonnet` | `medium` | 棚卸しが用途。Ready / Not Ready の判定・主要ブロッカー・分割要否は実測で `sonnet` でも変わらない。15 件 × 最大 3 並列と量が出るため上限を設ける |
 
-`issue-refiner` のみ意図が逆になる。ここは値を「許容する最大水準」として選び、利用者が高い設定で動かしていても抑制する。
+`issue-refiner-batch` のみ意図が逆になる。ここは値を「許容する最大水準」として選び、利用者が高い設定で動かしていても抑制する。
 
-### 決定3: `refine-issue` 用の専用サブエージェント定義を新設する
+当初は Issue 精査を 1 本のエージェントで扱い、単件・全件とも `sonnet` / `medium` に揃える設計だった。実測（後述「実測による割り当ての修正」）で単件モードの精査深度が不足することが判明したため、用途の異なる 2 本に分けた。
 
-`refine-issue` は現在 `subagent_type` を指定せず Agent tool を直接呼んでおり、既定の general-purpose で動く。Agent tool の引数に `effort` がないため、この形では決定2の `medium` を実現できない。
+### 決定3: `refine-issue` 用の専用サブエージェント定義を用途ごとに新設する
 
-`plugins/dev-workflow/agents/issue-refiner.md` を新設し、`model: sonnet` / `effort: medium` を持たせて `subagent_type: dev-workflow:issue-refiner` で起動する形に改める。
+`refine-issue` は現在 `subagent_type` を指定せず Agent tool を直接呼んでおり、既定の general-purpose で動く。Agent tool の引数に `effort` がないため、この形では決定2の値を実現できない。
 
-精査手順は既に `references/refine-prompt.md` にあり、プロンプトもメイン側で組み立てているため、定義本文は薄く保つ。役割と参照先の明示に留め、手順を二重に書かない。
+`plugins/dev-workflow/agents/` に 2 本を新設し、`subagent_type` 指定で起動する形に改める。
 
-副次的な利点として `tools` を読み取り専用に絞れる。現状の general-purpose は全ツールを持つが、精査は Issue の JSON と DoR 定義、出力形式テンプレートを読むだけで足りる。権限の最小化は CLAUDE.md の `allowed-tools` の原則にも沿う。具体的なツール一覧は `refine-prompt.md` の手順を確認したうえで実装時に確定する。
+| 定義 | 起動元 | 用途 |
+|---|---|---|
+| `issue-refiner` | 1 件モード・`--input` モード | 単一 Issue の着手判断。受入条件が実際に検証可能かまで踏み込む |
+| `issue-refiner-batch` | 全件モード（バッチ単位で並列） | 棚卸し。Ready / Not Ready の判定・主要ブロッカー・分割要否を押さえる |
 
-単件モードと全件モードは同一の精査作業であるため、件数の違いによらず同じ定義を用いる。これにより単件モードの「モデルは親と同じ」という記述も解消される。
+精査手順は既に `references/refine-prompt.md` にあり、プロンプトもメイン側で組み立てているため、定義本文は薄く保つ。役割と参照先の明示に留め、手順を二重に書かない。両者の差は `model` / `effort` と、姿勢の節で述べる精査深度の期待値に限る。
+
+副次的な利点として `tools` を読み取り専用に絞れる。general-purpose は全ツールを持つが、精査は Issue の JSON と DoR 定義、出力形式テンプレートを読むだけで足りる。実測では `Read` 5 回・`Glob` 2 回で完走し、`gh` の実行はメイン側に残った。権限の最小化は CLAUDE.md の `allowed-tools` の原則にも沿う。
+
+これにより単件モードの「モデルは親と同じ」という記述も解消される。
 
 ### 決定4: Fable 5 を採らない
 
@@ -142,8 +150,8 @@ SKILL.md の frontmatter には `model` と `effort` を置かない。理由は
 | # | 変更内容 | 対象 |
 |---|---|---|
 | 1 | `model` と `effort` を明示（決定2の表に従う） | `plugins/dev-workflow/agents/` 配下の既存 6 ファイル |
-| 2 | 新規作成。`model: sonnet` / `effort: medium`、読み取り専用のツール指定、役割と参照先の明示 | `plugins/dev-workflow/agents/issue-refiner.md` |
-| 3 | 単件・全件とも `subagent_type: dev-workflow:issue-refiner` での起動に改める。モデル指定と「モデルは親と同じ」の記述を削除 | `plugins/dev-workflow/skills/refine-issue/SKILL.md` |
+| 2 | 新規作成（2 本）。`issue-refiner` は `opus` / `medium`、`issue-refiner-batch` は `sonnet` / `medium`。いずれも読み取り専用のツール指定 | `plugins/dev-workflow/agents/issue-refiner.md`、`plugins/dev-workflow/agents/issue-refiner-batch.md` |
+| 3 | 単件は `issue-refiner`、全件は `issue-refiner-batch` を `subagent_type` 指定で起動する形に改める。モデル指定と「モデルは親と同じ」の記述を削除 | `plugins/dev-workflow/skills/refine-issue/SKILL.md` |
 | 4 | `inherit` 記述を実体に合わせて修正 | `plugins/dev-workflow/skills/plan-issue/SKILL.md` |
 | 5 | 新規作成。規約の正本 | `plugins/dev-workflow/references/subagent-execution-parameters.md` |
 | 6 | 正本へのポインタを追加 | `CLAUDE.md` |
@@ -202,6 +210,28 @@ S1 の主目的は実行パラメータの調整であり、README はその付�
 
 - 単件モードと全件モードの双方で `subagent_type: dev-workflow:issue-refiner` が解決され、起動に失敗しないこと
 - 全件モードで最大 3 並列の制約が維持されること
+
+## 実測による割り当ての修正
+
+上記の検証項目を実施した結果、当初の割り当てを一部修正した。実施の詳細は実装プランの「手動確認の実施結果」節にある。
+
+### 観測方法
+
+サブエージェントの実効値は自己申告ではなく、セッション記録から取得した。`~/.claude/projects/{project}/{session-id}/subagents/agent-*.jsonl` の各アシスタントエントリが持つ `.message.model` と `.effort`、および `agent-*.meta.json` の `.agentType` を用いる。親セッションの設定を変える 3 条件は、対話セッションの切り替えではなく `claude -p`（ヘッドレス）で再現した。
+
+### 配布先の環境に依存しないこと
+
+3 条件とも設計どおりに動いた。親を Sonnet 5 で起動してもサブエージェントは front-matter の `opus` で動き、親を `low` effort で起動しても引きずられなかった。`CLAUDE_CODE_EFFORT_LEVEL=low` の場合のみ環境変数が front-matter に優先し、サブエージェントも `low` で動いた。
+
+### Issue 精査の品質
+
+当初の `sonnet` / `medium` は、Ready / Not Ready の判定・要分割・主要ブロッカーについては変更前と一致したが、受入条件レベルの精査深度が不足した。具体的には、観測手段が規定されていない受入条件を「検証可能」と誤判定し、その帰結として改善提案が出力されなかった。
+
+切り分けのため実効値だけを変えて再実行したところ、`sonnet` は `high` へ上げても受入条件の検証可能性の分析に届かず、`opus` は `medium` で届いた。**差を生んでいるのは `effort` ではなく `model` である。** さらに `opus` / `medium` は変更前（`opus` / `xhigh`）が挙げなかった論点にも到達しており、effort を上げれば品質が上がるという関係ではないことも示された。
+
+この結果を受けて Issue 精査を用途の異なる 2 本に分けた。単一 Issue の着手判断を担う `issue-refiner` は `opus` を下限とし、棚卸しを担う `issue-refiner-batch` は `sonnet` を上限として維持する。1 件モードは処理量が出ないため `opus` にしても変更前（実測で `opus` / `xhigh`）より軽く、全件モードは 15 件 × 最大 3 並列と量が出るため上限の効果が大きい。
+
+「DoR 照合は定型性が高い」という当初の前提が誤りであり、精査の質は照合の定型性ではなく受入条件が検証可能かを見抜く分析力に依存していた。「同一タスクは同一設定に揃える」とした判断も、着手判断と棚卸しという用途の違いを見落としていた。
 
 ## 却下した案
 

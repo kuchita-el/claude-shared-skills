@@ -95,7 +95,7 @@ bash ${CLAUDE_SKILL_DIR}/scripts/prepare-issues.sh [--repo <owner/repo>] [--labe
 
 1. メイン側で手順2の stdout を行単位で解釈し、1行目を出力ディレクトリ、2行目以降を Issue 番号リストとして取り出す
 2. Issue 番号リストを **15件ずつのバッチに分割** する（モデルが直接計算。例: 31件 → 15/15/1 の3バッチ）
-3. バッチごとに Agent tool（`subagent_type: dev-workflow:issue-refiner`）を呼び出す（**最大3並列**。モデルと effort は定義の frontmatter に従い、呼び出し側では指定しない）
+3. バッチごとに Agent tool（`subagent_type: dev-workflow:issue-refiner-batch`）を呼び出す（**最大3並列**。モデルと effort は定義の frontmatter に従い、呼び出し側では指定しない）
    - **Bash の for / while で Agent 呼び出しを生成しないこと**（許可プロンプトのパース問題を引き起こすため）
    - **複数の Agent 呼び出しは Agent tool を直接複数回呼び出す形で記述すること**（1メッセージ内で複数 Agent ブロックを並列、バッチ数が3を超える場合は複数メッセージに分けて段階実行）
 
