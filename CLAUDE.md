@@ -82,7 +82,7 @@ Issueサイズ（Small/Medium/Large）に応じてチェック項目が段階的
 
 ## サブエージェントの実行パラメータ
 
-サブエージェントの `model` / `effort` をどこに置き、どのような意図で値を選ぶかは `plugins/dev-workflow/references/subagent-execution-parameters.md` に単一出典化している。新規サブエージェントを追加する際は `model` と `effort` を front-matter に必ず明示する（本節へ転記しない）。
+サブエージェントの `model` / `effort` をどこに置き、どのような意図で値を選ぶかは `plugins/dev-workflow/references/subagent-execution-parameters.md`（ADR-20260725 / ADR-20260725-2）に単一出典化している。新規サブエージェントを追加する際は `model` と `effort` を front-matter に必ず明示する（本節へ転記しない）。
 
 ## Rules
 

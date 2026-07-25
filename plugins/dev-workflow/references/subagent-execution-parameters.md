@@ -38,3 +38,8 @@ front-matter が表現できるのは固定値のみであり、下限や上限�
 ## 現行の値
 
 各 `agents/{name}.md` の front-matter が権威である。一覧は [README](../README.md) を参照。本ファイルには値を転記しない。
+
+## 関連
+
+- [ADR-20260725-subagent-execution-parameter-pinning](../../../docs/adr/ADR-20260725-subagent-execution-parameter-pinning.md)（実行パラメータを固定し、役割ごとの必要水準として値を選ぶ決定）
+- [ADR-20260725-2-execution-parameter-control-point](../../../docs/adr/ADR-20260725-2-execution-parameter-control-point.md)（統制点をサブエージェント定義に集約する決定）
