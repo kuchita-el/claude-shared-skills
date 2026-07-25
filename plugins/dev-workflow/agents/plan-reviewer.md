@@ -2,6 +2,7 @@
 name: plan-reviewer
 description: 実装プランを初見・独立の視点から懐疑的にレビューするエージェント。プランが参照するファイル・モジュールの実在を検証し、PASS/FAIL で判定する。
 model: opus
+effort: xhigh
 color: purple
 ---
 

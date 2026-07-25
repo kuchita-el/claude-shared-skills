@@ -2,6 +2,7 @@
 name: plan
 description: Issue情報・補足指示・ベースブランチを入力に実装プランを生成するエージェント。計画骨格（マイクロタスク分解）を preload した superpowers writing-plans のメソドロジーで生成し、検証方針・判断依頼・AC↔テストケース対応表を dev-workflow 固有の接続契約として上乗せする。
 model: opus
+effort: xhigh
 color: yellow
 skills:
   - writing-plans

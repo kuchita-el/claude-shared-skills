@@ -80,6 +80,10 @@ Issueサイズ（Small/Medium/Large）に応じてチェック項目が段階的
 
 上記は**作成時（静的）軸**のフットプリント規律である。スキル**実行中**にメイン context へ何を載せ／載せないか（参照ファイルのパス渡し・生ツール出力のファイル化・サブエージェント返却のサマリ化・滞留カテゴリ規則）は実行時フロー軸として `plugins/dev-workflow/references/context-budget.md`（ADR-20260627）に単一出典化している。実行時の context 設計はそちらを参照する（本節へ転記しない）。
 
+## サブエージェントの実行パラメータ
+
+サブエージェントの `model` / `effort` をどこに置き、どのような意図で値を選ぶかは `plugins/dev-workflow/references/subagent-execution-parameters.md`（ADR-20260725 / ADR-20260725-2）に単一出典化している。新規サブエージェントを追加する際は `model` と `effort` を front-matter に必ず明示する（本節へ転記しない）。
+
 ## Rules
 
 - 議論・評価・設計を求められた場合、ファイルの編集を始めない。明示的な承認を得てから編集すること
