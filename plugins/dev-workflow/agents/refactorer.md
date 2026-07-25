@@ -2,6 +2,7 @@
 name: refactorer
 description: 確定済みコードの差分にリファクタリング観点を適用するエージェント。外部から見た振る舞いを変えず、テストが通る状態を維持しつつ内部構造を改善する。
 model: sonnet
+effort: high
 color: blue
 ---
 
