@@ -81,3 +81,10 @@ origin=tool-result のうち、ハーネスが既に強制済みの摩擦は cap
 - **バケット存在**: Read ツールで既存内容を全文読み取り、末尾に新規エントリを連結して Write ツールで全書換する。既存エントリは変更せず保持する（末尾追記のみで既存本文を書き換えない＝破壊的一括変換をしない）。
 
 複数シグナルを検知した場合、各エントリを別の `## <timestamp>` 見出しで記録する（1観察 = 1エントリ）。同一実行時刻となる複数エントリには Step 1 の run 内序数サフィックス（`-NN`）を付し、見出しキーを一意化する（provenance キー衝突の防止）。**同一 run の全エントリは Step 1 で一度取得した同一 timestamp（`-NN` で一意化）を共有するため、同一 UTC 日・同一バケットに同居する**（run 内でバケット跨ぎは起こらない。バケット切り替えは UTC 日付の境界でのみ起こる）。
+
+## 関連
+
+- [`capture-examples.md`](capture-examples.md) — 本ファイルの判定基準に対応する記述例（observation 本文・エントリ）
+- `${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` — 本文中の「spec」の実体。シグナル種別・痕跡種別の値域、生記録性・パース規約、project-id とパスの解決手順、バケット名生成規約の単一出典
+- `${CLAUDE_PLUGIN_ROOT}/references/session-log-format.md` — 痕跡ソース session jsonl の形式。§4.3 が `expected` / `actual` の抽出元
+- `${CLAUDE_PLUGIN_ROOT}/DESIGN.md` — 設計母艦（§2 原理3・§3 学習ループ／保存設計／客観痕跡の取得／二段ゲート）

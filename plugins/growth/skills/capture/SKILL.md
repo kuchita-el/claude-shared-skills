@@ -122,7 +122,7 @@ mkdir -p ~/.claude/projects/<project-id>/growth/
 store: ~/.claude/projects/-home-user-myproject/growth/captures-2026-06-26.md
 ```
 
-## 参照
+## 関連
 
 - `${CLAUDE_SKILL_DIR}/references/capture-procedure.md` — 判定基準の詳細（シグナル検知の2群・ハーネス強制摩擦の既定除外・痕跡種別の判定・expected / actual の抽出・エントリ形式と書き込み方式）の単一出典
 - `${CLAUDE_SKILL_DIR}/references/capture-examples.md` — 記述例（observation 本文・tool-result 由来のエントリ・判断知のエントリ）

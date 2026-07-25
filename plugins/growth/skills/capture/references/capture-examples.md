@@ -36,3 +36,8 @@ rm コマンドのツール呼び出しをユーザーが許可プロンプト�
 
 ユーザーが「プランを追跡対象に変えることはない。追跡可否は利用者に委ねる」と設計境界を確定した。
 ```
+
+## 関連
+
+- [`capture-procedure.md`](capture-procedure.md) — 各例が従う判定基準の本体（シグナル検知・痕跡種別の判定・expected / actual の抽出・エントリ形式）
+- `${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` — 例が整合すべきエントリのスキーマ（シグナル種別・痕跡種別の値域・パース規約）
