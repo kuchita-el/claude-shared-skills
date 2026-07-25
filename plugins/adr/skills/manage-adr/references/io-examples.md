@@ -5,7 +5,7 @@
 ## 例1: 起票
 
 - **入力**: 新規決定「X を採用する」、起票日 2031-04-15、slug `adopt-x`、同日に既存 ADR なし
-- **出力ファイル**: `ADR-20310415-adopt-x.md`（同日1件目のため `-N` なし）
+- **出力ファイル**: `ADR-20310415-1-adopt-x.md`（同日1件目のため連番は `1`）
 - **出力（front-matter）**:
   ```yaml
   ---
@@ -14,13 +14,13 @@
   superseded-by:
   ---
   ```
-- **出力（本文骨格）**: `# ADR-20310415: X を採用する` ＋ `## Context`／`## Decision`／`## Consequences`／`## 関連ADR` の見出しと空プレースホルダ（決定内容は人間が埋める）。状態は front-matter のみで表現し、本文に状態記述の見出し節を置かない。本 ADR が意図的に決めなかった facet（パーク）があれば `## Consequences` の後に `## 保留した決定` を置く（省略可）。
+- **出力（本文骨格）**: `# ADR-20310415-1: X を採用する` ＋ `## Context`／`## Decision`／`## Consequences`／`## 関連ADR` の見出しと空プレースホルダ（決定内容は人間が埋める）。状態は front-matter のみで表現し、本文に状態記述の見出し節を置かない。本 ADR が意図的に決めなかった facet（パーク）があれば `## Consequences` の後に `## 保留した決定` を置く（省略可）。
 
-**採番衝突例**: 同日に `ADR-20310415`・`ADR-20310415-2` が既存なら、次の起票は `ADR-20310415-3-<slug>.md`（当日最大番号 +1）。
+**採番衝突例**: 同日に `ADR-20310415-1`・`ADR-20310415-2` が既存なら、次の起票は `ADR-20310415-3-<slug>.md`（当日最大番号 +1）。
 
 ## 例2: 承認
 
-- **入力**: `ADR-20310415-adopt-x.md`（`status: 提案中`）を承認
+- **入力**: `ADR-20310415-1-adopt-x.md`（`status: 提案中`）を承認
 - **出力（front-matter, before→after）**:
   ```yaml
   # before
@@ -36,8 +36,8 @@
 
 ## 例3: 上書き（双方向相互参照）
 
-- **入力**: 旧 `ADR-20310409-foo.md`（`status: 承認済み`／`validity: 有効`）を、後継 `ADR-20310415-2-bar`（起票・承認済み）で置換
-- **出力（旧側 `ADR-20310409-foo.md` の front-matter, before→after）**:
+- **入力**: 旧 `ADR-20310409-1-foo.md`（`status: 承認済み`／`validity: 有効`）を、後継 `ADR-20310415-2-bar`（起票・承認済み）で置換
+- **出力（旧側 `ADR-20310409-1-foo.md` の front-matter, before→after）**:
   ```yaml
   # before
   status: 承認済み
@@ -53,9 +53,9 @@
   ```markdown
   ## 関連ADR
 
-  - Supersedes: ADR-20310409-foo
+  - Supersedes: ADR-20310409-1-foo
   ```
-- **出力（旧側 `ADR-20310409-foo.md` の本文 `## 関連ADR`）**: 次の1行を追加
+- **出力（旧側 `ADR-20310409-1-foo.md` の本文 `## 関連ADR`）**: 次の1行を追加
   ```markdown
   - Superseded by: ADR-20310415-2-bar
   ```
