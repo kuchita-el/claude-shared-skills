@@ -56,7 +56,7 @@ Issue番号は存在しない。プランのタイトル・AC・スコープは�
 
 **サブエージェントの起動:**
 
-Agent tool（`subagent_type: dev-workflow:plan`）でプラン作成を実行する。モデルは定義の `inherit` に従う。custom plan agent は `skills: [writing-plans]` により計画骨格生成を superpowers `writing-plans` へ委譲する（S1=③ preload）。superpowers 未導入時は preload が skip され、エージェント定義のフォールバック（最小インライン計画）で動作する。
+Agent tool（`subagent_type: dev-workflow:plan`）でプラン作成を実行する。モデルと effort は定義の frontmatter に従い、呼び出し側では指定しない。custom plan agent は `skills: [writing-plans]` により計画骨格生成を superpowers `writing-plans` へ委譲する（S1=③ preload）。superpowers 未導入時は preload が skip され、エージェント定義のフォールバック（最小インライン計画）で動作する。
 
 Agent toolが使えない場合や起動に失敗した場合は、`plugins/dev-workflow/agents/plan.md` の定義内容をプロンプト本文へ埋め込んでインラインで直接実行する（サブエージェント側からの定義ファイル再Readは行わない）。インライン実行時は preload が効かないため、計画骨格は同定義のフォールバック手順に従って生成する。
 

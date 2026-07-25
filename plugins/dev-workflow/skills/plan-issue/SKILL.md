@@ -114,7 +114,7 @@ gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'
 
 **7b. レビュアーエージェントの起動:**
 
-Agent tool（`subagent_type: dev-workflow:plan-reviewer`）で起動する。モデルは定義の `inherit` に従う。Agent toolが使えない場合や起動に失敗した場合は、`plugins/dev-workflow/agents/plan-reviewer.md` の定義内容をプロンプト本文へ埋め込んでインラインで直接実行する（サブエージェント側からの定義ファイル再Readは行わない）。
+Agent tool（`subagent_type: dev-workflow:plan-reviewer`）で起動する。モデルと effort は定義の frontmatter に従い、呼び出し側では指定しない。Agent toolが使えない場合や起動に失敗した場合は、`plugins/dev-workflow/agents/plan-reviewer.md` の定義内容をプロンプト本文へ埋め込んでインラインで直接実行する（サブエージェント側からの定義ファイル再Readは行わない）。
 
 **7c. レビュー結果の処理:**
 
