@@ -14,11 +14,11 @@ superseded-by:
 - 遷移（承認・上書き・廃止・却下）の実施手順は manage-adr スキルを参照。
 -->
 
-# ADR-YYYYMMDD[-N]: <Title>
+# ADR-YYYYMMDD-NN: <Title>
 
 <!--
-ファイル名規則: ADR-YYYYMMDD[-N]-<slug>.md
-- 同日1件目は `-N` なし、2件目以降は `-2` から付与
+ファイル名規則: ADR-YYYYMMDD-NN-<slug>.md
+- `-NN` は同日内の連番。`01` 始まりの2桁ゼロ埋めで、同日1件目にも `-01` を付与
 - `<slug>` は内容を表す短い英数字ハイフン区切り（例: cache-layer-replacement）
 詳細は manage-adr スキルを参照
 -->
@@ -48,9 +48,9 @@ superseded-by:
 
 <!--
 表記規約:
-- Supersedes: ADR-YYYYMMDD[-N]-<slug>   （本ADRが旧ADRを全体上書きする場合。旧ADR側 front-matter の superseded-by が本ADRを指す）
-- Superseded by: ADR-YYYYMMDD[-N]-<slug> （本ADRが後継ADRに全体上書きされた場合。本ADR自身の front-matter superseded-by にも後継の full slug を記載する）
-- Related: ADR-YYYYMMDD[-N]-<slug>       （直接の上書き関係はない関連ADR）
+- Supersedes: ADR-YYYYMMDD-NN-<slug>    （本ADRが旧ADRを全体上書きする場合。旧ADR側 front-matter の superseded-by が本ADRを指す）
+- Superseded by: ADR-YYYYMMDD-NN-<slug>  （本ADRが後継ADRに全体上書きされた場合。本ADR自身の front-matter superseded-by にも後継の full slug を記載する）
+- Related: ADR-YYYYMMDD-NN-<slug>        （直接の上書き関係はない関連ADR）
 - Amends / Amended by: 旧運用で使われ、現行スキーマでは廃止済みの表記。既存ファイルに残る記載は凍結保持せず、生存語彙（Supersedes: / Superseded by: / Related: および ## 変更履歴）へ移行したうえで corpus から除去する。新規起票では使わない。
 該当なしの場合は「該当なし」と記述。関連Issueも併記可（書式: `関連Issue: #<番号>`、複数件はカンマ区切り）
 -->
