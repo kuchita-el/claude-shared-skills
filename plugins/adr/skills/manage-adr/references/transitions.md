@@ -30,7 +30,7 @@ superseded-by: <後継 ADR の full slug | （空）>
 
 - **値の説明・トレーリングコメントを書かない**。lint パーサ（`${CLAUDE_SKILL_DIR}/../../scripts/lint-adr.sh`）は `key: value` の行全体を値として取り込むため、`# 説明` を付けると値が壊れる。
 - 「キー省略」と「キーあり値空」は同じ「空」として扱われる。空にする軸は値を空にする（キー行自体は残してよい）。
-- H1 見出しは `# ADR-YYYYMMDD-N: <タイトル>` 形式にする（`gen-adr-index.sh` が `: ` 以降をタイトルとして抽出するため）。
+- H1 見出しは `# ADR-YYYYMMDD-NN: <タイトル>` 形式にする（`gen-adr-index.sh` が `: ` 以降をタイトルとして抽出するため）。
 
 各遷移後の `status`/`validity`/`superseded-by` の最終状態は、必ず SKILL.md が指す状態モデルの規約の必須ルール表に一致させること。
 
@@ -49,7 +49,7 @@ superseded-by: <後継 ADR の full slug | （空）>
 
 - front-matter: `status: 提案中`、`validity:`（空）、`superseded-by:`（空）
 - ファイル名を採番規則で決定する。
-- **テンプレートの HTML 注釈ブロック（`<!-- ... -->`）を生成物へ残さない**。とりわけ `## 関連ADR` 節のテンプレート注釈には表記例として `- Supersedes: ADR-YYYYMMDD-N-<slug>` の行が含まれ、lint-adr の本文走査は HTML コメントを認識せずこの例示行を実データの逆参照として拾い、存在しない後継先を指す相互参照違反（起票直後の自己検証が exit 1）を招く。`## 関連ADR` 節は注釈を除去し、先行・後継・関連が無ければ `該当なし` のプレーンな1行のみを置く。
+- **テンプレートの HTML 注釈ブロック（`<!-- ... -->`）を生成物へ残さない**。とりわけ `## 関連ADR` 節のテンプレート注釈には表記例として `- Supersedes: ADR-YYYYMMDD-NN-<slug>` の行が含まれ、lint-adr の本文走査は HTML コメントを認識せずこの例示行を実データの逆参照として拾い、存在しない後継先を指す相互参照違反（起票直後の自己検証が exit 1）を招く。`## 関連ADR` 節は注釈を除去し、先行・後継・関連が無ければ `該当なし` のプレーンな1行のみを置く。
 
 ## 承認（承認済み・有効）
 
@@ -143,6 +143,6 @@ SKILL.md の「各操作後の自己検証」は `docs/adr` を直接 lint す�
 
 ## 入出力例（上書き遷移）
 
-- **入力**: 旧 `ADR-20310409-1-foo.md`（`status: 承認済み`／`validity: 有効`）、後継 `ADR-20310415-2-bar`（起票・承認済みで full slug が確定している）
-- **出力（旧側 front-matter）**: `status: 承認済み`（不変）／`validity: 上書き済み`／`superseded-by: ADR-20310415-2-bar`
-- **出力（後継側 `## 関連ADR`）**: `- Supersedes: ADR-20310409-1-foo` を1行追加
+- **入力**: 旧 `ADR-20310409-01-foo.md`（`status: 承認済み`／`validity: 有効`）、後継 `ADR-20310415-02-bar`（起票・承認済みで full slug が確定している）
+- **出力（旧側 front-matter）**: `status: 承認済み`（不変）／`validity: 上書き済み`／`superseded-by: ADR-20310415-02-bar`
+- **出力（後継側 `## 関連ADR`）**: `- Supersedes: ADR-20310409-01-foo` を1行追加
