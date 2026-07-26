@@ -5,7 +5,7 @@
 > **このファイルの位置づけ**
 >
 > - **定義の単一情報源（SoT）は [`docs/principles.md`](../../../docs/principles.md) の「変更パターン別の運用」セクション**である。パターンA/B/Cの分類軸（＝変更の影響度）の正はそちらにある。本ファイルはその定義を、スキルが実行時に機械的に参照・分岐できる形へ再掲したものである。定義に変更を加える場合はまず `docs/principles.md` を更新し、本ファイルを追従させる。
-> - **本ファイルの対象は「パターン軸＝変更影響度」に限定**する。**チーム規模軸（チーム規模・構成に依存する合意形成プロセス）は対象外**である（[ADR-20260513](../../../docs/adr/ADR-20260513-workflow-design-scope-team.md)）。チーム規模別の運用は別ファイル（`team-workflow-patterns.md`）で扱う。
+> - **本ファイルの対象は「パターン軸＝変更影響度」に限定**する。**チーム規模軸（チーム規模・構成に依存する合意形成プロセス）は対象外**である（[ADR-202605131437-06](../../../docs/adr/ADR-202605131437-06-workflow-design-scope-team.md)）。チーム規模別の運用は別ファイル（`team-workflow-patterns.md`）で扱う。
 
 ## パターンの定義（再掲）
 
@@ -80,5 +80,5 @@ Issue本文の構造的特徴を、以下の2つの質問で上から順に評�
 ## 関連
 
 - [`docs/principles.md`](../../../docs/principles.md)「変更パターン別の運用」（本ファイルの定義 SoT）
-- [ADR-20260513](../../../docs/adr/ADR-20260513-workflow-design-scope-team.md)（チーム規模軸を本ファイルの対象外とする根拠）
-- [ADR-20260604](../../../docs/adr/ADR-20260604-dor-shared-resource-consolidation.md)（`${CLAUDE_PLUGIN_ROOT}/references/` での共有参照ファイル配置）
+- [ADR-202605131437-06](../../../docs/adr/ADR-202605131437-06-workflow-design-scope-team.md)（チーム規模軸を本ファイルの対象外とする根拠）
+- [ADR-202606040737-01](../../../docs/adr/ADR-202606040737-01-dor-shared-resource-consolidation.md)（`${CLAUDE_PLUGIN_ROOT}/references/` での共有参照ファイル配置）

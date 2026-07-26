@@ -671,7 +671,7 @@ spec の ADR 化判定に従い、独立に反転しうる 2 つの core をそ�
 
 - [ ] **Step 5: `CLAUDE.md` と正本に ADR の full slug を追記する**
 
-`context-budget.md` が `CLAUDE.md` から `（ADR-20260627）` の形で参照されているのと同じ形に揃える。
+`context-budget.md` が `CLAUDE.md` から `（ADR-202606270040-01）` の形で参照されているのと同じ形に揃える。
 
 `CLAUDE.md` の「サブエージェントの実行パラメータ」節を次に更新する（`<slug-α>` / `<slug-β>` は Step 1・Step 2 で確定した full slug に置き換える）。
 
@@ -835,7 +835,7 @@ AC2 の「全6エージェント」が実体とずれる件は変更後の2回�
 - `README.md` — 表に 2 本を反映し、用途の違いによる値の差を説明
 - `references/subagent-execution-parameters.md` — 用途による分割の指針、`effort` が `model` の差を埋めるとは限らないこと、実効値の確認方法を追記
 - `docs/superpowers/specs/2026-07-25-subagent-exec-params-design.md` — 決定2・決定3 を修正し「実測による割り当ての修正」節を追加
-- `docs/adr/ADR-20260725-subagent-execution-parameter-pinning.md` — Consequences に実効値の検証手段と、`model` が支配的な要因になる場合がある知見を追記
+- `docs/adr/ADR-202607251922-01-subagent-execution-parameter-pinning.md` — Consequences に実効値の検証手段と、`model` が支配的な要因になる場合がある知見を追記
 
 ### 対応後の再検証（Issue #509、1件モード）
 

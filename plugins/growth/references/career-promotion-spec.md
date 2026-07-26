@@ -4,7 +4,7 @@ growth プラグインの学習ループ（`[Capture] → [Distill] → [Route] 
 
 ## 位置づけ
 
-- 本仕様は `DESIGN.md` 学習ループの **Distribute 段**（検証済みの学びを配布物・成果物として届ける段）の、ADR 差分（当該 repo の ADR 配置）および改善還元 Issue（宛先 repo）への materialization 手続きを定義する。career の裁定（昇格先キャリアの確定）は集約点＝取り込み Issue で人間が行う（ADR-20260628-2 決定3）。本規約はその裁定を**再実装せず、確定済みの裁定結果を信頼**して、ADR 差分・宛先 repo 起票へ着地させる手続きに徹する。
+- 本仕様は `DESIGN.md` 学習ループの **Distribute 段**（検証済みの学びを配布物・成果物として届ける段）の、ADR 差分（当該 repo の ADR 配置）および改善還元 Issue（宛先 repo）への materialization 手続きを定義する。career の裁定（昇格先キャリアの確定）は集約点＝取り込み Issue で人間が行う（ADR-202606282107-01 決定3）。本規約はその裁定を**再実装せず、確定済みの裁定結果を信頼**して、ADR 差分・宛先 repo 起票へ着地させる手続きに徹する。
 - **新規スキルを設けない**（#349 D2）。本仕様は参照ドキュメントであり、昇格の実行主体は既存ワークフローである。
   - **ADR 差分** → 既存の implementation → PR ワークフロー（当該 repo の ADR 配置への ADR 起票・改訂を PR で提出する）。
   - **改善還元 Issue** → `gh issue create` による宛先 repo への疎結合な起票（起票後は宛先 repo 側の既存ワークフロー＝ refine / DoR / plan / implementation / PR レビューが消費する）。
@@ -13,10 +13,10 @@ growth プラグインの学習ループ（`[Capture] → [Distill] → [Route] 
 
 ## 入力境界
 
-本規約は、**取り込み Issue（[`intake-issue-spec.md`](intake-issue-spec.md)）の裁定結果テーブルで career 列＝`ADR 差分` または `改善還元 Issue` と裁定された仮説**のみを入力に取る。career の確定（裁定）は集約点で人間が行う（ADR-20260628-2 決定3）。本規約はその裁定を再実装せず、確定済みの裁定結果を信頼する。
+本規約は、**取り込み Issue（[`intake-issue-spec.md`](intake-issue-spec.md)）の裁定結果テーブルで career 列＝`ADR 差分` または `改善還元 Issue` と裁定された仮説**のみを入力に取る。career の確定（裁定）は集約点で人間が行う（ADR-202606282107-01 決定3）。本規約はその裁定を再実装せず、確定済みの裁定結果を信頼する。
 
-- **入力識別の拘束キーは裁定結果テーブルの `career` 列**（[`intake-issue-spec.md`](intake-issue-spec.md)「裁定結果の記録形式」）。仮説本文の `## キャリア` は distill 由来の**非拘束な仮説**であり、入力識別の拘束キーではない（ADR-20260628-2 決定3。裁定が binding、仮説本文は参照されるが拘束しない）。`promotion-issue-spec.md`（#382）再定義前に起票された仮説本文には旧表記「dev-workflow への Issue / PR」が残りうるが、裁定結果テーブルの新分類名（`改善還元 Issue`）に従う（仮説側の旧表記に引きずられない）。
-- `growth:promote` ラベルは仮説が inbox へ流入した経緯を示す識別子として存続するが（ADR-20260628-2 決定5）、入力の絞り込みには用いない（絞り込みは裁定結果テーブルの career 列が担う）。
+- **入力識別の拘束キーは裁定結果テーブルの `career` 列**（[`intake-issue-spec.md`](intake-issue-spec.md)「裁定結果の記録形式」）。仮説本文の `## キャリア` は distill 由来の**非拘束な仮説**であり、入力識別の拘束キーではない（ADR-202606282107-01 決定3。裁定が binding、仮説本文は参照されるが拘束しない）。`promotion-issue-spec.md`（#382）再定義前に起票された仮説本文には旧表記「dev-workflow への Issue / PR」が残りうるが、裁定結果テーブルの新分類名（`改善還元 Issue`）に従う（仮説側の旧表記に引きずられない）。
+- `growth:promote` ラベルは仮説が inbox へ流入した経緯を示す識別子として存続するが（ADR-202606282107-01 決定5）、入力の絞り込みには用いない（絞り込みは裁定結果テーブルの career 列が担う）。
 - 昇格手順の一次ソース（仮説の `## 振る舞い差分` 等）は、`#仮説番号` 参照経由で**取り込み時にクローズ済みの仮説 Issue 本文**を読む。取り込み Issue は仮説を `- #仮説番号` の参照リストで保持し本文を転記しないため（[`intake-issue-spec.md`](intake-issue-spec.md)「本文構造」）、仮説本文が一次ソースとなる。
 
 裁定結果テーブルで career 列＝`learnings.md`（→ #383）・`強キャリア`（→「強キャリアの振り分け」節）の仮説は、それぞれのハンドラへ委ね、本規約では昇格しない。career 列が単一値（#349 D1 の4分類のいずれか1つ）であることが、1仮説が複数ハンドラへ二重に流れないことを保証する（「重複出現の防止」節）。
@@ -52,7 +52,7 @@ ADR 化要否の判定例は「入出力例」節に示す（ADR 化する例・
 
 取り込み Issue で career＝`改善還元 Issue` と裁定された仮説を、宛先 repo への疎結合な Issue として転送する。
 
-- **宛先 repo の決定責務は本ハンドラ（Issue 作成側）が持つ**。裁定結果テーブルは宛先 repo 列を持たない（[`intake-issue-spec.md`](intake-issue-spec.md)「裁定結果の記録形式」。取り込み側は既に存在する仮説を取り込むか否かを判断するのみで、宛先 repo を記録しない）。宛先 repo は **dev-workflow 固定ではない**（ADR-20260628-2 決定6＝決定表行2の一般化「任意のプラグイン／コミュニティの改善還元 → 当該 repo へ Issue」）。
+- **宛先 repo の決定責務は本ハンドラ（Issue 作成側）が持つ**。裁定結果テーブルは宛先 repo 列を持たない（[`intake-issue-spec.md`](intake-issue-spec.md)「裁定結果の記録形式」。取り込み側は既に存在する仮説を取り込むか否かを判断するのみで、宛先 repo を記録しない）。宛先 repo は **dev-workflow 固定ではない**（ADR-202606282107-01 決定6＝決定表行2の一般化「任意のプラグイン／コミュニティの改善還元 → 当該 repo へ Issue」）。
 - **当面は単一 repo 配線**であり、宛先 repo の既定は取り込み Issue が置かれた repo（同 repo）とする。将来の multi-repo 配線では本ハンドラが宛先 repo を選択し `gh issue create --repo <宛先 repo>` で他 repo を指定できる（集約先は複数ありうる＝[`intake-issue-spec.md`](intake-issue-spec.md)「不変条件」）。
 - **疎結合（gh 経由・スキルを直接呼ばない）**: 転送は `gh issue create`（複数行本文は Write で一時ファイルへ書き出し `--body-file` で渡す）で行い、宛先プラグインのスキル（`create-issue` 等）を直接呼び出さない（#349 D2）。起票された Issue は宛先 repo の既存ワークフロー（refine / DoR / plan / implementation / PR レビュー）に自然に乗る。
 - **承認ゲートを追加しない**: 起票前に追加の人間承認ゲートを置かない。承認は宛先 repo の PR マージの人間ゲート（#349 D2）が担う（「裁定外仮説の非反映と確認」節）。
@@ -162,7 +162,7 @@ gh issue create \
 - [`intake-issue-spec.md`](intake-issue-spec.md) — 入力源（#412）。裁定結果の記録形式（career / 空間 / 備考テーブル）の出典であり、本規約の入力境界が参照する裁定結果テーブルを提供する。宛先 repo 列を持たない単一 repo 配線・集約トポロジの不変条件もここで確定
 - [`learning-promotion-spec.md`](learning-promotion-spec.md) — 姉妹規約（#383）。learnings.md 行きの変換4手順。本規約と合わせ #349 D1 の全キャリアを Phase 2 でカバーする
 - 当該 repo の ADR 運用ルール（文脈探索で解決） — ADR 差分の出口ゲート。粒度判定基準・上書き（Superseded）／廃止（Deprecated）／却下／編集機構・命名規約の ADR 化基準。見つからない場合は「ADR 運用ルールが見つからない場合」節のフォールバックに従う
-- [`promotion-issue-spec.md`](promotion-issue-spec.md) — 仮説 Issue（`growth:promote`）のテンプレート（#382。昇格先キャリアの判定＝Route は distill へ移設＝ADR-20260628-2）
+- [`promotion-issue-spec.md`](promotion-issue-spec.md) — 仮説 Issue（`growth:promote`）のテンプレート（#382。昇格先キャリアの判定＝Route は distill へ移設＝ADR-202606282107-01）
 - [`DESIGN.md`](../DESIGN.md) — 設計母艦（学習ループ・Distribute 段・学びの2系統・二段ゲート）
-- ADR-20260628-2 — career 決定モデルの再設計（distill 仮説 ＋ 集約点裁定・決定表行2の一般化）。本規約の決定根拠
+- ADR-202606282107-01 — career 決定モデルの再設計（distill 仮説 ＋ 集約点裁定・決定表行2の一般化）。本規約の決定根拠
 - #349 — 親エピック。D1（career 4分類）・D2（新規スキルなし・既存ワークフロー再利用・疎結合）

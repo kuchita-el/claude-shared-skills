@@ -70,5 +70,5 @@ front-matter の値が効くのは、そのサブエージェントが `subagent
 
 ## 関連
 
-- [ADR-20260725-subagent-execution-parameter-pinning](../../../docs/adr/ADR-20260725-subagent-execution-parameter-pinning.md)（実行パラメータを固定し、役割ごとの必要水準として値を選ぶ決定）
-- [ADR-20260725-2-execution-parameter-control-point](../../../docs/adr/ADR-20260725-2-execution-parameter-control-point.md)（統制点をサブエージェント定義に集約する決定）
+- [ADR-202607251922-01-subagent-execution-parameter-pinning](../../../docs/adr/ADR-202607251922-01-subagent-execution-parameter-pinning.md)（実行パラメータを固定し、役割ごとの必要水準として値を選ぶ決定）
+- [ADR-202607251922-02-execution-parameter-control-point](../../../docs/adr/ADR-202607251922-02-execution-parameter-control-point.md)（統制点をサブエージェント定義に集約する決定）

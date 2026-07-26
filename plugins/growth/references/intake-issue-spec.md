@@ -4,13 +4,13 @@ growth プラグインの学習ループにおいて、複数の `growth:promote
 
 ## 位置づけ
 
-本規約は ADR-20260628-2（career 決定モデルの再設計）の実装である。career の裁定を「promote 起票時・仮説単位の確定」から「集約点での人間裁定」へ移したことに伴い、その集約点となる取り込み Issue の構造と、仮説を取り込み時に閉じる手続きを定める。
+本規約は ADR-202606282107-01（career 決定モデルの再設計）の実装である。career の裁定を「promote 起票時・仮説単位の確定」から「集約点での人間裁定」へ移したことに伴い、その集約点となる取り込み Issue の構造と、仮説を取り込み時に閉じる手続きを定める。
 
-- **学習ループ上の位置**: `[Capture] → [Distill] → [Route] → [Promote] → [Distribute]` のうち、Promote（`promote` が起票した `growth:promote` 仮説 Issue）と Distribute（成果物としての実体化）の**あいだに立つトリアージ点**。promote はルーティング不可知に仮説を起票するだけで career を確定しない（ADR-20260628-2 決定2）。取り込み Issue が、複数仮説を束ねて career を締める裁定の場になる。
-- **promote 仮説 Issue は配送伝票**: `growth:promote` 仮説 Issue は耐久的な作業単位ではなく、検証通過仮説を inbox へ届ける配送伝票である。取り込み Issue へ吸収された時点でトリアージ完了＝inbox 処理完了として閉じる（ADR-20260628-2 決定4。「取り込み時クローズ」）。
+- **学習ループ上の位置**: `[Capture] → [Distill] → [Route] → [Promote] → [Distribute]` のうち、Promote（`promote` が起票した `growth:promote` 仮説 Issue）と Distribute（成果物としての実体化）の**あいだに立つトリアージ点**。promote はルーティング不可知に仮説を起票するだけで career を確定しない（ADR-202606282107-01 決定2）。取り込み Issue が、複数仮説を束ねて career を締める裁定の場になる。
+- **promote 仮説 Issue は配送伝票**: `growth:promote` 仮説 Issue は耐久的な作業単位ではなく、検証通過仮説を inbox へ届ける配送伝票である。取り込み Issue へ吸収された時点でトリアージ完了＝inbox 処理完了として閉じる（ADR-202606282107-01 決定4。「取り込み時クローズ」）。
 - **取り込み Issue は通常の単一 Issue**: 束ね・裁定を終えた取り込み Issue は、通常の単一 Issue として既存ワークフロー（`refine-issue` → `plan-issue` → `implementation` → PR レビュー）を流れ、成果物 PR の closing keyword または手動で閉じる。連鎖クローズの機構は新設しない（後述「取り込み Issue 自身のクローズ」）。
 - **関連仕様との関係**:
-  - [`promotion-issue-spec.md`](promotion-issue-spec.md) — 入力源となる `growth:promote` 仮説 Issue のテンプレートを定義する（ADR-20260628-2 に合わせ #382 で再定義予定）。本規約はその仮説 Issue を**入力として束ねる**側であり、仮説テンプレート自体は再定義しない。
+  - [`promotion-issue-spec.md`](promotion-issue-spec.md) — 入力源となる `growth:promote` 仮説 Issue のテンプレートを定義する（ADR-202606282107-01 に合わせ #382 で再定義予定）。本規約はその仮説 Issue を**入力として束ねる**側であり、仮説テンプレート自体は再定義しない。
   - [`learning-promotion-spec.md`](learning-promotion-spec.md) — learnings.md 行きと裁定された成果を1欄エントリへ翻訳する変換規約（#383）。本規約の**裁定結果を将来の入力境界**として受ける（ラベル filter 依存から裁定結果依存への改訂は #383 側で行う。本規約はその入力となりうる形式を提供する）。
   - [`DESIGN.md`](../DESIGN.md) — 設計母艦（学習ループ・学びの2系統・共有境界軸・二段ゲート）。
 
@@ -26,11 +26,11 @@ growth プラグインの学習ループにおいて、複数の `growth:promote
 | **裁定結果** | 仮説ごとに人間が確定した career と空間（後述「裁定結果の記録形式」） | テーブル1行＝1仮説 |
 | **成果物** | 裁定結果を実体化する成果物の追跡（task list） | `- [ ] <成果物の説明>（#仮説番号 由来）` |
 
-「取り込んだ仮説」が many-to-one の束ね構造を、「成果物」の task list が career の結果（実際の成果物）の追跡を担う（ADR-20260628-2 決定5「career の結果は実際の成果物として実現し、取り込み Issue の task list が追跡する」）。
+「取り込んだ仮説」が many-to-one の束ね構造を、「成果物」の task list が career の結果（実際の成果物）の追跡を担う（ADR-202606282107-01 決定5「career の結果は実際の成果物として実現し、取り込み Issue の task list が追跡する」）。
 
 ### 裁定結果の記録形式
 
-裁定は**人間が集約点で行う**（ADR-20260628-2 決定3）。distill が仮説本文に運んだ仮説（career 仮説・scope 仮説）には拘束されず、参照したうえで確定する。裁定結果は仮説ごとに次のテーブルへ記録する。
+裁定は**人間が集約点で行う**（ADR-202606282107-01 決定3）。distill が仮説本文に運んだ仮説（career 仮説・scope 仮説）には拘束されず、参照したうえで確定する。裁定結果は仮説ごとに次のテーブルへ記録する。
 
 | 列 | 内容 | 取りうる値 |
 |---|---|---|
@@ -39,13 +39,13 @@ growth プラグインの学習ループにおいて、複数の `growth:promote
 | **空間** | 公開ゲートの裁定結果（scope 軸を流用。後述「不変条件」） | パブリック / 閉じた |
 | **備考** | distill 仮説の転記や裁定理由（任意） | 自由記述 |
 
-- **career 軸**: #349 D1 の4分類。行2（dev-workflow スキル改善）は ADR-20260628-2 決定6 により「任意のプラグイン／コミュニティの改善還元 → 当該 repo へ Issue」へ一般化されている。なお `promotion-issue-spec.md`（#382 で再定義予定）が現状まだ行2 を旧表記「dev-workflow への Issue / PR」のまま持つため、#382 再定義前に起票された仮説本文の career 仮説欄には旧表記が残りうる。裁定結果テーブルには上記の新分類名（改善還元 Issue）で記録してよい（仮説側の旧表記に引きずられない）。
+- **career 軸**: #349 D1 の4分類。行2（dev-workflow スキル改善）は ADR-202606282107-01 決定6 により「任意のプラグイン／コミュニティの改善還元 → 当該 repo へ Issue」へ一般化されている。なお `promotion-issue-spec.md`（#382 で再定義予定）が現状まだ行2 を旧表記「dev-workflow への Issue / PR」のまま持つため、#382 再定義前に起票された仮説本文の career 仮説欄には旧表記が残りうる。裁定結果テーブルには上記の新分類名（改善還元 Issue）で記録してよい（仮説側の旧表記に引きずられない）。
 - **宛先 repo は記録しない**: 当面は単一 repo 配線であり、仮説 Issue は既に宛先 repo（取り込み Issue が置かれた repo）へ届いている前提に立つ。career を実体化する成果物も同 repo 内に生む。よって裁定結果に宛先 repo 欄は持たせない。集約先が複数になる将来の multi-repo 配線（後述「不変条件」）で再導入余地を残すが、現時点では YAGNI として持たない。
 - **将来の入力境界**: この裁定結果テーブルは、#383（learnings.md 昇格ハンドラ）・#384（残りキャリア）が「ラベル filter 依存」から「取り込み Issue の裁定結果依存」へ改訂される際の入力となる。career 列でハンドラが対象仮説を仕分けられるよう、値は4分類の名称をそのまま記す。
 
 ## 取り込み時クローズ
 
-仮説 Issue は取り込み Issue へ吸収された時点で閉じる（ADR-20260628-2 決定4）。cascade-close（親クローズで子を連鎖クローズ）は GitHub 標準機能で表現できないため、束ねと同時にスキルが各仮説を閉じる「取り込み時クローズ」で代替する。
+仮説 Issue は取り込み Issue へ吸収された時点で閉じる（ADR-202606282107-01 決定4）。cascade-close（親クローズで子を連鎖クローズ）は GitHub 標準機能で表現できないため、束ねと同時にスキルが各仮説を閉じる「取り込み時クローズ」で代替する。
 
 各仮説に対し、次を**この順**で行う。
 
@@ -56,7 +56,7 @@ growth プラグインの学習ループにおいて、複数の `growth:promote
 
 ## 取り込み Issue 自身のクローズ（cascade-close を新設しない）
 
-取り込み Issue 用の**新規連鎖クローズ機構（GitHub Actions / Hook 等）は追加しない**（ADR-20260628-2 決定・却下案「GHA による cascade-close」）。理由は配布プラグインの携帯性原則——各 consuming リポジトリへ per-repo インフラ（Actions / Hook）の設置を要求すると、どの repo にもコピーして使えるという原則に反する。
+取り込み Issue 用の**新規連鎖クローズ機構（GitHub Actions / Hook 等）は追加しない**（ADR-202606282107-01 決定・却下案「GHA による cascade-close」）。理由は配布プラグインの携帯性原則——各 consuming リポジトリへ per-repo インフラ（Actions / Hook）の設置を要求すると、どの repo にもコピーして使えるという原則に反する。
 
 - 取り込み Issue は通常の単一 Issue として、**成果物 PR の closing keyword（`Closes #取り込み番号`）または手動クローズ**で閉じる。標準の GitHub 機能の範囲で完結する。
 - 仮説 Issue のクローズは前述「取り込み時クローズ」がスキル実行時に同期的に行う。イベント駆動の連鎖は存在しない。
@@ -64,11 +64,11 @@ growth プラグインの学習ループにおいて、複数の `growth:promote
 
 ## 不変条件（単一 repo 配線でも破らない）
 
-当面の配線は単一 repo（取り込み Issue・仮説・成果物がすべて同一 repo）だが、ADR-20260628-2 決定7 の集約トポロジ不変条件を破らない。単一 repo 実装が「公開のみ」を暗黙に焼き込むことを防ぐため、規約として次を明記する。
+当面の配線は単一 repo（取り込み Issue・仮説・成果物がすべて同一 repo）だが、ADR-202606282107-01 決定7 の集約トポロジ不変条件を破らない。単一 repo 実装が「公開のみ」を暗黙に焼き込むことを防ぐため、規約として次を明記する。
 
 1. **集約先は複数ありうる**: 取り込み Issue（集約点）は1つに固定されない。内容の異なる学びは別々の集約点へ束ねられてよく、本規約・スキルは「唯一の取り込み Issue」を前提にしない（`intake` スキルは内容重複する既存取り込み先を検出して合流させ、無ければ新規作成する）。将来 multi-repo 配線では集約先が他 repo にもなりうる。
 2. **public への昇格を拒否できる**: 公開ゲートは裁定で「閉じた」と締めれば public（パブリック/グローバル空間 = `learnings.md` 相当）への昇格を拒否できる。すべての仮説が自動で public へ向かうことはない。
-3. **当面は scope を公開ゲートに流用する**: 公開ゲート専用の privacy 軸は新設せず、当面は scope 軸（`project-local` ＝公開しない / `universal` ＝公開しうる）を公開ゲートに流用する（ADR-20260628-2 決定7・留保「公開可否（広さ ≠ permission）」）。裁定結果テーブルの「空間」列は scope 由来の値（パブリック ← `universal` / 閉じた ← `project-local`）として記録する。privacy ゲートが別途必要になれば別 Issue で扱う。
+3. **当面は scope を公開ゲートに流用する**: 公開ゲート専用の privacy 軸は新設せず、当面は scope 軸（`project-local` ＝公開しない / `universal` ＝公開しうる）を公開ゲートに流用する（ADR-202606282107-01 決定7・留保「公開可否（広さ ≠ permission）」）。裁定結果テーブルの「空間」列は scope 由来の値（パブリック ← `universal` / 閉じた ← `project-local`）として記録する。privacy ゲートが別途必要になれば別 Issue で扱う。
 
 ## `growth:intake` ラベル
 
@@ -103,4 +103,4 @@ gh label create growth:intake --color 1D76DB --description "取り込み Issue�
 - [`promotion-issue-spec.md`](promotion-issue-spec.md) — 入力源 `growth:promote` 仮説 Issue のテンプレート（#382 で本決定に合わせ再定義予定）
 - [`learning-promotion-spec.md`](learning-promotion-spec.md) — 裁定結果を将来の入力境界とする learnings.md 変換規約（#383）
 - [`DESIGN.md`](../DESIGN.md) — 設計母艦（学習ループ・二段ゲート・共有境界軸）
-- ADR-20260628-2 — career 決定モデルの再設計（distill 仮説 ＋ 集約点裁定）。本規約の決定根拠
+- ADR-202606282107-01 — career 決定モデルの再設計（distill 仮説 ＋ 集約点裁定）。本規約の決定根拠

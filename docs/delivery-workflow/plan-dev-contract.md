@@ -98,7 +98,7 @@ PRレビュー指摘入力 =
     (簡易パス固定。パスフィールドを持たない)
 ```
 
-`PRレビュー指摘入力` と `会話コンテキスト入力` がパスフィールドを持たないことから、これらが正規パスを取りえない（簡易固定である）ことが型構造から読み取れる。この制約は `ADR-20260407` の正規 / 簡易パス分岐の設計判断、および `implementation` SKILL.md Phase 0「正規パス / 簡易パスの判定」表と整合する。
+`PRレビュー指摘入力` と `会話コンテキスト入力` がパスフィールドを持たないことから、これらが正規パスを取りえない（簡易固定である）ことが型構造から読み取れる。この制約は `ADR-202605131437-03` の正規 / 簡易パス分岐の設計判断、および `implementation` SKILL.md Phase 0「正規パス / 簡易パスの判定」表と整合する。
 
 ### レビュー契約の導出
 
@@ -114,7 +114,7 @@ PRレビュー指摘入力 =
     生成: レビュー契約
 ```
 
-導出規則はパスによって分岐する（`implementation` SKILL.md Phase 0 および `ADR-20260406` と整合）。
+導出規則はパスによって分岐する（`implementation` SKILL.md Phase 0 および `ADR-202605131437-02` と整合）。
 
 - `正規`: 検証方針（検証すべき振る舞い）由来のチェック項目を主とし、Issue AC のうち未カバーの項目を補完として追加する。
 - `簡易`: 入力の受け入れ条件があれば各条件をチェック項目に変換し、なければ作業リストの各項目から「何が完了していれば正しいか」を導出する。
@@ -128,7 +128,7 @@ PRレビュー指摘入力 =
 | `plugins/dev-workflow/skills/plan-issue/references/plan-output-format.md` | `plan-issue` の確定済み出力フォーマット。`PlanFile` 出力型の正となるセクション構造 |
 | `plugins/dev-workflow/skills/implementation/SKILL.md` | `implementation` の Phase 0「インプット種別判定」表・「正規 / 簡易パスの判定」表・レビュー契約導出の正となる仕様 |
 | `plugins/dev-workflow/skills/domain-modeling/references/domain-model-notation.md` | 本契約が準拠する関数型ドメインモデリング日本語擬似言語の記法ガイド |
-| `docs/adr/ADR-20260407-implementation-input-path-split.md` | 正規 / 簡易パス分岐の設計判断。PR レビュー指摘・会話コンテキストが簡易パス固定である制約の根拠 |
-| `docs/adr/ADR-20260406-review-contract-in-plan-issue.md` | レビュー契約を plan-issue 側に移す設計判断。レビュー契約導出ロジックの背景 |
+| `docs/adr/ADR-202605131437-03-dev-loop-input-path-split.md` | 正規 / 簡易パス分岐の設計判断。PR レビュー指摘・会話コンテキストが簡易パス固定である制約の根拠 |
+| `docs/adr/ADR-202605131437-02-review-contract-in-plan-issue.md` | レビュー契約を plan-issue 側に移す設計判断。レビュー契約導出ロジックの背景 |
 | `docs/delivery-workflow/event-storming.md` | 同ディレクトリ内の既存設計ドキュメント。配置先・文体の参考 |
 | 親 Issue #82 | plan-issue 出力フォーマット拡張とスキル間インターフェース契約切り出しの上位文脈 |

@@ -344,7 +344,7 @@ KPI・利用データを入力に得た学習が「フィードバック統合�
 | Ops | Runbook、ポストモーテム、運用パターン | 構成知識、過去インシデント、復旧手順 |
 | Feedback | 実験結果、利用インサイト、学習 | 仮説、過去実験、評価基準 |
 
-表中の自律度 L0–L3 の定義は [ADR-20260602-2](adr/ADR-20260602-2-autonomy-ladder-convention.md)（principles.md 承認ゲート軸が SoT）を参照。
+表中の自律度 L0–L3 の定義は [ADR-202606020032-01](adr/ADR-202606020032-01-autonomy-ladder-convention.md)（principles.md 承認ゲート軸が SoT）を参照。
 
 > 出典: 検討メモ「BizDevOps サイクルの営み分解」（Issue #227 §2.4 Feedback / §3.3 KM営み / §3.4 フェーズ×ナレッジ循環）。営み×主担当(自律度)×Input×Output のテーブル形式（C1）とフェーズ×ナレッジ循環テーブル（C4）を素材として保全。
 

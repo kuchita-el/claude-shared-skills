@@ -5,7 +5,7 @@ promote スキルの各段の判定基準の詳細。SKILL.md の手順 overview
 ## 1. 目的・責務境界
 
 - **目的**: distill が `candidates.md` へ永続化した仮説を検証し（原理2）、検証を通過したものだけを `gh` で Issue へ自動起票して既存ワークフローへ渡す。起票成功後に候補の `candidate-status` を前進させる。
-- **責務境界**: promote が担うのは「検証 → Route 注記 → 自動起票 → candidate-status 前進」の4段。**promote はルーティング不可知である**——career（昇格先キャリア）も scope（適用範囲）も**確定（裁定）しない**。distill が `candidates.md` に出した `scope-hypothesis` / `career-hypothesis` の両仮説を、昇格 Issue 本文へ**注記として運ぶのみ**（ADR-20260628-2）。次は**行わない**:
+- **責務境界**: promote が担うのは「検証 → Route 注記 → 自動起票 → candidate-status 前進」の4段。**promote はルーティング不可知である**——career（昇格先キャリア）も scope（適用範囲）も**確定（裁定）しない**。distill が `candidates.md` に出した `scope-hypothesis` / `career-hypothesis` の両仮説を、昇格 Issue 本文へ**注記として運ぶのみ**（ADR-202606282107-01）。次は**行わない**:
   - 仮説の生成・クラスタ化（distill の責務）
   - career の Route 判定・決定表評価・キャリアラベル付与（決定表は distill 側＝distill-procedure.md へ移設済み。promote は決定表を持たない）
   - `learnings.md`（配布物）への物理書き込み（Distribute、Phase 2 の責務）。Route はタグの**注記**までで終端し、物理昇格はしない。
@@ -24,7 +24,7 @@ promote スキルの各段の判定基準の詳細。SKILL.md の手順 overview
 
 各仮説を配布経路（Issue）へ乗せる価値があるかを評価する。検証は promote 自身が行う自己検証（Phase 1 の最小形。独立検証エージェント化は Phase 4）。
 
-**検証軸は仮説の `tags` の各要素で分岐する**（ADR-20260701 D5）。摩擦知（`behavior-diff`）は予測誤差の反証（原理2）で、判断知（`decision-record`）は復元不能性で測る——フィルタは対象の価値軸と一致していなければ精度・再現のいずれかを失うため、1本のゲートで両型を測らない。仮説の `tags`（多値 set）の各タグに、対応する型適応検証をそれぞれ適用する。混在ゾーン（`tags: [behavior-diff, decision-record]`）仮説は behavior-diff 検証と decision-record 検証の両方を受ける。`tags` の値域・本文スキーマ正準は personal-store-spec.md「tags 別スキーマ」を参照する（promote 側で二重定義しない）。旧スキーマ（`type` 単値・`type`/`tags` とも欠落）は後方互換規約（personal-store-spec.md「後方互換規約」）で `tags` へ写して読む（単値 `type: <値>`＝`[<値>]`、欠落＝`[behavior-diff]`）。
+**検証軸は仮説の `tags` の各要素で分岐する**（ADR-202607010734-01 D5）。摩擦知（`behavior-diff`）は予測誤差の反証（原理2）で、判断知（`decision-record`）は復元不能性で測る——フィルタは対象の価値軸と一致していなければ精度・再現のいずれかを失うため、1本のゲートで両型を測らない。仮説の `tags`（多値 set）の各タグに、対応する型適応検証をそれぞれ適用する。混在ゾーン（`tags: [behavior-diff, decision-record]`）仮説は behavior-diff 検証と decision-record 検証の両方を受ける。`tags` の値域・本文スキーマ正準は personal-store-spec.md「tags 別スキーマ」を参照する（promote 側で二重定義しない）。旧スキーマ（`type` 単値・`type`/`tags` とも欠落）は後方互換規約（personal-store-spec.md「後方互換規約」）で `tags` へ写して読む（単値 `type: <値>`＝`[<値>]`、欠落＝`[behavior-diff]`）。
 
 ### behavior-diff（摩擦知）: 予測・反証（原理2）
 
@@ -60,7 +60,7 @@ promote スキルの各段の判定基準の詳細。SKILL.md の手順 overview
 
 ### 知識型（tags）の注記
 
-合格仮説の `tags`（`{behavior-diff, decision-record}` の非空部分集合）を Issue 本文へ注記する。promote は**ルーティング不可知のまま知識型を運搬する**——各タグに応じた下流の扱い（`behavior-diff` の強制化／`decision-record` の ADR・docs への翻訳）は確定せず、refine/review・集約点へ判断材料として渡す（ADR-20260701 D5）。いずれのタグも流路は同一（`candidates.md → promote → Issue → 既存ワークフロー`）であり、`decision-record` を learnings.md へ直送しない。
+合格仮説の `tags`（`{behavior-diff, decision-record}` の非空部分集合）を Issue 本文へ注記する。promote は**ルーティング不可知のまま知識型を運搬する**——各タグに応じた下流の扱い（`behavior-diff` の強制化／`decision-record` の ADR・docs への翻訳）は確定せず、refine/review・集約点へ判断材料として渡す（ADR-202607010734-01 D5）。いずれのタグも流路は同一（`candidates.md → promote → Issue → 既存ワークフロー`）であり、`decision-record` を learnings.md へ直送しない。
 
 Issue 本文に含める知識型注記欄の書式:
 
@@ -127,7 +127,7 @@ Issue 本文に含める career 注記欄の書式:
 | Yes | No（失敗） | しない（`pending` のまま） |
 | Yes | Yes | する（`pending → promoted`） |
 
-- `candidate-status` は `pending` から `rejected` / `promoted` への一方向遷移であり、`rejected` / `promoted` はいずれも不可侵の終端（再走査対象から除外。ADR-20260720-2 決定1）。誤って `promoted` を先に付与すると起票失敗時の再実行判定を壊すため、起票成功を確認してから前進する順序を厳守する。
+- `candidate-status` は `pending` から `rejected` / `promoted` への一方向遷移であり、`rejected` / `promoted` はいずれも不可侵の終端（再走査対象から除外。ADR-202607200856-01 決定1）。誤って `promoted` を先に付与すると起票失敗時の再実行判定を壊すため、起票成功を確認してから前進する順序を厳守する。
 
 ## 7. エラー・境界処理
 
