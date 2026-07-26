@@ -78,13 +78,13 @@ run_ac4() {
         return
     fi
 
-    assert_contains "$output" "ADR-20260101-sample-decision" "AC4: 有効ADR1件目(sample-decision)が含まれる"
-    assert_contains "$output" "ADR-20260102-second-decision" "AC4: 有効ADR2件目(second-decision)が含まれる"
-    assert_not_contains "$output" "ADR-20260103-old-decision" "AC4: 上書き済みADRが含まれない"
-    assert_not_contains "$output" "ADR-20260104-abandoned-decision" "AC4: 廃止済みADRが含まれない"
-    assert_not_contains "$output" "ADR-20260105-rejected-decision" "AC4: 却下ADRが含まれない"
-    assert_not_contains "$output" "ADR-20260106-proposed-decision" "AC4: 提案中ADRが含まれない"
-    assert_not_contains "$output" "ADR-20260107-legacy-format-decision" "AC4: 旧形式ADRが含まれない"
+    assert_contains "$output" "ADR-202601010901-01-sample-decision" "AC4: 有効ADR1件目(sample-decision)が含まれる"
+    assert_contains "$output" "ADR-202601020901-01-second-decision" "AC4: 有効ADR2件目(second-decision)が含まれる"
+    assert_not_contains "$output" "ADR-202601030901-01-old-decision" "AC4: 上書き済みADRが含まれない"
+    assert_not_contains "$output" "ADR-202601040901-01-abandoned-decision" "AC4: 廃止済みADRが含まれない"
+    assert_not_contains "$output" "ADR-202601050901-01-rejected-decision" "AC4: 却下ADRが含まれない"
+    assert_not_contains "$output" "ADR-202601060901-01-proposed-decision" "AC4: 提案中ADRが含まれない"
+    assert_not_contains "$output" "ADR-202601070901-01-legacy-format-decision" "AC4: 旧形式ADRが含まれない"
 }
 
 run_ac4
@@ -125,7 +125,7 @@ run_whitespace_validity() {
         return
     fi
 
-    assert_contains "$gen_output" "ADR-20260201-trailing-space-decision" "回帰(whitespace-validity): validity末尾空白ADRがindexに含まれる"
+    assert_contains "$gen_output" "ADR-202602010903-01-trailing-space-decision" "回帰(whitespace-validity): validity末尾空白ADRがindexに含まれる"
 
     if [ ! -f "$LINT_ADR" ]; then
         total=$((total + 1))
@@ -307,8 +307,8 @@ run_layer1_multi_violation() {
         failed=$((failed + 1))
     fi
 
-    assert_contains "$output" "ADR-20260601-multi-violation-status-missing.md: status が空です" "AC1(multi): 1件目(status欠落)の違反メッセージ"
-    assert_contains "$output" "ADR-20260602-multi-violation-superseded-by-missing.md: validity=上書き済み だが superseded-by が空です" "AC1(multi): 2件目(superseded-by欠落)の違反メッセージ"
+    assert_contains "$output" "ADR-202606011006-01-multi-violation-status-missing.md: status が空です" "AC1(multi): 1件目(status欠落)の違反メッセージ"
+    assert_contains "$output" "ADR-202606021006-01-multi-violation-superseded-by-missing.md: validity=上書き済み だが superseded-by が空です" "AC1(multi): 2件目(superseded-by欠落)の違反メッセージ"
 }
 
 run_layer1_multi_violation
@@ -530,7 +530,7 @@ run_layer3_xref_reverse_missing() {
     fi
 
     assert_contains "$output" "相互参照違反（逆方向" "PRレビュー反映(reverse-missing): 逆方向と分かる違反メッセージ"
-    assert_contains "$output" "ADR-20260701-xref-reverse-missing-old" "PRレビュー反映(reverse-missing): front-matter更新忘れ側(旧ADR)の言及"
+    assert_contains "$output" "ADR-202607011007-01-xref-reverse-missing-old" "PRレビュー反映(reverse-missing): front-matter更新忘れ側(旧ADR)の言及"
 }
 
 run_layer3_xref_reverse_missing
@@ -627,8 +627,8 @@ run_xref_list_case \
     "$FIXTURES_DIR/invalid/08-xref-list-forward-missing" 1 \
     "(AC2-forward): 後継Bのみ forward 違反" \
     "contains:相互参照違反" \
-    "contains:ADR-20260812-xref-list-fwd-new-b.md" \
-    "notcontains:ADR-20260811-xref-list-fwd-new-a"
+    "contains:ADR-202608121008-01-xref-list-fwd-new-b.md" \
+    "notcontains:ADR-202608111008-01-xref-list-fwd-new-a"
 
 # AC3(reverse列挙欠落): 非列挙の第三ADR Cが本文で old を Supersedes 宣言 →
 # Cのエッジが reverse 違反、列挙済みのA・Bは違反にならない
@@ -636,17 +636,17 @@ run_xref_list_case \
     "$FIXTURES_DIR/invalid/09-xref-list-reverse-missing" 1 \
     "(AC3-reverse): 非列挙Cのみ reverse 違反" \
     "contains:相互参照違反（逆方向" \
-    "contains:ADR-20260913-xref-list-rev-extra-c" \
-    "notcontains:ADR-20260911-xref-list-rev-new-a.md の本文"
+    "contains:ADR-202609131009-01-xref-list-rev-extra-c" \
+    "notcontains:ADR-202609111009-01-xref-list-rev-new-a.md の本文"
 
 # AC2(forwardファイル不在・リスト要素単位): 後継Bの実ファイルが存在しない →
 # Bのエッジのみ「参照先が見つかりません」違反、実在する後継Aは独立して照合へ進み違反にならない
 run_xref_list_case \
     "$FIXTURES_DIR/invalid/10-xref-list-forward-file-missing" 1 \
     "(AC2-file-missing): 後継Bのみ参照先不在違反" \
-    "contains:ADR-20261012-xref-list-fm-missing-b" \
+    "contains:ADR-202610121010-01-xref-list-fm-missing-b" \
     "contains:が見つかりません" \
-    "notcontains:ADR-20261011-xref-list-fm-new-a"
+    "notcontains:ADR-202610111010-01-xref-list-fm-new-a"
 
 # PRレビュー反映(空要素のみ): superseded-by がカンマ・空白のみで有効な参照先 stem を
 # 1つも含まない病的値は、レイヤ1の raw 空判定を通過し forward 分割結果が0件になる。
@@ -741,14 +741,14 @@ run_xref_list_case \
     "$FIXTURES_DIR/invalid/18-related-retired-no-bullet" 1 \
     "(AC1/AC2-穴1): バレット無し Related が退役ADRを指すと参照先退役違反" \
     "contains:参照先退役違反" \
-    "contains:ADR-20261102-related-retired-nb-target"
+    "contains:ADR-202611021018-01-related-retired-nb-target"
 
 # AC1/AC2(穴2): リンク形式の Related が上書き済みADRを指す → 参照先退役違反（相互参照違反は出ない）
 run_xref_list_case \
     "$FIXTURES_DIR/invalid/19-related-retired-link" 1 \
     "(AC1/AC2-穴2): リンク形式 Related が退役ADRを指すと参照先退役違反" \
     "contains:参照先退役違反" \
-    "contains:ADR-20261112-related-retired-link-old" \
+    "contains:ADR-202611121019-01-related-retired-link-old" \
     "notcontains:相互参照違反"
 
 # gap1(セルフレビュー反映): リンクラベルが説明文で stem がパス部のみの Related
@@ -758,21 +758,21 @@ run_xref_list_case \
     "$FIXTURES_DIR/invalid/22-related-link-label" 1 \
     "(gap1-リンクラベル書式): リンクラベルが説明文でも先頭stem抽出で退役検出" \
     "contains:参照先退役違反" \
-    "contains:ADR-20261302-related-linklabel-target"
+    "contains:ADR-202701021022-01-related-linklabel-target"
 
 # AC6/AC8: Related が非存在 slug を指す → dangling 参照違反（解決不能＝fail-safe を統合）
 run_xref_list_case \
     "$FIXTURES_DIR/invalid/20-related-dangling" 1 \
     "(AC6/AC8): Related が非存在slugを指すと dangling 参照違反" \
     "contains:dangling 参照違反" \
-    "contains:ADR-20261299-does-not-exist"
+    "contains:ADR-202612021020-01-does-not-exist"
 
 # AC6/AC7: park 欄が非存在 slug を指す → dangling 参照違反（park も dangling 検査の対象）
 run_xref_list_case \
     "$FIXTURES_DIR/invalid/21-park-dangling" 1 \
     "(AC6/AC7): 保留した決定が非存在slugを指すと dangling 参照違反" \
     "contains:dangling 参照違反" \
-    "contains:ADR-20261298-park-missing"
+    "contains:ADR-202612121021-01-park-missing"
 
 # AC2/AC7(誤検出回避): 全4書式の有効参照・散文の退役引用・park→有効/退役(存在)は
 # いずれも違反にならず exit 0（先頭stem抽出の要、park は dangling のみ＝J4 の正方向固定）
@@ -798,7 +798,7 @@ run_layer4_park_link_dedup() {
     local output count
     set +e
     output=$(bash "$LINT_ADR" "$corpus" 2>&1)
-    count=$(printf '%s\n' "$output" | grep -c "ADR-20261298-park-missing")
+    count=$(printf '%s\n' "$output" | grep -c "ADR-202612121021-01-park-missing")
     set -e
 
     total=$((total + 1))
@@ -829,7 +829,7 @@ run_layer4_related_dup_dedup() {
     local output count
     set +e
     output=$(bash "$LINT_ADR" "$corpus" 2>&1)
-    count=$(printf '%s\n' "$output" | grep -c "ADR-20261402-related-dup-target")
+    count=$(printf '%s\n' "$output" | grep -c "ADR-202702021023-01-related-dup-target")
     set -e
 
     total=$((total + 1))
