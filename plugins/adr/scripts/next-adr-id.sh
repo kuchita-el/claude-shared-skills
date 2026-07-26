@@ -11,12 +11,14 @@
 # 配置ディレクトリ全体・同日全体の最大番号は見ない。日単位で最大 + 1 を取ると
 # 並行ブランチがそれぞれ自分の base に対して正しく発番しても同一識別子を生むため。
 #
-# 時刻部は環境変数 ADR_TIMESTAMP（YYYYMMDDHHMM の12桁）で上書きできる。
-# 過去時刻で発番する遡及移行と、本スクリプトのテストで用いる。
+# 時刻部は環境変数 ADR_TIMESTAMP（YYYYMMDDHHMM の12桁）で固定できる。実時刻に依存すると
+# 発番の検査が書けないため、本スクリプトのテストで用いる口である（通常の起票では設定しない）。
+# 誤った値での発番を防ぐため、12桁であることに加えて暦としての妥当性（月 01-12・日 01-31・
+# 時 00-23・分 00-59）も検査し、空文字を「未設定」へ畳まず不正として扱う。
 #
 # 使い方:
 #   bash next-adr-id.sh [ADR_DIR]                        # 既定 ADR_DIR は docs/adr
-#   ADR_TIMESTAMP=203104091530 bash next-adr-id.sh docs/adr
+#   ADR_TIMESTAMP=203104091530 bash next-adr-id.sh docs/adr   # テストでの時刻固定
 #
 # exit code:
 #   0: 発番成功（識別子を stdout へ出力）
@@ -32,9 +34,11 @@ if [ ! -d "$ADR_DIR" ]; then
     exit 2
 fi
 
-timestamp="${ADR_TIMESTAMP:-$(date +%Y%m%d%H%M)}"
-if [[ ! "$timestamp" =~ ^[0-9]{12}$ ]]; then
-    echo "エラー: 時刻部が YYYYMMDDHHMM の12桁ではありません: $timestamp" >&2
+# `:-` ではなく `-` を使う。`:-` は空文字を「未設定」へ畳むため、ADR_TIMESTAMP="" が
+# 黙って現在時刻へ落ち、変数展開に失敗した呼び出しを検出できなくなる。
+timestamp="${ADR_TIMESTAMP-$(date +%Y%m%d%H%M)}"
+if [[ ! "$timestamp" =~ ^[0-9]{4}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])([01][0-9]|2[0-3])[0-5][0-9]$ ]]; then
+    echo "エラー: 時刻部が YYYYMMDDHHMM（暦として妥当な12桁）ではありません: $timestamp" >&2
     exit 1
 fi
 
