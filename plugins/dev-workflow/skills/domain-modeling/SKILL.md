@@ -13,6 +13,8 @@ allowed-tools:
 
 ドメインのデータ型・状態・コマンド・イベント・ワークフローを記法ガイド準拠の擬似コードで形式化する対話型スキル。Scott Wlaschin『Domain Modeling Made Functional』の AND / OR 表記を採用し、実装言語に依存しない設計ドキュメントを生成する。
 
+**出力と範囲の規律**: 出力・成果物の分量と作業範囲は `${CLAUDE_PLUGIN_ROOT}/references/behavior-invariants.md` の不変条件に従う。
+
 ## 引数
 
 - `$ARGUMENTS` の解析ルール:

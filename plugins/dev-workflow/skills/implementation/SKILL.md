@@ -40,6 +40,8 @@ allowed-tools:
 
 Issue・計画ファイル・PRレビュー指摘・会話コンテキストを起点に、実装→セルフレビュー→修正→PR作成までを一貫して実行する。
 
+**出力と範囲の規律**: 出力・成果物の分量と作業範囲は `${CLAUDE_PLUGIN_ROOT}/references/behavior-invariants.md` の不変条件に従う。
+
 ## 引数
 
 - `$ARGUMENTS`: Issue番号/URL、計画ファイルパス、PR番号/URL、または省略（会話コンテキストを使用）

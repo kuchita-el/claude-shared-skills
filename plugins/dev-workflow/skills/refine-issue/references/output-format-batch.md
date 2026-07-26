@@ -4,6 +4,8 @@ refine-issue スキルが全件モードでサブエージェントの返却を�
 
 サブエージェントへ渡す返却形式テンプレートは `output-format-batch-subagent.md` を参照。
 
+ここに定義されていないセクションは追加しない。
+
 ## 出力形式
 
 ```markdown
