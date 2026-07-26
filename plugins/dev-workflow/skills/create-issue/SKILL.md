@@ -15,6 +15,8 @@ allowed-tools:
 
 DoRの判定基準は `refine-issue` と**同一の共有定義**を参照する。基準が二重管理されてドリフトすることを避けるため、DoR項目を本スキル本文に転記しない。常に共有定義を読み込み、それに従う。
 
+**出力と範囲の規律**: 出力・成果物の分量と作業範囲は `${CLAUDE_PLUGIN_ROOT}/references/behavior-invariants.md` の不変条件に従う。
+
 ## 引数
 
 - `$ARGUMENTS`: 起票したいアイデア（必須。粗くてよい。1行のメモでも段落でも可）

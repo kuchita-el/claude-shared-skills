@@ -20,6 +20,8 @@ plan サブエージェント（計画骨格を superpowers `writing-plans` へ�
 
 Issue番号を起点とする**通常モード**のほか、Issueを立てずにフリーテキストの補足指示だけでプランを作成する**Issueなしモード**を備える。
 
+**出力と範囲の規律**: 出力・成果物の分量と作業範囲は `${CLAUDE_PLUGIN_ROOT}/references/behavior-invariants.md` の不変条件に従う。
+
 ## 引数
 
 - `$ARGUMENTS`: プラン作成の起点となる入力。Issue番号/URL、またはフリーテキストの補足指示

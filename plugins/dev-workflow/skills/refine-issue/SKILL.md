@@ -11,6 +11,8 @@ allowed-tools:
 Issueの準備状態をDoR（Definition of Ready）に基づいて精査し、結果をレポートする。
 1件の詳細精査と全件一括精査の両方に対応。精査はサブエージェントで実行し、メインコンテキストを消費しない。
 
+**出力と範囲の規律**: 出力・成果物の分量と作業範囲は `${CLAUDE_PLUGIN_ROOT}/references/behavior-invariants.md` の不変条件に従う。
+
 ## 引数
 
 - `$ARGUMENTS`: オプション
@@ -73,7 +75,7 @@ bash ${CLAUDE_SKILL_DIR}/scripts/prepare-issues.sh [--repo <owner/repo>] [--labe
 メイン側で以下のパス・識別子を文字列で組み立て、Agent tool（`subagent_type: dev-workflow:issue-refiner`）を1回起動する（参照ファイル本文の埋め込みは行わない。全件モードと同型のパス渡し）。モデルと effort は定義の frontmatter に従い、呼び出し側では指定しない。
 
 - スキルディレクトリパス（`${CLAUDE_SKILL_DIR}` を展開した実パス）
-- プラグインルートパス（`${CLAUDE_PLUGIN_ROOT}` を展開した実パス。共有DoR・種別プロファイルの参照に使用）
+- プラグインルートパス（`${CLAUDE_PLUGIN_ROOT}` を展開した実パス。共有DoR・種別プロファイル・振る舞いの不変条件の参照に使用）
 - プロジェクトルートパス（現在の作業ディレクトリ）
 - 精査対象 Issue の情報:
   - **`--input` モード**: 入力 JSON ファイルのパス（サブエージェントが Read する）
@@ -102,7 +104,7 @@ bash ${CLAUDE_SKILL_DIR}/scripts/prepare-issues.sh [--repo <owner/repo>] [--labe
 各サブエージェントには以下のコンテキストを文字列で渡す（ファイル本文の埋め込みは行わない）:
 
 - スキルディレクトリパス（`${CLAUDE_SKILL_DIR}` を展開した実パス）
-- プラグインルートパス（`${CLAUDE_PLUGIN_ROOT}` を展開した実パス。共有DoRの参照に使用）
+- プラグインルートパス（`${CLAUDE_PLUGIN_ROOT}` を展開した実パス。共有DoR・振る舞いの不変条件の参照に使用）
 - プロジェクトルートパス（現在の作業ディレクトリ）
 - Issue ファイルのディレクトリパス（手順2のstdout 1行目）
 - 担当 Issue 番号のリスト
