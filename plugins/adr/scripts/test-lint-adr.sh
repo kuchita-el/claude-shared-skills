@@ -863,6 +863,80 @@ run_layer4_header_spec() {
 
 run_layer4_header_spec
 
+# ==== レイヤ5: ファイル名形式・識別子重複・H1 整合 ====
+# 仕様: レイヤ1〜4 はいずれもファイル本文（front-matter・本文節）と index を見るだけで、
+# ファイル名そのものを検査しない。この欠落により同一識別子の ADR が2本 main へ到達した
+# 実績がある（#588）。レイヤ5 はファイル名を第一級の検査対象に加える。
+# 検査対象集合はレイヤ1 と同一（front-matter を持つ ADR のみ。旧形式はスキップ）。
+
+# AC1: 形式不適合（時刻部の桁数不足）を検出する
+run_xref_list_case \
+    "$FIXTURES_DIR/invalid/24-filename-format-invalid" 1 \
+    "(AC1/レイヤ5): 時刻部の桁数不足を形式違反として検出" \
+    "contains:ファイル名形式違反" \
+    "contains:ADR-2026120-01-bad-digits.md"
+
+# AC1: 暦として妥当でない時刻部（月13）を検出する。桁数のみの照合では通過するため、
+# next-adr-id.sh の発番側検証と同一の強度を lint 側にも置いていることの回帰。
+run_xref_list_case \
+    "$FIXTURES_DIR/invalid/25-filename-calendar-invalid" 1 \
+    "(AC1/レイヤ5): 暦として不正な月を形式違反として検出" \
+    "contains:ファイル名形式違反" \
+    "contains:ADR-202613011030-01-bad-month.md"
+
+# AC2: 同一識別子を持つ ADR が2本 → 重複した識別子と該当する全ファイル名を出力に含む
+run_xref_list_case \
+    "$FIXTURES_DIR/invalid/26-duplicate-adr-id" 1 \
+    "(AC2/レイヤ5): 識別子重複を検出し全該当ファイルを列挙" \
+    "contains:識別子重複違反" \
+    "contains:ADR-202612051026-01" \
+    "contains:ADR-202612051026-01-dup-first.md" \
+    "contains:ADR-202612051026-01-dup-second.md"
+
+# AC3: H1 見出しの識別子部がファイル名の識別子部と一致しない → 違反
+run_xref_list_case \
+    "$FIXTURES_DIR/invalid/27-h1-id-mismatch" 1 \
+    "(AC3/レイヤ5): H1 の識別子部とファイル名の不整合を検出" \
+    "contains:H1 整合違反" \
+    "contains:ADR-202612061027-01-h1-mismatch.md"
+
+# 制約（旧形式の扱い）: front-matter を持たない旧形式 ADR は、ファイル名が新形式に
+# 適合しなくてもレイヤ5 の検査対象外（レイヤ1 のスキップと同一の対象集合）。
+# 同居する新形式 ADR は正しく通過する。
+run_xref_list_case \
+    "$FIXTURES_DIR/valid/07-legacy-filename-skipped" 0 \
+    "(制約/レイヤ5): front-matter 無しの旧形式ファイル名はスキップされ exit 0" \
+    "notcontains:ファイル名形式違反" \
+    "notcontains:H1 整合違反"
+
+# AC5(誤検出回避): 既存の valid corpus にレイヤ5 が発火しない
+run_xref_list_case \
+    "$FIXTURES_DIR/valid/01-mixed-validity" 0 \
+    "(AC5/レイヤ5-誤検出回避): 適合 corpus では発火しない" \
+    "notcontains:ファイル名形式違反" \
+    "notcontains:識別子重複違反" \
+    "notcontains:H1 整合違反"
+
+# AC7: レイヤ5仕様のヘッダ成文化。削除で red 化する必須アサート
+# （run_layer4_header_spec に倣う）。
+run_layer5_header_spec() {
+    if [ ! -f "$LINT_ADR" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] (AC7): lint-adr.sh not found: %s\n' "$LINT_ADR"
+        return
+    fi
+
+    local content
+    content=$(cat "$LINT_ADR")
+    assert_contains "$content" "レイヤ5" "(AC7): ヘッダにレイヤ5の記述が存在する"
+    assert_contains "$content" "ファイル名形式" "(AC7): ヘッダにファイル名形式検査の仕様が成文化されている"
+    assert_contains "$content" "識別子重複" "(AC7): ヘッダに識別子重複検査の仕様が成文化されている"
+    assert_contains "$content" "H1 整合" "(AC7): ヘッダに H1 整合検査の仕様が成文化されている"
+}
+
+run_layer5_header_spec
+
 echo
 if [ "$failed" -eq 0 ]; then
     printf 'All tests passed: %d/%d\n' "$passed" "$total"

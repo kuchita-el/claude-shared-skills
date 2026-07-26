@@ -97,6 +97,33 @@
 #     dangling でもないとして違反にしない（fail-open。RETIRED_VALIDITY＝上書き済み/廃止済み
 #     の完全一致のみを退役とみなす）。旧形式ADRはレイヤ1でも検査対象外である点と整合する。
 #
+# レイヤ5（ファイル名形式・識別子重複・H1 整合）: ファイル名そのものを検査対象に
+# 加える。レイヤ1〜4 はいずれもファイル本文と index しか見ないため、ファイル名が
+# 規約から外れても、同一識別子の ADR が複数入っても検出されなかった。
+#   - ファイル名形式違反: stem が `ADR-<YYYYMMDDHHMM>-<NN>-<slug>` に適合しなければ違反。
+#     時刻部は12桁であることに加え暦としての妥当性（月 01-12・日 01-31・時 00-23・
+#     分 00-59）を要求する。この妥当性の水準は next-adr-id.sh の ADR_TIMESTAMP 検査と
+#     同一であり、両者を揃えることで「発番器が出せる識別子を lint が弾く」状態を作らない
+#     （日は月ごとの日数まで見ない。発番側の水準に合わせた意図的な緩さ）。
+#     連番部は2桁、slug は小文字英数字をハイフンで連結した形（先頭・末尾のハイフン、
+#     連続ハイフンは不可）。
+#   - 識別子重複違反: 同一の識別子部を持つ ADR が2本以上あれば違反。識別子部の抽出は
+#     形式検査より緩い `ADR-<数字>[-<数字>]` の先頭一致で行う。形式適合を前提にすると
+#     旧形式どうしの重複（実際に1か月以上検出されなかった事例）を取り逃すため。
+#     報告は識別子ごとに1件で、該当する全ファイルを列挙する。
+#   - H1 整合違反: 本文の最初の `# ` 見出し行から抽出した識別子部が、ファイル名の
+#     識別子部と一致しなければ違反。H1 に ADR 識別子が現れない（見出しが無い場合を含む）
+#     ときも違反とする。gen-adr-index.sh は H1 の `: ` 以降のみをタイトルとして
+#     抽出するため、識別子部が陳腐化しても生成物には現れず、レイヤ2 も発火しない。
+#     H1 は識別子部のみの形（`# ADR-X-01: タイトル`）と slug を含む形
+#     （`# ADR-X-01-slug: タイトル`）の双方が corpus に実在するため、
+#     照合は識別子部に限る（slug の一致は要求しない）。
+#   - 検査対象集合はレイヤ1 と同一で、front-matter を持つ ADR のみを対象とする。
+#     front-matter を持たない旧 `## Status` 形式はファイル名も旧規約のままであり、
+#     ここで違反として数えるとレイヤ1 が同じ ADR をスキップする扱いと矛盾する。
+#     この対象集合の穴（front-matter 不在による全レイヤのすり抜け）は本レイヤでは
+#     塞がず、レイヤ横断の課題として別途扱う。
+#
 # 全違反を列挙してから最後に非0 exitする（早期returnで打ち切らない）。
 #
 # 使い方:
@@ -123,6 +150,15 @@ VALIDITY_VOCAB=("有効" "上書き済み" "廃止済み")
 # レイヤ4で「退役」とみなす validity 値（VALIDITY_VOCAB の部分集合）。
 # 正本語彙が変わった際の追随点を1箇所へ集約する。
 RETIRED_VALIDITY=("上書き済み" "廃止済み")
+
+# レイヤ5: ファイル名 stem が満たすべき形式（`ADR-<YYYYMMDDHHMM>-<NN>-<slug>`）。
+# 時刻部の暦妥当性の水準は next-adr-id.sh の ADR_TIMESTAMP 検査と同一に保つ
+# （発番器が出せる識別子を lint が弾かないようにするため。片方を変えたら他方も追随する）。
+ADR_STEM_PATTERN='^ADR-[0-9]{4}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])([01][0-9]|2[0-3])[0-5][0-9]-[0-9]{2}-[a-z0-9]+(-[a-z0-9]+)*$'
+# レイヤ5: 識別子部（`ADR-<数字>[-<数字>]`）の抽出パターン。形式検査より緩く、旧形式の
+# 識別子（`ADR-YYYYMMDD-NN`）も拾う。重複検査・H1 整合検査はこの緩い抽出を使う
+# （形式適合を前提にすると旧形式どうしの重複を取り逃すため）。
+ADR_ID_PATTERN='(ADR-[0-9]+(-[0-9]+)?)'
 
 # 値 $1 が第2引数以降の語彙集合に含まれるかを判定する。
 # 戻り値: 含まれれば 0、含まれなければ 1
@@ -353,6 +389,26 @@ extract_park_adr_refs() {
     done <"$file"
 }
 
+# ファイル file の本文の最初の `# ` 見出し行から ADR 識別子部を抽出し、グローバル変数
+# H1_ADR_ID へ格納する（見出しが無い・見出しに ADR 識別子が現れない場合は空文字）。
+# 見出し行全体から最左の識別子トークンを取るため、`# ADR-X-01: タイトル` と
+# `# ADR-X-01-slug: タイトル` の双方から同じ識別子部が得られる。
+extract_h1_adr_id() {
+    local file="$1"
+    local line
+
+    H1_ADR_ID=""
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        if [[ "$line" =~ ^#[[:space:]] ]]; then
+            if [[ "$line" =~ $ADR_ID_PATTERN ]]; then
+                H1_ADR_ID="${BASH_REMATCH[1]}"
+            fi
+            return 0
+        fi
+    done <"$file"
+}
+
 # ファイル名昇順で走査対象を収集
 files=()
 shopt -s nullglob
@@ -383,11 +439,17 @@ declare -A FM_SB_BY_STEM=()
 # 持たない旧形式はキー未設定＝参照時 "${FM_VALIDITY_BY_STEM[$stem]:-}" で空扱いにする）
 declare -A FM_VALIDITY_BY_STEM=()
 
+# レイヤ5 の検査対象（front-matter を持つ ADR のみ＝レイヤ1 と同一の対象集合）を
+# ファイル名昇順で保持する
+fm_files=()
+
 for file in "${sorted[@]}"; do
     if ! extract_frontmatter "$file"; then
         # front-matter を持たない旧形式はレイヤ1検査対象外（スキップ）
         continue
     fi
+
+    fm_files+=("$file")
 
     FM_SB_BY_STEM["$(basename "$file" .md)"]="$FM_SUPERSEDED_BY"
     FM_VALIDITY_BY_STEM["$(basename "$file" .md)"]="$FM_VALIDITY"
@@ -562,6 +624,65 @@ for src_file in "${sorted[@]}"; do
             violations=$((violations + 1))
         fi
     done
+done
+
+# レイヤ5: ファイル名形式・識別子重複・H1 整合
+# 対象は front-matter を持つ ADR のみ（fm_files。レイヤ1 と同一の対象集合）
+
+# 識別子部ごとの出現ファイルを集計する（重複検査の第1パス）
+declare -A ID_FILE_COUNT=()
+declare -A ID_FILE_LIST=()
+
+for file in ${fm_files[@]+"${fm_files[@]}"}; do
+    stem="$(basename "$file" .md)"
+
+    # ファイル名形式検査
+    if [[ ! "$stem" =~ $ADR_STEM_PATTERN ]]; then
+        printf '%s: ファイル名形式違反（ADR-YYYYMMDDHHMM-NN-<slug>.md の形式に適合しません。時刻部は暦として妥当な12桁、連番部は2桁、slug は小文字英数字とハイフン）\n' "$file"
+        violations=$((violations + 1))
+    fi
+
+    # 識別子部の抽出（形式違反のファイルからも可能な限り抽出し、重複・H1 整合の
+    # 検査へ回す。抽出できない場合は形式違反として既に報告済みのため両検査を飛ばす）
+    if [[ ! "$stem" =~ ^$ADR_ID_PATTERN ]]; then
+        continue
+    fi
+    file_id="${BASH_REMATCH[1]}"
+
+    ID_FILE_COUNT["$file_id"]=$((${ID_FILE_COUNT["$file_id"]:-0} + 1))
+    if [ -n "${ID_FILE_LIST["$file_id"]:-}" ]; then
+        ID_FILE_LIST["$file_id"]="${ID_FILE_LIST[$file_id]}, $file"
+    else
+        ID_FILE_LIST["$file_id"]="$file"
+    fi
+
+    # H1 整合検査
+    extract_h1_adr_id "$file"
+    if [ -z "$H1_ADR_ID" ]; then
+        printf '%s: H1 整合違反（本文の最初の "# " 見出しに ADR 識別子が見つかりません。ファイル名の識別子部は %s）\n' "$file" "$file_id"
+        violations=$((violations + 1))
+    elif [ "$H1_ADR_ID" != "$file_id" ]; then
+        printf '%s: H1 整合違反（H1 見出しの識別子部 %s がファイル名の識別子部 %s と一致しません）\n' "$file" "$H1_ADR_ID" "$file_id"
+        violations=$((violations + 1))
+    fi
+done
+
+# 識別子重複検査（第2パス）。連想配列の走査順は不定のため、ファイル名昇順の
+# fm_files を走査し、各識別子の最初の出現でのみ報告して出力順を決定的にする
+declare -A ID_REPORTED=()
+for file in ${fm_files[@]+"${fm_files[@]}"}; do
+    stem="$(basename "$file" .md)"
+    if [[ ! "$stem" =~ ^$ADR_ID_PATTERN ]]; then
+        continue
+    fi
+    file_id="${BASH_REMATCH[1]}"
+
+    if [ "${ID_FILE_COUNT[$file_id]}" -le 1 ] || [ -n "${ID_REPORTED[$file_id]:-}" ]; then
+        continue
+    fi
+    ID_REPORTED["$file_id"]=1
+    printf '%s: 識別子重複違反（識別子 %s を持つ ADR が %d 本あります: %s）\n' "$ADR_DIR" "$file_id" "${ID_FILE_COUNT[$file_id]}" "${ID_FILE_LIST[$file_id]}"
+    violations=$((violations + 1))
 done
 
 if [ "$violations" -gt 0 ]; then
