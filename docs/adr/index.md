@@ -1,51 +1,51 @@
 <!-- このファイルは gen-adr-index.sh による生成物。手動編集禁止。 -->
 # 有効 ADR インデックス
 
-- [ADR-20260406-review-contract-in-plan-issue](./ADR-20260406-review-contract-in-plan-issue.md): レビュー契約の所在を plan-issue に移行する
-- [ADR-20260407-dev-loop-input-path-split](./ADR-20260407-dev-loop-input-path-split.md): dev-loop の正規パス/簡易パス入力分岐
-- [ADR-20260415-ddd-review-context-boundary](./ADR-20260415-ddd-review-context-boundary.md): DDDドキュメント整合性レビューでの責務境界考慮
-- [ADR-20260421-agent-modeling-principle](./ADR-20260421-agent-modeling-principle.md): コーディングエージェント固有挙動をドメインモデルに持ち込まずアクター内部実装として扱う
-- [ADR-20260513-workflow-design-scope-team](./ADR-20260513-workflow-design-scope-team.md): workflow-design.md にチーム規模別フローを含めない
-- [ADR-20260525-2-subagent-agents-consolidation](./ADR-20260525-2-subagent-agents-consolidation.md): サブエージェント定義はプラグインルート agents/ に集約する
-- [ADR-20260525-subagent-claude-md-injection](./ADR-20260525-subagent-claude-md-injection.md): サブエージェント起動時の CLAUDE.md 取得方針
-- [ADR-20260531-superpowers-delegation-boundary](./ADR-20260531-superpowers-delegation-boundary.md): Delivery実装メカニクスを superpowers に委譲し、dev-workflow は Discovery＋接続契約に縮退する
-- [ADR-20260601-autonomy-approval-gate-alignment](./ADR-20260601-autonomy-approval-gate-alignment.md): 自律度の表現を責任分担マトリクスの承認ゲート軸に置き、ドメインモデルへ持ち込まない（ADR-20260421整合）
-- [ADR-20260602-2-autonomy-ladder-convention](./ADR-20260602-2-autonomy-ladder-convention.md): 自律度モデル L0–L3 の規約（提案→承認二段・L0/L3 縮退形）
-- [ADR-20260602-principles-rationale-hub](./ADR-20260602-principles-rationale-hub.md): principles.md（旧 workflow-design.md）の責務 = Explanation 根拠ハブ／原則の射程は全ライフサイクル横断（ADR-20260531-2 を Supersede）
-- [ADR-20260604-dor-shared-resource-consolidation](./ADR-20260604-dor-shared-resource-consolidation.md): 複数スキルが共有する参照資源はプラグインルート references/ に集約する（DoR定義の単一ソース化）
-- [ADR-20260606-2-instruction-tidying](./ADR-20260606-2-instruction-tidying.md): 指示の棚卸し（保護手段の優先の削除方向）
-- [ADR-20260606-3-superpowers-soft-delegation](./ADR-20260606-3-superpowers-soft-delegation.md): superpowers 委譲をソフト/任意依存とし、フォールバック方針 C で実現する
-- [ADR-20260606-protection-priority-ladder](./ADR-20260606-protection-priority-ladder.md): 保護手段の優先（2軸マップとコスト×価値ゲート）
-- [ADR-20260607-workflow-unit-validity-reference-mechanism](./ADR-20260607-workflow-unit-validity-reference-mechanism.md): dev-loop / plan-issue の単位は現状維持とし、参照機構②/③・検証ゲート主担い・ポリシー実現方式を確定する
-- [ADR-20260618-issue-type-axis-core-dor](./ADR-20260618-issue-type-axis-core-dor.md): Issue種別軸の導入とコアDoR改訂方針
-- [ADR-20260621-completion-judgment-reach-via-hook](./ADR-20260621-completion-judgment-reach-via-hook.md): completion-judgment.md の原則を素の会話に届ける手段として SessionStart フックを採用する
-- [ADR-20260621-human-judgment-observation](./ADR-20260621-human-judgment-observation.md): 「人間判断要観点」の語彙・データ構造（正準用語「判断依頼」の確定）
-- [ADR-20260626-growth-plugin-separation](./ADR-20260626-growth-plugin-separation.md): 内省機能を独立プラグイン growth として分離
-- [ADR-20260627-2-plan-issue-plan-no-roundtrip](./ADR-20260627-2-plan-issue-plan-no-roundtrip.md): plan-issue の plan 本文をメイン context に往復させない生成〜修正ループ
-- [ADR-20260627-skill-context-budget-convention](./ADR-20260627-skill-context-budget-convention.md): スキル実行時のコンテキスト予算規約をプラグイン共有 references で単一出典化する
-- [ADR-20260628-2-career-decision-model](./ADR-20260628-2-career-decision-model.md): career 決定モデルの再設計（distill 仮説 ＋ 集約点裁定）
-- [ADR-20260628-agent-granularity-role-type](./ADR-20260628-agent-granularity-role-type.md): エージェント定義の粒度モデル — ロール型（能力／知識ドメイン粒度）を正とする
-- [ADR-20260629-plan-location-resolution](./ADR-20260629-plan-location-resolution.md): プランファイルの所在解決を worktree／メイン横断で一意化する
-- [ADR-20260701-learning-signal-recoverability-and-output-forms](./ADR-20260701-learning-signal-recoverability-and-output-forms.md): 学習シグナルの復元不能性基準と distill 出力形の2系統分離
-- [ADR-20260705-2-growth-learning-vocabulary-frame](./ADR-20260705-2-growth-learning-vocabulary-frame.md): growth ループの学習/仮説検証フレームと語彙統一
-- [ADR-20260705-growth-loop-cybernetic-premises](./ADR-20260705-growth-loop-cybernetic-premises.md): growth ループのサイバネティック設計前提の単一出典化
-- [ADR-20260711-4-capture-timestamp-identity-rule](./ADR-20260711-4-capture-timestamp-identity-rule.md): capture 見出しキーの同定規則（実行時刻＋run 内序数サフィックス）
-- [ADR-20260712-captures-bounded-retention-aging](./ADR-20260712-captures-bounded-retention-aging.md): 生観測の有界保持（経年削除）と work-queue／retention の2軸分離
-- [ADR-20260713-captures-stateless-candidate-side-state](./ADR-20260713-captures-stateless-candidate-side-state.md): 個人 store 状態モデル — captures 無状態化と状態の候補側集約
-- [ADR-20260716-2-completion-judgment-inquiry-value-range](./ADR-20260716-2-completion-judgment-inquiry-value-range.md): completion-judgment の判定値域を調査の問いへ拡張する
-- [ADR-20260716-inquiry-skill-question-governance](./ADR-20260716-inquiry-skill-question-governance.md): inquiry スキルによる問いの統治と spike の下流非伝播
-- [ADR-20260718-workflow-design-v2-terminology-flow-stock-axes](./ADR-20260718-workflow-design-v2-terminology-flow-stock-axes.md): workflow-design.md v2 構造 — 用語のフレームワーク非依存化とフロー／ストック軸の分離
-- [ADR-20260719-adr-scoping-criteria-and-record-reference-principle](./ADR-20260719-adr-scoping-criteria-and-record-reference-principle.md): ADR 化判断の3基準を決定として確定し、記録は可変文書を現在の参照先として指さない
-- [ADR-20260720-2-distill-pending-reevaluation-policy](./ADR-20260720-2-distill-pending-reevaluation-policy.md): distill の pending 候補再評価ポリシー
-- [ADR-20260720-3-distill-ledger-matching-responsibility-boundary](./ADR-20260720-3-distill-ledger-matching-responsibility-boundary.md): 台帳突合の責務境界 — distill と promote の線引き
-- [ADR-20260720-4-adr-parked-decision-section](./ADR-20260720-4-adr-parked-decision-section.md): ADR スキーマに「保留した決定」セクション（意図的な非決定のスナップショット）を導入する
-- [ADR-20260720-distill-ledger-as-explicit-input](./ADR-20260720-distill-ledger-as-explicit-input.md): distill の入力定義の拡張 — 既存ルール台帳を明示的入力とする
-- [ADR-20260723-adr-machinery-plugin-extraction](./ADR-20260723-adr-machinery-plugin-extraction.md): ADR運用機構を独立プラグイン adr として抽出・配布
-- [ADR-20260725-2-execution-parameter-control-point](./ADR-20260725-2-execution-parameter-control-point.md): 実行パラメータの統制点をサブエージェント定義に集約する
-- [ADR-20260725-subagent-execution-parameter-pinning](./ADR-20260725-subagent-execution-parameter-pinning.md): サブエージェントの実行パラメータを front-matter で固定し役割ごとの必要水準として選ぶ
-- [ADR-20260726-01-adr-state-model-and-drift-lint](./ADR-20260726-01-adr-state-model-and-drift-lint.md): ADR の状態モデル（承認軸と有効性軸の2軸分離・導出ビュー index）と drift-lint
-- [ADR-20260726-02-adr-edit-mechanism-and-amend-abolition](./ADR-20260726-02-adr-edit-mechanism-and-amend-abolition.md): ADR の編集機構（3段構え・凍結原則・ADR分割）と Amended 機構の廃止
-- [ADR-20260726-03-adr-lifecycle-tooling-delegation](./ADR-20260726-03-adr-lifecycle-tooling-delegation.md): ADR のライフサイクル操作を tooling へ委譲する
-- [ADR-20260726-04-adr-design-decision-index-abolition](./ADR-20260726-04-adr-design-decision-index-abolition.md): モデル制約由来の設計判断インデックスを廃止する
-- [ADR-20260726-05-adr-flat-layout](./ADR-20260726-05-adr-flat-layout.md): ADR ファイルは docs/adr/ 配下にフラット構造で配置する
+- [ADR-202605131437-02-review-contract-in-plan-issue](./ADR-202605131437-02-review-contract-in-plan-issue.md): レビュー契約の所在を plan-issue に移行する
+- [ADR-202605131437-03-dev-loop-input-path-split](./ADR-202605131437-03-dev-loop-input-path-split.md): dev-loop の正規パス/簡易パス入力分岐
+- [ADR-202605131437-04-ddd-review-context-boundary](./ADR-202605131437-04-ddd-review-context-boundary.md): DDDドキュメント整合性レビューでの責務境界考慮
+- [ADR-202605131437-05-agent-modeling-principle](./ADR-202605131437-05-agent-modeling-principle.md): コーディングエージェント固有挙動をドメインモデルに持ち込まずアクター内部実装として扱う
+- [ADR-202605131437-06-workflow-design-scope-team](./ADR-202605131437-06-workflow-design-scope-team.md): workflow-design.md にチーム規模別フローを含めない
+- [ADR-202605250658-01-subagent-claude-md-injection](./ADR-202605250658-01-subagent-claude-md-injection.md): サブエージェント起動時の CLAUDE.md 取得方針
+- [ADR-202605250838-01-subagent-agents-consolidation](./ADR-202605250838-01-subagent-agents-consolidation.md): サブエージェント定義はプラグインルート agents/ に集約する
+- [ADR-202605311500-01-superpowers-delegation-boundary](./ADR-202605311500-01-superpowers-delegation-boundary.md): Delivery実装メカニクスを superpowers に委譲し、dev-workflow は Discovery＋接続契約に縮退する
+- [ADR-202606012328-01-autonomy-approval-gate-alignment](./ADR-202606012328-01-autonomy-approval-gate-alignment.md): 自律度の表現を責任分担マトリクスの承認ゲート軸に置き、ドメインモデルへ持ち込まない（ADR-202605131437-05整合）
+- [ADR-202606020010-01-principles-rationale-hub](./ADR-202606020010-01-principles-rationale-hub.md): principles.md（旧 workflow-design.md）の責務 = Explanation 根拠ハブ／原則の射程は全ライフサイクル横断（ADR-202605312147-01 を Supersede）
+- [ADR-202606020032-01-autonomy-ladder-convention](./ADR-202606020032-01-autonomy-ladder-convention.md): 自律度モデル L0–L3 の規約（提案→承認二段・L0/L3 縮退形）
+- [ADR-202606040737-01-dor-shared-resource-consolidation](./ADR-202606040737-01-dor-shared-resource-consolidation.md): 複数スキルが共有する参照資源はプラグインルート references/ に集約する（DoR定義の単一ソース化）
+- [ADR-202606061120-01-protection-priority-ladder](./ADR-202606061120-01-protection-priority-ladder.md): 保護手段の優先（2軸マップとコスト×価値ゲート）
+- [ADR-202606061159-01-instruction-tidying](./ADR-202606061159-01-instruction-tidying.md): 指示の棚卸し（保護手段の優先の削除方向）
+- [ADR-202606062346-01-superpowers-soft-delegation](./ADR-202606062346-01-superpowers-soft-delegation.md): superpowers 委譲をソフト/任意依存とし、フォールバック方針 C で実現する
+- [ADR-202606071222-01-workflow-unit-validity-reference-mechanism](./ADR-202606071222-01-workflow-unit-validity-reference-mechanism.md): dev-loop / plan-issue の単位は現状維持とし、参照機構②/③・検証ゲート主担い・ポリシー実現方式を確定する
+- [ADR-202606180122-01-issue-type-axis-core-dor](./ADR-202606180122-01-issue-type-axis-core-dor.md): Issue種別軸の導入とコアDoR改訂方針
+- [ADR-202606211417-01-human-judgment-observation](./ADR-202606211417-01-human-judgment-observation.md): 「人間判断要観点」の語彙・データ構造（正準用語「判断依頼」の確定）
+- [ADR-202606211859-01-completion-judgment-reach-via-hook](./ADR-202606211859-01-completion-judgment-reach-via-hook.md): completion-judgment.md の原則を素の会話に届ける手段として SessionStart フックを採用する
+- [ADR-202606261847-01-growth-plugin-separation](./ADR-202606261847-01-growth-plugin-separation.md): 内省機能を独立プラグイン growth として分離
+- [ADR-202606270040-01-skill-context-budget-convention](./ADR-202606270040-01-skill-context-budget-convention.md): スキル実行時のコンテキスト予算規約をプラグイン共有 references で単一出典化する
+- [ADR-202606272147-01-plan-issue-plan-no-roundtrip](./ADR-202606272147-01-plan-issue-plan-no-roundtrip.md): plan-issue の plan 本文をメイン context に往復させない生成〜修正ループ
+- [ADR-202606280940-01-agent-granularity-role-type](./ADR-202606280940-01-agent-granularity-role-type.md): エージェント定義の粒度モデル — ロール型（能力／知識ドメイン粒度）を正とする
+- [ADR-202606282107-01-career-decision-model](./ADR-202606282107-01-career-decision-model.md): career 決定モデルの再設計（distill 仮説 ＋ 集約点裁定）
+- [ADR-202606291949-01-plan-location-resolution](./ADR-202606291949-01-plan-location-resolution.md): プランファイルの所在解決を worktree／メイン横断で一意化する
+- [ADR-202607010734-01-learning-signal-recoverability-and-output-forms](./ADR-202607010734-01-learning-signal-recoverability-and-output-forms.md): 学習シグナルの復元不能性基準と distill 出力形の2系統分離
+- [ADR-202607050028-01-growth-loop-cybernetic-premises](./ADR-202607050028-01-growth-loop-cybernetic-premises.md): growth ループのサイバネティック設計前提の単一出典化
+- [ADR-202607051220-01-growth-learning-vocabulary-frame](./ADR-202607051220-01-growth-learning-vocabulary-frame.md): growth ループの学習/仮説検証フレームと語彙統一
+- [ADR-202607112340-01-capture-timestamp-identity-rule](./ADR-202607112340-01-capture-timestamp-identity-rule.md): capture 見出しキーの同定規則（実行時刻＋run 内序数サフィックス）
+- [ADR-202607121331-01-captures-bounded-retention-aging](./ADR-202607121331-01-captures-bounded-retention-aging.md): 生観測の有界保持（経年削除）と work-queue／retention の2軸分離
+- [ADR-202607130831-01-captures-stateless-candidate-side-state](./ADR-202607130831-01-captures-stateless-candidate-side-state.md): 個人 store 状態モデル — captures 無状態化と状態の候補側集約
+- [ADR-202607160857-01-inquiry-skill-question-governance](./ADR-202607160857-01-inquiry-skill-question-governance.md): inquiry スキルによる問いの統治と spike の下流非伝播
+- [ADR-202607160857-02-completion-judgment-inquiry-value-range](./ADR-202607160857-02-completion-judgment-inquiry-value-range.md): completion-judgment の判定値域を調査の問いへ拡張する
+- [ADR-202607182303-01-workflow-design-v2-terminology-flow-stock-axes](./ADR-202607182303-01-workflow-design-v2-terminology-flow-stock-axes.md): workflow-design.md v2 構造 — 用語のフレームワーク非依存化とフロー／ストック軸の分離
+- [ADR-202607191825-01-adr-scoping-criteria-and-record-reference-principle](./ADR-202607191825-01-adr-scoping-criteria-and-record-reference-principle.md): ADR 化判断の3基準を決定として確定し、記録は可変文書を現在の参照先として指さない
+- [ADR-202607200855-01-distill-ledger-as-explicit-input](./ADR-202607200855-01-distill-ledger-as-explicit-input.md): distill の入力定義の拡張 — 既存ルール台帳を明示的入力とする
+- [ADR-202607200856-01-distill-pending-reevaluation-policy](./ADR-202607200856-01-distill-pending-reevaluation-policy.md): distill の pending 候補再評価ポリシー
+- [ADR-202607200858-01-distill-ledger-matching-responsibility-boundary](./ADR-202607200858-01-distill-ledger-matching-responsibility-boundary.md): 台帳突合の責務境界 — distill と promote の線引き
+- [ADR-202607201441-01-adr-parked-decision-section](./ADR-202607201441-01-adr-parked-decision-section.md): ADR スキーマに「保留した決定」セクション（意図的な非決定のスナップショット）を導入する
+- [ADR-202607230648-01-adr-machinery-plugin-extraction](./ADR-202607230648-01-adr-machinery-plugin-extraction.md): ADR運用機構を独立プラグイン adr として抽出・配布
+- [ADR-202607251922-01-subagent-execution-parameter-pinning](./ADR-202607251922-01-subagent-execution-parameter-pinning.md): サブエージェントの実行パラメータを front-matter で固定し役割ごとの必要水準として選ぶ
+- [ADR-202607251922-02-execution-parameter-control-point](./ADR-202607251922-02-execution-parameter-control-point.md): 実行パラメータの統制点をサブエージェント定義に集約する
+- [ADR-202607261459-01-adr-state-model-and-drift-lint](./ADR-202607261459-01-adr-state-model-and-drift-lint.md): ADR の状態モデル（承認軸と有効性軸の2軸分離・導出ビュー index）と drift-lint
+- [ADR-202607261501-01-adr-edit-mechanism-and-amend-abolition](./ADR-202607261501-01-adr-edit-mechanism-and-amend-abolition.md): ADR の編集機構（3段構え・凍結原則・ADR分割）と Amended 機構の廃止
+- [ADR-202607261503-01-adr-lifecycle-tooling-delegation](./ADR-202607261503-01-adr-lifecycle-tooling-delegation.md): ADR のライフサイクル操作を tooling へ委譲する
+- [ADR-202607261503-02-adr-design-decision-index-abolition](./ADR-202607261503-02-adr-design-decision-index-abolition.md): モデル制約由来の設計判断インデックスを廃止する
+- [ADR-202607261503-03-adr-flat-layout](./ADR-202607261503-03-adr-flat-layout.md): ADR ファイルは docs/adr/ 配下にフラット構造で配置する
 - [ADR-202607262019-01-adr-id-timestamp-numbering](./ADR-202607262019-01-adr-id-timestamp-numbering.md): ADR の識別子に時刻部を導入し、並行起票による重複を構造的に防ぐ
