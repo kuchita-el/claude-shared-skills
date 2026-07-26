@@ -147,7 +147,7 @@ SKILL.md の「各操作後の自己検証」は `docs/adr` を直接 lint す�
 `index.md` は導出ビュー（生成物）であり人手編集しない。手編集しない扱いの根拠は SKILL.md が指す状態モデルの規約に置く。本節は再生成と検証の実行手順のみを記す。
 
 - 生成: `bash ${CLAUDE_SKILL_DIR}/../../scripts/gen-adr-index.sh <対象ディレクトリ>` の出力で `<対象ディレクトリ>/index.md` を再生成する
-- 検証: `bash ${CLAUDE_SKILL_DIR}/../../scripts/lint-adr.sh <対象ディレクトリ>` を実行する（front-matter スキーマ・index 同期・相互参照双方向性の3レイヤを検査し、違反0件で exit 0）
+- 検証: `bash ${CLAUDE_SKILL_DIR}/../../scripts/lint-adr.sh <対象ディレクトリ>` を実行する（front-matter スキーマ・index 同期・相互参照双方向性・Related/park 参照の生存性と実在性・ファイル名形式と識別子重複と H1 整合の5レイヤを検査し、違反0件で exit 0）
 
 `validity` を変える遷移（承認・上書き・分割・廃止）の後は、検証の前に必ず生成を実行する。生成を飛ばすと index 同期レイヤが drift として発火する。自己検証では `<対象ディレクトリ>` を `docs/adr` とする（baseline red で隔離検証へ退避する場合のみ隔離ディレクトリを対象とする）。
 

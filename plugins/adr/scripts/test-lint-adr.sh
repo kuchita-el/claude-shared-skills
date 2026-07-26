@@ -866,7 +866,7 @@ run_layer4_header_spec
 # ==== レイヤ5: ファイル名形式・識別子重複・H1 整合 ====
 # 仕様: レイヤ1〜4 はいずれもファイル本文（front-matter・本文節）と index を見るだけで、
 # ファイル名そのものを検査しない。この欠落により同一識別子の ADR が2本 main へ到達した
-# 実績がある（#588）。レイヤ5 はファイル名を第一級の検査対象に加える。
+# 実績がある。レイヤ5 はファイル名を第一級の検査対象に加える。
 # 検査対象集合はレイヤ1 と同一（front-matter を持つ ADR のみ。旧形式はスキップ）。
 
 # AC1: 形式不適合（時刻部の桁数不足）を検出する
@@ -917,8 +917,10 @@ run_xref_list_case \
     "notcontains:識別子重複違反" \
     "notcontains:H1 整合違反"
 
-# AC7: レイヤ5仕様のヘッダ成文化。削除で red 化する必須アサート
-# （run_layer4_header_spec に倣う）。
+# AC7: レイヤ5仕様のヘッダ成文化。削除で red 化する必須アサート。
+# 検索対象は `cat` の全文ではなく `set -euo pipefail` までのヘッダブロックに限定する。
+# レイヤ名・検査名は変数コメントや printf の違反メッセージにも現れるため、全文検索では
+# ヘッダの記述ブロックを丸ごと削除してもグリーンのままとなり、AC7 の成果物を保護できない。
 run_layer5_header_spec() {
     if [ ! -f "$LINT_ADR" ]; then
         total=$((total + 1))
@@ -927,15 +929,82 @@ run_layer5_header_spec() {
         return
     fi
 
-    local content
-    content=$(cat "$LINT_ADR")
-    assert_contains "$content" "レイヤ5" "(AC7): ヘッダにレイヤ5の記述が存在する"
-    assert_contains "$content" "ファイル名形式" "(AC7): ヘッダにファイル名形式検査の仕様が成文化されている"
-    assert_contains "$content" "識別子重複" "(AC7): ヘッダに識別子重複検査の仕様が成文化されている"
-    assert_contains "$content" "H1 整合" "(AC7): ヘッダに H1 整合検査の仕様が成文化されている"
+    local header
+    header=$(sed -n '1,/^set -euo pipefail/p' "$LINT_ADR")
+    assert_contains "$header" "レイヤ5" "(AC7): ヘッダにレイヤ5の記述が存在する"
+    assert_contains "$header" "ファイル名形式違反" "(AC7): ヘッダにファイル名形式検査の違反条件が成文化されている"
+    assert_contains "$header" "識別子重複違反" "(AC7): ヘッダに識別子重複検査の違反条件が成文化されている"
+    assert_contains "$header" "H1 整合違反" "(AC7): ヘッダに H1 整合検査の違反条件が成文化されている"
+    assert_contains "$header" "検査対象集合はレイヤ1 と同一" "(AC7): ヘッダにレイヤ5の検査対象集合が成文化されている"
 }
 
 run_layer5_header_spec
+
+# AC1(境界の面固定): 暦妥当性の境界は fixture では月13 しか通っておらず、
+# ADR_STEM_PATTERN の日・時・分の選択肢を壊す編集が回帰に掛からない。
+# パターンを直接叩いて MATCH/REJECT を突き合わせ、fixture を増やさずに境界を固定する。
+run_layer5_stem_pattern() {
+    if [ ! -f "$LINT_ADR" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] (AC1-境界): lint-adr.sh not found: %s\n' "$LINT_ADR"
+        return
+    fi
+
+    # lint-adr.sh 本体を実行せずにパターン定義だけを取り出す（source すると
+    # ADR_DIR 不在で exit 2 になるため、定義行を eval する）
+    local pattern_def
+    pattern_def=$(grep -m1 '^ADR_STEM_PATTERN=' "$LINT_ADR")
+    if [ -z "$pattern_def" ]; then
+        total=$((total + 1))
+        failed=$((failed + 1))
+        printf '[FAIL] (AC1-境界): ADR_STEM_PATTERN の定義が見つかりません\n'
+        return
+    fi
+    eval "$pattern_def"
+
+    # 期待MATCH: 境界値（月12・日31・時23・分59、連番99）と最小値
+    local stem
+    for stem in \
+        "ADR-202601010000-01-a" \
+        "ADR-202612312359-99-boundary-max" \
+        "ADR-202607262019-01-adr-id-timestamp-numbering"
+    do
+        total=$((total + 1))
+        if [[ "$stem" =~ $ADR_STEM_PATTERN ]]; then
+            printf '[PASS] (AC1-境界): 適合 stem を受理する: %s\n' "$stem"
+            passed=$((passed + 1))
+        else
+            printf '[FAIL] (AC1-境界): 適合 stem を誤って拒否した: %s\n' "$stem"
+            failed=$((failed + 1))
+        fi
+    done
+
+    # 期待REJECT: AC1 が例示する暦不正（月13・日32・時24）＋分60・構造違反
+    for stem in \
+        "ADR-202613011030-01-bad-month" \
+        "ADR-202601321030-01-bad-day" \
+        "ADR-202601012430-01-bad-hour" \
+        "ADR-202601011060-01-bad-minute" \
+        "ADR-202601011030-1-short-seq" \
+        "ADR-202601011030-01-Bad-Upper" \
+        "ADR-202601011030-01-double--hyphen" \
+        "ADR-202601011030-01-trailing-" \
+        "ADR-202601011030-01" \
+        "ADR-2026010110301-01-too-long"
+    do
+        total=$((total + 1))
+        if [[ "$stem" =~ $ADR_STEM_PATTERN ]]; then
+            printf '[FAIL] (AC1-境界): 不適合 stem を誤って受理した: %s\n' "$stem"
+            failed=$((failed + 1))
+        else
+            printf '[PASS] (AC1-境界): 不適合 stem を拒否する: %s\n' "$stem"
+            passed=$((passed + 1))
+        fi
+    done
+}
+
+run_layer5_stem_pattern
 
 echo
 if [ "$failed" -eq 0 ]; then
