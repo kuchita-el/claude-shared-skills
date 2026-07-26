@@ -42,7 +42,7 @@ glossary の「見出しは日本語を正典、英語は追跡用の別名」�
 
 #### 追補（#440・2026-07-05）: partition 硬度＝非排他 tag で確定
 
-本 decision が #440 へ委譲した partition 硬度を、#440 が同一系譜への in-place 追補として確定する。本件は同 ADR が自ら #440 へ委譲した未決事項を同一 ADR 内で in-place 確定する追補であり、現行の3段構え編集機構（ADR-20260711-3 決定3）では非core改訂（本 ADR を直接編集し `## 変更履歴` に追記）に相当する（旧「Amended（部分改訂）」機構は決定4 で廃止）。新規 ADR は起票せず、`Amends:`/`Amended by:` の相互併記に代えて委譲先 Issue #440 への逆参照で対応する。Status は Accepted 維持。
+本 decision が #440 へ委譲した partition 硬度を、#440 が同一系譜への in-place 追補として確定する。本件は同 ADR が自ら #440 へ委譲した未決事項を同一 ADR 内で in-place 確定する追補であり、現行の3段構え編集機構（ADR-20260726-02 決定1）では非core改訂（本 ADR を直接編集し `## 変更履歴` に追記）に相当する（旧「Amended（部分改訂）」機構は決定4 で廃止）。新規 ADR は起票せず、`Amends:`/`Amended by:` の相互併記に代えて委譲先 Issue #440 への逆参照で対応する。Status は Accepted 維持。
 
 - **確定値**: **非排他 tag（多値 set）**。排他 type を廃し、`behavior-diff` / `decision-record` を tag 値として存続させる（廃止されるのは排他制約であってカテゴリ自体ではない）。`type` は tag の要素数1特殊ケースであり **tag が type を包含する**（確信ケースは要素数1で表せるため type を別途持たない）。本 decision の裁定基準「不十分なら tag」の tag 寄り示唆を tag 確定で充足する。
 - **仮説形成（distill）の分岐**: observation 段の型仮説（#437）を distill が **evidence-gated** で確定する（既定は単一タグ、第2タグは陽性証拠がある時のみ付与し既定 both を禁ずる）。ADR-20260701 §4「distill 出力2系統分離」は不変（系統数2のまま、両タグ候補が両系統に入り系統メンバーシップが関数から集合関係になるのみ）。

@@ -29,7 +29,6 @@
 - [ADR-20260701-learning-signal-recoverability-and-output-forms](./ADR-20260701-learning-signal-recoverability-and-output-forms.md): 学習シグナルの復元不能性基準と distill 出力形の2系統分離
 - [ADR-20260705-2-growth-learning-vocabulary-frame](./ADR-20260705-2-growth-learning-vocabulary-frame.md): growth ループの学習/仮説検証フレームと語彙統一
 - [ADR-20260705-growth-loop-cybernetic-premises](./ADR-20260705-growth-loop-cybernetic-premises.md): growth ループのサイバネティック設計前提の単一出典化
-- [ADR-20260711-3-adr-two-axis-status-validity-model](./ADR-20260711-3-adr-two-axis-status-validity-model.md): ADR 運用モデルの再設計（承認軸と有効性軸の2軸分離・導出ビュー index・編集機構）
 - [ADR-20260711-4-capture-timestamp-identity-rule](./ADR-20260711-4-capture-timestamp-identity-rule.md): capture 見出しキーの同定規則（実行時刻＋run 内序数サフィックス）
 - [ADR-20260712-captures-bounded-retention-aging](./ADR-20260712-captures-bounded-retention-aging.md): 生観測の有界保持（経年削除）と work-queue／retention の2軸分離
 - [ADR-20260713-captures-stateless-candidate-side-state](./ADR-20260713-captures-stateless-candidate-side-state.md): 個人 store 状態モデル — captures 無状態化と状態の候補側集約
@@ -44,3 +43,9 @@
 - [ADR-20260723-adr-machinery-plugin-extraction](./ADR-20260723-adr-machinery-plugin-extraction.md): ADR運用機構を独立プラグイン adr として抽出・配布
 - [ADR-20260725-2-execution-parameter-control-point](./ADR-20260725-2-execution-parameter-control-point.md): 実行パラメータの統制点をサブエージェント定義に集約する
 - [ADR-20260725-subagent-execution-parameter-pinning](./ADR-20260725-subagent-execution-parameter-pinning.md): サブエージェントの実行パラメータを front-matter で固定し役割ごとの必要水準として選ぶ
+- [ADR-20260726-01-adr-state-model-and-drift-lint](./ADR-20260726-01-adr-state-model-and-drift-lint.md): ADR の状態モデル（承認軸と有効性軸の2軸分離・導出ビュー index）と drift-lint
+- [ADR-20260726-02-adr-edit-mechanism-and-amend-abolition](./ADR-20260726-02-adr-edit-mechanism-and-amend-abolition.md): ADR の編集機構（3段構え・凍結原則・ADR分割）と Amended 機構の廃止
+- [ADR-20260726-03-adr-lifecycle-tooling-delegation](./ADR-20260726-03-adr-lifecycle-tooling-delegation.md): ADR のライフサイクル操作を tooling へ委譲する
+- [ADR-20260726-04-adr-design-decision-index-abolition](./ADR-20260726-04-adr-design-decision-index-abolition.md): モデル制約由来の設計判断インデックスを廃止する
+- [ADR-20260726-05-adr-flat-layout](./ADR-20260726-05-adr-flat-layout.md): ADR ファイルは docs/adr/ 配下にフラット構造で配置する
+- [ADR-20260726-06-adr-id-numbering-single-format](./ADR-20260726-06-adr-id-numbering-single-format.md): ADR の採番方式を日付＋2桁ゼロ埋め連番＋slug の単一形式へ統一する
