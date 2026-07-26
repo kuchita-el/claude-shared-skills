@@ -39,5 +39,5 @@ superseded-by:
 
 ## 関連ADR
 
-- Related: ADR-20260726-02-behavior-invariant-placement（本決定を条項として収める規約の配置）
+- Related: ADR-20260726-02-behavior-invariant-placement（読者による置き場所の切り分け。本決定の規律は実行主体向け規約ではなく CLAUDE.md 側に置く）
 - 関連Issue: #364
