@@ -9,6 +9,7 @@ allowed-tools:
   - AskUserQuestion
   - Bash(bash *scripts/lint-adr.sh*)
   - Bash(bash *scripts/gen-adr-index.sh*)
+  - Bash(bash *scripts/next-adr-id.sh*)
 ---
 
 # ADRライフサイクル操作（Manage ADR）
@@ -69,7 +70,7 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 - `${CLAUDE_SKILL_DIR}/references/edit-decision.md` — core／非core／些末 の判定と `AskUserQuestion` 問い設計・操作分岐、および ADR 本文へ参照を書く／直す際の判定（記録の参照原則。起票時にも適用する）
 - `${CLAUDE_SKILL_DIR}/references/io-examples.md` — 起票・承認・上書きの入出力例
 
-採番日（起票日）は外部コマンド（`date`）を実行せず、実行時コンテキストの現在日付から取得する。
+識別子の発番は `bash ${CLAUDE_SKILL_DIR}/../../scripts/next-adr-id.sh <対象ディレクトリ>` を実行し、その出力を用いる。時刻部（分粒度・ローカル時刻）の取得と同一時刻部内の連番決定はスクリプトが担う。`date` 等の外部コマンドを直接実行せず、配置ディレクトリを列挙して番号を組み立てない。
 
 ## 各操作後の自己検証（必須）
 

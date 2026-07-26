@@ -48,4 +48,4 @@
 - [ADR-20260726-03-adr-lifecycle-tooling-delegation](./ADR-20260726-03-adr-lifecycle-tooling-delegation.md): ADR のライフサイクル操作を tooling へ委譲する
 - [ADR-20260726-04-adr-design-decision-index-abolition](./ADR-20260726-04-adr-design-decision-index-abolition.md): モデル制約由来の設計判断インデックスを廃止する
 - [ADR-20260726-05-adr-flat-layout](./ADR-20260726-05-adr-flat-layout.md): ADR ファイルは docs/adr/ 配下にフラット構造で配置する
-- [ADR-20260726-06-adr-id-numbering-single-format](./ADR-20260726-06-adr-id-numbering-single-format.md): ADR の採番方式を日付＋2桁ゼロ埋め連番＋slug の単一形式へ統一する
+- [ADR-202607262019-01-adr-id-timestamp-numbering](./ADR-202607262019-01-adr-id-timestamp-numbering.md): ADR の識別子に時刻部を導入し、並行起票による重複を構造的に防ぐ

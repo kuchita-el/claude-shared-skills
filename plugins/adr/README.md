@@ -6,6 +6,7 @@ ADR（アーキテクチャ決定記録）の運用機構を配布する Claude 
 
 - **drift-lint（`scripts/lint-adr.sh`）**: ADR の front-matter スキーマ検証（状態語彙・有効性語彙・遷移整合）、有効性 index との整合、`Related:`／パーク欄の参照生存性・実在性を検査する。
 - **有効性 index 生成（`scripts/gen-adr-index.sh`）**: `validity: 有効` の ADR を抽出して index を生成する。
+- **識別子の発番（`scripts/next-adr-id.sh`）**: 起票時刻（分粒度・ローカル時刻）と同一時刻部内の連番から、次に起票する ADR の識別子 `ADR-YYYYMMDDHHMM-NN` を発番する。連番の算出対象を同一時刻部のファイルに限るため、並行するブランチがそれぞれ発番しても識別子が衝突しない。
 - **commit 前ゲート（`hooks/`）**: `git commit` 時に PreToolUse フックとして drift-lint を実行し、違反があれば commit をブロックする（exit 2）。対象リポジトリに ADR ディレクトリが存在しない場合は何もしない（no-op）。
 - **manage-adr スキル（`skills/manage-adr/`）**: ADR の起票・承認・上書き・廃止・却下・編集・分割を対話的に行うライフサイクル操作スキル。
 
@@ -15,6 +16,6 @@ ADR（アーキテクチャ決定記録）の運用機構を配布する Claude 
 
 ## ADR ディレクトリの指定（`ADR_DIR`）
 
-`lint-adr.sh` / `gen-adr-index.sh` は検査対象の ADR ディレクトリを第1引数（`ADR_DIR`）で受け取り、**既定は `docs/adr`**。導入先が別配置（例 `architecture/decisions`）を使う場合は引数で上書きする。commit ゲートは既定の `docs/adr` を対象に実行する。
+`lint-adr.sh` / `gen-adr-index.sh` / `next-adr-id.sh` は対象の ADR ディレクトリ（前2者は検査対象、`next-adr-id.sh` は既存 ADR の列挙対象）を第1引数（`ADR_DIR`）で受け取り、**既定は `docs/adr`**。導入先が別配置（例 `architecture/decisions`）を使う場合は引数で上書きする。commit ゲートは既定の `docs/adr` を対象に実行する。
 
 > 導入先固有設定を宣言ファイルで駆動する full config 方式の override は本プラグインのスコープ外（別途対応）。現時点の override 手段は `ADR_DIR` 引数のみ。
