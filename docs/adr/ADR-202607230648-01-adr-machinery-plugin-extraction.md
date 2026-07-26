@@ -32,7 +32,7 @@ ADR運用機構を dev-workflow から分離し、独立プラグイン `plugins
 
 - **得られる利益**: ADR 機構が dev-workflow のリリースサイクルから独立し、任意リポジトリへ単独導入できる。dev-workflow / growth のいずれも消費側として疎結合に依存できる。`manage-adr` の description が ADR 不使用の dev-workflow 利用者に常時加算されない。
 - **受容したコスト**: プラグインが3個体制（dev-workflow / growth / adr）になり、marketplace エントリ・バージョニング・配布の管理対象が増える。ADR を使う利用者は adr プラグインの導入（`enabledPlugins` 登録または `setup-local.sh`）が要る。commit ゲートをプラグイン hook 化したため、導入形態（`--plugin-dir` / marketplace / `enabledPlugins`）ごとの発火挙動を導入先で確認する必要がある（本リポでは `enabledPlugins` 経由の通常セッションでゲート発火を実地確認済み＝#493）。
-- **段階順序に伴う留保**: 抽出骨格は試用に先行して front-load した（#492 PR #546）。プラグイン default / プロジェクト override のレイヤ上書き境界は、別リポ試用（#492）で得る継ぎ目リスト（`docs/development/adr-plugin-portability-seams.md`）の実測を入力に #548 で設計する。本 ADR は抽出・配布の戦略決定のみを記録し、レイヤ上書きの具体設計は #548 の後続 ADR 候補とする（独立に反転しうる core を束ねない＝ADR-20260726-02 決定1）。
+- **段階順序に伴う留保**: 抽出骨格は試用に先行して front-load した（#492 PR #546）。プラグイン default / プロジェクト override のレイヤ上書き境界は、別リポ試用（#492）で得る継ぎ目リスト（`docs/development/adr-plugin-portability-seams.md`）の実測を入力に #548 で設計する。本 ADR は抽出・配布の戦略決定のみを記録し、レイヤ上書きの具体設計は #548 の後続 ADR 候補とする（独立に反転しうる core を束ねない＝ADR-202607261501-01 決定1）。
 
 ## 保留した決定
 

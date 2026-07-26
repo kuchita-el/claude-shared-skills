@@ -57,6 +57,6 @@ ADR-YYYYMMDD-NN-<slug>.md
 
 ## 関連ADR
 
-- Supersedes: ADR-202607112231-01-adr-two-axis-status-validity-model（ADR分割〔ADR-20260726-02 決定1〕により、原 ADR の決定8 のうち「採番方式」項を反転する新決定として起票。逐語 restate ではない。同決定の「配置」項は ADR-202607261503-03 へ生存 re-home され、原 ADR の決定1・2・5 は ADR-20260726-01、決定3・4 は ADR-20260726-02、決定6 は ADR-20260726-03、決定7 は ADR-202607261503-02 が担う。原 ADR の `superseded-by` はこれら6本の後継を列挙する）
+- Supersedes: ADR-202607112231-01-adr-two-axis-status-validity-model（ADR分割〔ADR-202607261501-01 決定1〕により、原 ADR の決定8 のうち「採番方式」項を反転する新決定として起票。逐語 restate ではない。同決定の「配置」項は ADR-202607261503-03 へ生存 re-home され、原 ADR の決定1・2・5 は ADR-202607261459-01、決定3・4 は ADR-202607261501-01、決定6 は ADR-202607261503-01、決定7 は ADR-202607261503-02 が担う。原 ADR の `superseded-by` はこれら6本の後継を列挙する）
 - Superseded by: ADR-202607262019-01-adr-id-timestamp-numbering（本 ADR 決定1 の採番方式を、時刻部を含む形式へ反転する後継。#587）
 - 関連Issue: #550（ID 形式単一化の親）, #566（1段目・規約文書の単一 ID 形式化）, #567（3段目・`docs/adr/` の遡及移行）, #570（本 ADR の起票元＝ADR分割）

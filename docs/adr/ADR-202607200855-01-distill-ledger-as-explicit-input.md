@@ -22,7 +22,7 @@ validity: 有効
 - **決定1a（処理源）**: 処理源＝`captures.md` のみ、`status: unprocessed` の走査、status 軸の再走査抑止 → ADR-202607130831-01 決定3 が上書き済み（退役）
 - **決定1b（参照源）**: 参照源＝既存ルール台帳（user/project 2層の `CLAUDE.md`・`learnings.md`・`candidates.md` 自身）、読み取り専用、「台帳から候補を生成しない」制約 → 生存
 
-決定1 全体を退役させると、上書きされていない参照源の定義が有効 corpus から消える。ADR-202607130831-01 の Consequences「改訂範囲（Amended の facet）」は自ら「ADR-20260629 の決定1（処理源＝`captures.md`、`status: unprocessed` 選択、status 軸の再走査抑止）の facet のみを改訂する」と述べており、同 ADR の `## Decision`（3決定）に参照源の定義は存在しない。ADR-202607121331-01-captures-bounded-retention-aging の関連注記も、入力契約の処理源／参照源2分そのものは当該決定で反転せず不変であると記録している。
+決定1 全体を退役させると、上書きされていない参照源の定義が有効 corpus から消える。ADR-202607130831-01 の Consequences「改訂範囲（Amended の facet）」は自ら「ADR-202606291631-01 の決定1（処理源＝`captures.md`、`status: unprocessed` 選択、status 軸の再走査抑止）の facet のみを改訂する」と述べており、同 ADR の `## Decision`（3決定）に参照源の定義は存在しない。ADR-202607121331-01-captures-bounded-retention-aging の関連注記も、入力契約の処理源／参照源2分そのものは当該決定で反転せず不変であると記録している。
 
 一方で参照源は、本 ADR の決定1（台帳を明示的入力とする拡張）が「何を入力とするか」を定めるのに対し「その入力の構成メンバは何か」を定める関係にあり、両者は一体で反転する。したがって決定1b は本 ADR が引き取る。ADR-202607112231-01 決定3 の不変条件「分割中に決定内容を変えない」を満たすため、決定1b の本文は原 ADR から逐語転記した。
 
