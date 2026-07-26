@@ -4,18 +4,18 @@ growth プラグインの学習ループ（`[Capture] → [Distill] → [Route] 
 
 ## 位置づけ
 
-- 本仕様は `DESIGN.md` 学習ループの **Distribute 段**（検証済みの学びを配布物として届ける段）の、`learnings.md`（パブリック/グローバル空間）への materialization 手続きを定義する。[`promotion-issue-spec.md`](promotion-issue-spec.md)（#382）が Promote 段の終端規約（昇格 Issue のテンプレート・識別ラベル。昇格先キャリアの判定＝Route は distill 側へ移設＝ADR-20260628-2）を定めるのに対し、本仕様はその**昇格 Issue を入力として受け、配布物エントリへ着地させる**手続きに徹する。
+- 本仕様は `DESIGN.md` 学習ループの **Distribute 段**（検証済みの学びを配布物として届ける段）の、`learnings.md`（パブリック/グローバル空間）への materialization 手続きを定義する。[`promotion-issue-spec.md`](promotion-issue-spec.md)（#382）が Promote 段の終端規約（昇格 Issue のテンプレート・識別ラベル。昇格先キャリアの判定＝Route は distill 側へ移設＝ADR-202606282107-01）を定めるのに対し、本仕様はその**昇格 Issue を入力として受け、配布物エントリへ着地させる**手続きに徹する。
 - **新規スキルを設けない**（#349 D2）。本仕様は参照ドキュメントであり、既存の implementation → PR ワークフロー（`refine-issue` → `plan-issue` → `implementation` → PR レビュー）が消費する。変換の実行主体は implementation を駆動する開発者／エージェントであり、承認は PR マージ（二段ゲート L2）が担う。
 - **出口ゲートは [`learning-store-spec.md`](learning-store-spec.md) の記法ルール**（同「記法ルール（規範の強制）」）に委ねる。本仕様は記法ルールを再定義せず、変換結果がそれを通過することを各手順の到達条件とする。
 - 本仕様が定義するのは learnings.md（パブリック/グローバル空間）行きの変換のみ。閉じた空間・ADR 差分・改善還元・強キャリアへの配布は対象外（「スコープ境界」節）。
 
 ## 入力境界
 
-変換規約は、**取り込み Issue（[`intake-issue-spec.md`](intake-issue-spec.md)）の裁定結果テーブルで career＝`learnings.md` かつ 空間＝`パブリック` と裁定された仮説**のみを入力に取る。昇格先キャリアの裁定（career の確定）は集約点（取り込み Issue）で人間が行う（ADR-20260628-2 決定3）。本規約はその裁定を**再実装せず、確定済みの裁定結果を信頼する**。
+変換規約は、**取り込み Issue（[`intake-issue-spec.md`](intake-issue-spec.md)）の裁定結果テーブルで career＝`learnings.md` かつ 空間＝`パブリック` と裁定された仮説**のみを入力に取る。昇格先キャリアの裁定（career の確定）は集約点（取り込み Issue）で人間が行う（ADR-202606282107-01 決定3）。本規約はその裁定を**再実装せず、確定済みの裁定結果を信頼する**。
 
 - 仮説 Issue は [`promotion-issue-spec.md`](promotion-issue-spec.md) のテンプレートに準拠し、`## 振る舞い差分`（変換の一次ソース）・`## キャリア` / `## 空間`（distill 由来の仮説欄）を持つ。
-- **入力識別の拘束キーは裁定結果テーブルの `career` 列＋`空間` 列**（[`intake-issue-spec.md`](intake-issue-spec.md)「裁定結果の記録形式」）。career 列＝`learnings.md` かつ 空間 列＝`パブリック` の行に対応する仮説のみを入力に取る。仮説本文の `## キャリア` / `## 空間` は distill 由来の**非拘束な仮説**であり、入力識別の拘束キーではない（ADR-20260628-2 決定3。裁定が binding、仮説本文は参照されるが拘束しない）。
-- `growth:promote` ラベルは仮説が inbox へ流入する経緯を示す識別子として存続するが（ADR-20260628-2 決定5）、入力の絞り込みには用いない（絞り込みは裁定結果テーブルが担う）。
+- **入力識別の拘束キーは裁定結果テーブルの `career` 列＋`空間` 列**（[`intake-issue-spec.md`](intake-issue-spec.md)「裁定結果の記録形式」）。career 列＝`learnings.md` かつ 空間 列＝`パブリック` の行に対応する仮説のみを入力に取る。仮説本文の `## キャリア` / `## 空間` は distill 由来の**非拘束な仮説**であり、入力識別の拘束キーではない（ADR-202606282107-01 決定3。裁定が binding、仮説本文は参照されるが拘束しない）。
+- `growth:promote` ラベルは仮説が inbox へ流入する経緯を示す識別子として存続するが（ADR-202606282107-01 決定5）、入力の絞り込みには用いない（絞り込みは裁定結果テーブルが担う）。
 - 変換4手順の一次ソース（仮説の `## 振る舞い差分`）は、`#仮説番号` 参照経由で**取り込み時にクローズ済みの仮説 Issue 本文**を読む。取り込み Issue は仮説を `- #仮説番号` の参照リストで保持し本文を転記しないため（[`intake-issue-spec.md`](intake-issue-spec.md)「本文構造」）、仮説本文が変換の一次ソースとなる。
 
 裁定結果テーブルで 空間 列＝`閉じた` のもの、career 列が `ADR 差分` / `改善還元 Issue` / `強キャリア` のものは本規約の対象外であり、変換しない。
@@ -165,7 +165,7 @@ Markdown 等の長文を CLI オプションに直接渡さない。ファイル
 
 | 本仕様が定義する（IN） | 本仕様が定義しない（OUT） |
 |---|---|
-| 出来事ベースの昇格 Issue → 1欄エントリの変換4手順（抽出・一般化・見出し圧縮・本文再構成） | 昇格先キャリア・空間（scope）の仮説生成＝Route（distill が担う。career の決定表は `distill-procedure.md`「career-hypothesis の判定（決定表）」＝ADR-20260628-2。career の裁定は集約点、空間は refine/review） |
+| 出来事ベースの昇格 Issue → 1欄エントリの変換4手順（抽出・一般化・見出し圧縮・本文再構成） | 昇格先キャリア・空間（scope）の仮説生成＝Route（distill が担う。career の決定表は `distill-procedure.md`「career-hypothesis の判定（決定表）」＝ADR-202606282107-01。career の裁定は集約点、空間は refine/review） |
 | 出口ゲート＝記法ルールへの照合と却下の扱い | 記法ルール自体の定義（`learning-store-spec.md` が担う） |
 | 既存 implementation → PR ワークフローでの配布反映（PR マージ＝配布反映） | 承認フロー・越境ゲートの配線（二段ゲート L2 の具体配線。#385） |
 | 1欄スキーマ準拠（メタ欄を持ち込まない制約） | 閉じた空間・ADR 差分・改善還元・強キャリアへの配布（別空間/別キャリア。別 Issue） |
@@ -175,6 +175,6 @@ Markdown 等の長文を CLI オプションに直接渡さない。ファイル
 
 - [`learning-store-spec.md`](learning-store-spec.md) — 配布物（`learnings.md`）の着地先形式（1欄スキーマ・記法ルール＝出口ゲート・記法例・2空間モデル・参照規約）
 - [`intake-issue-spec.md`](intake-issue-spec.md) — 入力源（#412）。裁定結果の記録形式（career/空間/備考テーブル）の出典であり、本規約の入力境界が参照する裁定結果テーブルを提供する
-- [`promotion-issue-spec.md`](promotion-issue-spec.md) — 入力源 昇格 Issue のテンプレート（必須欄）・識別ラベル（#382。昇格先キャリアの判定＝Route は distill へ移設＝ADR-20260628-2）
+- [`promotion-issue-spec.md`](promotion-issue-spec.md) — 入力源 昇格 Issue のテンプレート（必須欄）・識別ラベル（#382。昇格先キャリアの判定＝Route は distill へ移設＝ADR-202606282107-01）
 - [`DESIGN.md`](../DESIGN.md) — 設計母艦（学習ループ・Distribute 段・二段ゲート・原理1/5）
 - #349 — 親エピック。D1（learnings.md＝汎用の振る舞いルールの昇格先）・D2（新規スキルなし・既存ワークフロー再利用）

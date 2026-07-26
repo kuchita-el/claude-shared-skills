@@ -68,4 +68,4 @@ gh / git 等の生 stdout をメインに残さない。後続処理が必要な
 - CLAUDE.md「スキル設計の token 規律」（作成時・静的軸。本規約と補完する）
 - `behavior-invariants.md`（実行時の生成・範囲軸。本規約と補完する）
 - `completion-judgment.md` と同様、規約本文を各 SKILL.md へ転記せず、各スキルは本単一出典を参照する
-- [ADR-20260627-skill-context-budget-convention](../../../docs/adr/ADR-20260627-skill-context-budget-convention.md)（本規約を単一出典として確立する決定）
+- [ADR-202606270040-01-skill-context-budget-convention](../../../docs/adr/ADR-202606270040-01-skill-context-budget-convention.md)（本規約を単一出典として確立する決定）

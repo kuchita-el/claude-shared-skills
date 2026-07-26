@@ -70,4 +70,4 @@ worktree が1つだけの通常環境では、`git worktree list` の先頭エ�
 - **worktree 作成時の hook によるプランコピーは不採用**。コピーは正典を2つに分裂させ、追跡時には `git status` 汚染・divergence を生む。
 - 本規約は **探索/書き込みするディレクトリのみ** を規定する。各スキルの連番衝突回避機構（整数比較による最大連番抽出・旧 plan 非上書き）や初回/N回目モード判定の不変条件は変更しない（解決ディレクトリ内にそのまま適用する）。
 
-詳細な決定経緯は `docs/adr/ADR-20260629-plan-location-resolution.md` を参照。
+詳細な決定経緯は `docs/adr/ADR-202606291949-01-plan-location-resolution.md` を参照。

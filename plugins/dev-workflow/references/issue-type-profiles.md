@@ -2,7 +2,7 @@
 
 Issueの**種別**に応じて、準備基準（DoR）とテンプレートを差別化するための定義です。
 
-コアDoR（`dor-default.md`）が全種別共通の土台を定義するのに対し、本ファイルはその上に**種別差分**を重ねます。サイズ軸（Small/Medium/Large）とは独立した**二軸**であり、サイズ判定を置換しません（ADR-20260618 Decision (a)）。
+コアDoR（`dor-default.md`）が全種別共通の土台を定義するのに対し、本ファイルはその上に**種別差分**を重ねます。サイズ軸（Small/Medium/Large）とは独立した**二軸**であり、サイズ判定を置換しません（ADR-202606180122-01 Decision (a)）。
 
 これはデフォルト定義です。プロジェクト固有の種別プロファイルがある場合は `{project}/.claude/dor/type-profiles.md` で上書き・拡張してください（読み込み優先順位は DoR と同一）。
 
@@ -73,7 +73,7 @@ Issueの**種別**に応じて、準備基準（DoR）とテンプレートを�
 
 ## プロジェクト固有プロファイルによる上書き
 
-DoR（`dor-default.md` / `.claude/dor/definition.md`）と同一の読み込み優先順位に従う（ADR-20260604）:
+DoR（`dor-default.md` / `.claude/dor/definition.md`）と同一の読み込み優先順位に従う（ADR-202606040737-01）:
 
 1. プロジェクト固有: `{project}/.claude/dor/type-profiles.md`（存在すれば優先）
 2. プラグイン共有デフォルト: `${CLAUDE_PLUGIN_ROOT}/references/issue-type-profiles.md`

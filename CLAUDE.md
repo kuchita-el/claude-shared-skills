@@ -20,8 +20,8 @@ Claude Code向けの汎用スキルライブラリ。プロジェクト固有の
 - `plugins/dev-workflow/.claude-plugin/plugin.json` — プラグイン定義（名前・バージョン・説明）
 - `plugins/dev-workflow/skills/{skill-name}/SKILL.md` — 各スキルの定義ファイル（本体）
 - `plugins/dev-workflow/skills/{skill-name}/references/` — スキルが参照する補助ファイル（テンプレート、デフォルト定義等）
-- `plugins/dev-workflow/references/` — 複数スキルが共有する参照ファイル（DoRデフォルト定義等。`${CLAUDE_PLUGIN_ROOT}/references/` で参照。詳細は ADR-20260604）
-- `plugins/dev-workflow/agents/{agent-name}.md` — サブエージェント定義（プラグインルートに集約、自動検出される。詳細は ADR-20260525-2）
+- `plugins/dev-workflow/references/` — 複数スキルが共有する参照ファイル（DoRデフォルト定義等。`${CLAUDE_PLUGIN_ROOT}/references/` で参照。詳細は ADR-202606040737-01）
+- `plugins/dev-workflow/agents/{agent-name}.md` — サブエージェント定義（プラグインルートに集約、自動検出される。詳細は ADR-202605250838-01）
 - `plugins/adr/` — ADR 運用機構の配布プラグイン（`scripts/` の drift-lint・index 生成・識別子発番、`hooks/` の commit 前ゲート、`skills/manage-adr/` のライフサイクル操作スキル。#492/#493 で dev-workflow から抽出）
 - `setup-local.sh` — ローカル開発用起動スクリプト（`claude --plugin-dir ./plugins/dev-workflow --plugin-dir ./plugins/adr` のラッパー）
 
@@ -50,11 +50,11 @@ allowed-tools:
 `create-issue`（作成時の前倒し充足）と `refine-issue`（作成後の精査）が同一のDoR定義を共有参照する。読み込み優先順位:
 
 1. `{project}/.claude/dor/definition.md`（プロジェクト固有）
-2. `plugins/dev-workflow/references/dor-default.md`（プラグイン共有のデフォルト。`${CLAUDE_PLUGIN_ROOT}/references/` で参照。詳細は ADR-20260604）
+2. `plugins/dev-workflow/references/dor-default.md`（プラグイン共有のデフォルト。`${CLAUDE_PLUGIN_ROOT}/references/` で参照。詳細は ADR-202606040737-01）
 
 Issueサイズ（Small/Medium/Large）に応じてチェック項目が段階的に増える。
 
-さらに**Issue種別軸**（bug/feature/refactor/spike/chore/docs）を二軸目として持つ。種別プロファイル定義もDoRと同一の優先順位で読み込む（詳細は ADR-20260618）:
+さらに**Issue種別軸**（bug/feature/refactor/spike/chore/docs）を二軸目として持つ。種別プロファイル定義もDoRと同一の優先順位で読み込む（詳細は ADR-202606180122-01）:
 
 1. `{project}/.claude/dor/type-profiles.md`（プロジェクト固有）
 2. `plugins/dev-workflow/references/issue-type-profiles.md`（プラグイン共有のデフォルト。`${CLAUDE_PLUGIN_ROOT}/references/` で参照）
@@ -78,19 +78,19 @@ Issueサイズ（Small/Medium/Large）に応じてチェック項目が段階的
 - **サブエージェントへの引数渡し**: 重い精査・調査・複数件の一括処理はサブエージェント並列化を既定とする。サブエージェントへはコンテキストを文字列で渡し、ファイル本文の埋め込みは避ける（サブエージェント側が必要に応じて Read する。`refine-issue` の既存規約を全スキルへ展開）
 - **`allowed-tools` の最小化**: 既存 Conventions の「`allowed-tools` の原則」（必要最小限のツールのみ許可）を再確認し、加えてカテゴリ別コメントの羅列を避け、ツール名から自明な説明は付さない（PR #299 で `implementation` の `allowed-tools` コメントを整理した実績）
 
-上記は**作成時（静的）軸**のフットプリント規律である。スキル**実行中**にメイン context へ何を載せ／載せないか（参照ファイルのパス渡し・生ツール出力のファイル化・サブエージェント返却のサマリ化・滞留カテゴリ規則）は実行時フロー軸として `plugins/dev-workflow/references/context-budget.md`（ADR-20260627）に単一出典化している。実行時の context 設計はそちらを参照する（本節へ転記しない）。
+上記は**作成時（静的）軸**のフットプリント規律である。スキル**実行中**にメイン context へ何を載せ／載せないか（参照ファイルのパス渡し・生ツール出力のファイル化・サブエージェント返却のサマリ化・滞留カテゴリ規則）は実行時フロー軸として `plugins/dev-workflow/references/context-budget.md`（ADR-202606270040-01）に単一出典化している。実行時の context 設計はそちらを参照する（本節へ転記しない）。
 
 ## サブエージェントの実行パラメータ
 
-サブエージェントの `model` / `effort` をどこに置き、どのような意図で値を選ぶかは `plugins/dev-workflow/references/subagent-execution-parameters.md`（ADR-20260725 / ADR-20260725-2）に単一出典化している。新規サブエージェントを追加する際は `model` と `effort` を front-matter に必ず明示する（本節へ転記しない）。
+サブエージェントの `model` / `effort` をどこに置き、どのような意図で値を選ぶかは `plugins/dev-workflow/references/subagent-execution-parameters.md`（ADR-202607251922-01 / ADR-202607251922-02）に単一出典化している。新規サブエージェントを追加する際は `model` と `effort` を front-matter に必ず明示する（本節へ転記しない）。
 
 ## 振る舞いの不変条件
 
-出力・成果物の分量と作業範囲の規律は `plugins/dev-workflow/references/behavior-invariants.md`（ADR-20260726-01 / -02 / -03）に単一出典化している。モデル名・モデル版を直書きせず、挙動として観測される不変条件の形で記述する。新規スキル・サブエージェントを追加する際は、本規約へのポインタを SKILL.md ／エージェント定義に置く（本節へ転記しない）。
+出力・成果物の分量と作業範囲の規律は `plugins/dev-workflow/references/behavior-invariants.md`（ADR-202607261002-01 / -02 / -03）に単一出典化している。モデル名・モデル版を直書きせず、挙動として観測される不変条件の形で記述する。新規スキル・サブエージェントを追加する際は、本規約へのポインタを SKILL.md ／エージェント定義に置く（本節へ転記しない）。
 
 成果物にどの節が存在するかは各出力形式テンプレートの責務であり、節の中身の分量が本規約の責務である。両者を混ぜない。
 
-スキル定義を書く際の規律として、「自分が書いたものを自分で読み直せ」型の確認ステップを SKILL.md ／サブエージェント定義へ新たに追加しない。この種の確認は指示がなくても行われるため、重ねて指示すると過剰な検証を誘発する。ただし別文脈が差分・要件を初見で読む独立検証（`code-reviewer` / `plan-reviewer` / `test-spec-validator`）、コマンドを実行して証拠を得る検証ゲート、完了判定における全項目の列挙（`completion-judgment.md`）は対象外であり、削減しない（ADR-20260726-03）。
+スキル定義を書く際の規律として、「自分が書いたものを自分で読み直せ」型の確認ステップを SKILL.md ／サブエージェント定義へ新たに追加しない。この種の確認は指示がなくても行われるため、重ねて指示すると過剰な検証を誘発する。ただし別文脈が差分・要件を初見で読む独立検証（`code-reviewer` / `plan-reviewer` / `test-spec-validator`）、コマンドを実行して証拠を得る検証ゲート、完了判定における全項目の列挙（`completion-judgment.md`）は対象外であり、削減しない（ADR-202607261002-03）。
 
 ## Rules
 
@@ -101,7 +101,7 @@ Issueサイズ（Small/Medium/Large）に応じてチェック項目が段階的
 ### ADR（設計判断の記録）
 
 - 設計議論を始める前に `docs/adr/` 配下のADR一覧を確認する
-- 設計判断を行ったら、粒度判定基準（4項目チェックリスト）に照らして ADR 化要否を判定する（判定基準の実体は `manage-adr` スキルの `references/adr-scoping.md`。由来の決定は ADR-20260719 決定1）
+- 設計判断を行ったら、粒度判定基準（4項目チェックリスト）に照らして ADR 化要否を判定する（判定基準の実体は `manage-adr` スキルの `references/adr-scoping.md`。由来の決定は ADR-202607191825-01 決定1）
 - 既存ADRと矛盾する設計判断を行う場合は、Superseded 手続きを行う（詳細手順は `manage-adr` スキルの `references/transitions.md` 参照）
 
 ## Adding a New Skill
