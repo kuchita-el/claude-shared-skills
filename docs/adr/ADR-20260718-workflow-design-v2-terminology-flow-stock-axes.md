@@ -60,3 +60,7 @@ ADR-20260402-workflow-design-v2-structure は `docs/workflow-design.md` の v2 �
 - Related: ADR-20260726-06-adr-id-numbering-single-format（採番方式の出典。ADR の採番方式は `docs/workflow-design.md:166-186` にあった旧採番方式 `docs/adr/{番号}-{タイトル}.md` を上書きする（旧記述の実在場所は ADR-20260511 が明示しており、ADR-20260402 の `## Decision` には採番方式の記述はない。ADR-20260402 は `## Consequences` の将来の留保事項として上書きの事実に言及していたのみ）。上書きした側の方式は上書き済みの ADR-20260511 が定め、ADR-20260711-3 決定8 が不変のまま引き継いでいたが、同 ADR の分割（#570）で反転され、ADR-20260726-06 決定1 が定める `ADR-YYYYMMDD-NN-<slug>.md` の単一形式へ置き換わった）
 - Related: ADR-20260602-principles-rationale-hub（ADR-20260402 の責務定義 facet の現行権威。`docs/workflow-design.md` は #221 Phase 3 で `docs/principles.md` へ改名され、責務は Explanation 根拠ハブへ縮退した）
 - 関連Issue: #524（ADR分割による re-home）、PR #89（workflow-design.md v2 改訂本体）、#94（Delivery→Discovery フィードバックループ）、#95（spec.md ライフサイクル）、#100（AIエラー時の再開・引き継ぎ）
+
+## 変更履歴
+
+- 2026-07-26: `## Context` の採番方式に関する記述と `## 関連ADR` の該当項を現状整合へ訂正。ADR-20260711-3 の分割（#570）で決定8 の採番方式項が反転され `ADR-YYYYMMDD-NN-<slug>.md` の単一形式へ置き換わったため、陳腐化した旧形式のリテラルを落として現行形式を述べる記述へ改め、指し先を失ったポインタ（採番方式の経緯は ADR-20260711-3 の項に集約した）を後継 ADR-20260726-06 を指す記述へ差し替えた。あわせて `## 関連ADR` の該当行を分割手続き分（ADR-20260726-02 決定1）と採番方式分（ADR-20260726-06）の2行へ書き分け、後者の注釈へ反転の事実を反映した。決定の骨子（用語体系とフロー／ストック軸）は不変で、変えたのは陳腐化した参照と理由付けのみ。front-matter（`status`/`validity`）不変の非core 編集（#570）。
