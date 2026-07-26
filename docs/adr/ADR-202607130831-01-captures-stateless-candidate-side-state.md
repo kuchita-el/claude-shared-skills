@@ -52,6 +52,6 @@ growth 学習ループの「distill の再走査抑止」責務が、候補の�
 
 - Supersedes: ADR-202607111014-01-store-state-model-captures-stateless（ADR分割〔ADR-202607112231-01 決定3〕により、原 ADR の生存決定1〜3 を逐語 restate で re-home。原 ADR の決定4〔retention 姿勢〕は ADR-202607121331-01 が担い、原 ADR の `superseded-by` は本 ADR と ADR-202607121331-01 の両後継を列挙する）
 - Supersedes: ADR-202606291631-01-distill-input-contract-and-ledger-matching（決定1 の処理源 facet ＝ work-queue 選択〔status 軸の再走査抑止〕を provenance ＋ recency 導出へ上書き。原 ADR-202607111014-01 が持っていた Amend 関係を ADR分割〔ADR-202607112231-01 決定3〕で本 ADR の supersede 連鎖へ吸収し、#525 で 629 退役に伴い Amends から Supersedes へ格上げした。本 ADR は 711-store と 629 の2本を Supersede する）
-- Related: ADR-202607200855-01-distill-ledger-as-explicit-input（本 ADR が改訂しなかった 629 決定1 の参照源 facet〔1b＝既存ルール台帳〕を引き取った後継。本 ADR が上書きするのは決定1 の処理源 facet のみで、参照源 facet は同後継へ生存 re-home された。処理源／参照源で対をなす）
+- Related: ADR-202607200855-01-distill-ledger-as-explicit-input（本 ADR が改訂しなかった ADR-202606291631-01（629）決定1 の参照源 facet〔1b＝既存ルール台帳〕を引き取った後継。本 ADR が上書きするのは決定1 の処理源 facet のみで、参照源 facet は同後継へ生存 re-home された。処理源／参照源で対をなす）
 - Related: ADR-202607121331-01-captures-bounded-retention-aging（本 ADR 決定3 の有界化機構 facet〔recency 窓〕は ADR-202607111225-01-distill-highwater-cursor で処理済みカーソルへ改訂され、さらに同 ADR-202607121331-01 で retention 射程が改訂されている。この facet の後続改訂を指していた歴史的相互参照が持っていた固有情報を、ADR-202607112231-01 決定3 の移設に従い生存語彙へ移した）
 - 関連Issue: #455（決定1〜3 の起票元）, #488（ADR分割による re-home）
