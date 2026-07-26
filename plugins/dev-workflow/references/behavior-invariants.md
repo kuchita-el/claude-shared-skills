@@ -46,9 +46,10 @@ token と出力に関わる規律は3軸ある。本規約は**実行時の生�
 
 ## 関連
 
-- `context-budget.md`（実行時データフロー軸。本規約と補完関係。読者はスキル作者であり、配布物からのポインタは張らない）
+- `context-budget.md`（実行時データフロー軸。本規約と補完関係）
 - `completion-judgment.md`（完了判定の原則。ADR-20260726-03 が保護対象として明示する）
-- CLAUDE.md「スキル設計の token 規律」（作成時・静的軸。同一文脈での再確認をスキル定義へ新たに書き足さない規律も同軸に置く）
+- CLAUDE.md「スキル設計の token 規律」（作成時・静的軸）
+- CLAUDE.md「振る舞いの不変条件」（同一文脈での再確認をスキル定義へ新たに書き足さない規律。読者はスキル作者であり作成時軸に属する）
 - [ADR-20260726-01](../../../docs/adr/ADR-20260726-01-behavior-invariant-description-style.md)（記述様式＝モデル版非依存の不変条件として書く決定）
 - [ADR-20260726-02](../../../docs/adr/ADR-20260726-02-behavior-invariant-placement.md)（本規約を単一出典とし配布物からポインタ参照する決定・節と分量の責務分離）
 - [ADR-20260726-03](../../../docs/adr/ADR-20260726-03-self-versus-independent-verification.md)（抑制対象の切り分け＝独立文脈の検証機構を保護する決定。当該規律は本規約ではなく CLAUDE.md 側に置く）
