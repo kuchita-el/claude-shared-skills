@@ -105,6 +105,7 @@ ADR 化を検討すべき決定が発生したことを示す実務シグナル�
 
 ## 関連ADR
 
-- Related: ADR-20260711-3-adr-two-axis-status-validity-model（状態モデルと凍結原則。決定4の適用限界が優先を譲る先）
+- Related: ADR-20260726-01-adr-state-model-and-drift-lint（状態モデル）
+- Related: ADR-20260726-02-adr-edit-mechanism-and-amend-abolition（凍結原則。決定4の適用限界が優先を譲る先）
 
 関連Issue: #515（ADR 運用の正本反転、本 ADR の起票元）、#532（`plugins/growth/` 配下の参照修復）

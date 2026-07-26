@@ -56,5 +56,6 @@ ADR スキーマに第一級セクション `## 保留した決定` を導入す
 
 ## 関連ADR
 
-- Related: ADR-20260711-3-adr-two-axis-status-validity-model（2 軸モデルに「保留した決定」セクションと非 Supersede 関係の参照妥当性 lint を追加。711-3 の決定を反転せず独立に追加するため、711-3 決定3「独立に反転しうる core を束ねない」に従い別 ADR とした。上書きでない）
+- Related: ADR-20260726-01-adr-state-model-and-drift-lint（2 軸モデルに「保留した決定」セクションと非 Supersede 関係の参照妥当性 lint を追加。上書きでない）
+- Related: ADR-20260726-02-adr-edit-mechanism-and-amend-abolition（711-3 の決定を反転せず独立に追加するため、同 ADR 決定1「独立に反転しうる core を束ねない」に従い別 ADR とした。上書きでない）
 - 関連Issue: #527（本 ADR の起票元）, #463（ADR 運用再設計トラック）, #496（#526 で `Related:` 実運用を確立）, #474（参照妥当性 lint の実装）

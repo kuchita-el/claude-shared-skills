@@ -41,5 +41,5 @@ ADR運用機構を dev-workflow から分離し、独立プラグイン `plugins
 ## 関連ADR
 
 - Related: ADR-20260626-growth-plugin-separation（横断／メタ機構を独立プラグインへ分離する同型の先例。関心分離＋常時ロード分離の論拠を共有）
-- Related: ADR-20260711-3-adr-two-axis-status-validity-model（本機構が配送する ADR 運用モデルの正本。決定5 の drift-lint 配置が本抽出で `plugins/adr/` へ移設され、PR #546 で非core amend 済み）
+- Related: ADR-20260726-01-adr-state-model-and-drift-lint（本機構が配送する ADR 運用モデルの正本。決定3 の drift-lint 配置が本抽出で `plugins/adr/` へ移設され、PR #546 で非core amend 済み）
 - 関連Issue: #463, #492, #493, #548
