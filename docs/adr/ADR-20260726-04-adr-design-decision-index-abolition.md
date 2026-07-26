@@ -1,6 +1,6 @@
 ---
-status: 提案中
-validity:
+status: 承認済み
+validity: 有効
 superseded-by:
 ---
 
@@ -35,4 +35,5 @@ superseded-by:
 
 ## 関連ADR
 
+- Supersedes: ADR-20260711-3-adr-two-axis-status-validity-model（ADR分割〔ADR-20260726-02 決定1〕により、原 ADR の決定7 を逐語 restate で re-home。原 ADR の決定1・2・5 は ADR-20260726-01、決定3・4 は ADR-20260726-02、決定6 は ADR-20260726-03、決定8 の配置項は ADR-20260726-05 が担い、決定8 の採番方式項は ADR-20260726-06 が反転した。原 ADR の `superseded-by` はこれら6本の後継を列挙する）
 - 関連Issue: #463（原 ADR の起票元）, #462（外部監査の見取り図）, #570（ADR分割による re-home）

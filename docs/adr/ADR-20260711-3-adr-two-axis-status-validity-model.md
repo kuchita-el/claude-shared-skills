@@ -1,6 +1,7 @@
 ---
 status: 承認済み
-validity: 有効
+validity: 上書き済み
+superseded-by: ADR-20260726-01-adr-state-model-and-drift-lint, ADR-20260726-02-adr-edit-mechanism-and-amend-abolition, ADR-20260726-03-adr-lifecycle-tooling-delegation, ADR-20260726-04-adr-design-decision-index-abolition, ADR-20260726-05-adr-flat-layout, ADR-20260726-06-adr-id-numbering-single-format
 ---
 
 # ADR-20260711-3: ADR 運用モデルの再設計（承認軸と有効性軸の2軸分離・導出ビュー index・編集機構）
@@ -169,6 +170,12 @@ ADR-20260511 が定めた次の2項目は変更せず、本 ADR に引き継ぐ�
 ## 関連ADR
 
 - Supersedes: ADR-20260511-technical-decision-aggregate-foundation（状態モデル〔4状態・英文表記〕と廃止扱いを2軸分離モデルへ再設計。採番方式・配置は不変で引き継ぐ）
+- Superseded by: ADR-20260726-01-adr-state-model-and-drift-lint（決定1〔2軸分離〕・決定2〔front-matter 権威と導出ビュー index〕・決定5〔drift-lint 3レイヤと合流先〕を逐語 restate で re-home。`superseded-by` に列挙）
+- Superseded by: ADR-20260726-02-adr-edit-mechanism-and-amend-abolition（決定3〔3段構えの編集機構・凍結原則・ADR分割・既得権条項〕・決定4〔Amended 機構の廃止〕を逐語 restate で re-home。`superseded-by` に列挙）
+- Superseded by: ADR-20260726-03-adr-lifecycle-tooling-delegation（決定6〔ライフサイクル操作の tooling 委譲〕を逐語 restate で re-home。`superseded-by` に列挙）
+- Superseded by: ADR-20260726-04-adr-design-decision-index-abolition（決定7〔モデル制約由来の設計判断インデックスの廃止〕を逐語 restate で re-home。`superseded-by` に列挙）
+- Superseded by: ADR-20260726-05-adr-flat-layout（決定8 のうち「配置」項を逐語 restate で re-home。`superseded-by` に列挙）
+- Superseded by: ADR-20260726-06-adr-id-numbering-single-format（決定8 のうち「採番方式」項を反転する新決定。逐語 restate ではない。`superseded-by` に列挙）
 
 関連Issue: #463（ADR 運用再設計、本 ADR の起票元）、#130（技術的意思決定集約モデル化、CLOSED）、#169（ADR 運用基盤整備）、#462（外部監査の見取り図）、#484（本改訂の起票元）
 

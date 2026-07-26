@@ -1,6 +1,6 @@
 ---
-status: 提案中
-validity:
+status: 承認済み
+validity: 有効
 superseded-by:
 ---
 
@@ -99,4 +99,5 @@ front-matter スキーマの必須ルール（drift-lint が強制する）:
 
 ## 関連ADR
 
+- Supersedes: ADR-20260711-3-adr-two-axis-status-validity-model（ADR分割〔ADR-20260726-02 決定1〕により、原 ADR の決定1・2・5 を逐語 restate で re-home。原 ADR の決定3・4 は ADR-20260726-02、決定6 は ADR-20260726-03、決定7 は ADR-20260726-04、決定8 の配置項は ADR-20260726-05 が担い、決定8 の採番方式項は ADR-20260726-06 が反転した。原 ADR の `superseded-by` はこれら6本の後継を列挙する）
 - 関連Issue: #463（原 ADR の起票元）, #130（技術的意思決定集約モデル化）, #462（外部監査の見取り図）, #484（決定2 のリスト値許容・決定5 のレイヤ3 N対1 拡張の起票元）, #570（ADR分割による re-home）

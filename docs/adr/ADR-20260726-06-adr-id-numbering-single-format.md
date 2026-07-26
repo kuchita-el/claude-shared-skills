@@ -1,6 +1,6 @@
 ---
-status: 提案中
-validity:
+status: 承認済み
+validity: 有効
 superseded-by:
 ---
 
@@ -57,4 +57,5 @@ ADR-YYYYMMDD-NN-<slug>.md
 
 ## 関連ADR
 
+- Supersedes: ADR-20260711-3-adr-two-axis-status-validity-model（ADR分割〔ADR-20260726-02 決定1〕により、原 ADR の決定8 のうち「採番方式」項を反転する新決定として起票。逐語 restate ではない。同決定の「配置」項は ADR-20260726-05 へ生存 re-home され、原 ADR の決定1・2・5 は ADR-20260726-01、決定3・4 は ADR-20260726-02、決定6 は ADR-20260726-03、決定7 は ADR-20260726-04 が担う。原 ADR の `superseded-by` はこれら6本の後継を列挙する）
 - 関連Issue: #550（ID 形式単一化の親）, #566（1段目・規約文書の単一 ID 形式化）, #567（3段目・`docs/adr/` の遡及移行）, #570（本 ADR の起票元＝ADR分割）
