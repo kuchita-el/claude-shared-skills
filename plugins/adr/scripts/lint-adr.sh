@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# ADR drift-lint（レイヤ1: front-matter スキーマ検証／レイヤ2: index 同期検証／
-# レイヤ3: 相互参照双方向性検証）
+# ADR drift-lint: ADR corpus が満たすべき機械検査可能な不変条件をレイヤ単位で検査する。
+# 検査対象は front-matter スキーマ、導出ビュー（index）との同期、ADR 間参照の
+# 双方向性・生存性・実在性、ファイル名と識別子と H1 見出しの規約適合。
+# ここでは検査対象の性質のみを示し、個別レイヤの定義は以下の詳細を正とする
+# （レイヤを追加しても本冒頭は追随不要）。
 #
 # ADR_DIR 配下の ADR-*.md を走査し、front-matter を持つ ADR
 # （先頭行が `---`）のみを対象に以下を検証する。front-matter を
