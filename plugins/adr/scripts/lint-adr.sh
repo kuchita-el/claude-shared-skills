@@ -118,8 +118,9 @@
 #   - H1 整合違反: 本文の最初の `# ` 見出し行から抽出した識別子部が、ファイル名の
 #     識別子部と一致しなければ違反。H1 に ADR 識別子が現れない（見出しが無い場合を含む）
 #     ときも違反とする。走査は front-matter 区間を読み飛ばしてから始める
-#     （YAML コメント行は行頭 `# ` に当たり、読み飛ばさないと H1 と誤認するため）。gen-adr-index.sh は H1 の `: ` 以降のみをタイトルとして
-#     抽出するため、識別子部が陳腐化しても生成物には現れず、レイヤ2 も発火しない。
+#     （YAML コメント行は行頭 `# ` に当たり、読み飛ばさないと H1 と誤認するため）。
+#     gen-adr-index.sh は H1 の `: ` 以降のみをタイトルとして抽出するため、
+#     識別子部が陳腐化しても生成物には現れず、レイヤ2 も発火しない。
 #     H1 は識別子部のみの形（`# ADR-X-01: タイトル`）と slug を含む形
 #     （`# ADR-X-01-slug: タイトル`）の双方が corpus に実在するため、
 #     照合は識別子部に限る（slug の一致は要求しない）。
@@ -713,8 +714,23 @@ done
 # 判定材料は front-matter の status の値が語彙に属することとする（`status: 承認済み` 等を
 # 持つ `*.md` は実質的に誤名の ADR である）。README 等が front-matter を持つだけでは
 # 発火しない水準に絞り、誤検出を避ける。
+# 出力順は走査対象の収集と同じく LC_ALL=C sort で正規化する（グロブ展開順のままだと
+# 実行時ロケールの LC_COLLATE に依存し、同一ファイル内で照合順の規約が揃わない）。
+misnamed=()
 shopt -s nullglob
 for file in "$ADR_DIR"/*.md; do
+    misnamed+=("$file")
+done
+shopt -u nullglob
+
+misnamed_sorted=()
+if [ "${#misnamed[@]}" -gt 0 ]; then
+    while IFS= read -r f; do
+        misnamed_sorted+=("$f")
+    done < <(printf '%s\n' "${misnamed[@]}" | LC_ALL=C sort)
+fi
+
+for file in ${misnamed_sorted[@]+"${misnamed_sorted[@]}"}; do
     case "$(basename "$file")" in
         ADR-*) continue ;;
     esac
@@ -727,7 +743,6 @@ for file in "$ADR_DIR"/*.md; do
     printf '%s: ファイル名形式違反（ADR-YYYYMMDDHHMM-NN-<slug>.md の形式に適合しません。front-matter の status が ADR のものですが、ファイル名が "ADR-" 接頭辞を欠くため全レイヤの走査対象から外れます）\n' "$file"
     violations=$((violations + 1))
 done
-shopt -u nullglob
 
 if [ "$violations" -gt 0 ]; then
     exit 1
