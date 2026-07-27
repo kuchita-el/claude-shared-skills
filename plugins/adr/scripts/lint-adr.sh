@@ -105,15 +105,20 @@
 #     分 00-59）を要求する。この妥当性の水準は next-adr-id.sh の ADR_TIMESTAMP 検査と
 #     同一であり、両者を揃えることで「発番器が出せる識別子を lint が弾く」状態を作らない
 #     （日は月ごとの日数まで見ない。発番側の水準に合わせた意図的な緩さ）。
-#     連番部は2桁、slug は小文字英数字をハイフンで連結した形（先頭・末尾のハイフン、
-#     連続ハイフンは不可）。
+#     連番部は `01` 始まりの2桁ゼロ埋め（`00` は不可）、slug は小文字英数字をハイフンで
+#     連結した形（先頭・末尾のハイフン、連続ハイフンは不可）。
+#     ファイル名が `ADR-` 接頭辞を欠く場合も形式違反とする。走査対象の収集は `ADR-*.md`
+#     グロブであり、接頭辞を欠くファイルは中身が規約に適合していても全レイヤを素通り
+#     するため。判定材料は front-matter の status の値が語彙に属することとし、
+#     README 等が front-matter を持つだけでは発火しない水準に絞る。
 #   - 識別子重複違反: 同一の識別子部を持つ ADR が2本以上あれば違反。識別子部の抽出は
 #     形式検査より緩い `ADR-<数字>[-<数字>]` の先頭一致で行う。形式適合を前提にすると
 #     旧形式どうしの重複（実際に1か月以上検出されなかった事例）を取り逃すため。
 #     報告は識別子ごとに1件で、該当する全ファイルを列挙する。
 #   - H1 整合違反: 本文の最初の `# ` 見出し行から抽出した識別子部が、ファイル名の
 #     識別子部と一致しなければ違反。H1 に ADR 識別子が現れない（見出しが無い場合を含む）
-#     ときも違反とする。gen-adr-index.sh は H1 の `: ` 以降のみをタイトルとして
+#     ときも違反とする。走査は front-matter 区間を読み飛ばしてから始める
+#     （YAML コメント行は行頭 `# ` に当たり、読み飛ばさないと H1 と誤認するため）。gen-adr-index.sh は H1 の `: ` 以降のみをタイトルとして
 #     抽出するため、識別子部が陳腐化しても生成物には現れず、レイヤ2 も発火しない。
 #     H1 は識別子部のみの形（`# ADR-X-01: タイトル`）と slug を含む形
 #     （`# ADR-X-01-slug: タイトル`）の双方が corpus に実在するため、
@@ -154,7 +159,7 @@ RETIRED_VALIDITY=("上書き済み" "廃止済み")
 # レイヤ5: ファイル名 stem が満たすべき形式（`ADR-<YYYYMMDDHHMM>-<NN>-<slug>`）。
 # 時刻部の暦妥当性の水準は next-adr-id.sh の ADR_TIMESTAMP 検査と同一に保つ
 # （発番器が出せる識別子を lint が弾かないようにするため。片方を変えたら他方も追随する）。
-ADR_STEM_PATTERN='^ADR-[0-9]{4}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])([01][0-9]|2[0-3])[0-5][0-9]-[0-9]{2}-[a-z0-9]+(-[a-z0-9]+)*$'
+ADR_STEM_PATTERN='^ADR-[0-9]{4}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])([01][0-9]|2[0-3])[0-5][0-9]-(0[1-9]|[1-9][0-9])-[a-z0-9]+(-[a-z0-9]+)*$'
 # レイヤ5: 識別子部（`ADR-<数字>[-<数字>]`）の抽出パターン。形式検査より緩く、旧形式の
 # 識別子（`ADR-YYYYMMDD-NN`）も拾う。重複検査・H1 整合検査はこの緩い抽出を使う
 # （形式適合を前提にすると旧形式どうしの重複を取り逃すため）。
@@ -393,13 +398,29 @@ extract_park_adr_refs() {
 # H1_ADR_ID へ格納する（見出しが無い・見出しに ADR 識別子が現れない場合は空文字）。
 # 見出し行全体から最左の識別子トークンを取るため、`# ADR-X-01: タイトル` と
 # `# ADR-X-01-slug: タイトル` の双方から同じ識別子部が得られる。
+# front-matter 区間（先頭行 `---` から閉じ `---` まで）は読み飛ばす。YAML コメント行
+# （`# メモ`）は行頭 `# ` に当たるため、読み飛ばさないと H1 と誤認して識別子が
+# 見つからず偽陽性を報告する。走査規約は extract_frontmatter と揃える。
 extract_h1_adr_id() {
     local file="$1"
     local line
+    local line_num=0
+    local in_fm=0
 
     H1_ADR_ID=""
 
     while IFS= read -r line || [ -n "$line" ]; do
+        line_num=$((line_num + 1))
+        if [ "$line_num" -eq 1 ] && [ "$line" = "---" ]; then
+            in_fm=1
+            continue
+        fi
+        if [ "$in_fm" -eq 1 ]; then
+            if [ "$line" = "---" ]; then
+                in_fm=0
+            fi
+            continue
+        fi
         if [[ "$line" =~ ^#[[:space:]] ]]; then
             if [[ "$line" =~ $ADR_ID_PATTERN ]]; then
                 H1_ADR_ID="${BASH_REMATCH[1]}"
@@ -684,6 +705,29 @@ for file in ${fm_files[@]+"${fm_files[@]}"}; do
     printf '%s: 識別子重複違反（識別子 %s を持つ ADR が %d 本あります: %s）\n' "$ADR_DIR" "$file_id" "${ID_FILE_COUNT[$file_id]}" "${ID_FILE_LIST[$file_id]}"
     violations=$((violations + 1))
 done
+
+# レイヤ5: `ADR-` 接頭辞を欠く誤名 ADR の検出
+# 走査対象の収集（および gen-adr-index.sh の走査）は `ADR-*.md` グロブであり、接頭辞を
+# 欠くファイルはそもそも収集されないため、規約に適合した中身を持っていても全レイヤを
+# 素通りする。ファイル名を第一級の検査対象に据えるレイヤとしてここだけ穴を残さない。
+# 判定材料は front-matter の status の値が語彙に属することとする（`status: 承認済み` 等を
+# 持つ `*.md` は実質的に誤名の ADR である）。README 等が front-matter を持つだけでは
+# 発火しない水準に絞り、誤検出を避ける。
+shopt -s nullglob
+for file in "$ADR_DIR"/*.md; do
+    case "$(basename "$file")" in
+        ADR-*) continue ;;
+    esac
+    if ! extract_frontmatter "$file"; then
+        continue
+    fi
+    if ! in_vocab "$FM_STATUS" "${STATUS_VOCAB[@]}"; then
+        continue
+    fi
+    printf '%s: ファイル名形式違反（ADR-YYYYMMDDHHMM-NN-<slug>.md の形式に適合しません。front-matter の status が ADR のものですが、ファイル名が "ADR-" 接頭辞を欠くため全レイヤの走査対象から外れます）\n' "$file"
+    violations=$((violations + 1))
+done
+shopt -u nullglob
 
 if [ "$violations" -gt 0 ]; then
     exit 1

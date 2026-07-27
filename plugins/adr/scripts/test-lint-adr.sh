@@ -909,6 +909,33 @@ run_xref_list_case \
     "notcontains:ファイル名形式違反" \
     "notcontains:H1 整合違反"
 
+# AC2(緩い識別子抽出の保護): front-matter を持つ旧規約ファイル名の ADR 2本が同一識別子を
+# 持つ corpus。識別子部の抽出を形式検査と同じ厳しさへ変えると重複が報告されなくなるため、
+# 「抽出を形式検査より緩くした」というヘッダの判断をこの corpus が編集から守る。
+# 形式違反も同時に報告されるため、識別子重複違反を明示的にアサートする。
+run_xref_list_case \
+    "$FIXTURES_DIR/invalid/28-legacy-duplicate-id" 1 \
+    "(AC2/レイヤ5): 旧規約ファイル名どうしの識別子重複も検出" \
+    "contains:識別子重複違反" \
+    "contains:ADR-20260621-01" \
+    "contains:ADR-20260621-01-legacy-dup-a.md" \
+    "contains:ADR-20260621-01-legacy-dup-b.md"
+
+# AC1(接頭辞欠落): `ADR-` 接頭辞を欠くファイルは `ADR-*.md` グロブに当たらず全レイヤを
+# 素通りする。レイヤ5 はこの経路も形式違反として塞ぐ。
+run_xref_list_case \
+    "$FIXTURES_DIR/invalid/29-missing-adr-prefix" 1 \
+    "(AC1/レイヤ5): ADR- 接頭辞を欠く誤名ADRを形式違反として検出" \
+    "contains:ファイル名形式違反" \
+    "contains:202612091009-01-missing-prefix.md"
+
+# AC5(誤検出回避): front-matter 内の YAML コメント行は行頭 `# ` に当たるが H1 ではない。
+# 読み飛ばさないと H1 と誤認して偽陽性を報告し、commit 前ゲートがコミットを止める。
+run_xref_list_case \
+    "$FIXTURES_DIR/valid/08-frontmatter-yaml-comment" 0 \
+    "(AC5/レイヤ5-誤検出回避): front-matter の YAML コメントを H1 と誤認しない" \
+    "notcontains:H1 整合違反"
+
 # AC5(誤検出回避): 既存の valid corpus にレイヤ5 が発火しない
 run_xref_list_case \
     "$FIXTURES_DIR/valid/01-mixed-validity" 0 \
@@ -968,6 +995,7 @@ run_layer5_stem_pattern() {
     for stem in \
         "ADR-202601010000-01-a" \
         "ADR-202612312359-99-boundary-max" \
+        "ADR-202601011030-10-seq-ten" \
         "ADR-202607262019-01-adr-id-timestamp-numbering"
     do
         total=$((total + 1))
@@ -987,6 +1015,7 @@ run_layer5_stem_pattern() {
         "ADR-202601012430-01-bad-hour" \
         "ADR-202601011060-01-bad-minute" \
         "ADR-202601011030-1-short-seq" \
+        "ADR-202601011030-00-zero-seq" \
         "ADR-202601011030-01-Bad-Upper" \
         "ADR-202601011030-01-double--hyphen" \
         "ADR-202601011030-01-trailing-" \
