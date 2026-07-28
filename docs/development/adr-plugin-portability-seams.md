@@ -14,7 +14,7 @@ ADR 運用機構を独立プラグイン `plugins/adr/` へ抽出（#492/#493）
 |---|---|---|---|
 | 1 | commit ゲートが ADR 無関係の検査（`validate-skills.sh`）を巻き込む | 解消済 | プラグイン同梱ゲート（`adr-commit-gate`）は `lint-adr` のみ実行。`validate-skills` は repo-root ゲートに残置 |
 | 2 | ゲートが `CLAUDE_PROJECT_DIR` に依存 | 設計依存 | `adr-commit-gate` は `CLAUDE_PROJECT_DIR` を優先し、未設定なら cwd へフォールバック。プラグイン PreToolUse フックでの `CLAUDE_PROJECT_DIR` 供給は docs 未明記（#11 参照） |
-| 3 | `docs/adr/README.md` がプラグインへ越境リンク | 解消済 | 越境リンクを `plugins/adr/skills/manage-adr/...` へ張替え |
+| 3 | `docs/adr/README.md` がプラグインへ越境リンク | 解消済 | #492 では越境リンクを `plugins/adr/skills/manage-adr/...` へ張替え。#612 で越境リンク自体を除去し、入口をプラグイン名・スキル名・起動コマンド（`/adr:manage-adr`）へ置換（パスは配布先では成立せず、プラグイン内部レイアウトへの結合であるため） |
 | 4 | スキルの `allowed-tools` がスクリプトのパスを縛る | 解消済 | invocation を `${CLAUDE_PLUGIN_ROOT}/scripts/...` へ。`allowed-tools` は `Bash(bash *scripts/lint-adr.sh*)` の glob で追随 |
 | 5 | `lint-adr.sh` と `gen-adr-index.sh` が同居必須（`$(dirname "$0")` 解決） | 設計依存 | 両者を `plugins/adr/scripts/` へ同居移設し維持 |
 | 6 | スキルが本リポの ADR 実体を「生きた正本」として参照 | 解消済 | #515 完了で正本を README/manage-adr へ反転済み。抽出時の残 backlink は provenance として削除（#8） |
