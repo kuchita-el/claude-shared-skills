@@ -32,7 +32,7 @@
 #
 # 判定記録TSV の列（タブ区切り。`#` 始まりの行は注記として読み飛ばす）:
 #   1 題材ID / 2 試行番号 / 3-6 項目1〜4 / 7 合計 / 8 行き先
-#   9-12 根拠_項目1〜4 / 13 参照ファイル一覧 / 14 対象文書commit
+#   9-12 根拠_項目1〜4 / 13 参照ファイル一覧 / 14 対象文書commit / 15 題材集合commit
 #
 # 使い方:
 #   bash adr-scoping-cases.sh prompt   <対象文書パス> <題材ID> <題材集合ディレクトリ>
@@ -47,6 +47,10 @@
 #   1: 検査に落ちた（欠落・不整合・未知の題材ID 等）
 #   2: 引数の誤り（サブコマンド不明、引数の個数不一致、パスが存在しない）
 set -euo pipefail
+
+# EXIT trap から参照する後始末対象。trap 本体の展開を EXIT 時まで遅らせるため、
+# 関数の local ではなくグローバルへ置く（set -u 対策として空で初期化する）。
+_cleanup_body_file=""
 
 usage() {
     cat >&2 <<'USAGE'
@@ -106,6 +110,24 @@ extract_case_meta() {
     ' "$1/cases.md"
 }
 
+# 標準入力のメタ行から `- <ラベル>: <値>` の先頭1件の値を返す。
+# 該当が無ければ空を返して正常終了する。
+# 入力を最後まで読み切る実装にしてあるのは、途中で読み手を閉じると書き手が
+# SIGPIPE を受け、pipefail + set -e の下で診断ゼロのまま rc=141 で落ちるためである。
+first_meta_value() {
+    awk -v label="$1" '
+        !found {
+            prefix = "- " label ":"
+            if (substr($0, 1, length(prefix)) == prefix) {
+                found = 1
+                value = substr($0, length(prefix) + 1)
+                sub(/^[[:space:]]+/, "", value)
+            }
+        }
+        END { if (found) print value }
+    '
+}
+
 # expectations.tsv の題材ID を出現順に列挙する（注記行とヘッダ行を除く）。
 list_expectation_ids() {
     awk -F'\t' '!/^#/ && NR>0 && $1!="題材ID" && NF>0 {print $1}' "$1/expectations.tsv"
@@ -157,19 +179,54 @@ cmd_prompt() {
     out="$(mktemp -t adr-scoping-case-prompt.XXXXXX.md)"
     body_file="$(mktemp -t adr-scoping-case-body.XXXXXX)"
     # 作業用の一時ファイルは失敗経路でも残さない（出力用の $out は呼び出し側へ渡すため対象外）。
-    # trap の本体はここで展開する。単一引用符にすると EXIT 時には関数の local 変数が
-    # 既に無く、set -u で未定義参照になる。
-    trap "rm -f '$body_file'" EXIT
+    #
+    # パスをそのまま trap 本体へ埋め込むと、$TMPDIR に単一引用符が含まれる場合に
+    # trap 本体のクォートが壊れ、処理が成功していても EXIT 時の構文エラーで
+    # exit 2（＝仕様上は「引数の誤り」）を返す。パスはスクリプト全体で見えるグローバル
+    # 変数へ退避し、trap 本体は単一引用符で囲って展開を EXIT 時まで遅らせる。
+    # set -u 対策として、変数はスクリプト先頭で空初期化してある。
+    _cleanup_body_file="$body_file"
+    trap 'rm -f "$_cleanup_body_file"' EXIT
     printf '%s\n' "$body" > "$body_file"
 
     # 雛形の差し込み記号を置換する。題材文は複数行のため行ごと流し込む。
-    awk -v doc="$doc_path" -v cid="$case_id" -v bodyfile="$body_file" '
+    #
+    # 置換に gsub を使わないのは、gsub が置換文字列中の `&` をマッチ文字列
+    # （＝差し込み記号そのもの）へ展開するためである。対象文書パスと題材ID は
+    # 利用者入力なので、`&` を含むと差し込み記号が出力へ再挿入され、
+    # 存在しないパスを載せたプロンプトが exit 0 のまま生成されてしまう。
+    #
+    # 値を `-v` で渡さないのも同じ型の理由による。`-v` は代入値のエスケープ列を
+    # 解釈するため、パスに `\` が含まれると値が壊れる。とくに一時ファイルのパスが
+    # 壊れると題材文の読み込みが1行も回らず、`題材文が空のプロンプト`が
+    # exit 0 のまま出来上がる。環境変数経由なら awk は値をそのまま受け取る。
+    doc="$doc_path" cid="$case_id" bodyfile="$body_file" awk '
+        BEGIN {
+            doc = ENVIRON["doc"]
+            cid = ENVIRON["cid"]
+            bodyfile = ENVIRON["bodyfile"]
+        }
+        # 差し込み記号 mark を文字列 value でそのまま置き換える（& を特別扱いしない）。
+        function replace_literal(s, mark, value,   out, pos) {
+            out = ""
+            while ((pos = index(s, mark)) > 0) {
+                out = out substr(s, 1, pos - 1) value
+                s = substr(s, pos + length(mark))
+            }
+            return out s
+        }
         {
-            gsub(/\{\{対象文書パス\}\}/, doc)
-            gsub(/\{\{題材ID\}\}/, cid)
+            $0 = replace_literal($0, "{{対象文書パス}}", doc)
+            $0 = replace_literal($0, "{{題材ID}}", cid)
             if ($0 ~ /\{\{題材文\}\}/) {
-                while ((getline line < bodyfile) > 0) print line
+                while ((getline line < bodyfile) > 0) { print line; nbody++ }
                 close(bodyfile)
+                # 題材文が空でないことは呼び出し側で確認済みなので、1行も読めないのは
+                # 一時ファイルを読めていないということである。無言で空欄を出さない。
+                if (nbody == 0) {
+                    printf "エラー: 題材文を一時ファイルから読めなかった: %s\n", bodyfile > "/dev/stderr"
+                    exit 1
+                }
                 next
             }
             print
@@ -226,10 +283,15 @@ cmd_validate() {
             report_violation "メタ行が題材文ブロックの内側にある（判定側へ渡ってしまう）: $id"
         fi
 
-        asset="$(printf '%s\n' "$meta" | sed -n 's/^- 資産種別:[[:space:]]*//p' | head -n 1)"
+        # 先頭1件だけが要る。パイプのどちら側も途中で閉じさせないこと。
+        # `| head -n 1` で切ると読み手が先に閉じて sed が SIGPIPE を受け、逆に sed を
+        # `q` で早期終了させると書き手の printf が SIGPIPE を受ける。いずれも
+        # pipefail + set -e により診断ゼロのまま rc=141 で落ちる（メタ行が多い題材で発火）。
+        # awk へ全行読ませ、先頭一致だけを END で返すことで両側とも最後まで生かす。
+        asset="$(printf '%s\n' "$meta" | first_meta_value '資産種別')"
         [ -n "${asset//[[:space:]]/}" ] || report_violation "判定対象の資産種別が未記入: $id"
 
-        carrier="$(printf '%s\n' "$meta" | sed -n 's/^- 規範の担い方:[[:space:]]*//p' | head -n 1)"
+        carrier="$(printf '%s\n' "$meta" | first_meta_value '規範の担い方')"
         case "$carrier" in
             体現・強制|散文のみ|なし) ;;
             "") report_violation "規範の担い方が未記入: $id" ;;
@@ -332,6 +394,11 @@ cmd_report() {
             trials[trial] = 1
             for (i = 1; i <= 4; i++) { item[id, trial, i] = $(i + 2); if ($(i + 2) == "1") ones[trial, i]++ ; cnt[trial, i]++ }
             total[id, trial] = $7; dest[id, trial] = $8
+            # commit 列は持つ場合のみ検査する（列を持たない記録も受け付ける）。
+            # 埋め忘れ・プレースホルダのまま提出された記録を素通りさせないための検査であり、
+            # 短縮ハッシュの形をしていない値は名指しで報告する。
+            if (NF >= 14 && $14 !~ /^[0-9a-f]{7,40}$/) badcommit[id SUBSEP trial SUBSEP "対象文書commit"] = $14
+            if (NF >= 15 && $15 !~ /^[0-9a-f]{7,40}$/) badcommit[id SUBSEP trial SUBSEP "題材集合commit"] = $15
         }
         END {
             fail = 0
@@ -342,6 +409,18 @@ cmd_report() {
             for (d in dupes) { split(d, a, SUBSEP); printf "  重複した行: 題材 %s 試行 %s\n", a[1], a[2]; fail = 1 }
             if (miss > 0) fail = 1
             printf "  題材 %d 件中 %d 件を記録が覆う\n", ncases, ncases - miss
+
+            nbad = 0
+            for (b in badcommit) nbad++
+            if (nbad > 0) {
+                printf "\n== commit 列の未確定 ==\n"
+                for (b in badcommit) {
+                    split(b, a, SUBSEP)
+                    printf "  %s 試行%s %s が短縮ハッシュでない: %s\n", a[1], a[2], a[3], badcommit[b]
+                }
+                printf "  未確定 %d 件\n", nbad
+                fail = 1
+            }
 
             nt = 0; for (t in trials) tlist[++nt] = t
             n = asort_simple(tlist, nt)
