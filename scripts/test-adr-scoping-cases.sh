@@ -230,6 +230,78 @@ assert_run "27. サブコマンド無し → exit 2、使い方を示す" 2 "使
 run 存在しないサブコマンド
 assert_run "28. 不明なサブコマンド → exit 2" 2
 
+# ---------------------------------------------------------------- 検査の取りこぼし補い
+#
+# 実装済みでありながらアサーションを持たなかった検査を押さえる。
+# 各 fixture は valid/ の複製から1箇所だけを壊したものである。
+
+run validate "$FIXTURES_DIR/duplicate-id"
+assert_run "29. validate duplicate-id → exit 1、題材IDの重複を CASE-A1 として告げる" 1 "重複" "CASE-A1"
+
+run validate "$FIXTURES_DIR/total-mismatch"
+assert_run "30. validate total-mismatch → exit 1、CASE-A2 の期待_合計が項目1〜4 の和と一致しないことを告げる" 1 \
+    "CASE-A2" "和と一致しない"
+
+run validate "$FIXTURES_DIR/unknown-partner"
+assert_run "31. validate unknown-partner → exit 1、題材集合に無い対の相手ID CASE-ZZ を告げる" 1 "CASE-ZZ"
+
+run validate "$FIXTURES_DIR/asymmetric-pair"
+assert_run "32. validate asymmetric-pair → exit 1、対の相手IDが相互参照になっていないことを告げる" 1 "相互参照"
+
+run validate "$FIXTURES_DIR/invalid-origin"
+assert_run "33. validate invalid-origin → exit 1、CASE-A2 の由来が語彙外であることを告げる" 1 "CASE-A2" "語彙外"
+
+run validate "$FIXTURES_DIR/invalid-carrier"
+assert_run "34. validate invalid-carrier → exit 1、CASE-A2 の規範の担い方が語彙外であることを告げる" 1 "CASE-A2" "語彙外"
+
+run validate "$FIXTURES_DIR/no-header"
+assert_run "35. validate no-header → exit 1、expectations.tsv のヘッダ行の欠落を告げる" 1 "ヘッダ行"
+
+run report "$JUDGMENTS_DIR/duplicate-judgments.tsv" "$FIXTURES_DIR/valid"
+assert_run "36. report duplicate-judgments.tsv → exit 1、CASE-A1 の重複した行を告げる" 1 "重複" "CASE-A1"
+
+# ここから2件は、レビューで見つかり修正済みの不具合に対する回帰保護である。
+
+# 題材が1件も無いとき、診断を出さずに落ちてはならない。exit code だけでなく
+# 診断文が出ることまで見ないと、無言で落ちる状態へ戻っても検査が通ってしまう。
+run validate "$FIXTURES_DIR/no-case-heading"
+assert_run "37. validate no-case-heading → exit 1、題材が1件も無いことを診断として告げる（無言で落ちない）" 1 \
+    "題材が1件も無い"
+
+# メタ行を題材文ブロックの内側へ書いた場合、必須フィールド検査を通してはならない。
+# あわせて、メタ行が正しく外側にある valid では判定側へ渡るプロンプトにメタ行が
+# 現れないことを確かめ、メタ行と題材文の境界を両側から押さえる。
+run validate "$FIXTURES_DIR/meta-inside-body"
+meta_ok=1
+meta_detail=""
+if [ "$rc" -ne 1 ]; then
+    meta_ok=0
+    meta_detail="validate の exit code 期待 1 / 実際 $rc"
+fi
+for needle in "題材文ブロックの内側" "CASE-A1"; do
+    case "$output" in
+        *"$needle"*) ;;
+        *) meta_ok=0; meta_detail="${meta_detail}${meta_detail:+ / }validate の出力に含まれない: $needle" ;;
+    esac
+done
+
+run_stdout prompt "$DOC" CASE-A1 "$FIXTURES_DIR/valid"
+meta_prompt_path="$output"
+meta_prompt_body=""
+if [ "$rc" -ne 0 ] || [ ! -f "$meta_prompt_path" ]; then
+    meta_ok=0
+    meta_detail="${meta_detail}${meta_detail:+ / }prompt が組み立てに失敗した (rc=$rc)"
+else
+    meta_prompt_body="$(cat "$meta_prompt_path")"
+    rm -f "$meta_prompt_path"
+fi
+if ! assert_not_contains "$meta_prompt_body" "資産種別"; then
+    meta_ok=0
+    meta_detail="${meta_detail}${meta_detail:+ / }valid の prompt へメタ行が漏れている: 資産種別"
+fi
+record "38. validate meta-inside-body → exit 1、メタ行が題材文ブロックの内側にあることを CASE-A1 として告げる（あわせて valid の prompt にメタ行が漏れない）" \
+    "$meta_ok" "$meta_detail"
+
 # ---------------------------------------------------------------- 集計
 
 total=$((passed + failed))

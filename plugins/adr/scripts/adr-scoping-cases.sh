@@ -88,8 +88,22 @@ require_case_dir() {
 }
 
 # cases.md の題材ID を出現順に列挙する。
+# 題材が1件も無い場合は空を返して正常終了する（grep のマッチ0件は異常ではない。
+# `|| true` を外すと set -euo pipefail 下で呼び出し側が診断を出す前に落ちる）。
 list_case_ids() {
-    grep -oE '^## [A-Za-z0-9_-]+' "$1/cases.md" | sed 's/^## //'
+    grep -oE '^## [A-Za-z0-9_-]+' "$1/cases.md" | sed 's/^## //' || true
+}
+
+# 題材ブロックのうち、見出しから `### 題材文` の直前までを返す（メタ行の置き場）。
+# 題材文の本文を含めないのは、メタ行を題材文の内側へ書いた場合に
+# 必須フィールド検査を通過させないためである（内側にあると判定側へ漏れる）。
+extract_case_meta() {
+    awk -v id="$2" '
+        $0 == "## " id { in_case=1; next }
+        in_case && /^## / { exit }
+        in_case && $0 == "### 題材文" { exit }
+        in_case { print }
+    ' "$1/cases.md"
 }
 
 # expectations.tsv の題材ID を出現順に列挙する（注記行とヘッダ行を除く）。
@@ -142,6 +156,10 @@ cmd_prompt() {
     local out body_file
     out="$(mktemp -t adr-scoping-case-prompt.XXXXXX.md)"
     body_file="$(mktemp -t adr-scoping-case-body.XXXXXX)"
+    # 作業用の一時ファイルは失敗経路でも残さない（出力用の $out は呼び出し側へ渡すため対象外）。
+    # trap の本体はここで展開する。単一引用符にすると EXIT 時には関数の local 変数が
+    # 既に無く、set -u で未定義参照になる。
+    trap "rm -f '$body_file'" EXIT
     printf '%s\n' "$body" > "$body_file"
 
     # 雛形の差し込み記号を置換する。題材文は複数行のため行ごと流し込む。
@@ -194,19 +212,24 @@ cmd_validate() {
     fi
 
     # --- 題材文層（3層のうち第1層）と必須メタフィールド
-    local ids id block asset carrier body
+    local ids id meta asset carrier body
     ids="$(list_case_ids "$dir")"
     while IFS= read -r id; do
         [ -n "$id" ] || continue
-        block="$(awk -v id="$id" '$0 == "## " id {in_case=1; next} in_case && /^## / {exit} in_case {print}' "$dir/cases.md")"
+        meta="$(extract_case_meta "$dir" "$id")"
 
         body="$(extract_case_text "$dir" "$id")"
         [ -n "${body//[[:space:]]/}" ] || report_violation "3層のうち題材文が欠けている: $id"
 
-        asset="$(printf '%s\n' "$block" | sed -n 's/^- 資産種別:[[:space:]]*//p' | head -n 1)"
+        # メタ行が題材文ブロックの内側にあると判定側へ渡ってしまうため違反とする。
+        if printf '%s\n' "$body" | grep -qE '^- (資産種別|規範の担い方|出所):'; then
+            report_violation "メタ行が題材文ブロックの内側にある（判定側へ渡ってしまう）: $id"
+        fi
+
+        asset="$(printf '%s\n' "$meta" | sed -n 's/^- 資産種別:[[:space:]]*//p' | head -n 1)"
         [ -n "${asset//[[:space:]]/}" ] || report_violation "判定対象の資産種別が未記入: $id"
 
-        carrier="$(printf '%s\n' "$block" | sed -n 's/^- 規範の担い方:[[:space:]]*//p' | head -n 1)"
+        carrier="$(printf '%s\n' "$meta" | sed -n 's/^- 規範の担い方:[[:space:]]*//p' | head -n 1)"
         case "$carrier" in
             体現・強制|散文のみ|なし) ;;
             "") report_violation "規範の担い方が未記入: $id" ;;
@@ -237,7 +260,7 @@ cmd_validate() {
             if (n == 4 && $7 ~ /^[0-9]+$/ && $7 != $3 + $4 + $5 + $6)
                 printf "%s: 期待_合計が期待_項目1〜4 の和と一致しない (%s != %d)\n", id, $7, $3 + $4 + $5 + $6
         }
-        END { if (!header) print "expectations.tsv にヘッダ行（先頭列 題材ID）が無い" }
+        END { if (!header) print "にヘッダ行（先頭列 題材ID）が無い" }
     ' "$dir/expectations.tsv")"
     if [ -n "$tsv_issues" ]; then
         while IFS= read -r line; do report_violation "expectations.tsv $line"; done <<< "$tsv_issues"
@@ -279,6 +302,7 @@ cmd_report() {
 
     local ids_file
     ids_file="$(mktemp -t adr-scoping-case-ids.XXXXXX)"
+    trap "rm -f '$ids_file'" EXIT
     list_case_ids "$dir" > "$ids_file"
 
     set +e
@@ -327,6 +351,7 @@ cmd_report() {
                 print "  試行が2つ未満のため一致は測れない"
             } else {
                 t1 = tlist[1]; t2 = tlist[2]
+                if (nt > 2) printf "  試行が %d つあるため、試行 %s と 試行 %s のみを比較した（他の試行は一致の計算に入れていない）\n", nt, t1, t2
                 agree = 0; cells = 0
                 for (k = 1; k <= ncases; k++) {
                     id = order[k]
