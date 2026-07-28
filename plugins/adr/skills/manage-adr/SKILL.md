@@ -81,14 +81,14 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 
 ## 各操作後の自己検証（必須）
 
-実 ADR ファイルは `docs/adr` に書き込み、**自己検証も `docs/adr` を直接対象として実行する**。各遷移・編集操作の完了後、以下を実行する。
+実 ADR ファイルは対象ディレクトリへ書き込み、**自己検証も同ディレクトリを直接対象として実行する**。対象ディレクトリの解決（既定と第1引数による上書き）は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「配置」節に従う。各遷移・編集操作の完了後、以下を実行する。
 
-1. **index 同期**（`validity` を変える操作＝承認・上書き・分割・廃止の後）: `bash ${CLAUDE_SKILL_DIR}/../../scripts/gen-adr-index.sh docs/adr` の出力で `docs/adr/index.md` を再生成する（起票・却下は `validity` を変えないため index 再生成不要）。
-2. **lint 実行**: `bash ${CLAUDE_SKILL_DIR}/../../scripts/lint-adr.sh docs/adr` を実行し exit 0 を確認する。**この exit 0 が合否基準**である。
+1. **index 同期**（`validity` を変える操作＝承認・上書き・分割・廃止の後）: `bash ${CLAUDE_SKILL_DIR}/../../scripts/gen-adr-index.sh <対象ディレクトリ>` の出力で `<対象ディレクトリ>/index.md` を再生成する（起票・却下は `validity` を変えないため index 再生成不要）。
+2. **lint 実行**: `bash ${CLAUDE_SKILL_DIR}/../../scripts/lint-adr.sh <対象ディレクトリ>` を実行し exit 0 を確認する。**この exit 0 が合否基準**である。
 3. **フィードバックループ**（exit 0 以外）: lint-adr の出力を利用者へ提示し、指摘に応じて ADR を修正する。レイヤ1 スキーマ／レイヤ3 相互参照なら front-matter（`status`/`validity`/`superseded-by`）または相互参照（旧側 `superseded-by`・後継側 `Supersedes:`）を直す。レイヤ2 index 同期 drift なら `gen-adr-index.sh` を再実行して index を同期する。レイヤ4 Related/park 参照なら参照先を実在する有効 ADR へ差し替える。レイヤ5 はファイル名側の是正で、形式違反はリネーム、識別子重複は `next-adr-id.sh` で再発番して片方をリネーム（本文 H1・相互参照・index も追随）、H1 整合違反は H1 見出しの識別子部をファイル名へ揃える。再度 lint-adr を実行し、**exit 0 になるまで反復する**。exit 0 を得られないまま操作を完了扱いにしない。
 
 `lint-adr.sh` の exit code: `0`＝違反0件／`1`＝違反検出／`2`＝対象ディレクトリ不在。
 
-**フォールバック**: 操作前から `docs/adr` が exit 1（baseline red）で、本操作と無関係な違反が exit 0 到達を妨げる場合に限り、変更/生成した ADR とその相互参照相手を一時ディレクトリへコピーし、そのディレクトリを対象に手順1〜3を実行してよい（コピーに含めるファイルの規則は `${CLAUDE_SKILL_DIR}/references/transitions.md` を参照）。
+**フォールバック**: 操作前から対象ディレクトリが exit 1（baseline red）で、本操作と無関係な違反が exit 0 到達を妨げる場合に限り、変更/生成した ADR とその相互参照相手を一時ディレクトリへコピーし、そのディレクトリを対象に手順1〜3を実行してよい（コピーに含めるファイルの規則は `${CLAUDE_SKILL_DIR}/references/transitions.md` を参照）。
 
-**方式の判断と根拠**: 既定を `docs/adr` 直接検証とし、隔離コピー方式は既定手順から退けた。隔離コピーは「対象ディレクトリ全体の baseline が red で、どれだけ正しく操作しても全体 green にできない」ことを前提とする過渡措置であり、直接 lint すると正しい操作でも exit 0 に到達できない（false negative）ことを避けるためのものだった。front-matter 移行と index 初期生成の完了により baseline が exit 0 となってこの前提が失効したため、隔離方式には相互参照相手を漏らすと自ら false negative を生むという組み立てコストだけが残る。直接検証は操作結果と `docs/adr` 全体の整合を同時に検査でき、隔離セットの漏れによる誤検知も生じない。ただし baseline が red へ戻った場合の可用性を確保するため、隔離検証は上記フォールバックとして残置する。
+**方式の判断と根拠**: 既定を対象ディレクトリの直接検証とし、隔離コピー方式は既定手順から退けた。隔離コピーは「対象ディレクトリ全体の baseline が red で、どれだけ正しく操作しても全体 green にできない」ことを前提とする過渡措置であり、直接 lint すると正しい操作でも exit 0 に到達できない（false negative）ことを避けるためのものだった。front-matter 移行と index 初期生成の完了により baseline が exit 0 となってこの前提が失効したため、隔離方式には相互参照相手を漏らすと自ら false negative を生むという組み立てコストだけが残る。直接検証は操作結果と対象ディレクトリ全体の整合を同時に検査でき、隔離セットの漏れによる誤検知も生じない。ただし baseline が red へ戻った場合の可用性を確保するため、隔離検証は上記フォールバックとして残置する。
