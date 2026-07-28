@@ -1,17 +1,16 @@
 # ADR（Architecture Decision Records）
 
-本ディレクトリは横断的・後戻りコスト高な技術的意思決定（アーキテクチャ・設計方針）を ADR として蓄積・参照・廃止する運用基盤。`docs/development/event-storming.md` の「技術的意思決定」集約の実体であり、同集約の状態遷移・コマンド・イベント定義と整合する。`index.md` は `validity: 有効` な ADR を列挙する導出ビュー（生成物）であり、人手編集しない。
+本ディレクトリは本リポジトリの ADR を置く場所。`docs/development/event-storming.md` の「技術的意思決定」集約の実体であり、同集約の状態遷移・コマンド・イベント定義と整合する。
+
+## 対象 ADR ディレクトリ
+
+本リポジトリの ADR ディレクトリは `docs/adr`。`adr` プラグインの各スクリプトは対象ディレクトリを第1引数（`ADR_DIR`）で受け取り、その既定値が `docs/adr` であるため、本リポジトリでは上書きせず既定のまま使う。
 
 ## 運用ルールの所在
 
 ADR 化要否の判定・採番・起票・承認・上書き・廃止・却下・編集の各手順は `manage-adr` スキルが実体を持つ。本 README はこれらを再掲しない。
 
-- [`manage-adr/SKILL.md`](../../plugins/adr/skills/manage-adr/SKILL.md) — スキル本体。各遷移と編集判定の入口
-- [`references/adr-model.md`](../../plugins/adr/skills/manage-adr/references/adr-model.md) — 状態2軸の値域・front-matter スキーマ・配置・採番方式
-- [`references/adr-scoping.md`](../../plugins/adr/skills/manage-adr/references/adr-scoping.md) — ADR 化要否の粒度判定基準・起票のタイミング・判定結果の行き先・新規 ADR の束ねの制約・命名規約の ADR 化基準
-- [`references/transitions.md`](../../plugins/adr/skills/manage-adr/references/transitions.md) — 5遷移と分割の実行手順・双方向相互参照の書き込み・index の再生成
-- [`references/edit-decision.md`](../../plugins/adr/skills/manage-adr/references/edit-decision.md) — core／非core／些末 の編集判定フローと3段構え編集機構
-- [`references/template.md`](../../plugins/adr/skills/manage-adr/references/template.md) — 新規 ADR の雛形。スキルを導入していない場合はこれをコピーして使う
+- [`manage-adr/SKILL.md`](../../plugins/adr/skills/manage-adr/SKILL.md) — ADR 運用の入口。各手順とその詳細を記した参照ファイルはここから辿る
 
 ## 運用ルールの出所
 
