@@ -41,9 +41,16 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 
 複数の決定を束ねた ADR の一部だけが core 反転して残りが生存する場合（1→N の部分上書き）、または束ね ADR を予防的に分解する場合（衛生的分割）に使う。原 ADR 全体を `上書き済み` にすると生存決定を誤って退役させるため、生存決定を後継へ逐語 restate してから原 ADR を上書きする。
 
+呼び出しの適用条件は2トリガに分かれる。**既定は分割しない**——既存の多決定 ADR を遡及的に分割せず、下記いずれかのトリガが立ったときにのみ駆動する。
+
+- **反転駆動**: 前段の1→N の部分上書きがこれにあたる。部分 core 反転が実際に当たったときに駆動する（要求される）
+- **衛生的分割**: 前段の予防的な分解がこれにあたる。既定（分割しない）に対する**任意**の例外であり、反転駆動と違って要求されない
+
+新規に起こす ADR が独立に反転しうる core を束ねないための制約は `${CLAUDE_SKILL_DIR}/references/adr-scoping.md`「新規 ADR の束ねの制約」節に従う。
+
 分割は5遷移（front-matter 状態遷移）の一種ではない。決定のファイル間再配置という別軸の構造操作であり、本文編集の core／非core／些末分類でもなくリファクタリングに相当する。終端 front-matter は上書きと同型（原 ADR `validity: 上書き済み`・`superseded-by` に全後継を列挙）だが、後継が複数（1→N）で生存決定の救出を伴う点で上書き（1→1）と操作が異なる。
 
-手順の実体（起票・逐語 restate・開示・相互参照の7ステップと締めの検査4項目）は `${CLAUDE_SKILL_DIR}/references/transitions.md`「分割（多決定 ADR の部分上書き）」節を参照する。
+手順の実体（起票・逐語 restate・開示・相互参照の各手順と締めの検査）は `${CLAUDE_SKILL_DIR}/references/transitions.md`「分割（多決定 ADR の部分上書き）」節を参照する。
 
 ### 編集判定フロー（既存 ADR の変更）
 
@@ -57,14 +64,14 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 
 ### ADR 化要否の判定（起票の前段）
 
-ある決定を ADR にすべきか、いつ起票するか、命名規約を ADR の対象に含めるかは、粒度判定基準（4項目チェックリストとスコア境界）で判定する。判定境界では「書かない」を優先する。判定項目・スコア境界・昇格のタイミング・命名規約の振り分けは `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` を参照し、スキル独自の基準を導入しない。
+ある決定を ADR にすべきか、いつ起票するか、命名規約を ADR の対象に含めるかは、粒度判定基準（4項目チェックリストとスコア境界）で判定する。判定境界では「書かない」を優先する。判定項目・スコア境界・昇格のタイミング・新規 ADR の束ねの制約・命名規約の振り分けは `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` を参照し、スキル独自の基準を導入しない。
 
 要否の判定は起票操作の前段であり、ADR 化すると判断した場合のみ起票（5遷移）へ進む。
 
 ## 手順の参照（各 references を直接参照）
 
 - `${CLAUDE_SKILL_DIR}/references/adr-model.md` — 状態の2軸の値域・遷移ごとの front-matter 必須ルール表・配置・採番方式（full slug の定義）
-- `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` — ADR 化要否の粒度判定基準・起票のタイミング・命名規約の ADR 化基準
+- `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` — ADR 化要否の粒度判定基準・起票のタイミング・新規 ADR の束ねの制約・命名規約の ADR 化基準
 - `${CLAUDE_SKILL_DIR}/references/template.md` — 新規 ADR の雛形（front-matter＋見出し骨格。起票時にこの構成へ準拠する）
 - `${CLAUDE_SKILL_DIR}/references/transitions.md` — 5遷移と分割の実行手順・採番規則・双方向相互参照の書き込み・index の再生成
 - `${CLAUDE_SKILL_DIR}/references/edit-decision.md` — core／非core／些末 の判定と `AskUserQuestion` 問い設計・操作分岐、および ADR 本文へ参照を書く／直す際の判定（記録の参照原則。起票時にも適用する）
