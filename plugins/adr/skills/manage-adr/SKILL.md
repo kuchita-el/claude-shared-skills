@@ -77,11 +77,13 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 - `${CLAUDE_SKILL_DIR}/references/edit-decision.md` — core／非core／些末 の判定と `AskUserQuestion` 問い設計・操作分岐、および ADR 本文へ参照を書く／直す際の判定（記録の参照原則。起票時にも適用する）
 - `${CLAUDE_SKILL_DIR}/references/io-examples.md` — 起票・承認・上書きの入出力例
 
+以降の手順に現れる `<対象ディレクトリ>` の解決（既定と第1引数による上書き）は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「配置」節に従う。
+
 識別子の発番は `bash ${CLAUDE_SKILL_DIR}/../../scripts/next-adr-id.sh <対象ディレクトリ>` を実行し、その出力を用いる。時刻部（分粒度・ローカル時刻）の取得と同一時刻部内の連番決定はスクリプトが担う。`date` 等の外部コマンドを直接実行せず、配置ディレクトリを列挙して番号を組み立てない。
 
 ## 各操作後の自己検証（必須）
 
-実 ADR ファイルは対象ディレクトリへ書き込み、**自己検証も同ディレクトリを直接対象として実行する**。対象ディレクトリの解決（既定と第1引数による上書き）は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「配置」節に従う。各遷移・編集操作の完了後、以下を実行する。
+実 ADR ファイルは対象ディレクトリへ書き込み、**自己検証も同ディレクトリを直接対象として実行する**（対象ディレクトリの解決は前掲の「配置」節の規約に従う）。各遷移・編集操作の完了後、以下を実行する。
 
 1. **index 同期**（`validity` を変える操作＝承認・上書き・分割・廃止の後）: `bash ${CLAUDE_SKILL_DIR}/../../scripts/gen-adr-index.sh <対象ディレクトリ>` の出力で `<対象ディレクトリ>/index.md` を再生成する（起票・却下は `validity` を変えないため index 再生成不要）。
 2. **lint 実行**: `bash ${CLAUDE_SKILL_DIR}/../../scripts/lint-adr.sh <対象ディレクトリ>` を実行し exit 0 を確認する。**この exit 0 が合否基準**である。
