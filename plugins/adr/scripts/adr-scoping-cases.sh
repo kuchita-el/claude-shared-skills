@@ -103,7 +103,8 @@ list_case_ids() {
 # 題材文の本文を含めないのは、メタ行を題材文の内側へ書いた場合に
 # 必須フィールド検査を通過させないためである（内側にあると判定側へ漏れる）。
 extract_case_meta() {
-    awk -v id="$2" '
+    cid="$2" awk '
+        BEGIN { id = ENVIRON["cid"] }
         $0 == "## " id { in_case=1; next }
         in_case && /^## / { exit }
         in_case && $0 == "### 題材文" { exit }
@@ -146,10 +147,26 @@ list_expectation_ids() {
     awk -F'\t' '!/^#/ && NR>0 && $1!="題材ID" && NF>0 {print $1}' "$1/expectations.tsv"
 }
 
+# prompt-template.md に欠けている差し込み記号を1行に1つ返す。揃っていれば空を返す。
+#
+# 記号を書き落とした雛形は prompt が黙って受け入れる。題材文の差し込みは記号が在る行で
+# しか起きないため、記号ごと落ちていると題材文の無いプロンプトが exit 0 で出来上がる。
+# 題材集合は利用者が自作する契約物なので、検査は validate（内部整合の点検）と
+# prompt（成果物を生む経路）の両方から通す。片方だけに置くと塞がらない。
+missing_template_markers() {
+    local marker
+    for marker in '{{対象文書パス}}' '{{題材ID}}' '{{題材文}}'; do
+        grep -qF -- "$marker" "$1/prompt-template.md" || printf '%s\n' "$marker"
+    done
+}
+
 # cases.md から題材1件分の題材文ブロックだけを取り出す。
+# 題材ID を `-v` で渡さないのは cmd_prompt 本体と同じ理由による（`-v` は代入値の
+# エスケープ列を解釈するため、利用者入力に `\` が含まれると値が壊れる）。
 extract_case_text() {
     local dir="$1" case_id="$2"
-    awk -v id="$case_id" '
+    cid="$case_id" awk '
+        BEGIN { id = ENVIRON["cid"] }
         $0 == "## " id { in_case=1; next }
         in_case && /^## / { exit }
         in_case && $0 == "### 題材文" { in_body=1; next }
@@ -174,7 +191,20 @@ cmd_prompt() {
     [ -r "$doc_path" ] || die_usage "対象文書を読めない: $doc_path"
     require_case_dir "$dir" with-template
 
-    if ! list_case_ids "$dir" | grep -qx -- "$case_id"; then
+    # 差し込み記号を欠いた雛形からは、題材文の無いプロンプトが黙って出来上がる。
+    # validate 側の同じ検査は cmd_prompt から呼ばれないため、ここで独立に通す。
+    local missing_markers
+    missing_markers="$(missing_template_markers "$dir")"
+    if [ -n "$missing_markers" ]; then
+        printf 'エラー: prompt-template.md に差し込み記号が無い: %s\n' "$dir/prompt-template.md" >&2
+        printf '欠けている差し込み記号:\n' >&2
+        printf '%s\n' "$missing_markers" | sed 's/^/  /' >&2
+        exit 1
+    fi
+
+    # `-F` を落とすと題材ID が正規表現として解釈され、`CASE-A.` のような入力が
+    # 存在検査を通過して診断が「題材文が空である」へ化ける。
+    if ! list_case_ids "$dir" | grep -qxF -- "$case_id"; then
         printf 'エラー: 題材ID が題材集合に無い: %s\n' "$case_id" >&2
         printf '既知の題材ID:\n' >&2
         list_case_ids "$dir" | sed 's/^/  /' >&2
@@ -271,16 +301,15 @@ cmd_validate() {
     fi
 
     # --- 雛形の差し込み記号（在る場合のみ検査する。雛形は prompt でのみ使う）
-    #
-    # 記号を書き落とした雛形は prompt が黙って受け入れる。題材文の差し込みは
-    # 記号が在る行でしか起きないため、記号ごと落ちていると題材文の無いプロンプトが
-    # exit 0 で出来上がる。題材集合は利用者が自作する契約物なので、ここで押さえる。
+    # 検査の中身と、両経路へ置く理由は missing_template_markers を参照。
     if [ -f "$dir/prompt-template.md" ]; then
-        local marker
-        for marker in '{{対象文書パス}}' '{{題材ID}}' '{{題材文}}'; do
-            grep -qF -- "$marker" "$dir/prompt-template.md" \
-                || report_violation "prompt-template.md に差し込み記号が無い: $marker"
-        done
+        local missing_markers marker
+        missing_markers="$(missing_template_markers "$dir")"
+        if [ -n "$missing_markers" ]; then
+            while IFS= read -r marker; do
+                report_violation "prompt-template.md に差し込み記号が無い: $marker"
+            done <<< "$missing_markers"
+        fi
     fi
 
     # --- ID集合の一致（cases.md ↔ expectations.tsv）
@@ -366,9 +395,11 @@ cmd_validate() {
     pair_issues="$(awk -F'\t' '
         /^#/ { next }
         $1 == "題材ID" { next }
-        NF >= 10 { partner[$1] = $10; seen[$1] = 1 }
+        # 違反の並びが awk の実装依存にならないよう、初出時の出現順を添字つきで積む。
+        NF >= 10 { if (!($1 in seen)) order[++n] = $1; partner[$1] = $10; seen[$1] = 1 }
         END {
-            for (id in partner) {
+            for (k = 1; k <= n; k++) {
+                id = order[k]
                 p = partner[id]
                 if (p == "NONE" || p == "") continue
                 if (!(p in seen)) { printf "%s: 対の相手ID が題材集合に無い (%s)\n", id, p; continue }
@@ -424,8 +455,13 @@ cmd_report() {
             close(expfile)
             # 期待帰結を1件も読めていないのに集計を続けると、期待帰結との差が
             # 「差は無い」と出て結論が無言で反転する。読めなかった時点で落とす。
+            #
+            # ここでの exit は END を飛ばさない（POSIX 規定）。END 末尾の `exit fail`
+            # が終了状態を上書きするため、BEGIN で落としたつもりでも集計本文は最後まで
+            # 印字され rc も 0 へ戻る。打ち切りはフラグで END の先頭へ伝える。
             if (nread == 0) {
                 printf "エラー: 期待帰結を1件も読めなかった: %s\n", expfile > "/dev/stderr"
+                noexp = 1
                 exit 2
             }
         }
@@ -434,9 +470,20 @@ cmd_report() {
         NF == 0 { next }
         {
             id = $1; trial = $2
-            if (!(id in known)) { unknown[id] = unknown[id] " " NR; next }
+            # 未知の題材ID・重複した行はどちらも出力が集計レポートへ貼り込まれる。
+            # 連想配列の走査順（awk の実装依存）に委ねず、記録の出現順で並ぶよう
+            # 添字つきの配列へ初出時の順序を積む（commit 列の未確定と同じ扱い）。
+            if (!(id in known)) {
+                if (!(id in unknown)) unknown_order[++nunknown] = id
+                unknown[id] = unknown[id] " " NR
+                next
+            }
             key = id SUBSEP trial
-            if (key in seen) { dupes[key]++ ; next }
+            if (key in seen) {
+                if (!(key in dupes)) dupe_order[++ndupes] = key
+                dupes[key]++
+                next
+            }
             seen[key] = 1
             covered[id] = 1
             trials[trial] = 1
@@ -457,12 +504,19 @@ cmd_report() {
             }
         }
         END {
+            # BEGIN 側の打ち切りをここで実現する。集計本文を1行も出さずに抜けること。
+            if (noexp) exit 2
+
             fail = 0
             print "== カバレッジ =="
             miss = 0
             for (k = 1; k <= ncases; k++) if (!(order[k] in covered)) { printf "  未カバーの題材: %s\n", order[k]; miss++ }
-            for (u in unknown) { printf "  題材集合に無い題材IDの行: %s (行%s)\n", u, unknown[u]; fail = 1 }
-            for (d in dupes) { split(d, a, SUBSEP); printf "  重複した行: 題材 %s 試行 %s\n", a[1], a[2]; fail = 1 }
+            for (u = 1; u <= nunknown; u++) {
+                printf "  題材集合に無い題材IDの行: %s (行%s)\n", unknown_order[u], unknown[unknown_order[u]]; fail = 1
+            }
+            for (d = 1; d <= ndupes; d++) {
+                split(dupe_order[d], a, SUBSEP); printf "  重複した行: 題材 %s 試行 %s\n", a[1], a[2]; fail = 1
+            }
             if (miss > 0) fail = 1
             printf "  題材 %d 件中 %d 件を記録が覆う\n", ncases, ncases - miss
 

@@ -95,6 +95,28 @@ assert_run() {
     record "$name" "$ok" "$detail"
 }
 
+# 診断行のうち $1 に一致する行から、各行の先頭に現れる題材ID を出現順に連ねて返す。
+# 走査順の検査は部分一致では代替できない（含まれてはいるが並びだけが違う退行を通す）ため、
+# 並びそのものを1本の文字列へ畳んで突き合わせる。
+first_case_ids() {
+    printf '%s\n' "$2" | awk -v pat="$1" '
+        $0 ~ pat && match($0, /CASE-[A-Z0-9]+/) { out = out (out == "" ? "" : " ") substr($0, RSTART, RLENGTH) }
+        END { print out }
+    '
+}
+
+# 診断の並びが期待どおりであることを判定する。
+# $1 説明 / $2 対象文字列 / $3 診断行を絞る正規表現 / $4 期待する題材IDの並び
+assert_case_id_order() {
+    local name="$1" text="$2" pat="$3" want="$4" got
+    got="$(first_case_ids "$pat" "$text")"
+    if [ "$got" = "$want" ]; then
+        record "$name" 1
+    else
+        record "$name" 0 "並び 期待 [$want] / 実際 [$got]"
+    fi
+}
+
 # 与えた文字列に部分文字列が含まれることだけを判定する。$1 説明 / $2 対象文字列 / $3 以降 含まれるべき文字列
 assert_out() {
     local name="$1" text="$2"
@@ -189,6 +211,13 @@ record "13. 組み立てたプロンプトに期待帰結層・他題材に由�
 
 run prompt "$DOC" CASE-ZZ "$FIXTURES_DIR/valid"
 assert_run "14. prompt（題材集合に無い題材ID）→ exit 1、既知の題材IDを列挙する" 1 "CASE-A1"
+
+# 題材IDの存在検査を正規表現一致で書くと、`CASE-A.` のような入力が既知の題材へ当たって
+# 存在検査を通過する。exit code だけでは後段の「題材文が空である」と区別できないため、
+# 診断が「題材ID が題材集合に無い」であることまで押さえる。
+run prompt "$DOC" 'CASE-A.' "$FIXTURES_DIR/valid"
+assert_run "14a. prompt（題材IDに正規表現メタ文字を含む）→ exit 1、題材IDが題材集合に無いことを告げる（別の診断へ化けない）" 1 \
+    "題材ID が題材集合に無い: CASE-A."
 
 run prompt "$MISSING_DOC" CASE-A1 "$FIXTURES_DIR/valid"
 assert_run "15. prompt（存在しない対象文書）→ exit 2" 2
@@ -458,18 +487,79 @@ run prompt "$DOC" CASE-A1 "$FIXTURES_DIR/empty-body"
 assert_run "38c. prompt（題材文が空）→ exit 1、題材文が空であることを告げる" 1 "題材文が空である"
 
 # 差し込み記号を書き落とした雛形は、題材文の無いプロンプトを exit 0 で生む。
+# 検査を validate だけに置くと、成果物を生む側（prompt は validate を呼ばない）が
+# 塞がらないため、同じ雛形を両方の経路へ通す。
 run validate "$FIXTURES_DIR/template-missing-marker"
 assert_run "38d. validate（雛形が {{題材文}} を欠く）→ exit 1、欠けている差し込み記号を名指しする" 1 \
     "prompt-template.md に差し込み記号が無い: {{題材文}}"
 
+run prompt "$DOC" CASE-A1 "$FIXTURES_DIR/template-missing-marker"
+assert_run "38e. prompt（雛形が {{題材文}} を欠く）→ exit 1、欠けている差し込み記号を名指しする（題材文の無いプロンプトを生まない）" 1 \
+    "prompt-template.md に差し込み記号が無い" "{{題材文}}"
+
 # 期待帰結を1件も読めないまま集計を続けると「差は無い」と出て結論が無言で反転する。
+# 診断が出ることだけを見ても足りない。awk の exit は BEGIN で呼んでも END を飛ばさないため、
+# 診断の直後に集計本文が最後まで印字される状態を通してしまう。本文が出ないことまで見る。
 NOEXP_DIR="$(mktemp -d -t adr-scoping-case-ne.XXXXXX)"
 cp "$FIXTURES_DIR/valid/cases.md" "$FIXTURES_DIR/valid/prompt-template.md" "$NOEXP_DIR/"
 printf '# 注記行だけで期待帰結の行を持たない\n' > "$NOEXP_DIR/expectations.tsv"
 run report "$JUDGMENTS_DIR/valid-judgments.tsv" "$NOEXP_DIR"
-assert_run "40e. report（期待帰結を1件も読めない）→ 診断を出して落ちる（「差は無い」で通さない）" 1 \
-    "期待帰結を1件も読めなかった"
-rm -rf "$NOEXP_DIR"
+noexp_ok=1
+noexp_detail=""
+[ "$rc" -eq 1 ] || { noexp_ok=0; noexp_detail="exit code 期待 1 / 実際 $rc"; }
+case "$output" in
+    *"期待帰結を1件も読めなかった"*) ;;
+    *) noexp_ok=0; noexp_detail="${noexp_detail}${noexp_detail:+ / }診断が出ていない" ;;
+esac
+for needle in "差は無い" "== カバレッジ ==" "== 期待帰結との差 =="; do
+    if ! assert_not_contains "$output" "$needle"; then
+        noexp_ok=0
+        noexp_detail="${noexp_detail}${noexp_detail:+ / }集計本文が印字されている: $needle"
+    fi
+done
+record "40e. report（期待帰結を1件も読めない）→ 診断を出して落ち、集計本文を1行も印字しない" "$noexp_ok" "$noexp_detail"
+
+# 題材が0件の題材集合では、カバレッジ側が別理由で落とすこともない。
+# 期待帰結の未読を BEGIN の exit だけで扱っていると、この組み合わせが rc=0 で素通りする。
+NOEXP0_DIR="$(mktemp -d -t adr-scoping-case-n0.XXXXXX)"
+printf '# 題材を1件も持たない cases.md\n' > "$NOEXP0_DIR/cases.md"
+cp "$FIXTURES_DIR/valid/prompt-template.md" "$NOEXP0_DIR/"
+printf '# 注記行だけで期待帰結の行を持たない\n' > "$NOEXP0_DIR/expectations.tsv"
+run report "$JUDGMENTS_DIR/valid-judgments.tsv" "$NOEXP0_DIR"
+noexp0_ok=1
+noexp0_detail=""
+[ "$rc" -ne 0 ] || { noexp0_ok=0; noexp0_detail="exit code 0 で素通りした"; }
+if ! assert_not_contains "$output" "差は無い"; then
+    noexp0_ok=0
+    noexp0_detail="${noexp0_detail}${noexp0_detail:+ / }「差は無い」が印字されている"
+fi
+record "40f. report（期待帰結も題材も0件）→ 素通りせず、「差は無い」も印字しない" "$noexp0_ok" "$noexp0_detail"
+rm -rf "$NOEXP_DIR" "$NOEXP0_DIR"
+
+# ---------------------------------------------------------------- 診断の走査順
+#
+# 連想配列を素朴に `for (k in arr)` で走査すると、診断の並びが awk の実装依存になる。
+# 出力は集計レポートへ貼り込むため、記載・記録の出現順に固定されていなければならない。
+# 部分一致のアサーションでは「含まれてはいるが並びだけが違う」退行を通してしまうため、
+# 以下4件は並びそのものを突き合わせる。fixture の題材IDは、素朴な走査だと gawk・mawk の
+# いずれでも出現順と異なる並びになる組み合わせを選んである。
+SCAN_ORDER_IDS="CASE-A1 CASE-ZZ CASE-M3 CASE-B2 CASE-Q9 CASE-D4"
+
+run report "$JUDGMENTS_DIR/unknown-id-multi-judgments.tsv" "$FIXTURES_DIR/valid"
+assert_case_id_order "43a. report（未知の題材IDが複数）→ 診断が記録の出現順で並ぶ" "$output" \
+    "題材集合に無い題材IDの行" "CASE-ZZ CASE-M3 CASE-B2 CASE-Q9 CASE-D4"
+
+run report "$JUDGMENTS_DIR/scan-order-dupe-judgments.tsv" "$FIXTURES_DIR/scan-order"
+assert_case_id_order "43b. report（重複した行が複数）→ 診断が記録の出現順で並ぶ" "$output" \
+    "重複した行" "$SCAN_ORDER_IDS"
+
+run report "$JUDGMENTS_DIR/scan-order-badcommit-judgments.tsv" "$FIXTURES_DIR/scan-order"
+assert_case_id_order "43c. report（commit 列の未確定が複数）→ 診断が記録の出現順で並ぶ" "$output" \
+    "短縮ハッシュでない" "$SCAN_ORDER_IDS"
+
+run validate "$FIXTURES_DIR/scan-order"
+assert_case_id_order "43d. validate（対の相手IDが題材集合に無い題材が複数）→ 診断が記載の出現順で並ぶ" "$output" \
+    "対の相手ID が題材集合に無い" "$SCAN_ORDER_IDS"
 
 # メタ行が多い題材でも、パイプの早期終了による SIGPIPE で診断ゼロのまま落ちてはならない。
 # 読み手を先に閉じても書き手を先に閉じても pipefail + set -e で rc=141 になるため、
@@ -504,6 +594,19 @@ if [ -z "$repo_specific_hits" ]; then
 else
     record "42. 配布物内のスクリプトが配布元リポジトリ固有の名前（ディレクトリ構成・リポジトリ名・対象文書名）を含まない" 0 \
         "検出:"$'\n'"$repo_specific_hits"
+fi
+
+# 同じ原則は配布物のドキュメントにも及ぶ。配布先の利用者から見て Issue 番号は解決できない
+# 参照であり、追跡の記録は配布物外（ADR の関連Issue 行・配布元の開発ドキュメント・
+# 本テストランナー）へ置く。アサーション42 の走査対象はスクリプト本体のみで、
+# 実際にこの型の混入を README で1件取りこぼしたため、走査を配布物全体へ広げる。
+issue_ref_hits="$(grep -rnE '(^|[^A-Za-z0-9_])#[0-9]{2,}' "$REPO_ROOT/plugins/adr" \
+    --include='*.md' --include='*.sh' --include='*.json' || true)"
+if [ -z "$issue_ref_hits" ]; then
+    record "44. 配布物（plugins/adr 配下）が配布元リポジトリの Issue 番号を含まない" 1
+else
+    record "44. 配布物（plugins/adr 配下）が配布元リポジトリの Issue 番号を含まない" 0 \
+        "検出:"$'\n'"$issue_ref_hits"
 fi
 
 # ---------------------------------------------------------------- 集計
