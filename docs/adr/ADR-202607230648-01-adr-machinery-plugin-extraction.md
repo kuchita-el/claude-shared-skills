@@ -22,6 +22,8 @@ ADR運用機構を dev-workflow から分離し、独立プラグイン `plugins
 
 1. **配布単位**: marketplace カタログに dev-workflow・growth とは別エントリ（`source: ./plugins/adr`）として登録し、単独で導入・無効化できる配布単位とする。
 2. **可搬アーティファクトの集約**: `lint-adr.sh` / `gen-adr-index.sh` / テスト / fixtures / `manage-adr` スキル一式 / commit ゲート hook を `plugins/adr/` 配下へ集約する。スクリプト2本は `lint-adr.sh` が `$(dirname "$0")` で `gen-adr-index.sh` を解決するため同居させる。
+
+   **射程の注記（#616 で追記）**: 本項の列挙は**抽出時点で `plugins/adr/` へ移す対象**を定めたものであり、以後に追加する同梱スクリプトのテスト・fixture を配布物内に置くことを定めたものではない。テスト・fixture を配布物内と配布物外のどちらへ置くかは本 ADR の射程外であり、決定していない。実際に #616 では、新規に同梱した `adr-scoping-cases.sh` のテストと fixture を配布物外（`scripts/`）へ置き、既存の `lint-adr.sh` / `next-adr-id.sh` のテストも順次そちらへ寄せる方針を採っている（理由＝参照方向を「配布物外のテスト → 配布物内の検査器」の一方向に固定し、配布物へ検査用データを同梱しない）。この方針は本項と矛盾しない。
 3. **ゲートのプラグイン同梱**: drift-lint ゲートを同梱の PreToolUse hook（`adr-commit-gate`）として配送し、導入先の `docs/adr` を検査する。スクリプト2本（`lint-adr.sh` / `gen-adr-index.sh`）は第1引数で対象ディレクトリを上書き可能（既定 `docs/adr`）だが、commit ゲート自体は現状 `docs/adr` 固定であり、ゲート検査対象の可変化はレイヤ上書き設計（#548）の射程とする。ADR 無関係の検査（`validate-skills`）は巻き込まない。`docs/adr` 不在の host では no-op で通す。
 4. **消費側としての dogfood**: 本リポジトリ自身も消費側の一つとして、`.claude/settings.json` の `enabledPlugins` 登録で adr プラグインを常時有効化し、自らの `docs/adr` を dogfood する。
 5. **既存 ADR 実体は非搭載**: 既存の ADR ファイルはプラグインに乗せない。各リポジトリが自分の `docs/adr` を育て、プラグインは運用機構のみを配送する。
@@ -42,4 +44,8 @@ ADR運用機構を dev-workflow から分離し、独立プラグイン `plugins
 
 - Related: ADR-202606261847-01-growth-plugin-separation（横断／メタ機構を独立プラグインへ分離する同型の先例。関心分離＋常時ロード分離の論拠を共有）
 - Related: ADR-202607261459-01-adr-state-model-and-drift-lint（本機構が配送する ADR 運用モデルの正本。決定3 の drift-lint 配置が本抽出で `plugins/adr/` へ移設され、PR #546 で非core amend 済み）
-- 関連Issue: #463, #492, #493, #548
+- 関連Issue: #463, #492, #493, #548, #605（決定2 の射程注記の追記元）, #623（テスト・fixture の配置の統一）
+
+## 変更履歴
+
+- 2026-07-29: 決定2 の列挙（`lint-adr.sh` / `gen-adr-index.sh` / テスト / fixtures / `manage-adr` スキル一式 / commit ゲート hook）に射程の注記を追記した。#616 のレビューで、本項の「テスト / fixtures」の列挙が**以後に追加する同梱スクリプトのテスト・fixture も配布物内へ置く規則**と読まれ、新規スクリプトのテストを配布物外へ置く判断と矛盾するのではないかという指摘が出たことによる。本項は抽出時点で移す対象を定めたものであって将来の配置規則ではなく、テスト・fixture の配布物内／外の別は本 ADR の射程外である旨を明記した。射程外であることの明示であって決定内容の変更ではないため、新規起票＋上書きではなく非core 改訂として直接編集した。この注記が無いと、決定2 を読む者は射程の限定に到達できず（限定解釈が開発ドキュメント側にのみ書かれていた）、同じ疑義が再発する。

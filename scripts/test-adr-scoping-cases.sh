@@ -11,8 +11,8 @@
 # 同梱しないための境界でもある。
 #
 # 同ディレクトリの他の同梱スクリプト（lint-adr.sh / next-adr-id.sh）は現在テストと
-# fixture を配布物内へ持っているが、これらも本配置へ追随させる予定である。したがって
-# 現状の非対称は移行の途中であり、本スクリプトの側を配布物内へ寄せて解消しない。
+# fixture を配布物内へ持っているが、これらを本配置へ追随させる作業は #623 で追跡している。
+# したがって現状の非対称は移行の途中であり、本スクリプトの側を配布物内へ寄せて解消しない。
 #
 # 使い方:
 #   bash scripts/test-adr-scoping-cases.sh
@@ -292,8 +292,10 @@ assert_run "36. report duplicate-judgments.tsv → exit 1、CASE-A1 の重複し
 # commit 列にプレースホルダが残ったまま提出された記録を素通りさせない。
 # 列を持たない記録（他の judgments fixture は14列）は検査対象外であることも同時に押さえる。
 run report "$JUDGMENTS_DIR/unresolved-commit-judgments.tsv" "$FIXTURES_DIR/valid"
-assert_run "36a. report（題材集合commit にプレースホルダが残る記録）→ exit 1、どの題材・試行のどの列かを名指しする" 1 \
-    "CASE-A1 試行1 題材集合commit が短縮ハッシュでない: 未コミット" "未確定 1 件"
+assert_run "36a. report（commit 列にプレースホルダが残る記録）→ exit 1、14列目・15列目それぞれを題材・試行・列名で名指しする" 1 \
+    "CASE-A1 試行1 題材集合commit が短縮ハッシュでない: 未コミット" \
+    "CASE-A2 試行1 対象文書commit が短縮ハッシュでない: 未コミット" \
+    "未確定 2 件"
 
 # ここから2件は、レビューで見つかり修正済みの不具合に対する回帰保護である。
 
@@ -378,7 +380,12 @@ rm -rf "$(dirname "$AMP_DIR")"
 # 題材文が空のままのプロンプトが出来上がってもならない。
 # 前者は EXIT trap のクォート破壊で exit 2、後者は awk -v のエスケープ解釈で
 # 一時ファイルのパスが壊れ、題材文の差し込みが1行も回らないことによる。
+# 同じ異常な $TMPDIR を prompt だけでなく validate / report へも流す。同型の欠陥は
+# 一時ファイルと awk を使うサブコマンドすべてに現れうるため、片方だけ試すと取りこぼす。
+quote_n=0
 for weird in "it's" 'back\slash'; do
+    quote_n=$((quote_n + 1))
+    quote_label="$([ "$quote_n" -eq 1 ] && printf '40a' || printf '40b')"
     QUOTE_TMPDIR="$(mktemp -d -t adr-scoping-case-q.XXXXXX)/$weird"
     mkdir -p "$QUOTE_TMPDIR"
     set +e
@@ -390,20 +397,79 @@ for weird in "it's" 'back\slash'; do
     quote_detail=""
     if [ "$quote_rc" -ne 0 ] || [ -n "$quote_stderr" ]; then
         quote_ok=0
-        quote_detail="rc=$quote_rc / stderr=$quote_stderr"
+        quote_detail="prompt: rc=$quote_rc / stderr=$quote_stderr"
     elif [ ! -f "$quote_path" ]; then
         quote_ok=0
-        quote_detail="出力ファイルが無い: $quote_path"
+        quote_detail="prompt: 出力ファイルが無い: $quote_path"
     else
         case "$(cat "$quote_path")" in
             *"コミットを止める"*) ;;
-            *) quote_ok=0; quote_detail="題材文が差し込まれていない（空のプロンプト）" ;;
+            *) quote_ok=0; quote_detail="prompt: 題材文が差し込まれていない（空のプロンプト）" ;;
         esac
         rm -f "$quote_path"
     fi
-    record "40. prompt（\$TMPDIR に $weird を含む）→ exit 0、trap が壊れず題材文も差し込まれる" "$quote_ok" "$quote_detail"
+
+    # validate と report も同じ $TMPDIR で通す。report は期待帰結との差まで出ること
+    # （一時ファイルを読めていれば差2件が出る）を見て、無言の結論反転を捕まえる。
+    set +e
+    qv_out="$(TMPDIR="$QUOTE_TMPDIR" bash "$SCRIPT" validate "$FIXTURES_DIR/valid" 2>&1)"
+    qv_rc=$?
+    qr_out="$(TMPDIR="$QUOTE_TMPDIR" bash "$SCRIPT" report "$JUDGMENTS_DIR/valid-judgments.tsv" "$FIXTURES_DIR/valid" 2>&1)"
+    qr_rc=$?
+    set -e
+    [ "$qv_rc" -eq 0 ] || { quote_ok=0; quote_detail="${quote_detail}${quote_detail:+ / }validate: rc=$qv_rc / $qv_out"; }
+    [ "$qr_rc" -eq 0 ] || { quote_ok=0; quote_detail="${quote_detail}${quote_detail:+ / }report: rc=$qr_rc / $qr_out"; }
+    case "$qr_out" in
+        *"差 2 件"*) ;;
+        *) quote_ok=0; quote_detail="${quote_detail}${quote_detail:+ / }report: 期待帰結との差が出ていない（結論が無言で反転している）" ;;
+    esac
+
+    record "$quote_label. prompt/validate/report（\$TMPDIR に $weird を含む）→ exit 0、trap が壊れず題材文・期待帰結も読める" "$quote_ok" "$quote_detail"
     rm -rf "$(dirname "$QUOTE_TMPDIR")"
 done
+
+# 題材集合ディレクトリのパスそのものに `&` と `\` が含まれる場合。
+# awk -v のエスケープ解釈で期待帰結ファイルを読めないと、report は無言で
+# 「差は無い」へ倒れる（診断ゼロで結論だけが反転する経路）。
+WEIRD_CASE_DIR="$(mktemp -d -t adr-scoping-case-wd.XXXXXX)/di&r\\x"
+mkdir -p "$WEIRD_CASE_DIR"
+cp "$FIXTURES_DIR/valid/cases.md" "$FIXTURES_DIR/valid/expectations.tsv" "$FIXTURES_DIR/valid/prompt-template.md" "$WEIRD_CASE_DIR/"
+run report "$JUDGMENTS_DIR/valid-judgments.tsv" "$WEIRD_CASE_DIR"
+assert_run "40c. report（題材集合ディレクトリのパスに & と \\ を含む）→ 期待帰結を読み、差2件をそのまま出す" 0 \
+    "CASE-A2 試行2 項目3: 期待 1 / 判定 0" "差 2 件"
+run validate "$WEIRD_CASE_DIR"
+assert_run "40d. validate（題材集合ディレクトリのパスに & と \\ を含む）→ exit 0" 0 "題材集合の検査に通った"
+rm -rf "$(dirname "$WEIRD_CASE_DIR")"
+
+# 題材文ブロックの内側にメタ行があり、かつ本文がパイプ長を超える場合。
+# 内側検査をパイプで書くと、grep が最初のマッチで閉じて書き手が SIGPIPE を受け、
+# 条件式の文脈では set -e が発火しないまま「違反なし」へ倒れて exit 0 で素通りする。
+# アサーション38 はメタ行領域側しか膨らませないため、この経路は別に押さえる。
+run validate "$FIXTURES_DIR/meta-inside-large-body"
+assert_run "38a. validate（メタ行が内側にあり題材文本文がパイプ長を超える）→ exit 1、内側にあることを告げる" 1 \
+    "メタ行が題材文ブロックの内側にある" "CASE-A1"
+
+# 題材文が空の題材を、validate も prompt も通してはならない。
+run validate "$FIXTURES_DIR/empty-body"
+assert_run "38b. validate（題材文が空）→ exit 1、3層のうち題材文が欠けていることを告げる" 1 \
+    "3層のうち題材文が欠けている" "CASE-A1"
+
+run prompt "$DOC" CASE-A1 "$FIXTURES_DIR/empty-body"
+assert_run "38c. prompt（題材文が空）→ exit 1、題材文が空であることを告げる" 1 "題材文が空である"
+
+# 差し込み記号を書き落とした雛形は、題材文の無いプロンプトを exit 0 で生む。
+run validate "$FIXTURES_DIR/template-missing-marker"
+assert_run "38d. validate（雛形が {{題材文}} を欠く）→ exit 1、欠けている差し込み記号を名指しする" 1 \
+    "prompt-template.md に差し込み記号が無い: {{題材文}}"
+
+# 期待帰結を1件も読めないまま集計を続けると「差は無い」と出て結論が無言で反転する。
+NOEXP_DIR="$(mktemp -d -t adr-scoping-case-ne.XXXXXX)"
+cp "$FIXTURES_DIR/valid/cases.md" "$FIXTURES_DIR/valid/prompt-template.md" "$NOEXP_DIR/"
+printf '# 注記行だけで期待帰結の行を持たない\n' > "$NOEXP_DIR/expectations.tsv"
+run report "$JUDGMENTS_DIR/valid-judgments.tsv" "$NOEXP_DIR"
+assert_run "40e. report（期待帰結を1件も読めない）→ 診断を出して落ちる（「差は無い」で通さない）" 1 \
+    "期待帰結を1件も読めなかった"
+rm -rf "$NOEXP_DIR"
 
 # メタ行が多い題材でも、パイプの早期終了による SIGPIPE で診断ゼロのまま落ちてはならない。
 # 読み手を先に閉じても書き手を先に閉じても pipefail + set -e で rc=141 になるため、
@@ -432,8 +498,7 @@ rm -rf "$BIG_DIR"
 # 検査器は題材集合ディレクトリと対象文書パスを引数でのみ受け取る建て付けであり、
 # 固有名がコードパスへ現れた時点でその建て付けが崩れる。
 # 走査は既知の固有名のリストであり、リストに無い新種は検出できない。
-# ディレクトリ様のパス断片（`a/b` の形）を広めに拾って、この穴を狭めている。
-repo_specific_hits="$(grep -nE 'docs/|plugins/|scripts/|adr-scoping\.md|claude-shared-skills|manage-adr' "$SCRIPT" || true)"
+repo_specific_hits="$(grep -nE 'docs/|plugins/|scripts/|\.claude/|adr-scoping\.md|claude-shared-skills|manage-adr' "$SCRIPT" || true)"
 if [ -z "$repo_specific_hits" ]; then
     record "42. 配布物内のスクリプトが配布元リポジトリ固有の名前（ディレクトリ構成・リポジトリ名・対象文書名）を含まない" 1
 else

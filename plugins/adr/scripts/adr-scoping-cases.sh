@@ -51,6 +51,7 @@ set -euo pipefail
 # EXIT trap から参照する後始末対象。trap 本体の展開を EXIT 時まで遅らせるため、
 # 関数の local ではなくグローバルへ置く（set -u 対策として空で初期化する）。
 _cleanup_body_file=""
+_cleanup_ids_file=""
 
 usage() {
     cat >&2 <<'USAGE'
@@ -108,6 +109,18 @@ extract_case_meta() {
         in_case && $0 == "### 題材文" { exit }
         in_case { print }
     ' "$1/cases.md"
+}
+
+# 与えた本文にメタ行（`- 資産種別:` / `- 規範の担い方:` / `- 出所:` で始まる行）が
+# 含まれるかを判定する。含まれれば 0、含まれなければ 1 を返す。
+# 外部コマンドへパイプで流さないのは、読み手が早期に閉じると書き手が SIGPIPE を受け、
+# 条件式の文脈では set -e が発火しないまま「該当なし」へ倒れるためである。
+has_meta_line() {
+    case "$1" in
+        "- 資産種別:"*|"- 規範の担い方:"*|"- 出所:"*) return 0 ;;
+        *$'\n'"- 資産種別:"*|*$'\n'"- 規範の担い方:"*|*$'\n'"- 出所:"*) return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
 # 標準入力のメタ行から `- <ラベル>: <値>` の先頭1件の値を返す。
@@ -257,6 +270,19 @@ cmd_validate() {
         report_violation "cases.md に題材が1件も無い"
     fi
 
+    # --- 雛形の差し込み記号（在る場合のみ検査する。雛形は prompt でのみ使う）
+    #
+    # 記号を書き落とした雛形は prompt が黙って受け入れる。題材文の差し込みは
+    # 記号が在る行でしか起きないため、記号ごと落ちていると題材文の無いプロンプトが
+    # exit 0 で出来上がる。題材集合は利用者が自作する契約物なので、ここで押さえる。
+    if [ -f "$dir/prompt-template.md" ]; then
+        local marker
+        for marker in '{{対象文書パス}}' '{{題材ID}}' '{{題材文}}'; do
+            grep -qF -- "$marker" "$dir/prompt-template.md" \
+                || report_violation "prompt-template.md に差し込み記号が無い: $marker"
+        done
+    fi
+
     # --- ID集合の一致（cases.md ↔ expectations.tsv）
     local only_cases only_exp
     only_cases="$(comm -23 <(list_case_ids "$dir" | sort -u) <(list_expectation_ids "$dir" | sort -u))"
@@ -279,7 +305,14 @@ cmd_validate() {
         [ -n "${body//[[:space:]]/}" ] || report_violation "3層のうち題材文が欠けている: $id"
 
         # メタ行が題材文ブロックの内側にあると判定側へ渡ってしまうため違反とする。
-        if printf '%s\n' "$body" | grep -qE '^- (資産種別|規範の担い方|出所):'; then
+        #
+        # ここでパイプを使わないのは、`grep -q` が最初のマッチで即座に閉じるためである。
+        # 題材文がパイプ長を超えると書き手の printf が EPIPE を受け、これが if の条件式で
+        # あるため set -e は発火せず、pipefail によりパイプライン全体が非0になって
+        # 「違反なし」と判定される。メタ行が判定側へ漏れたまま exit 0 で通ってしまい、
+        # この検査の存在目的そのものが失われる（下の first_meta_value と同じ欠陥型で、
+        # 診断ゼロで落ちる場合より帰結が重い）。
+        if has_meta_line "$body"; then
             report_violation "メタ行が題材文ブロックの内側にある（判定側へ渡ってしまう）: $id"
         fi
 
@@ -364,13 +397,21 @@ cmd_report() {
 
     local ids_file
     ids_file="$(mktemp -t adr-scoping-case-ids.XXXXXX)"
-    trap "rm -f '$ids_file'" EXIT
+    # trap 本体・awk への値渡しはいずれも cmd_prompt と同じ作りに揃える。
+    # 直接展開すると $TMPDIR の単一引用符で trap のクォートが壊れて exit 2 になり、
+    # `-v` 渡しは代入値のエスケープ列を解釈するため題材集合ディレクトリのパスに `\` が
+    # 含まれると期待帰結ファイルを読めない。後者は無言のまま「差は無い」へ結論が反転する。
+    _cleanup_ids_file="$ids_file"
+    trap 'rm -f "$_cleanup_ids_file"' EXIT
     list_case_ids "$dir" > "$ids_file"
 
     set +e
-    awk -F'\t' -v idsfile="$ids_file" -v expfile="$dir/expectations.tsv" '
+    idsfile="$ids_file" expfile="$dir/expectations.tsv" awk -F'\t' '
         function pct(n, d) { return d == 0 ? "n/a" : sprintf("%.1f%%", 100 * n / d) }
         BEGIN {
+            idsfile = ENVIRON["idsfile"]
+            expfile = ENVIRON["expfile"]
+            nread = 0
             while ((getline line < idsfile) > 0) if (line != "") { known[line] = 1; order[++ncases] = line }
             close(idsfile)
             FS = "\t"
@@ -378,8 +419,15 @@ cmd_report() {
                 if ($0 ~ /^#/ || $1 == "題材ID" || NF < 8) continue
                 for (i = 1; i <= 4; i++) exp_item[$1, i] = $(i + 2)
                 exp_total[$1] = $7; exp_dest[$1] = $8
+                nread++
             }
             close(expfile)
+            # 期待帰結を1件も読めていないのに集計を続けると、期待帰結との差が
+            # 「差は無い」と出て結論が無言で反転する。読めなかった時点で落とす。
+            if (nread == 0) {
+                printf "エラー: 期待帰結を1件も読めなかった: %s\n", expfile > "/dev/stderr"
+                exit 2
+            }
         }
         /^#/ { next }
         $1 == "題材ID" { next }
@@ -397,8 +445,16 @@ cmd_report() {
             # commit 列は持つ場合のみ検査する（列を持たない記録も受け付ける）。
             # 埋め忘れ・プレースホルダのまま提出された記録を素通りさせないための検査であり、
             # 短縮ハッシュの形をしていない値は名指しで報告する。
-            if (NF >= 14 && $14 !~ /^[0-9a-f]{7,40}$/) badcommit[id SUBSEP trial SUBSEP "対象文書commit"] = $14
-            if (NF >= 15 && $15 !~ /^[0-9a-f]{7,40}$/) badcommit[id SUBSEP trial SUBSEP "題材集合commit"] = $15
+            # 出力は集計レポートへ貼り込むため、連想配列の走査順（awk の実装依存）に
+            # 委ねず、記録の出現順で並ぶよう添字つきの配列へ積む。
+            if (NF >= 14 && $14 !~ /^[0-9a-f]{7,40}$/) {
+                nbad++; bad_id[nbad] = id; bad_trial[nbad] = trial
+                bad_col[nbad] = "対象文書commit"; bad_val[nbad] = $14
+            }
+            if (NF >= 15 && $15 !~ /^[0-9a-f]{7,40}$/) {
+                nbad++; bad_id[nbad] = id; bad_trial[nbad] = trial
+                bad_col[nbad] = "題材集合commit"; bad_val[nbad] = $15
+            }
         }
         END {
             fail = 0
@@ -410,14 +466,10 @@ cmd_report() {
             if (miss > 0) fail = 1
             printf "  題材 %d 件中 %d 件を記録が覆う\n", ncases, ncases - miss
 
-            nbad = 0
-            for (b in badcommit) nbad++
             if (nbad > 0) {
                 printf "\n== commit 列の未確定 ==\n"
-                for (b in badcommit) {
-                    split(b, a, SUBSEP)
-                    printf "  %s 試行%s %s が短縮ハッシュでない: %s\n", a[1], a[2], a[3], badcommit[b]
-                }
+                for (b = 1; b <= nbad; b++)
+                    printf "  %s 試行%s %s が短縮ハッシュでない: %s\n", bad_id[b], bad_trial[b], bad_col[b], bad_val[b]
                 printf "  未確定 %d 件\n", nbad
                 fail = 1
             }
