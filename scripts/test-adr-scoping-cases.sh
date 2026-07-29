@@ -117,6 +117,23 @@ assert_case_id_order() {
     fi
 }
 
+# PATH の先頭へ差し込む awk の代役を作る。$AWK_SHIM_FAIL_AT 回目の呼び出しだけを
+# 異常終了（awk の fatal と同じ exit 2）させ、それ以外は本物の awk へ委譲する。
+# 「awk が落ちたとき」の経路を決定的に踏ませるために使う。
+make_awk_shim() {
+    local shim_dir="$1" real_awk
+    real_awk="$(command -v awk)"
+    mkdir -p "$shim_dir"
+    {
+        printf '#!/usr/bin/env bash\n'
+        printf 'n=$(cat "$AWK_SHIM_COUNT" 2>/dev/null || echo 0)\n'
+        printf 'n=$((n + 1)); printf %%s "$n" > "$AWK_SHIM_COUNT"\n'
+        printf 'if [ "$n" -eq "$AWK_SHIM_FAIL_AT" ]; then printf "awk shim: 強制失敗\\n" >&2; exit 2; fi\n'
+        printf 'exec %s "$@"\n' "$real_awk"
+    } > "$shim_dir/awk"
+    chmod +x "$shim_dir/awk"
+}
+
 # 与えた文字列に部分文字列が含まれることだけを判定する。$1 説明 / $2 対象文字列 / $3 以降 含まれるべき文字列
 assert_out() {
     local name="$1" text="$2"
@@ -169,8 +186,10 @@ assert_run "09. validate（存在しない題材集合ディレクトリ）→ e
 # 解釈されてはならない。`grep` は `--` を置かないと `-dash/cases.md` を
 # `--directories=ash/cases.md` と読み、題材ID の列挙が空になって
 # 「cases.md に題材が1件も無い」という原因を取り違えた診断で落ちる。
-# `awk` はプログラム文以降をオペランドとして扱うため `--` を置く必要が無い（置くと
-# `--` 自体をファイル名として開きにいって落ちる）ので、両者を混ぜないこと。
+# `awk` に `--` は置けない（置くと `--` 自体をファイル名として開きにいって落ちる）ので、
+# 両者を混ぜないこと。ただし `awk` が安全というわけではなく、オペランドの扱いが違うだけ
+# である。`awk` は先頭 `-` をオプションと読まない代わりに `name=value` の形を変数代入と
+# 読む（09b で押さえる）。どちらの型も検査器側はパスの正規化で塞いでいる。
 DASH_PARENT="$(mktemp -d -t adr-scoping-case-dash.XXXXXX)"
 mkdir -p "$DASH_PARENT/-dash"
 cp "$FIXTURES_DIR/valid/cases.md" "$FIXTURES_DIR/valid/expectations.tsv" \
@@ -201,6 +220,59 @@ else
 fi
 record "09a. validate/prompt（題材集合ディレクトリ名が - で始まる）→ ファイル引数をオプションと読まずに通す" "$dash_ok" "$dash_detail"
 rm -rf "$DASH_PARENT"
+
+# awk はオペランドのうち `name=value` の形をしたものを変数代入として解釈する。
+# `a=b` のような相対パスをそのまま渡すとファイルを開かずに標準入力を読みにいき、
+# 診断ゼロのまま偽の違反が並ぶ（先頭 `-` の場合と同じ「原因の取り違え」の型で、
+# `--` では塞がらない）。パスを `./` 前置へ正規化することで閉じる。
+EQ_PARENT="$(mktemp -d -t adr-scoping-case-eq.XXXXXX)"
+mkdir -p "$EQ_PARENT/a=b"
+cp "$FIXTURES_DIR/valid/cases.md" "$FIXTURES_DIR/valid/expectations.tsv" \
+   "$FIXTURES_DIR/valid/prompt-template.md" "$EQ_PARENT/a=b/"
+eq_ok=1
+eq_detail=""
+set +e
+eq_out="$(cd "$EQ_PARENT" && bash "$SCRIPT" validate 'a=b' </dev/null 2>&1)"
+eq_rc=$?
+eq_report="$(cd "$EQ_PARENT" && bash "$SCRIPT" report "$JUDGMENTS_DIR/valid-judgments.tsv" 'a=b' </dev/null 2>&1)"
+eq_report_rc=$?
+set -e
+[ "$eq_rc" -eq 0 ] || { eq_ok=0; eq_detail="validate: rc=$eq_rc / $eq_out"; }
+[ "$eq_report_rc" -eq 0 ] || { eq_ok=0; eq_detail="${eq_detail}${eq_detail:+ / }report: rc=$eq_report_rc"; }
+case "$eq_report" in
+    *"差 2 件"*) ;;
+    *) eq_ok=0; eq_detail="${eq_detail}${eq_detail:+ / }report: 期待帰結との差が出ていない" ;;
+esac
+record "09b. validate/report（題材集合ディレクトリ名が var=value 形）→ awk が変数代入と読まず、偽の違反を出さない" "$eq_ok" "$eq_detail"
+rm -rf "$EQ_PARENT"
+
+# ディレクトリを辿れないと配下の `[ -f ]` が軒並み偽になり、実在するファイルが
+# 「欠けている」と報告される。ファイル単位の可読性検査と同じ型の取り違えである。
+UNREADABLE_PARENT="$(mktemp -d -t adr-scoping-case-ud.XXXXXX)"
+mkdir -p "$UNREADABLE_PARENT/dir"
+cp "$FIXTURES_DIR/valid/cases.md" "$FIXTURES_DIR/valid/expectations.tsv" \
+   "$FIXTURES_DIR/valid/prompt-template.md" "$UNREADABLE_PARENT/dir/"
+chmod 000 "$UNREADABLE_PARENT/dir"
+if [ -r "$UNREADABLE_PARENT/dir" ]; then
+    record "09c. validate（題材集合ディレクトリを辿れない）→ 読めないことを名指しする（ファイルの欠落へ化けない）" 1 \
+        "（chmod 000 でも読める環境のため未実行）"
+else
+    run validate "$UNREADABLE_PARENT/dir"
+    ud_ok=1
+    ud_detail=""
+    [ "$rc" -eq 2 ] || { ud_ok=0; ud_detail="exit code 期待 2 / 実際 $rc"; }
+    case "$output" in
+        *"題材集合ディレクトリを読めない"*) ;;
+        *) ud_ok=0; ud_detail="${ud_detail}${ud_detail:+ / }読めないことを名指ししていない" ;;
+    esac
+    if ! assert_not_contains "$output" "欠けているファイル"; then
+        ud_ok=0
+        ud_detail="${ud_detail}${ud_detail:+ / }診断がファイルの欠落へ化けている"
+    fi
+    record "09c. validate（題材集合ディレクトリを辿れない）→ 読めないことを名指しする（ファイルの欠落へ化けない）" "$ud_ok" "$ud_detail"
+fi
+chmod 755 "$UNREADABLE_PARENT/dir"
+rm -rf "$UNREADABLE_PARENT"
 
 # 引数で渡した題材集合ディレクトリが検査対象になっている（本番の題材集合を見ていない）ことの検査。
 # 同じサブコマンドが渡したディレクトリ次第で 0 と 1 に分かれることをもって切り替えの成立とみなす。
@@ -523,6 +595,13 @@ rm -rf "$(dirname "$WEIRD_CASE_DIR")"
 # 書き終える競合になり、検出が確率的になる（実測で 20回中7回まで落ちた）。
 # fixture のメタ行の位置とサイズはどちらもこの検出力に効くので、片方だけ動かさないこと。
 # 改行分岐の側はアサーション38（meta-inside-body）が担う。
+#
+# なお現在の配置でも**変異の検出は完全には決定的でない**。SIGPIPE が起きるかどうかは
+# 書き手と読み手の進み方の競合であり、機械の負荷次第で書き手が先に書き終えることがある
+# （手元では 60/60 で殺せたが、別環境で 90試行中3回の素通りが観測されている）。
+# 詰め物を倍にしても素通りを再現できず、効果を確かめられなかったため現行サイズに留めた。
+# この確率性は「変異を入れたときに気づけるか」の側だけに現れる。素の実装に対して本
+# アサーションが偽陽性で落ちることはない（メタ行は必ず検出される）。
 run validate "$FIXTURES_DIR/meta-inside-large-body"
 assert_run "38a. validate（メタ行が内側にあり題材文本文がパイプ長を超える）→ exit 1、内側にあることを告げる" 1 \
     "メタ行が題材文ブロックの内側にある" "CASE-A1"
@@ -675,6 +754,82 @@ leak_detail=""
 record "46. prompt 成功時、\$TMPDIR に残るのは返したプロンプト1件だけ（作業用の一時ファイルを残さず、返すファイルも消さない）" "$leak_ok" "$leak_detail"
 rm -rf "$LEAK_TMPDIR"
 
+# ---------------------------------------------------------------- 集計の異常終了と打ち切りの区別
+#
+# gawk・mawk とも fatal error では exit 2 を返す。打ち切りの番兵に 2 を使うと、
+# 呼び出し側が awk の異常終了を「期待帰結を読めなかった」と読み違え、無関係な
+# expectations.tsv のパスを名指しする。以下2件で、両経路が別の原因として出ることを見る。
+
+# 判定記録TSV の可読性は、対象文書パスや題材集合ディレクトリと同じく引数の検査で押さえる。
+UNREADABLE_J="$(mktemp -d -t adr-scoping-case-uj.XXXXXX)"
+cp "$JUDGMENTS_DIR/valid-judgments.tsv" "$UNREADABLE_J/j.tsv"
+chmod 000 "$UNREADABLE_J/j.tsv"
+if [ -r "$UNREADABLE_J/j.tsv" ]; then
+    record "47. report（判定記録TSV を読めない）→ exit 2、判定記録TSV を名指しする（期待帰結の側へ化けない）" 1 \
+        "（chmod 000 でも読める環境のため未実行）"
+else
+    run report "$UNREADABLE_J/j.tsv" "$FIXTURES_DIR/valid"
+    uj_ok=1
+    uj_detail=""
+    [ "$rc" -eq 2 ] || { uj_ok=0; uj_detail="exit code 期待 2 / 実際 $rc"; }
+    case "$output" in
+        *"判定記録TSV を読めない"*) ;;
+        *) uj_ok=0; uj_detail="${uj_detail}${uj_detail:+ / }判定記録TSV を名指ししていない" ;;
+    esac
+    if ! assert_not_contains "$output" "期待帰結"; then
+        uj_ok=0
+        uj_detail="${uj_detail}${uj_detail:+ / }診断が期待帰結の側へ化けている"
+    fi
+    record "47. report（判定記録TSV を読めない）→ exit 2、判定記録TSV を名指しする（期待帰結の側へ化けない）" "$uj_ok" "$uj_detail"
+fi
+chmod 644 "$UNREADABLE_J/j.tsv"
+rm -rf "$UNREADABLE_J"
+
+# 集計そのものが異常終了した場合（awk の fatal = exit 2）。打ち切りの番兵と衝突していると、
+# 期待帰結を読めていたにもかかわらず「期待帰結を読めなかった」と表示される。
+AWK_SHIM_DIR="$(mktemp -d -t adr-scoping-case-shim.XXXXXX)"
+make_awk_shim "$AWK_SHIM_DIR"
+set +e
+shim_out="$(AWK_SHIM_COUNT="$AWK_SHIM_DIR/count" AWK_SHIM_FAIL_AT=1 PATH="$AWK_SHIM_DIR:$PATH" \
+    bash "$SCRIPT" report "$JUDGMENTS_DIR/valid-judgments.tsv" "$FIXTURES_DIR/valid" 2>&1)"
+shim_rc=$?
+set -e
+shim_ok=1
+shim_detail=""
+[ "$shim_rc" -eq 1 ] || { shim_ok=0; shim_detail="exit code 期待 1 / 実際 $shim_rc"; }
+case "$shim_out" in
+    *"判定記録の集計に失敗した"*) ;;
+    *) shim_ok=0; shim_detail="${shim_detail}${shim_detail:+ / }集計の失敗として告げていない" ;;
+esac
+for needle in "期待帰結を読めなかった" "expectations.tsv"; do
+    if ! assert_not_contains "$shim_out" "$needle"; then
+        shim_ok=0
+        shim_detail="${shim_detail}${shim_detail:+ / }打ち切り経路と取り違えている: $needle"
+    fi
+done
+record "48. report（集計そのものが異常終了）→ 判定記録TSV を名指しし、期待帰結の打ち切りと取り違えない" "$shim_ok" "$shim_detail"
+
+# prompt の組み立ての awk が異常終了した場合。診断ゼロで抜けると、中身の欠けた
+# 一時ファイルだけが $TMPDIR に残る。原因を名指しし、かつ残さないことを見る。
+SHIM_TMPDIR="$(mktemp -d -t adr-scoping-case-st.XXXXXX)"
+: > "$AWK_SHIM_DIR/count"
+set +e
+shim_prompt_out="$(AWK_SHIM_COUNT="$AWK_SHIM_DIR/count" AWK_SHIM_FAIL_AT=2 TMPDIR="$SHIM_TMPDIR" \
+    PATH="$AWK_SHIM_DIR:$PATH" bash "$SCRIPT" prompt "$DOC" CASE-A1 "$FIXTURES_DIR/valid" 2>&1)"
+shim_prompt_rc=$?
+set -e
+shim_prompt_left="$(find "$SHIM_TMPDIR" -type f | wc -l | tr -d ' ')"
+sp_ok=1
+sp_detail=""
+[ "$shim_prompt_rc" -eq 1 ] || { sp_ok=0; sp_detail="exit code 期待 1 / 実際 $shim_prompt_rc"; }
+case "$shim_prompt_out" in
+    *"プロンプトの組み立てに失敗した"*) ;;
+    *) sp_ok=0; sp_detail="${sp_detail}${sp_detail:+ / }スクリプト自身の診断が出ていない" ;;
+esac
+[ "$shim_prompt_left" -eq 0 ] || { sp_ok=0; sp_detail="${sp_detail}${sp_detail:+ / }\$TMPDIR に $shim_prompt_left 件残った"; }
+record "49. prompt（組み立ての処理が異常終了）→ 原因を名指しして落ち、一時ファイルを残さない" "$sp_ok" "$sp_detail"
+rm -rf "$SHIM_TMPDIR" "$AWK_SHIM_DIR"
+
 # メタ行が多い題材でも、パイプの早期終了による SIGPIPE で診断ゼロのまま落ちてはならない。
 # 読み手を先に閉じても書き手を先に閉じても pipefail + set -e で rc=141 になるため、
 # パイプ長より十分大きいメタ行を与えて両側が最後まで生きることを確かめる。
@@ -717,6 +872,8 @@ fi
 #
 # 拡張子で絞らないのは、`hooks/adr-commit-gate`（拡張子なし）と `hooks/run-hook.cmd` が
 # 絞り込みから漏れるためである。`-I` でバイナリだけ除く。
+# 副作用として走査が配布物内の全テキストファイルへ広がるため、将来 `#123456` 形式の
+# 色コード等を含むファイルが入ると偽陽性になりうる。現時点で該当は無い。
 #
 # アサーション42 の走査（ディレクトリ構成・リポジトリ名・対象文書名）は本走査と違って
 # 配布物全体へ広げない。他の同梱スクリプトは既定値や使い方の説明として `docs/adr` 等を

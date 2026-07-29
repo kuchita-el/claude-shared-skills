@@ -85,6 +85,20 @@ die_usage() {
     exit 2
 }
 
+# 引数で受けたパスを、awk のファイルオペランドとして安全な形へ正規化する。
+#
+# awk は `name=value` の形のオペランドを変数代入として解釈するため、`a=b` のような
+# 相対パスをそのまま渡すとファイルを開かずに標準入力を読みにいく。診断はゼロのまま
+# 偽の違反が並び、原因を取り違えた結果だけが残る。`./` を前置すると `./a` が識別子として
+# 不正になるので、awk はファイル名として扱う。先頭が `-` のパスにも同時に効く
+# （grep 側は各呼び出しの `--` でも塞いである）。
+normalize_path() {
+    case "$1" in
+        /*|./*|../*) printf '%s\n' "$1" ;;
+        *) printf './%s\n' "$1" ;;
+    esac
+}
+
 # 題材集合ディレクトリの契約を検査する。$2 が "with-template" のとき雛形の存在も見る。
 #
 # 在ることだけでなく読めることまで見るのは、読めないファイルが後段で「中身が無い」と
@@ -95,6 +109,9 @@ require_case_dir() {
     local need_template="${2:-}"
     [ -n "$dir" ] || die_usage "題材集合ディレクトリが指定されていない"
     [ -d "$dir" ] || die_usage "題材集合ディレクトリが存在しない: $dir"
+    # ディレクトリを辿れないと配下の `[ -f ]` が軒並み偽になり、実在するファイルが
+    # 「欠けている」と報告される。ファイル単位の可読性検査と同じ理由でここでも落とす。
+    { [ -r "$dir" ] && [ -x "$dir" ]; } || die_usage "題材集合ディレクトリを読めない: $dir"
 
     local required=(cases.md expectations.tsv)
     if [ "$need_template" = "with-template" ]; then
@@ -217,7 +234,10 @@ extract_case_text() {
 
 cmd_prompt() {
     [ $# -eq 3 ] || die_usage "prompt は引数を3つ取る（対象文書パス・題材ID・題材集合ディレクトリ）"
-    local doc_path="$1" case_id="$2" dir="$3"
+    local doc_path="$1" case_id="$2" dir
+    # 対象文書パスは正規化しない（プロンプトへそのまま差し込む値であり、
+    # awk のオペランドとしては渡さないため）。題材集合ディレクトリは渡すので正規化する。
+    dir="$(normalize_path "$3")"
 
     [ -f "$doc_path" ] || die_usage "対象文書が存在しない: $doc_path"
     [ -r "$doc_path" ] || die_usage "対象文書を読めない: $doc_path"
@@ -252,6 +272,10 @@ cmd_prompt() {
 
     local out body_file
     out="$(mktemp -t adr-scoping-case-prompt.XXXXXX.md)"
+    # 作った直後に登録する。2つ目の mktemp が失敗すると $out が残る窓ができるため、
+    # 登録は「作った順」に置く（外す位置と対称に、登録の位置も詰める）。
+    _cleanup_out_file="$out"
+    trap _cleanup_temp_files EXIT
     body_file="$(mktemp -t adr-scoping-case-body.XXXXXX)"
     # 一時ファイルは失敗経路でも残さない。作業用の $body_file は常に、出力用の $out は
     # 呼び出し側へパスを返せなかった場合にかぎり消す（返した後は呼び出し側の持ち物になる
@@ -259,8 +283,6 @@ cmd_prompt() {
     # スクリプト自身の診断がゼロのまま中身の欠けたファイルが $TMPDIR に溜まる。
     # 後始末の作りと、パスを trap 本体へ埋め込まない理由は _cleanup_temp_files を参照。
     _cleanup_body_file="$body_file"
-    _cleanup_out_file="$out"
-    trap _cleanup_temp_files EXIT
     printf '%s\n' "$body" > "$body_file"
 
     # 雛形の差し込み記号を置換する。題材文は複数行のため行ごと流し込む。
@@ -305,7 +327,14 @@ cmd_prompt() {
             }
             print
         }
-    ' "$dir/prompt-template.md" > "$out"
+    ' "$dir/prompt-template.md" > "$out" || {
+        # awk 自身が異常終了した場合（実行できない・強制終了された等）、set -e で
+        # そのまま抜けるとスクリプト側の診断がゼロになり、中身の欠けた出力だけが残る。
+        # 一時ファイルは EXIT trap が消すので、ここでは原因を名指しして仕様上の 1 で落とす。
+        printf 'エラー: プロンプトの組み立てに失敗した（雛形の処理が異常終了した）: %s\n' \
+            "$dir/prompt-template.md" >&2
+        exit 1
+    }
     rm -f -- "$body_file"
     _cleanup_body_file=""
 
@@ -320,7 +349,8 @@ cmd_prompt() {
 
 cmd_validate() {
     [ $# -eq 1 ] || die_usage "validate は引数を1つ取る（題材集合ディレクトリ）"
-    local dir="$1"
+    local dir
+    dir="$(normalize_path "$1")"
     require_case_dir "$dir"
 
     local violations=0
@@ -458,8 +488,11 @@ cmd_validate() {
 
 cmd_report() {
     [ $# -eq 2 ] || die_usage "report は引数を2つ取る（判定記録TSV・題材集合ディレクトリ）"
-    local judgments="$1" dir="$2"
+    local judgments dir
+    judgments="$(normalize_path "$1")"
+    dir="$(normalize_path "$2")"
     [ -f "$judgments" ] || die_usage "判定記録TSV が存在しない: $judgments"
+    [ -r "$judgments" ] || die_usage "判定記録TSV を読めない: $judgments"
     require_case_dir "$dir"
 
     local ids_file
@@ -495,10 +528,15 @@ cmd_report() {
             # ここでの exit は END を飛ばさない（POSIX 規定）。END 末尾の `exit fail`
             # が終了状態を上書きするため、BEGIN で落としたつもりでも集計本文は最後まで
             # 印字され rc も 0 へ戻る。打ち切りはフラグで END の先頭へ伝える。
+            #
+            # 打ち切りの番兵に 2 を使わないのは、gawk・mawk とも fatal error で 2 を返す
+            # ためである（判定記録TSV を開けない場合など）。2 を番兵にすると、呼び出し側が
+            # awk の異常終了を「期待帰結を読めなかった」と読み違え、無関係な
+            # expectations.tsv のパスを名指しする。awk 自身が返さない値を選ぶ。
             if (nread == 0) {
                 printf "エラー: 期待帰結を1件も読めなかった: %s\n", expfile > "/dev/stderr"
                 noexp = 1
-                exit 2
+                exit 3
             }
         }
         /^#/ { next }
@@ -541,7 +579,7 @@ cmd_report() {
         }
         END {
             # BEGIN 側の打ち切りをここで実現する。集計本文を1行も出さずに抜けること。
-            if (noexp) exit 2
+            if (noexp) exit 3
 
             fail = 0
             print "== カバレッジ =="
@@ -650,17 +688,21 @@ cmd_report() {
     rm -f -- "$ids_file"
     _cleanup_ids_file=""
 
-    # awk の終了状態を一律で畳まない。畳むと、期待帰結を読めずに打ち切った場合（rc=2）まで
+    # awk の終了状態を一律で畳まない。畳むと、期待帰結を読めずに打ち切った場合まで
     # 「カバレッジ検査に落ちた」と表示され、末尾のラベルが原因を取り違える。
     # 終了状態そのものは仕様どおり 1（検査に落ちた）へ寄せる。
+    #
+    # 3 は本スクリプトが BEGIN で立てる打ち切りの番兵である（awk 自身は返さない値）。
+    # それ以外の非0 には awk の fatal（2）も混じるため、既定の枝は判定記録TSV を
+    # 名指ししたうえで、カバレッジ以外の原因もありうる表現に留める。
     case "$rc" in
         0) ;;
-        2)
+        3)
             printf '\n期待帰結を読めなかったため集計を打ち切った: %s\n' "$dir/expectations.tsv" >&2
             exit 1
             ;;
         *)
-            printf '\n判定記録のカバレッジ検査に落ちた: %s\n' "$judgments" >&2
+            printf '\n判定記録の集計に失敗した（カバレッジ検査の違反、または集計そのものの異常終了）: %s\n' "$judgments" >&2
             exit 1
             ;;
     esac
