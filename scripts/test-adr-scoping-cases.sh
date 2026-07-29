@@ -165,6 +165,43 @@ run validate "$MISSING_DIR"
 assert_run "09. validate（存在しない題材集合ディレクトリ）→ exit 2、ディレクトリが存在しないことを理由として告げる" 2 \
     "題材集合ディレクトリが存在しない"
 
+# 題材集合ディレクトリ名が `-` で始まる場合、ファイル引数がコマンドのオプションとして
+# 解釈されてはならない。`grep` は `--` を置かないと `-dash/cases.md` を
+# `--directories=ash/cases.md` と読み、題材ID の列挙が空になって
+# 「cases.md に題材が1件も無い」という原因を取り違えた診断で落ちる。
+# `awk` はプログラム文以降をオペランドとして扱うため `--` を置く必要が無い（置くと
+# `--` 自体をファイル名として開きにいって落ちる）ので、両者を混ぜないこと。
+DASH_PARENT="$(mktemp -d -t adr-scoping-case-dash.XXXXXX)"
+mkdir -p "$DASH_PARENT/-dash"
+cp "$FIXTURES_DIR/valid/cases.md" "$FIXTURES_DIR/valid/expectations.tsv" \
+   "$FIXTURES_DIR/valid/prompt-template.md" "$DASH_PARENT/-dash/"
+dash_ok=1
+dash_detail=""
+set +e
+dash_out="$(cd "$DASH_PARENT" && bash "$SCRIPT" validate -dash 2>&1)"
+dash_rc=$?
+set -e
+if [ "$dash_rc" -ne 0 ]; then
+    dash_ok=0
+    dash_detail="validate: rc=$dash_rc / $dash_out"
+fi
+set +e
+dash_path="$(cd "$DASH_PARENT" && bash "$SCRIPT" prompt "$DASH_PARENT/-dash/cases.md" CASE-A1 -dash 2>/dev/null)"
+dash_prompt_rc=$?
+set -e
+if [ "$dash_prompt_rc" -ne 0 ] || [ ! -f "$dash_path" ]; then
+    dash_ok=0
+    dash_detail="${dash_detail}${dash_detail:+ / }prompt: rc=$dash_prompt_rc / out=$dash_path"
+else
+    case "$(cat "$dash_path")" in
+        *"コミットを止める"*) ;;
+        *) dash_ok=0; dash_detail="${dash_detail}${dash_detail:+ / }prompt: 題材文が差し込まれていない" ;;
+    esac
+    rm -f "$dash_path"
+fi
+record "09a. validate/prompt（題材集合ディレクトリ名が - で始まる）→ ファイル引数をオプションと読まずに通す" "$dash_ok" "$dash_detail"
+rm -rf "$DASH_PARENT"
+
 # 引数で渡した題材集合ディレクトリが検査対象になっている（本番の題材集合を見ていない）ことの検査。
 # 同じサブコマンドが渡したディレクトリ次第で 0 と 1 に分かれることをもって切り替えの成立とみなす。
 run validate "$FIXTURES_DIR/valid"
@@ -337,6 +374,12 @@ assert_run "37. validate no-case-heading → exit 1、題材が1件も無いこ�
 # メタ行を題材文ブロックの内側へ書いた場合、必須フィールド検査を通してはならない。
 # あわせて、メタ行が正しく外側にある valid では判定側へ渡るプロンプトにメタ行が
 # 現れないことを確かめ、メタ行と題材文の境界を両側から押さえる。
+#
+# 【fixture の担い分け】`has_meta_line` は先頭一致と改行つき一致を別分岐で持つ。
+# メタ行が本文の1行目にあると先頭一致が先に当たって改行分岐が死ぬため、1つの fixture に
+# 両方は担わせられない。本アサーション（meta-inside-body、メタ行は本文の途中）が
+# 改行分岐を、38a（meta-inside-large-body、メタ行は本文の1行目）が先頭一致と
+# SIGPIPE 経路を担う。fixture のメタ行の位置を動かすと、この担い分けが崩れる。
 run validate "$FIXTURES_DIR/meta-inside-body"
 meta_ok=1
 meta_detail=""
@@ -474,6 +517,12 @@ rm -rf "$(dirname "$WEIRD_CASE_DIR")"
 # 内側検査をパイプで書くと、grep が最初のマッチで閉じて書き手が SIGPIPE を受け、
 # 条件式の文脈では set -e が発火しないまま「違反なし」へ倒れて exit 0 で素通りする。
 # アサーション38 はメタ行領域側しか膨らませないため、この経路は別に押さえる。
+#
+# この経路の露出には、メタ行が本文の**先頭**にあり、かつその後ろに十分な本文が残って
+# いることの両方が要る。メタ行を本文の途中へ動かすと、読み手が閉じる前に書き手が
+# 書き終える競合になり、検出が確率的になる（実測で 20回中7回まで落ちた）。
+# fixture のメタ行の位置とサイズはどちらもこの検出力に効くので、片方だけ動かさないこと。
+# 改行分岐の側はアサーション38（meta-inside-body）が担う。
 run validate "$FIXTURES_DIR/meta-inside-large-body"
 assert_run "38a. validate（メタ行が内側にあり題材文本文がパイプ長を超える）→ exit 1、内側にあることを告げる" 1 \
     "メタ行が題材文ブロックの内側にある" "CASE-A1"
@@ -497,6 +546,35 @@ run prompt "$DOC" CASE-A1 "$FIXTURES_DIR/template-missing-marker"
 assert_run "38e. prompt（雛形が {{題材文}} を欠く）→ exit 1、欠けている差し込み記号を名指しする（題材文の無いプロンプトを生まない）" 1 \
     "prompt-template.md に差し込み記号が無い" "{{題材文}}"
 
+# 読めないファイルは「中身が無い」と区別できない形へ化ける。雛形が読めない場合、
+# 記号の走査（grep）が非0を返すため、記号が3つとも欠けていると報告されてしまう。
+# 原因を名指しできる位置で落とすことを、診断の中身で押さえる。
+UNREADABLE_DIR="$(mktemp -d -t adr-scoping-case-ur.XXXXXX)"
+cp "$FIXTURES_DIR/valid/cases.md" "$FIXTURES_DIR/valid/expectations.tsv" \
+   "$FIXTURES_DIR/valid/prompt-template.md" "$UNREADABLE_DIR/"
+chmod 000 "$UNREADABLE_DIR/prompt-template.md"
+if [ -r "$UNREADABLE_DIR/prompt-template.md" ]; then
+    # root 実行等で読めてしまう環境では成立しない検査なので、その旨を記録して飛ばす
+    record "38f. prompt（雛形を読めない）→ exit 2、読めないことを名指しする（記号の欠落へ化けない）" 1 \
+        "（chmod 000 でも読める環境のため未実行）"
+else
+    run prompt "$DOC" CASE-A1 "$UNREADABLE_DIR"
+    unread_ok=1
+    unread_detail=""
+    [ "$rc" -eq 2 ] || { unread_ok=0; unread_detail="exit code 期待 2 / 実際 $rc"; }
+    case "$output" in
+        *"読めないファイル: prompt-template.md"*) ;;
+        *) unread_ok=0; unread_detail="${unread_detail}${unread_detail:+ / }読めないことを名指ししていない" ;;
+    esac
+    if ! assert_not_contains "$output" "差し込み記号が無い"; then
+        unread_ok=0
+        unread_detail="${unread_detail}${unread_detail:+ / }診断が記号の欠落へ化けている"
+    fi
+    record "38f. prompt（雛形を読めない）→ exit 2、読めないことを名指しする（記号の欠落へ化けない）" "$unread_ok" "$unread_detail"
+fi
+chmod 644 "$UNREADABLE_DIR/prompt-template.md"
+rm -rf "$UNREADABLE_DIR"
+
 # 期待帰結を1件も読めないまま集計を続けると「差は無い」と出て結論が無言で反転する。
 # 診断が出ることだけを見ても足りない。awk の exit は BEGIN で呼んでも END を飛ばさないため、
 # 診断の直後に集計本文が最後まで印字される状態を通してしまう。本文が出ないことまで見る。
@@ -517,7 +595,17 @@ for needle in "差は無い" "== カバレッジ ==" "== 期待帰結との差 =
         noexp_detail="${noexp_detail}${noexp_detail:+ / }集計本文が印字されている: $needle"
     fi
 done
-record "40e. report（期待帰結を1件も読めない）→ 診断を出して落ち、集計本文を1行も印字しない" "$noexp_ok" "$noexp_detail"
+# awk の終了状態を一律で畳むと、末尾のラベルが原因を取り違える（期待帰結を読めなかった
+# のに「カバレッジ検査に落ちた」と出る）。打ち切りの理由がラベルにも表れることを見る。
+case "$output" in
+    *"期待帰結を読めなかったため集計を打ち切った"*) ;;
+    *) noexp_ok=0; noexp_detail="${noexp_detail}${noexp_detail:+ / }打ち切りの理由がラベルに出ていない" ;;
+esac
+if ! assert_not_contains "$output" "カバレッジ検査に落ちた"; then
+    noexp_ok=0
+    noexp_detail="${noexp_detail}${noexp_detail:+ / }ラベルが原因を取り違えている（カバレッジ検査に落ちた）"
+fi
+record "40e. report（期待帰結を1件も読めない）→ 診断とラベルの両方で理由を告げ、集計本文を1行も印字しない" "$noexp_ok" "$noexp_detail"
 
 # 題材が0件の題材集合では、カバレッジ側が別理由で落とすこともない。
 # 期待帰結の未読を BEGIN の exit だけで扱っていると、この組み合わせが rc=0 で素通りする。
@@ -561,6 +649,32 @@ run validate "$FIXTURES_DIR/scan-order"
 assert_case_id_order "43d. validate（対の相手IDが題材集合に無い題材が複数）→ 診断が記載の出現順で並ぶ" "$output" \
     "対の相手ID が題材集合に無い" "$SCAN_ORDER_IDS"
 
+# 試行番号は連想配列の添字（＝文字列）として集まるため、素朴に `<` で比べると
+# "10" < "2" となり、試行が10以上あると比較対象が試行1と試行10 に化ける。
+run report "$JUDGMENTS_DIR/two-digit-trial-judgments.tsv" "$FIXTURES_DIR/valid"
+assert_run "45. report（試行番号が2桁を含む）→ 試行番号を数値順に並べ、試行1と試行2 を比較する" 0 \
+    "試行が 3 つあるため、試行 1 と 試行 2 のみを比較した" \
+    "試行 1 と 試行 2: 一致 7 / 8 セル (87.5%)"
+
+# prompt が成功した場合、$TMPDIR に残るのは呼び出し側へ返したプロンプト1件だけであること。
+# 作業用の一時ファイルの後始末と、出力用ファイルを後始末の対象から外す位置の両方に効く
+# （外し忘れると EXIT trap が返したファイルごと消し、外すのが早すぎると作業用が残る）。
+# なお awk が落ちる経路での出力用ファイルの後始末は、決定的に起こせる引き金が無いため
+# ここでは押さえられていない。
+LEAK_TMPDIR="$(mktemp -d -t adr-scoping-case-leak.XXXXXX)"
+set +e
+leak_path="$(TMPDIR="$LEAK_TMPDIR" bash "$SCRIPT" prompt "$DOC" CASE-A1 "$FIXTURES_DIR/valid" 2>/dev/null)"
+leak_rc=$?
+set -e
+leak_count="$(find "$LEAK_TMPDIR" -type f | wc -l | tr -d ' ')"
+leak_ok=1
+leak_detail=""
+[ "$leak_rc" -eq 0 ] || { leak_ok=0; leak_detail="rc=$leak_rc"; }
+[ -f "$leak_path" ] || { leak_ok=0; leak_detail="${leak_detail}${leak_detail:+ / }返したパスの実体が無い: $leak_path"; }
+[ "$leak_count" -eq 1 ] || { leak_ok=0; leak_detail="${leak_detail}${leak_detail:+ / }\$TMPDIR に残ったファイルが $leak_count 件"; }
+record "46. prompt 成功時、\$TMPDIR に残るのは返したプロンプト1件だけ（作業用の一時ファイルを残さず、返すファイルも消さない）" "$leak_ok" "$leak_detail"
+rm -rf "$LEAK_TMPDIR"
+
 # メタ行が多い題材でも、パイプの早期終了による SIGPIPE で診断ゼロのまま落ちてはならない。
 # 読み手を先に閉じても書き手を先に閉じても pipefail + set -e で rc=141 になるため、
 # パイプ長より十分大きいメタ行を与えて両側が最後まで生きることを確かめる。
@@ -600,8 +714,16 @@ fi
 # 参照であり、追跡の記録は配布物外（ADR の関連Issue 行・配布元の開発ドキュメント・
 # 本テストランナー）へ置く。アサーション42 の走査対象はスクリプト本体のみで、
 # 実際にこの型の混入を README で1件取りこぼしたため、走査を配布物全体へ広げる。
-issue_ref_hits="$(grep -rnE '(^|[^A-Za-z0-9_])#[0-9]{2,}' "$REPO_ROOT/plugins/adr" \
-    --include='*.md' --include='*.sh' --include='*.json' || true)"
+#
+# 拡張子で絞らないのは、`hooks/adr-commit-gate`（拡張子なし）と `hooks/run-hook.cmd` が
+# 絞り込みから漏れるためである。`-I` でバイナリだけ除く。
+#
+# アサーション42 の走査（ディレクトリ構成・リポジトリ名・対象文書名）は本走査と違って
+# 配布物全体へ広げない。他の同梱スクリプトは既定値や使い方の説明として `docs/adr` 等を
+# 正当に含んでおり（`lint-adr.sh:149` の `ADR_DIR="${1:-docs/adr}"` ほか計5ファイル）、
+# 広げると偽陽性になる。42 が被テストの検査器1本に閉じているのは、この検査器だけが
+# 「既定値を持たず全パスを引数で受ける」建て付けを取っているからである。
+issue_ref_hits="$(grep -rInE '(^|[^A-Za-z0-9_])#[0-9]{2,}' "$REPO_ROOT/plugins/adr" || true)"
 if [ -z "$issue_ref_hits" ]; then
     record "44. 配布物（plugins/adr 配下）が配布元リポジトリの Issue 番号を含まない" 1
 else

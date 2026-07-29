@@ -51,7 +51,20 @@ set -euo pipefail
 # EXIT trap から参照する後始末対象。trap 本体の展開を EXIT 時まで遅らせるため、
 # 関数の local ではなくグローバルへ置く（set -u 対策として空で初期化する）。
 _cleanup_body_file=""
+_cleanup_out_file=""
 _cleanup_ids_file=""
+
+# EXIT trap の本体。パスを trap 文字列へ埋め込まず関数名だけを渡すのは、$TMPDIR に
+# 単一引用符が含まれる場合に trap 本体のクォートが壊れ、処理が成功していても EXIT 時の
+# 構文エラーで exit 2（＝仕様上は「引数の誤り」）を返すためである。
+# 空の変数は消す対象を持たないことを意味する。後始末の失敗で終了状態を書き換えないよう、
+# 最後に必ず 0 を返す。
+_cleanup_temp_files() {
+    [ -z "$_cleanup_body_file" ] || rm -f -- "$_cleanup_body_file"
+    [ -z "$_cleanup_out_file" ] || rm -f -- "$_cleanup_out_file"
+    [ -z "$_cleanup_ids_file" ] || rm -f -- "$_cleanup_ids_file"
+    return 0
+}
 
 usage() {
     cat >&2 <<'USAGE'
@@ -73,21 +86,37 @@ die_usage() {
 }
 
 # 題材集合ディレクトリの契約を検査する。$2 が "with-template" のとき雛形の存在も見る。
+#
+# 在ることだけでなく読めることまで見るのは、読めないファイルが後段で「中身が無い」と
+# 区別できない形に化けるためである（雛形が読めないと grep が非0を返し、差し込み記号が
+# 3つとも欠けていると報告される）。原因を名指しできる位置で落とす。
 require_case_dir() {
     local dir="$1"
     local need_template="${2:-}"
     [ -n "$dir" ] || die_usage "題材集合ディレクトリが指定されていない"
     [ -d "$dir" ] || die_usage "題材集合ディレクトリが存在しない: $dir"
 
-    local missing=()
-    [ -f "$dir/cases.md" ] || missing+=("cases.md")
-    [ -f "$dir/expectations.tsv" ] || missing+=("expectations.tsv")
+    local required=(cases.md expectations.tsv)
     if [ "$need_template" = "with-template" ]; then
-        [ -f "$dir/prompt-template.md" ] || missing+=("prompt-template.md")
+        required+=(prompt-template.md)
     fi
+
+    local missing=() unreadable=() f
+    for f in "${required[@]}"; do
+        if [ ! -f "$dir/$f" ]; then
+            missing+=("$f")
+        elif [ ! -r "$dir/$f" ]; then
+            unreadable+=("$f")
+        fi
+    done
     if [ ${#missing[@]} -gt 0 ]; then
         printf 'エラー: 題材集合ディレクトリに必要なファイルが無い: %s\n' "$dir" >&2
         printf '  欠けているファイル: %s\n' "${missing[*]}" >&2
+        exit 2
+    fi
+    if [ ${#unreadable[@]} -gt 0 ]; then
+        printf 'エラー: 題材集合ディレクトリのファイルを読めない: %s\n' "$dir" >&2
+        printf '  読めないファイル: %s\n' "${unreadable[*]}" >&2
         exit 2
     fi
 }
@@ -96,7 +125,7 @@ require_case_dir() {
 # 題材が1件も無い場合は空を返して正常終了する（grep のマッチ0件は異常ではない。
 # `|| true` を外すと set -euo pipefail 下で呼び出し側が診断を出す前に落ちる）。
 list_case_ids() {
-    grep -oE '^## [A-Za-z0-9_-]+' "$1/cases.md" | sed 's/^## //' || true
+    grep -oE '^## [A-Za-z0-9_-]+' -- "$1/cases.md" | sed 's/^## //' || true
 }
 
 # 題材ブロックのうち、見出しから `### 題材文` の直前までを返す（メタ行の置き場）。
@@ -161,8 +190,11 @@ missing_template_markers() {
 }
 
 # cases.md から題材1件分の題材文ブロックだけを取り出す。
-# 題材ID を `-v` で渡さないのは cmd_prompt 本体と同じ理由による（`-v` は代入値の
-# エスケープ列を解釈するため、利用者入力に `\` が含まれると値が壊れる）。
+# 題材ID を `-v` ではなく環境変数で渡すのは、`-v` が代入値のエスケープ列を解釈して
+# `\` を含む値を壊すためである。ただし現状この関数へ届く題材IDは `list_case_ids`
+# （`^## [A-Za-z0-9_-]+` で文字集合を制限）由来か、`grep -qxF` でその出力との完全一致を
+# 確認した値に限られるので、`\` を含む値は到達しない。作りを cmd_prompt 本体へ揃えるための
+# 硬化であり、現状の呼び出し規約では踏めない経路を塞いでいる（＝回帰テストを書けない）。
 extract_case_text() {
     local dir="$1" case_id="$2"
     cid="$case_id" awk '
@@ -221,15 +253,14 @@ cmd_prompt() {
     local out body_file
     out="$(mktemp -t adr-scoping-case-prompt.XXXXXX.md)"
     body_file="$(mktemp -t adr-scoping-case-body.XXXXXX)"
-    # 作業用の一時ファイルは失敗経路でも残さない（出力用の $out は呼び出し側へ渡すため対象外）。
-    #
-    # パスをそのまま trap 本体へ埋め込むと、$TMPDIR に単一引用符が含まれる場合に
-    # trap 本体のクォートが壊れ、処理が成功していても EXIT 時の構文エラーで
-    # exit 2（＝仕様上は「引数の誤り」）を返す。パスはスクリプト全体で見えるグローバル
-    # 変数へ退避し、trap 本体は単一引用符で囲って展開を EXIT 時まで遅らせる。
-    # set -u 対策として、変数はスクリプト先頭で空初期化してある。
+    # 一時ファイルは失敗経路でも残さない。作業用の $body_file は常に、出力用の $out は
+    # 呼び出し側へパスを返せなかった場合にかぎり消す（返した後は呼び出し側の持ち物になる
+    # ので、成功時は返す直前に後始末の対象から外す）。awk が落ちる経路で $out を残すと、
+    # スクリプト自身の診断がゼロのまま中身の欠けたファイルが $TMPDIR に溜まる。
+    # 後始末の作りと、パスを trap 本体へ埋め込まない理由は _cleanup_temp_files を参照。
     _cleanup_body_file="$body_file"
-    trap 'rm -f "$_cleanup_body_file"' EXIT
+    _cleanup_out_file="$out"
+    trap _cleanup_temp_files EXIT
     printf '%s\n' "$body" > "$body_file"
 
     # 雛形の差し込み記号を置換する。題材文は複数行のため行ごと流し込む。
@@ -275,8 +306,13 @@ cmd_prompt() {
             print
         }
     ' "$dir/prompt-template.md" > "$out"
-    rm -f "$body_file"
+    rm -f -- "$body_file"
+    _cleanup_body_file=""
 
+    # ここから先は $out のパスを呼び出し側へ返すので、後始末の対象から外す。
+    # 外す位置を printf の後ろにすると、printf が失敗した場合に呼び出し側がパスを
+    # 受け取れないまま実体だけが残る。
+    _cleanup_out_file=""
     printf '%s\n' "$out"
 }
 
@@ -428,12 +464,12 @@ cmd_report() {
 
     local ids_file
     ids_file="$(mktemp -t adr-scoping-case-ids.XXXXXX)"
-    # trap 本体・awk への値渡しはいずれも cmd_prompt と同じ作りに揃える。
-    # 直接展開すると $TMPDIR の単一引用符で trap のクォートが壊れて exit 2 になり、
-    # `-v` 渡しは代入値のエスケープ列を解釈するため題材集合ディレクトリのパスに `\` が
-    # 含まれると期待帰結ファイルを読めない。後者は無言のまま「差は無い」へ結論が反転する。
+    # trap 本体・awk への値渡しはいずれも cmd_prompt と同じ作りに揃える（理由は
+    # _cleanup_temp_files のコメント）。`-v` 渡しは代入値のエスケープ列を解釈するため、
+    # 題材集合ディレクトリのパスに `\` が含まれると期待帰結ファイルを読めない。
+    # これは無言のまま「差は無い」へ結論が反転する経路である。
     _cleanup_ids_file="$ids_file"
-    trap 'rm -f "$_cleanup_ids_file"' EXIT
+    trap _cleanup_temp_files EXIT
     list_case_ids "$dir" > "$ids_file"
 
     set +e
@@ -597,19 +633,37 @@ cmd_report() {
 
             exit fail
         }
+        # 試行番号は連想配列の添字（＝文字列）として集めるため、素朴に `<` で比べると
+        # "10" < "2" となり、試行が10以上あると並びが崩れる（「試行1と試行2を比較した」の
+        # 対象が試行1と試行10になる）。両辺が10進数の形をしている場合だけ数値で比べる。
+        function lt(a, b) {
+            if (a ~ /^[0-9]+$/ && b ~ /^[0-9]+$/) return (a + 0) < (b + 0)
+            return a "" < b ""
+        }
         function asort_simple(arr, n,   i, j, tmp) {
-            for (i = 1; i < n; i++) for (j = i + 1; j <= n; j++) if (arr[j] < arr[i]) { tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp }
+            for (i = 1; i < n; i++) for (j = i + 1; j <= n; j++) if (lt(arr[j], arr[i])) { tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp }
             return n
         }
     ' "$judgments"
     local rc=$?
     set -e
-    rm -f "$ids_file"
+    rm -f -- "$ids_file"
+    _cleanup_ids_file=""
 
-    if [ "$rc" -ne 0 ]; then
-        printf '\n判定記録のカバレッジ検査に落ちた: %s\n' "$judgments" >&2
-        exit 1
-    fi
+    # awk の終了状態を一律で畳まない。畳むと、期待帰結を読めずに打ち切った場合（rc=2）まで
+    # 「カバレッジ検査に落ちた」と表示され、末尾のラベルが原因を取り違える。
+    # 終了状態そのものは仕様どおり 1（検査に落ちた）へ寄せる。
+    case "$rc" in
+        0) ;;
+        2)
+            printf '\n期待帰結を読めなかったため集計を打ち切った: %s\n' "$dir/expectations.tsv" >&2
+            exit 1
+            ;;
+        *)
+            printf '\n判定記録のカバレッジ検査に落ちた: %s\n' "$judgments" >&2
+            exit 1
+            ;;
+    esac
 }
 
 # ---------------------------------------------------------------- 分岐
