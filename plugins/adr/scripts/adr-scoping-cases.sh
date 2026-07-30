@@ -85,17 +85,27 @@ die_usage() {
     exit 2
 }
 
-# 引数で受けたパスを、awk のファイルオペランドとして安全な形へ正規化する。
+# 引数で受けたパスを、awk のファイルオペランドとして安全な形へ正規化し、結果を
+# `_normalized` へ置く。
 #
 # awk は `name=value` の形のオペランドを変数代入として解釈するため、`a=b` のような
 # 相対パスをそのまま渡すとファイルを開かずに標準入力を読みにいく。診断はゼロのまま
 # 偽の違反が並び、原因を取り違えた結果だけが残る。`./` を前置すると `./a` が識別子として
 # 不正になるので、awk はファイル名として扱う。先頭が `-` のパスにも同時に効く
 # （grep 側は各呼び出しの `--` でも塞いである）。
+#
+# 空文字列は前置せずそのまま置く。`./` へ化けさせると、引数を空で渡した呼び出しが
+# カレントディレクトリを指す正常な入力になり、usage が明記する「題材集合ディレクトリは
+# 全サブコマンドで必須であり、既定値を持たない」（および `require_case_dir` の `[ -n ]`）が
+# 破れる。空かどうかの判定は呼び出し先へ残す。
+#
+# 値をコマンド置換で受け取らずグローバルへ置くのは、置換が末尾の改行を落とすためである
+# （末尾に改行を持つパスが「存在しない」へ化ける）。
+_normalized=""
 normalize_path() {
     case "$1" in
-        /*|./*|../*) printf '%s\n' "$1" ;;
-        *) printf './%s\n' "$1" ;;
+        ""|/*|./*|../*) _normalized="$1" ;;
+        *) _normalized="./$1" ;;
     esac
 }
 
@@ -237,7 +247,7 @@ cmd_prompt() {
     local doc_path="$1" case_id="$2" dir
     # 対象文書パスは正規化しない（プロンプトへそのまま差し込む値であり、
     # awk のオペランドとしては渡さないため）。題材集合ディレクトリは渡すので正規化する。
-    dir="$(normalize_path "$3")"
+    normalize_path "$3"; dir="$_normalized"
 
     [ -f "$doc_path" ] || die_usage "対象文書が存在しない: $doc_path"
     [ -r "$doc_path" ] || die_usage "対象文書を読めない: $doc_path"
@@ -350,7 +360,7 @@ cmd_prompt() {
 cmd_validate() {
     [ $# -eq 1 ] || die_usage "validate は引数を1つ取る（題材集合ディレクトリ）"
     local dir
-    dir="$(normalize_path "$1")"
+    normalize_path "$1"; dir="$_normalized"
     require_case_dir "$dir"
 
     local violations=0
@@ -489,8 +499,9 @@ cmd_validate() {
 cmd_report() {
     [ $# -eq 2 ] || die_usage "report は引数を2つ取る（判定記録TSV・題材集合ディレクトリ）"
     local judgments dir
-    judgments="$(normalize_path "$1")"
-    dir="$(normalize_path "$2")"
+    normalize_path "$1"; judgments="$_normalized"
+    normalize_path "$2"; dir="$_normalized"
+    [ -n "$judgments" ] || die_usage "判定記録TSV が指定されていない"
     [ -f "$judgments" ] || die_usage "判定記録TSV が存在しない: $judgments"
     [ -r "$judgments" ] || die_usage "判定記録TSV を読めない: $judgments"
     require_case_dir "$dir"

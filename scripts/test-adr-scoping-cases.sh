@@ -225,26 +225,75 @@ rm -rf "$DASH_PARENT"
 # `a=b` のような相対パスをそのまま渡すとファイルを開かずに標準入力を読みにいき、
 # 診断ゼロのまま偽の違反が並ぶ（先頭 `-` の場合と同じ「原因の取り違え」の型で、
 # `--` では塞がらない）。パスを `./` 前置へ正規化することで閉じる。
+#
+# 正規化は3経路（validate の題材集合ディレクトリ・report の判定記録TSV と題材集合
+# ディレクトリ・prompt の題材集合ディレクトリ）に入っている。1経路だけを見ると残りの
+# 正規化を外す変異が緑のまま通るため、4引数すべてを var=value 形で渡す。
 EQ_PARENT="$(mktemp -d -t adr-scoping-case-eq.XXXXXX)"
 mkdir -p "$EQ_PARENT/a=b"
 cp "$FIXTURES_DIR/valid/cases.md" "$FIXTURES_DIR/valid/expectations.tsv" \
    "$FIXTURES_DIR/valid/prompt-template.md" "$EQ_PARENT/a=b/"
+cp "$JUDGMENTS_DIR/valid-judgments.tsv" "$EQ_PARENT/j=1.tsv"
 eq_ok=1
 eq_detail=""
 set +e
 eq_out="$(cd "$EQ_PARENT" && bash "$SCRIPT" validate 'a=b' </dev/null 2>&1)"
 eq_rc=$?
-eq_report="$(cd "$EQ_PARENT" && bash "$SCRIPT" report "$JUDGMENTS_DIR/valid-judgments.tsv" 'a=b' </dev/null 2>&1)"
+eq_report="$(cd "$EQ_PARENT" && bash "$SCRIPT" report 'j=1.tsv' 'a=b' </dev/null 2>&1)"
 eq_report_rc=$?
+eq_prompt="$(cd "$EQ_PARENT" && bash "$SCRIPT" prompt "$DOC" CASE-A1 'a=b' </dev/null 2>/dev/null)"
+eq_prompt_rc=$?
 set -e
 [ "$eq_rc" -eq 0 ] || { eq_ok=0; eq_detail="validate: rc=$eq_rc / $eq_out"; }
 [ "$eq_report_rc" -eq 0 ] || { eq_ok=0; eq_detail="${eq_detail}${eq_detail:+ / }report: rc=$eq_report_rc"; }
+# 判定記録TSV を読めていないと、期待帰結を読めていても差が消えて「差は無い」へ倒れる。
 case "$eq_report" in
     *"差 2 件"*) ;;
     *) eq_ok=0; eq_detail="${eq_detail}${eq_detail:+ / }report: 期待帰結との差が出ていない" ;;
 esac
-record "09b. validate/report（題材集合ディレクトリ名が var=value 形）→ awk が変数代入と読まず、偽の違反を出さない" "$eq_ok" "$eq_detail"
+if [ "$eq_prompt_rc" -ne 0 ] || [ ! -f "$eq_prompt" ]; then
+    eq_ok=0
+    eq_detail="${eq_detail}${eq_detail:+ / }prompt: rc=$eq_prompt_rc / out=$eq_prompt"
+else
+    # 題材文を読めていないと「題材文が空である」で落ちる（原因の取り違え）。
+    case "$(cat "$eq_prompt")" in
+        *"コミットを止める"*) ;;
+        *) eq_ok=0; eq_detail="${eq_detail}${eq_detail:+ / }prompt: 題材文が差し込まれていない" ;;
+    esac
+    rm -f "$eq_prompt"
+fi
+record "09b. validate/report/prompt（題材集合ディレクトリ名・判定記録TSV 名が var=value 形）→ awk が変数代入と読まず、偽の違反も原因の取り違えも出さない" "$eq_ok" "$eq_detail"
 rm -rf "$EQ_PARENT"
+
+# 正規化が空文字列を `./` へ化けさせると、引数を空で渡した呼び出しがカレント
+# ディレクトリを指す正常な入力になり、usage が明記する「既定値を持たない」が破れる。
+# 題材集合ディレクトリの中から実行すれば、検査が通ってしまうことがそのまま観測できる。
+EMPTY_PARENT="$(mktemp -d -t adr-scoping-case-em.XXXXXX)"
+cp "$FIXTURES_DIR/valid/cases.md" "$FIXTURES_DIR/valid/expectations.tsv" \
+   "$FIXTURES_DIR/valid/prompt-template.md" "$EMPTY_PARENT/"
+cp "$JUDGMENTS_DIR/valid-judgments.tsv" "$EMPTY_PARENT/j.tsv"
+em_ok=1
+em_detail=""
+# 空を渡す引数の位置ごとに1回ずつ。`report` は判定記録TSV も正規化を通るため2回見る。
+expect_empty_rejected() {
+    local label="$1"; shift
+    local out rc
+    set +e
+    out="$(cd "$EMPTY_PARENT" && bash "$SCRIPT" "$@" </dev/null 2>&1)"
+    rc=$?
+    set -e
+    [ "$rc" -eq 2 ] || { em_ok=0; em_detail="${em_detail}${em_detail:+ / }$label: exit code 期待 2 / 実際 $rc"; }
+    case "$out" in
+        *"が指定されていない"*) ;;
+        *) em_ok=0; em_detail="${em_detail}${em_detail:+ / }$label: 指定されていないことを名指ししていない" ;;
+    esac
+}
+expect_empty_rejected "validate/dir"  validate ""
+expect_empty_rejected "report/dir"    report j.tsv ""
+expect_empty_rejected "report/tsv"    report "" .
+expect_empty_rejected "prompt/dir"    prompt "$DOC" CASE-A1 ""
+record "09d. validate/report/prompt（引数が空文字列）→ カレントディレクトリを既定値にせず、指定されていないことを名指しする" "$em_ok" "$em_detail"
+rm -rf "$EMPTY_PARENT"
 
 # ディレクトリを辿れないと配下の `[ -f ]` が軒並み偽になり、実在するファイルが
 # 「欠けている」と報告される。ファイル単位の可読性検査と同じ型の取り違えである。
@@ -675,14 +724,16 @@ for needle in "差は無い" "== カバレッジ ==" "== 期待帰結との差 =
     fi
 done
 # awk の終了状態を一律で畳むと、末尾のラベルが原因を取り違える（期待帰結を読めなかった
-# のに「カバレッジ検査に落ちた」と出る）。打ち切りの理由がラベルにも表れることを見る。
+# のに「判定記録の集計に失敗した」＝既定の枝が出る）。打ち切りの理由がラベルにも表れる
+# ことと、既定の枝へ落ちていないことの両方を見る。needle は現に printf される文字列で
+# なければ空振りするので、`case "$rc"` のラベルを変えたときはここも合わせること。
 case "$output" in
     *"期待帰結を読めなかったため集計を打ち切った"*) ;;
     *) noexp_ok=0; noexp_detail="${noexp_detail}${noexp_detail:+ / }打ち切りの理由がラベルに出ていない" ;;
 esac
-if ! assert_not_contains "$output" "カバレッジ検査に落ちた"; then
+if ! assert_not_contains "$output" "判定記録の集計に失敗した"; then
     noexp_ok=0
-    noexp_detail="${noexp_detail}${noexp_detail:+ / }ラベルが原因を取り違えている（カバレッジ検査に落ちた）"
+    noexp_detail="${noexp_detail}${noexp_detail:+ / }ラベルが既定の枝（判定記録の集計に失敗した）へ落ちている"
 fi
 record "40e. report（期待帰結を1件も読めない）→ 診断とラベルの両方で理由を告げ、集計本文を1行も印字しない" "$noexp_ok" "$noexp_detail"
 
