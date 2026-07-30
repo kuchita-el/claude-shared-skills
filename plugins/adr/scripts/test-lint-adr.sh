@@ -4,6 +4,10 @@
 # 同ディレクトリの fixtures/lint-adr/{valid,invalid}/ の共有 corpus を使い、
 # gen-adr-index.sh と lint-adr.sh の振る舞いを検証する。
 #
+# レイヤ5 の識別子重複検査は、識別子の時刻部が分粒度であるために発番側（next-adr-id.sh）では
+# 構造的に消せない残余——同一分・別ブランチ・同一連番の重複——を受け止める最後の関門である。
+# 本テストはその検出を固定する（旧手順下では重複が1か月以上検出されないまま残った実測がある）。
+#
 # 使い方:
 #   bash plugins/adr/scripts/test-lint-adr.sh
 #
