@@ -1,6 +1,6 @@
 ---
 status: 承認済み
-validity: 有効
+validity: 廃止済み
 superseded-by:
 ---
 
@@ -36,6 +36,8 @@ superseded-by:
 **将来の留保事項（本 ADR のスコープ外＝ downstream）**:
 
 - 機構の実装（`scripts/lint-adr.sh` と PreToolUse フック合流、`docs/adr/index.md` 生成、`docs/adr/README.md` 廃止手順・`template.md` の改訂、ライフサイクル操作スキル）は実装 Issue に委ねる。この機構は実装済み。drift-lint はその後 ADR 運用機構のプラグイン抽出（#492/#493）で独立プラグイン `adr` 同梱の `plugins/adr/scripts/lint-adr.sh`＋同プラグインの PreToolUse ゲートへ移った（現配置は決定5 本文と 2026-07-21 変更履歴を参照。ここでの `scripts/lint-adr.sh` は起票当時に想定した合流先を指す）。
+
+**退役（2026-07-30）**: 本 ADR は `validity: 廃止済み` へ退役した。影響が `docs/adr/README.md` 1本のみに閉じ、廃止された索引を消費するスクリプト・スキルが存在しないため、現行の ADR 化要否基準では ADR として保持する要件を満たさない。決定を放棄したのではなく、記録の正本を ADR 外の資産へ移した移管による退役である。移送先は `docs/adr/README.md` であり、2026-07-30 時点で、再評価フローが実運用で回っていなかったという観察・人手キュレーションが手動 drift 源であったこと・代替方針（意味逆引きは各 ADR 本文で行い、ギャップ地図が要る場合は索引を復活させず別 Issue として扱う）を同ファイルへ併記した。
 
 ## 関連ADR
 

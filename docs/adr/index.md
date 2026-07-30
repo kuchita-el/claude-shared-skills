@@ -3,7 +3,6 @@
 
 - [ADR-202605131437-02-review-contract-in-plan-issue](./ADR-202605131437-02-review-contract-in-plan-issue.md): レビュー契約の所在を plan-issue に移行する
 - [ADR-202605131437-03-dev-loop-input-path-split](./ADR-202605131437-03-dev-loop-input-path-split.md): dev-loop の正規パス/簡易パス入力分岐
-- [ADR-202605131437-04-ddd-review-context-boundary](./ADR-202605131437-04-ddd-review-context-boundary.md): DDDドキュメント整合性レビューでの責務境界考慮
 - [ADR-202605131437-05-agent-modeling-principle](./ADR-202605131437-05-agent-modeling-principle.md): コーディングエージェント固有挙動をドメインモデルに持ち込まずアクター内部実装として扱う
 - [ADR-202605131437-06-workflow-design-scope-team](./ADR-202605131437-06-workflow-design-scope-team.md): workflow-design.md にチーム規模別フローを含めない
 - [ADR-202605250658-01-subagent-claude-md-injection](./ADR-202605250658-01-subagent-claude-md-injection.md): サブエージェント起動時の CLAUDE.md 取得方針
@@ -14,7 +13,6 @@
 - [ADR-202606020032-01-autonomy-ladder-convention](./ADR-202606020032-01-autonomy-ladder-convention.md): 自律度モデル L0–L3 の規約（提案→承認二段・L0/L3 縮退形）
 - [ADR-202606040737-01-dor-shared-resource-consolidation](./ADR-202606040737-01-dor-shared-resource-consolidation.md): 複数スキルが共有する参照資源はプラグインルート references/ に集約する（DoR定義の単一ソース化）
 - [ADR-202606061120-01-protection-priority-ladder](./ADR-202606061120-01-protection-priority-ladder.md): 保護手段の優先（2軸マップとコスト×価値ゲート）
-- [ADR-202606061159-01-instruction-tidying](./ADR-202606061159-01-instruction-tidying.md): 指示の棚卸し（保護手段の優先の削除方向）
 - [ADR-202606062346-01-superpowers-soft-delegation](./ADR-202606062346-01-superpowers-soft-delegation.md): superpowers 委譲をソフト/任意依存とし、フォールバック方針 C で実現する
 - [ADR-202606071222-01-workflow-unit-validity-reference-mechanism](./ADR-202606071222-01-workflow-unit-validity-reference-mechanism.md): dev-loop / plan-issue の単位は現状維持とし、参照機構②/③・検証ゲート主担い・ポリシー実現方式を確定する
 - [ADR-202606180122-01-issue-type-axis-core-dor](./ADR-202606180122-01-issue-type-axis-core-dor.md): Issue種別軸の導入とコアDoR改訂方針
@@ -43,9 +41,6 @@
 - [ADR-202607230648-01-adr-machinery-plugin-extraction](./ADR-202607230648-01-adr-machinery-plugin-extraction.md): ADR運用機構を独立プラグイン adr として抽出・配布
 - [ADR-202607251922-01-subagent-execution-parameter-pinning](./ADR-202607251922-01-subagent-execution-parameter-pinning.md): サブエージェントの実行パラメータを front-matter で固定し役割ごとの必要水準として選ぶ
 - [ADR-202607251922-02-execution-parameter-control-point](./ADR-202607251922-02-execution-parameter-control-point.md): 実行パラメータの統制点をサブエージェント定義に集約する
-- [ADR-202607261459-01-adr-state-model-and-drift-lint](./ADR-202607261459-01-adr-state-model-and-drift-lint.md): ADR の状態モデル（承認軸と有効性軸の2軸分離・導出ビュー index）と drift-lint
 - [ADR-202607261501-01-adr-edit-mechanism-and-amend-abolition](./ADR-202607261501-01-adr-edit-mechanism-and-amend-abolition.md): ADR の編集機構（3段構え・凍結原則・ADR分割）と Amended 機構の廃止
 - [ADR-202607261503-01-adr-lifecycle-tooling-delegation](./ADR-202607261503-01-adr-lifecycle-tooling-delegation.md): ADR のライフサイクル操作を tooling へ委譲する
-- [ADR-202607261503-02-adr-design-decision-index-abolition](./ADR-202607261503-02-adr-design-decision-index-abolition.md): モデル制約由来の設計判断インデックスを廃止する
 - [ADR-202607261503-03-adr-flat-layout](./ADR-202607261503-03-adr-flat-layout.md): ADR ファイルは docs/adr/ 配下にフラット構造で配置する
-- [ADR-202607262019-01-adr-id-timestamp-numbering](./ADR-202607262019-01-adr-id-timestamp-numbering.md): ADR の識別子に時刻部を導入し、並行起票による重複を構造的に防ぐ

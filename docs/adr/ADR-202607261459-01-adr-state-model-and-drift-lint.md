@@ -1,6 +1,6 @@
 ---
 status: 承認済み
-validity: 有効
+validity: 廃止済み
 superseded-by:
 ---
 
@@ -99,6 +99,8 @@ ADR corpus が満たすべき機械検査可能な不変条件は、CI 不在下
 - 機構の実装（`scripts/lint-adr.sh` と PreToolUse フック合流、`docs/adr/index.md` 生成、`docs/adr/README.md` 廃止手順・`template.md` の改訂、ライフサイクル操作スキル）は実装 Issue に委ねる。この機構は実装済み。drift-lint はその後 ADR 運用機構のプラグイン抽出（#492/#493）で独立プラグイン `adr` 同梱の `plugins/adr/scripts/lint-adr.sh`＋同プラグインの PreToolUse ゲートへ移った（現配置は決定5 本文と原 ADR の 2026-07-21 変更履歴を参照。ここでの `scripts/lint-adr.sh` は起票当時に想定した合流先を指す）。
 - 移行（全 ADR への front-matter 付与、`ADR-202605312147-01` の Superseded 実例の validity 移設、既存 `Amends:` / `Amended by:` 関係の生存語彙への移行（live は `Supersedes:` / `Superseded by:` / `Related:` / `## 変更履歴` へ移し、retired は後継の supersede 連鎖へ吸収して Amend 語彙を corpus から除去する。凍結して grandfather 固定はしない。取りこぼしを防ぐため移行対象はファイル数でなくエッジ単位で列挙し、1ファイルが複数の `Amends:` を宣言するケースを含める）、英語状態名から日本語ユビキタス言語への移行、`docs/development/event-storming.md`「技術的意思決定」集約の状態機械の作り替え〔英文4状態→2軸・`却下` 終端追加〕、index 初期生成）は Issue #463 フェーズ3に委ねる。
 - 本 ADR および ADR-202605110956-01 の front-matter 化もフェーズ3の一括移行に含めた（起票時点では両 ADR とも `## Status` 形式だった）。両 ADR とも #476 で front-matter 化済み。
+
+**退役（2026-07-30）**: 本 ADR は `validity: 廃止済み` へ退役した。決定内容（2軸分離・front-matter 権威と導出ビュー index・drift-lint の検査契約）を lint-adr.sh のレイヤ1・レイヤ2 が現に検出して commit を阻止しており、現行の ADR 化要否基準では ADR として保持する要件を満たさない。決定を放棄したのではなく、記録の正本を ADR 外の資産へ移した移管による退役である。規定そのものは `adr` プラグインの `manage-adr` スキル（状態モデルと遷移手順の参照ファイル）と同梱スクリプトが担い、採用理由の移送先は `plugins/adr/skills/manage-adr/references/template.md`（2軸を別フィールドへ分けた理由、1欄混在と英文4状態の却下、キー英語・値日本語の理由）、`plugins/adr/scripts/gen-adr-index.sh`（生成入力を本文見出しの正規表現抽出とせず front-matter の key-value 解析とした理由、index を導出ビューへ閉じ込めた理由）、`plugins/adr/scripts/lint-adr.sh`（語彙定数の近傍に置いた、2軸が語彙レベルで衝突しないようにした理由）であり、2026-07-30 時点でいずれも当該箇所へ併記した。なお本 ADR の退役により、原 ADR ADR-202607112231-01 の決定1・2・5 の系譜は `docs/adr/index.md` からは辿れなくなる。系譜は本 ADR `## 関連ADR` の `Supersedes:` 行と原 ADR の front-matter `superseded-by` が引き続き保持する。
 
 ## 関連ADR
 
