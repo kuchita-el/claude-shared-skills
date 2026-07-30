@@ -10,7 +10,7 @@ validity: 廃止済み
 
 ## Context
 
-fixture 用の廃止済み ADR。後継なしで放棄された。
+fixture 用の廃止済み ADR。後継 ADR なしで ADR としての効力を終えた。
 
 ## Decision
 

@@ -522,7 +522,8 @@ for file in "${sorted[@]}"; do
 
     # 種別8: 承認（有効）・廃止（廃止済み）の行は superseded-by「（無し）」。
     # 後継を指すなら上書き済みであるべきで、有効のままなら原 ADR と後継が
-    # 同時に index へ並ぶ。廃止済みは決定1 で「後継なしで放棄された」と定義される。
+    # 同時に index へ並ぶ。廃止済みは決定1 で「後継 ADR なしで ADR としての効力を
+    # 終えた」と定義される。
     if [ "$FM_VALIDITY" = "有効" ] || [ "$FM_VALIDITY" = "廃止済み" ]; then
         if [ -n "$FM_SUPERSEDED_BY" ]; then
             printf '%s: validity=%s だが superseded-by が空ではありません（値 "%s"。スキーマ表では承認・廃止の superseded-by は「（無し）」）\n' "$file" "$FM_VALIDITY" "$FM_SUPERSEDED_BY"
