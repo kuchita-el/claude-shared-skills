@@ -120,6 +120,12 @@ assert_case_id_order() {
 # PATH の先頭へ差し込む awk の代役を作る。$AWK_SHIM_FAIL_AT 回目の呼び出しだけを
 # 異常終了（awk の fatal と同じ exit 2）させ、それ以外は本物の awk へ委譲する。
 # 「awk が落ちたとき」の経路を決定的に踏ませるために使う。
+#
+# **呼び出しの序数に依存する**。被テスト側の awk 呼び出しが増減すると、同じ
+# $AWK_SHIM_FAIL_AT が別の呼び出しを落とすことになる。現状は report が1本
+# （集計本体）、prompt が2本（1本目 extract_case_text・2本目 雛形の組み立て）。
+# ずれても各アサーションはメッセージまで見ているため静かには壊れないが、
+# awk 呼び出しを足したときは序数を見直すこと。
 make_awk_shim() {
     local shim_dir="$1" real_awk
     real_awk="$(command -v awk)"
@@ -226,9 +232,18 @@ rm -rf "$DASH_PARENT"
 # 診断ゼロのまま偽の違反が並ぶ（先頭 `-` の場合と同じ「原因の取り違え」の型で、
 # `--` では塞がらない）。パスを `./` 前置へ正規化することで閉じる。
 #
-# 正規化は3経路（validate の題材集合ディレクトリ・report の判定記録TSV と題材集合
-# ディレクトリ・prompt の題材集合ディレクトリ）に入っている。1経路だけを見ると残りの
-# 正規化を外す変異が緑のまま通るため、4引数すべてを var=value 形で渡す。
+# 正規化は4引数に入っているが、**awk のオペランドへ実際に渡るのは3経路**である
+# （validate の題材集合ディレクトリ・report の判定記録TSV・prompt の題材集合
+# ディレクトリ）。1経路だけを見ると残りの正規化を外す変異が緑のまま通るため、
+# 4引数すべてを var=value 形で渡し、この3経路を単独変異で殺せる状態にしてある。
+#
+# 残る1つ——report の題材集合ディレクトリ——は現状デッドな予防的硬化である。
+# 集計 awk は expectations.tsv を `expfile` の環境変数渡し＋`getline < expfile` で
+# 読み、題材IDの一覧は `list_case_ids` の `grep --` 経由で得るため、この値は
+# awk のオペランドに一度も現れない。したがって**この経路の正規化を外す変異は
+# 本アサーションでは殺せない**（実行時の挙動は変わらないため実害も無い）。
+# `expfile` をオペランド渡しへ寄せるリファクタを入れると load-bearing になるので、
+# そのときは判定記録TSV と同じ形で4経路目の検査をここへ足すこと。
 EQ_PARENT="$(mktemp -d -t adr-scoping-case-eq.XXXXXX)"
 mkdir -p "$EQ_PARENT/a=b"
 cp "$FIXTURES_DIR/valid/cases.md" "$FIXTURES_DIR/valid/expectations.tsv" \
@@ -297,31 +312,63 @@ rm -rf "$EMPTY_PARENT"
 
 # ディレクトリを辿れないと配下の `[ -f ]` が軒並み偽になり、実在するファイルが
 # 「欠けている」と報告される。ファイル単位の可読性検査と同じ型の取り違えである。
-UNREADABLE_PARENT="$(mktemp -d -t adr-scoping-case-ud.XXXXXX)"
-mkdir -p "$UNREADABLE_PARENT/dir"
-cp "$FIXTURES_DIR/valid/cases.md" "$FIXTURES_DIR/valid/expectations.tsv" \
-   "$FIXTURES_DIR/valid/prompt-template.md" "$UNREADABLE_PARENT/dir/"
-chmod 000 "$UNREADABLE_PARENT/dir"
-if [ -r "$UNREADABLE_PARENT/dir" ]; then
-    record "09c. validate（題材集合ディレクトリを辿れない）→ 読めないことを名指しする（ファイルの欠落へ化けない）" 1 \
-        "（chmod 000 でも読める環境のため未実行）"
-else
-    run validate "$UNREADABLE_PARENT/dir"
-    ud_ok=1
-    ud_detail=""
-    [ "$rc" -eq 2 ] || { ud_ok=0; ud_detail="exit code 期待 2 / 実際 $rc"; }
-    case "$output" in
-        *"題材集合ディレクトリを読めない"*) ;;
-        *) ud_ok=0; ud_detail="${ud_detail}${ud_detail:+ / }読めないことを名指ししていない" ;;
-    esac
-    if ! assert_not_contains "$output" "欠けているファイル"; then
-        ud_ok=0
-        ud_detail="${ud_detail}${ud_detail:+ / }診断がファイルの欠落へ化けている"
+#
+# 検査は `[ -x "$dir" ]` の1本である。000（読めも辿れもしない）と 666（読めるが
+# 辿れない）の2モードを持つのは、後者が「`-r` を足しても意味が無い」ことを示す枝で
+# あるため。`-x` を外す変異はどちらの枝でも落ちる。
+check_unreadable_case_dir() {
+    local id="$1" mode="$2" why="$3"
+    local parent ok detail
+    parent="$(mktemp -d -t adr-scoping-case-ud.XXXXXX)"
+    mkdir -p "$parent/dir"
+    cp "$FIXTURES_DIR/valid/cases.md" "$FIXTURES_DIR/valid/expectations.tsv" \
+       "$FIXTURES_DIR/valid/prompt-template.md" "$parent/dir/"
+    chmod "$mode" "$parent/dir"
+    local label="$id. validate（題材集合ディレクトリを${why}）→ 辿れないことを名指しする（ファイルの欠落へ化けない）"
+    # root は権限ビットを無視して辿れてしまうため、実際に塞がっているときだけ判定する。
+    if [ -x "$parent/dir" ]; then
+        record "$label" 1 "（chmod $mode でも辿れる環境のため未実行）"
+    else
+        run validate "$parent/dir"
+        ok=1
+        detail=""
+        [ "$rc" -eq 2 ] || { ok=0; detail="exit code 期待 2 / 実際 $rc"; }
+        case "$output" in
+            *"題材集合ディレクトリを辿れない"*) ;;
+            *) ok=0; detail="${detail}${detail:+ / }辿れないことを名指ししていない" ;;
+        esac
+        if ! assert_not_contains "$output" "欠けているファイル"; then
+            ok=0
+            detail="${detail}${detail:+ / }診断がファイルの欠落へ化けている"
+        fi
+        record "$label" "$ok" "$detail"
     fi
-    record "09c. validate（題材集合ディレクトリを辿れない）→ 読めないことを名指しする（ファイルの欠落へ化けない）" "$ud_ok" "$ud_detail"
+    chmod 755 "$parent/dir"
+    rm -rf "$parent"
+}
+check_unreadable_case_dir 09c 000 "読めず辿れもしない"
+check_unreadable_case_dir 09e 666 "読めるが辿れない"
+
+# 上の連言から `-r` を落とした判断を、正の側から固定する。実行のみ可（mode 111）は
+# 一覧できないだけで既知の名前は開けるため、本スクリプトの用途では正常に動く。
+# `-r` を検査へ足し戻すと、動く構成を弾くようになって本アサーションが落ちる。
+EXECONLY_PARENT="$(mktemp -d -t adr-scoping-case-xo.XXXXXX)"
+mkdir -p "$EXECONLY_PARENT/dir"
+cp "$FIXTURES_DIR/valid/cases.md" "$FIXTURES_DIR/valid/expectations.tsv" \
+   "$FIXTURES_DIR/valid/prompt-template.md" "$EXECONLY_PARENT/dir/"
+chmod 111 "$EXECONLY_PARENT/dir"
+if [ -r "$EXECONLY_PARENT/dir" ]; then
+    record "09f. validate（題材集合ディレクトリが実行のみ可）→ 動く構成を弾かずに検査を通す" 1 \
+        "（chmod 111 でも読める環境のため未実行）"
+else
+    run validate "$EXECONLY_PARENT/dir"
+    xo_ok=1
+    xo_detail=""
+    [ "$rc" -eq 0 ] || { xo_ok=0; xo_detail="exit code 期待 0 / 実際 $rc / $output"; }
+    record "09f. validate（題材集合ディレクトリが実行のみ可）→ 動く構成を弾かずに検査を通す" "$xo_ok" "$xo_detail"
 fi
-chmod 755 "$UNREADABLE_PARENT/dir"
-rm -rf "$UNREADABLE_PARENT"
+chmod 755 "$EXECONLY_PARENT/dir"
+rm -rf "$EXECONLY_PARENT"
 
 # 引数で渡した題材集合ディレクトリが検査対象になっている（本番の題材集合を見ていない）ことの検査。
 # 同じサブコマンドが渡したディレクトリ次第で 0 と 1 に分かれることをもって切り替えの成立とみなす。
@@ -880,6 +927,51 @@ esac
 [ "$shim_prompt_left" -eq 0 ] || { sp_ok=0; sp_detail="${sp_detail}${sp_detail:+ / }\$TMPDIR に $shim_prompt_left 件残った"; }
 record "49. prompt（組み立ての処理が異常終了）→ 原因を名指しして落ち、一時ファイルを残さない" "$sp_ok" "$sp_detail"
 rm -rf "$SHIM_TMPDIR" "$AWK_SHIM_DIR"
+
+# 組み立ての awk は、題材文の一時ファイルを1行も読めなかったときに自前で診断を出して
+# 番兵 3 で落ちる。呼び出し側の `||` ハンドラがこれを awk の異常終了と区別できないと、
+# 原因を名指しした1行目の後ろへ「異常終了した」と述べる2行目が積まれ、無関係な
+# prompt-template.md が名指しされる（cmd_report で番兵 3 を入れて解いたのと同型）。
+#
+# 一時ファイルを書き込み専用（200）で先に作らせることで、書き込みは通り読み込みだけが
+# 落ちる状況を決定的に作る。mktemp の代役は序数ではなく雛形の名前で分岐させる。
+MKTEMP_SHIM_DIR="$(mktemp -d -t adr-scoping-case-ms.XXXXXX)"
+WRITEONLY_BODY="$MKTEMP_SHIM_DIR/body-writeonly"
+: > "$WRITEONLY_BODY"
+chmod 200 "$WRITEONLY_BODY"
+if [ -r "$WRITEONLY_BODY" ]; then
+    record "50. prompt（題材文の一時ファイルを読めない）→ 原因を1度だけ名指しし、雛形の異常終了へ化けない" 1 \
+        "（chmod 200 でも読める環境のため未実行）"
+else
+    {
+        printf '#!/usr/bin/env bash\n'
+        printf 'for a in "$@"; do case "$a" in *adr-scoping-case-body*) printf %%s\\\\n "$WRITEONLY_BODY"; exit 0 ;; esac; done\n'
+        printf 'exec %s "$@"\n' "$(command -v mktemp)"
+    } > "$MKTEMP_SHIM_DIR/mktemp"
+    chmod +x "$MKTEMP_SHIM_DIR/mktemp"
+    set +e
+    wo_out="$(WRITEONLY_BODY="$WRITEONLY_BODY" PATH="$MKTEMP_SHIM_DIR:$PATH" \
+        bash "$SCRIPT" prompt "$DOC" CASE-A1 "$FIXTURES_DIR/valid" 2>&1)"
+    wo_rc=$?
+    set -e
+    wo_ok=1
+    wo_detail=""
+    [ "$wo_rc" -eq 1 ] || { wo_ok=0; wo_detail="exit code 期待 1 / 実際 $wo_rc"; }
+    case "$wo_out" in
+        *"題材文を一時ファイルから読めなかった"*) ;;
+        *) wo_ok=0; wo_detail="${wo_detail}${wo_detail:+ / }原因を名指ししていない" ;;
+    esac
+    for needle in "プロンプトの組み立てに失敗した" "prompt-template.md"; do
+        if ! assert_not_contains "$wo_out" "$needle"; then
+            wo_ok=0
+            wo_detail="${wo_detail}${wo_detail:+ / }診断が重なって原因を取り違えている: $needle"
+        fi
+    done
+    record "50. prompt（題材文の一時ファイルを読めない）→ 原因を1度だけ名指しし、雛形の異常終了へ化けない" "$wo_ok" "$wo_detail"
+fi
+# 書き込み専用ファイルは被テスト側の EXIT trap が消していることがあるので、
+# 掃除は親ディレクトリごとに行う（ファイル単体の chmod は空振りして落ちる）。
+rm -rf "$MKTEMP_SHIM_DIR"
 
 # メタ行が多い題材でも、パイプの早期終了による SIGPIPE で診断ゼロのまま落ちてはならない。
 # 読み手を先に閉じても書き手を先に閉じても pipefail + set -e で rc=141 になるため、
