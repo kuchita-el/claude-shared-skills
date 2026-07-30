@@ -43,7 +43,7 @@ ADR運用機構を dev-workflow から分離し、独立プラグイン `plugins
 ## 関連ADR
 
 - Related: ADR-202606261847-01-growth-plugin-separation（横断／メタ機構を独立プラグインへ分離する同型の先例。関心分離＋常時ロード分離の論拠を共有）
-- 本機構が配送する ADR 運用モデルは ADR-202607261459-01-adr-state-model-and-drift-lint が定めた。同 ADR 決定3 の drift-lint 配置は本抽出で `plugins/adr/` へ移設され、PR #546 で非core amend 済みである。同 ADR は 2026-07-30 に `廃止済み` へ退役し、運用モデルの規定は同日時点で本機構が配送する `manage-adr` スキル（状態モデルの参照ファイル）と同梱スクリプトが保持する。
+- 本機構が配送する ADR 運用モデルは ADR-202607261459-01-adr-state-model-and-drift-lint が定めた。同 ADR 決定3 の drift-lint 配置は本抽出で `plugins/adr/` へ移設され、PR #546 で非core amend 済みである。同 ADR は 2026-07-30 に `廃止済み` へ退役し、運用モデルの規定は、同日時点では本機構が配送する `manage-adr` スキル（状態モデルの参照ファイル）と同梱スクリプトが保持していた。
 - 関連Issue: #463, #492, #493, #548, #605（決定2 の射程注記の追記元）, #623（テスト・fixture の配置の統一）
 
 ## 変更履歴
