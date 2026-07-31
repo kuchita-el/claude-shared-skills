@@ -2,24 +2,27 @@
 # ADR drift-lint のテストランナー
 #
 # 同ディレクトリの fixtures/lint-adr/{valid,invalid}/ の共有 corpus を使い、
-# gen-adr-index.sh と lint-adr.sh の振る舞いを検証する。
+# 配布物内（plugins/adr/scripts/）の gen-adr-index.sh と lint-adr.sh の振る舞いを検証する。
 #
 # レイヤ5 の識別子重複検査は、識別子の時刻部が分粒度であるために発番側（next-adr-id.sh）では
 # 構造的に消せない残余——同一分・別ブランチ・同一連番の重複——を受け止める最後の関門である。
 # 本テストはその検出を固定する（旧手順下では重複が1か月以上検出されないまま残った実測がある）。
 #
+# 【配置について】テストと fixture を配布物外へ置く境界は docs/distribution-boundary.md が定める。
+#
 # 使い方:
-#   bash plugins/adr/scripts/test-lint-adr.sh
+#   bash scripts/test-lint-adr.sh
 #
 # exit code:
 #   0: 全アサーションパス
 #   1: いずれか失敗
 set -euo pipefail
 
-PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-GEN_INDEX="$PLUGIN_ROOT/scripts/gen-adr-index.sh"
-LINT_ADR="$PLUGIN_ROOT/scripts/lint-adr.sh"
-FIXTURES_DIR="$PLUGIN_ROOT/scripts/fixtures/lint-adr"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PLUGIN_ROOT="$REPO_ROOT/plugins/adr"                    # 配布物ルート
+GEN_INDEX="$PLUGIN_ROOT/scripts/gen-adr-index.sh"       # 配布物内（被テスト）
+LINT_ADR="$PLUGIN_ROOT/scripts/lint-adr.sh"             # 配布物内（被テスト）
+FIXTURES_DIR="$REPO_ROOT/scripts/fixtures/lint-adr"     # 配布物外（fixture）
 
 passed=0
 failed=0
