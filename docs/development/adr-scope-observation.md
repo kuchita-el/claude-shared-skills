@@ -44,6 +44,8 @@ git grep -hoE "$PAT" "$REF" -- 'docs/adr' ':!docs/adr/index.md' \
 | 4 | `plugins/adr/scripts/test-next-adr-id.sh` |
 | 3 | `plugins/adr/skills/manage-adr/references/adr-model.md` |
 
+本テーブルのパスも `REF` 時点のものである。`test-lint-adr.sh` と `test-next-adr-id.sh` は #623 で `scripts/` 配下へ移設したため、現在の HEAD には当該パスが存在しない。
+
 `':!plugins/adr/scripts/fixtures'` と `':!scripts/fixtures'` はいずれも fixture ディレクトリを除くだけで、テストスクリプト本体は除かない。本文書で外部参照といえば**絞り込みあり（334件）**を指す。
 
 除外指定に旧パス（`plugins/adr/scripts/fixtures`）と新パス（`scripts/fixtures`）を併記しているのは、本手順が `REF` を過去のコミットへ固定して実行されるためである。固定 ref のツリーには fixture が旧パスにしか存在せず、新パスだけに書き替えると除外が一致しなくなって記録済みの件数が再現しない。
