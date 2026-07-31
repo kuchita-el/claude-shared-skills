@@ -25,7 +25,7 @@ REF=682e144   # 観測時点の commit へ固定する（HEAD を使うと後続
 git ls-tree -r --name-only "$REF" -- docs/adr \
   | grep -oE 'ADR-[0-9]{8,12}(-[0-9]{1,2})?' | sort -u > /tmp/realids.txt
 # 外部参照（docs/adr 以外の追跡ファイル。fixtures を除外し、実在識別子へ絞り込む）
-git grep -hoE "$PAT" "$REF" -- . ':!docs/adr' ':!plugins/adr/scripts/fixtures' \
+git grep -hoE "$PAT" "$REF" -- . ':!docs/adr' ':!plugins/adr/scripts/fixtures' ':!scripts/fixtures' \
   | grep -Fxf /tmp/realids.txt | sort | uniq -c
 # 内部参照（コーパス内の相互参照。自動生成の index.md を除外）
 git grep -hoE "$PAT" "$REF" -- 'docs/adr' ':!docs/adr/index.md' \
@@ -44,7 +44,11 @@ git grep -hoE "$PAT" "$REF" -- 'docs/adr' ':!docs/adr/index.md' \
 | 4 | `plugins/adr/scripts/test-next-adr-id.sh` |
 | 3 | `plugins/adr/skills/manage-adr/references/adr-model.md` |
 
-`':!plugins/adr/scripts/fixtures'` は fixture ディレクトリを除くだけで、テストスクリプト本体は除かない。本文書で外部参照といえば**絞り込みあり（334件）**を指す。
+本テーブルのパスも `REF` 時点のものである。`test-lint-adr.sh` と `test-next-adr-id.sh` は #623 で `scripts/` 配下へ移設したため、現在の HEAD には当該パスが存在しない。
+
+`':!plugins/adr/scripts/fixtures'` と `':!scripts/fixtures'` はいずれも fixture ディレクトリを除くだけで、テストスクリプト本体は除かない。本文書で外部参照といえば**絞り込みあり（334件）**を指す。
+
+除外指定に旧パス（`plugins/adr/scripts/fixtures`）と新パス（`scripts/fixtures`）を併記しているのは、本手順が `REF` を過去のコミットへ固定して実行されるためである。固定 ref のツリーには fixture が旧パスにしか存在せず、新パスだけに書き替えると除外が一致しなくなって記録済みの件数が再現しない。
 
 追跡外の作業成果物（`docs/plans/`、`.superpowers/`）は別枠で集計した。ここは `/usr/bin/grep -r` を用いる。
 

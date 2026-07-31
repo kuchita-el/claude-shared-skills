@@ -9,16 +9,18 @@
 # 発番した実測を受けたものである。発番を機械実行へ委ねたのは手順の解釈差を入れないためであり、
 # 本テストはその中核が実行のたびに再現されることを固定する。
 #
+# 【配置について】テストと fixture を配布物外へ置く境界は docs/distribution-boundary.md が定める。
+#
 # 使い方:
-#   bash plugins/adr/scripts/test-next-adr-id.sh
+#   bash scripts/test-next-adr-id.sh
 #
 # exit code:
 #   0: 全アサーションパス
 #   1: いずれか失敗
 set -euo pipefail
 
-PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-NEXT_ADR_ID="$PLUGIN_ROOT/scripts/next-adr-id.sh"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+NEXT_ADR_ID="$REPO_ROOT/plugins/adr/scripts/next-adr-id.sh"      # 配布物内（被テスト）
 
 TS="203104091530"
 
