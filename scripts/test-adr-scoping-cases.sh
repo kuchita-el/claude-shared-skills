@@ -4,15 +4,7 @@
 # scripts/fixtures/adr-scoping-cases/ 配下の fixture を題材集合ディレクトリとして
 # 被テストスクリプトへ末尾引数で渡し、exit code と出力の部分一致をアサートする。
 #
-# 【配置について】テストランナーと fixture を配布物外（scripts/）へ置き、被テストの
-# 検査器だけを配布物内（plugins/adr/scripts/）へ置く。これは意図した配置である。
-# 参照方向を「配布物外のテスト → 配布物内の検査器」の一方向に固定し、配布物側が
-# fixture のパスを一切知らない状態を保つためであり、配布物に検査用データを
-# 同梱しないための境界でもある。
-#
-# 同ディレクトリの他の同梱スクリプト（lint-adr.sh / next-adr-id.sh）は現在テストと
-# fixture を配布物内へ持っているが、これらを本配置へ追随させる作業は #623 で追跡している。
-# したがって現状の非対称は移行の途中であり、本スクリプトの側を配布物内へ寄せて解消しない。
+# 【配置について】テストと fixture を配布物外へ置く境界は docs/distribution-boundary.md が定める。
 #
 # 使い方:
 #   bash scripts/test-adr-scoping-cases.sh
