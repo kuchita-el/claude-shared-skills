@@ -1,0 +1,137 @@
+1:[PASS] AC4: 有効ADR1件目(sample-decision)が含まれる
+2:[PASS] AC4: 有効ADR2件目(second-decision)が含まれる
+3:[PASS] AC4: 上書き済みADRが含まれない
+4:[PASS] AC4: 廃止済みADRが含まれない
+5:[PASS] AC4: 却下ADRが含まれない
+6:[PASS] AC4: 提案中ADRが含まれない
+7:[PASS] AC4: 旧形式ADRが含まれない
+8:[PASS] 回帰(whitespace-validity): validity末尾空白ADRがindexに含まれる
+9:[PASS] 回帰(whitespace-validity): lint-adr.sh は exit 0（レイヤ2 drift 誤検出なし）
+10:[PASS] AC1: valid corpus(01-mixed-validity) は exit 0
+11:[PASS] AC1: status 欠落: exit 1
+12:[PASS] AC1: status 欠落: 違反メッセージ部分一致
+13:[PASS] AC1: status=承認済み かつ validity 欠落: exit 1
+14:[PASS] AC1: status=承認済み かつ validity 欠落: 違反メッセージ部分一致
+15:[PASS] AC1: validity=上書き済み かつ superseded-by 欠落: exit 1
+16:[PASS] AC1: validity=上書き済み かつ superseded-by 欠落: 違反メッセージ部分一致
+17:[PASS] AC1: status 語彙外（旧英文状態）: exit 1
+18:[PASS] AC1: status 語彙外（旧英文状態）: 違反メッセージ部分一致
+19:[PASS] AC1: validity 語彙外（誤字）: exit 1
+20:[PASS] AC1: validity 語彙外（誤字）: 違反メッセージ部分一致
+21:[PASS] AC1: 提案中 かつ validity 非空: exit 1
+22:[PASS] AC1: 提案中 かつ validity 非空: 違反メッセージ部分一致
+23:[PASS] AC1: 却下 かつ validity 非空: exit 1
+24:[PASS] AC1: 却下 かつ validity 非空: 違反メッセージ部分一致
+25:[PASS] AC1: 有効 かつ superseded-by 非空: exit 1
+26:[PASS] AC1: 有効 かつ superseded-by 非空: 違反メッセージ部分一致
+27:[PASS] AC1: 廃止済み かつ superseded-by 非空: exit 1
+28:[PASS] AC1: 廃止済み かつ superseded-by 非空: 違反メッセージ部分一致
+29:[PASS] AC1: ディレクトリ不在は exit 2
+30:[PASS] AC1(multi): exit 1
+31:[PASS] AC1(multi): 1件目(status欠落)の違反メッセージ
+32:[PASS] AC1(multi): 2件目(superseded-by欠落)の違反メッセージ
+33:[PASS] AC3: index-drift corpus は exit 1
+34:[PASS] AC3: index-drift corpus の同期違反メッセージ
+35:[PASS] AC3: valid corpus(01-mixed-validity) はレイヤ2追加後も exit 0
+36:[PASS] AC2: xref-missing corpus は exit 1
+37:[PASS] AC2: xref-missing corpus の相互参照違反メッセージ
+38:[PASS] AC2: xref-valid corpus(02-xref-valid) は exit 0
+39:[PASS] AC2: valid corpus(01-mixed-validity) はレイヤ3追加後も exit 0
+40:[PASS] PRレビュー反映(reverse-missing): exit 1
+41:[PASS] PRレビュー反映(reverse-missing): 逆方向と分かる違反メッセージ
+42:[PASS] PRレビュー反映(reverse-missing): front-matter更新忘れ側(旧ADR)の言及
+43:[PASS] PRレビュー反映(nested-bullet): 入れ子バレット双方向一致ペアを含む02-xref-validはexit 0
+44:[PASS] (AC1): リスト値正常分割は exit 0: exit 0
+45:[PASS] (AC2-forward): 後継Bのみ forward 違反: exit 1
+46:[PASS] (AC2-forward): 後継Bのみ forward 違反: "相互参照違反" を含む
+47:[PASS] (AC2-forward): 後継Bのみ forward 違反: "ADR-202608121008-01-xref-list-fwd-new-b.md" を含む
+48:[PASS] (AC2-forward): 後継Bのみ forward 違反: "ADR-202608111008-01-xref-list-fwd-new-a" を含まない
+49:[PASS] (AC3-reverse): 非列挙Cのみ reverse 違反: exit 1
+50:[PASS] (AC3-reverse): 非列挙Cのみ reverse 違反: "相互参照違反（逆方向" を含む
+51:[PASS] (AC3-reverse): 非列挙Cのみ reverse 違反: "ADR-202609131009-01-xref-list-rev-extra-c" を含む
+52:[PASS] (AC3-reverse): 非列挙Cのみ reverse 違反: "ADR-202609111009-01-xref-list-rev-new-a.md の本文" を含まない
+53:[PASS] (AC2-file-missing): 後継Bのみ参照先不在違反: exit 1
+54:[PASS] (AC2-file-missing): 後継Bのみ参照先不在違反: "ADR-202610121010-01-xref-list-fm-missing-b" を含む
+55:[PASS] (AC2-file-missing): 後継Bのみ参照先不在違反: "が見つかりません" を含む
+56:[PASS] (AC2-file-missing): 後継Bのみ参照先不在違反: "ADR-202610111010-01-xref-list-fm-new-a" を含まない
+57:[PASS] (空要素のみ): 有効な参照先stem 0件を違反として検出: exit 1
+58:[PASS] (空要素のみ): 有効な参照先stem 0件を違反として検出: "有効な参照先 stem がありません" を含む
+59:[PASS] (末尾カンマ): 末尾カンマは無害で exit 0: exit 0
+60:[PASS] AC5: 3段構え編集機構の対応表が edit-decision.md に存在する
+61:[PASS] AC5: decision tree（些末/非core/core 判定フロー）が edit-decision.md に存在する
+62:[PASS] AC5: 旧モデル制約由来の設計判断インデックス節が manage-adr スキル面から除去されている
+63:[PASS] AC5: 旧 Amended（部分改訂）手順節が manage-adr スキル面から除去されている
+64:[PASS] (AC1/AC2-穴1): バレット無し Related が退役ADRを指すと参照先退役違反: exit 1
+65:[PASS] (AC1/AC2-穴1): バレット無し Related が退役ADRを指すと参照先退役違反: "参照先退役違反" を含む
+66:[PASS] (AC1/AC2-穴1): バレット無し Related が退役ADRを指すと参照先退役違反: "ADR-202611021018-01-related-retired-nb-target" を含む
+67:[PASS] (AC1/AC2-穴2): リンク形式 Related が退役ADRを指すと参照先退役違反: exit 1
+68:[PASS] (AC1/AC2-穴2): リンク形式 Related が退役ADRを指すと参照先退役違反: "参照先退役違反" を含む
+69:[PASS] (AC1/AC2-穴2): リンク形式 Related が退役ADRを指すと参照先退役違反: "ADR-202611121019-01-related-retired-link-old" を含む
+70:[PASS] (AC1/AC2-穴2): リンク形式 Related が退役ADRを指すと参照先退役違反: "相互参照違反" を含まない
+71:[PASS] (gap1-リンクラベル書式): リンクラベルが説明文でも先頭stem抽出で退役検出: exit 1
+72:[PASS] (gap1-リンクラベル書式): リンクラベルが説明文でも先頭stem抽出で退役検出: "参照先退役違反" を含む
+73:[PASS] (gap1-リンクラベル書式): リンクラベルが説明文でも先頭stem抽出で退役検出: "ADR-202701021022-01-related-linklabel-target" を含む
+74:[PASS] (AC6/AC8): Related が非存在slugを指すと dangling 参照違反: exit 1
+75:[PASS] (AC6/AC8): Related が非存在slugを指すと dangling 参照違反: "dangling 参照違反" を含む
+76:[PASS] (AC6/AC8): Related が非存在slugを指すと dangling 参照違反: "ADR-202612021020-01-does-not-exist" を含む
+77:[PASS] (AC6/AC7): 保留した決定が非存在slugを指すと dangling 参照違反: exit 1
+78:[PASS] (AC6/AC7): 保留した決定が非存在slugを指すと dangling 参照違反: "dangling 参照違反" を含む
+79:[PASS] (AC6/AC7): 保留した決定が非存在slugを指すと dangling 参照違反: "ADR-202612121021-01-park-missing" を含む
+80:[PASS] (AC2/AC7-誤検出回避): 全書式の有効参照・散文退役引用・park退役(存在)は exit 0: exit 0
+81:[PASS] (AC2/AC7-誤検出回避): 全書式の有効参照・散文退役引用・park退役(存在)は exit 0: "参照先退役違反" を含まない
+82:[PASS] (AC2/AC7-誤検出回避): 全書式の有効参照・散文退役引用・park退役(存在)は exit 0: "dangling 参照違反" を含まない
+83:[PASS] (park link dedup): リンク形式 park dangling は1回のみ報告（count=1）
+84:[PASS] (related dup dedup): 複数Related行が同一退役ADRを指しても違反は1回のみ（count=1）
+85:[PASS] (AC5): ヘッダにレイヤ4の記述が存在する
+86:[PASS] (AC5): ヘッダにレイヤ4（Related/park 参照の生存性・実在性）仕様が成文化されている
+87:[PASS] (AC1/レイヤ5): 時刻部の桁数不足を形式違反として検出: exit 1
+88:[PASS] (AC1/レイヤ5): 時刻部の桁数不足を形式違反として検出: "ファイル名形式違反" を含む
+89:[PASS] (AC1/レイヤ5): 時刻部の桁数不足を形式違反として検出: "ADR-2026120-01-bad-digits.md" を含む
+90:[PASS] (AC1/レイヤ5): 暦として不正な月を形式違反として検出: exit 1
+91:[PASS] (AC1/レイヤ5): 暦として不正な月を形式違反として検出: "ファイル名形式違反" を含む
+92:[PASS] (AC1/レイヤ5): 暦として不正な月を形式違反として検出: "ADR-202613011030-01-bad-month.md" を含む
+93:[PASS] (AC2/レイヤ5): 識別子重複を検出し全該当ファイルを列挙: exit 1
+94:[PASS] (AC2/レイヤ5): 識別子重複を検出し全該当ファイルを列挙: "識別子重複違反" を含む
+95:[PASS] (AC2/レイヤ5): 識別子重複を検出し全該当ファイルを列挙: "ADR-202612051026-01" を含む
+96:[PASS] (AC2/レイヤ5): 識別子重複を検出し全該当ファイルを列挙: "ADR-202612051026-01-dup-first.md" を含む
+97:[PASS] (AC2/レイヤ5): 識別子重複を検出し全該当ファイルを列挙: "ADR-202612051026-01-dup-second.md" を含む
+98:[PASS] (AC3/レイヤ5): H1 の識別子部とファイル名の不整合を検出: exit 1
+99:[PASS] (AC3/レイヤ5): H1 の識別子部とファイル名の不整合を検出: "H1 整合違反" を含む
+100:[PASS] (AC3/レイヤ5): H1 の識別子部とファイル名の不整合を検出: "ADR-202612061027-01-h1-mismatch.md" を含む
+101:[PASS] (制約/レイヤ5): front-matter 無しの旧形式ファイル名はスキップされ exit 0: exit 0
+102:[PASS] (制約/レイヤ5): front-matter 無しの旧形式ファイル名はスキップされ exit 0: "ファイル名形式違反" を含まない
+103:[PASS] (制約/レイヤ5): front-matter 無しの旧形式ファイル名はスキップされ exit 0: "H1 整合違反" を含まない
+104:[PASS] (AC2/レイヤ5): 旧規約ファイル名どうしの識別子重複も検出: exit 1
+105:[PASS] (AC2/レイヤ5): 旧規約ファイル名どうしの識別子重複も検出: "識別子重複違反" を含む
+106:[PASS] (AC2/レイヤ5): 旧規約ファイル名どうしの識別子重複も検出: "ADR-20260621-01" を含む
+107:[PASS] (AC2/レイヤ5): 旧規約ファイル名どうしの識別子重複も検出: "ADR-20260621-01-legacy-dup-a.md" を含む
+108:[PASS] (AC2/レイヤ5): 旧規約ファイル名どうしの識別子重複も検出: "ADR-20260621-01-legacy-dup-b.md" を含む
+109:[PASS] (AC1/レイヤ5): ADR- 接頭辞を欠く誤名ADRを形式違反として検出: exit 1
+110:[PASS] (AC1/レイヤ5): ADR- 接頭辞を欠く誤名ADRを形式違反として検出: "ファイル名形式違反" を含む
+111:[PASS] (AC1/レイヤ5): ADR- 接頭辞を欠く誤名ADRを形式違反として検出: "202612091009-01-missing-prefix.md" を含む
+112:[PASS] (AC5/レイヤ5-誤検出回避): front-matter の YAML コメントを H1 と誤認しない: exit 0
+113:[PASS] (AC5/レイヤ5-誤検出回避): front-matter の YAML コメントを H1 と誤認しない: "H1 整合違反" を含まない
+114:[PASS] (AC5/レイヤ5-誤検出回避): 適合 corpus では発火しない: exit 0
+115:[PASS] (AC5/レイヤ5-誤検出回避): 適合 corpus では発火しない: "ファイル名形式違反" を含まない
+116:[PASS] (AC5/レイヤ5-誤検出回避): 適合 corpus では発火しない: "識別子重複違反" を含まない
+117:[PASS] (AC5/レイヤ5-誤検出回避): 適合 corpus では発火しない: "H1 整合違反" を含まない
+118:[PASS] (AC7): ヘッダにレイヤ5の記述が存在する
+119:[PASS] (AC7): ヘッダにファイル名形式検査の違反条件が成文化されている
+120:[PASS] (AC7): ヘッダに識別子重複検査の違反条件が成文化されている
+121:[PASS] (AC7): ヘッダに H1 整合検査の違反条件が成文化されている
+122:[PASS] (AC7): ヘッダにレイヤ5の検査対象集合が成文化されている
+123:[PASS] (AC1-境界): 適合 stem を受理する: ADR-202601010000-01-a
+124:[PASS] (AC1-境界): 適合 stem を受理する: ADR-202612312359-99-boundary-max
+125:[PASS] (AC1-境界): 適合 stem を受理する: ADR-202601011030-10-seq-ten
+126:[PASS] (AC1-境界): 適合 stem を受理する: ADR-202607262019-01-adr-id-timestamp-numbering
+127:[PASS] (AC1-境界): 不適合 stem を拒否する: ADR-202613011030-01-bad-month
+128:[PASS] (AC1-境界): 不適合 stem を拒否する: ADR-202601321030-01-bad-day
+129:[PASS] (AC1-境界): 不適合 stem を拒否する: ADR-202601012430-01-bad-hour
+130:[PASS] (AC1-境界): 不適合 stem を拒否する: ADR-202601011060-01-bad-minute
+131:[PASS] (AC1-境界): 不適合 stem を拒否する: ADR-202601011030-1-short-seq
+132:[PASS] (AC1-境界): 不適合 stem を拒否する: ADR-202601011030-00-zero-seq
+133:[PASS] (AC1-境界): 不適合 stem を拒否する: ADR-202601011030-01-Bad-Upper
+134:[PASS] (AC1-境界): 不適合 stem を拒否する: ADR-202601011030-01-double--hyphen
+135:[PASS] (AC1-境界): 不適合 stem を拒否する: ADR-202601011030-01-trailing-
+136:[PASS] (AC1-境界): 不適合 stem を拒否する: ADR-202601011030-01
+137:[PASS] (AC1-境界): 不適合 stem を拒否する: ADR-2026010110301-01-too-long
