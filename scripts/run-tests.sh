@@ -65,15 +65,55 @@ MSG
     return 1
 }
 
+# 実行すべき .bats の期待リスト。glob だけで組み立てると、ファイルが消えても glob が
+# 静かに縮小するだけで検査が素通りする（76→67 ケースでも「all suites passed」になる）。
+# これは #645 の発端——検知機構は正しいのに走らせる経路が無い——と同型の穴であり、
+# 対象を変えて runner 側に再生産される。期待リストを固定し、glob 結果と**双方向で**
+# 突き合わせる（`lint-adr-surface.bats` が同梱スクリプトの参照ファイルに対して採るのと
+# 同じ方式）。テストファイルを増減させたときは本リストと実行ガイドの対応表を更新する。
+EXPECTED_BATS=(
+    adr-scoping-cases-basic.bats
+    adr-scoping-cases-edge.bats
+    lint-adr-index.bats
+    lint-adr-layers.bats
+    lint-adr-stem.bats
+    lint-adr-surface.bats
+    lint-adr-xref.bats
+    lint-domain-doc.bats
+    next-adr-id.bats
+)
+
 BATS_FILES=()
 collect_bats_files() {
-    local f
+    local f base name problems=()
+
+    local -a actual=()
     for f in "$TESTS_DIR"/*.bats; do
-        [ -f "$f" ] && BATS_FILES+=("$f")
+        [ -f "$f" ] && actual+=("$(basename "$f")")
     done
-    if [ "${#BATS_FILES[@]}" -eq 0 ]; then
-        echo "run-tests: $TESTS_DIR にテストファイルがありません" >&2
-        echo "  空実行を成功扱いにすると、パス誤りが緑として通るため失敗させます" >&2
+
+    # 期待リストにあって実在しないもの（＝消えたファイル）
+    for name in "${EXPECTED_BATS[@]}"; do
+        case " ${actual[*]-} " in
+            *" $name "*) BATS_FILES+=("$TESTS_DIR/$name") ;;
+            *) problems+=("期待するテストファイルが無い: $name") ;;
+        esac
+    done
+
+    # 実在して期待リストに無いもの（＝登録し忘れ。そのファイルは一度も走らない）
+    for base in ${actual[@]+"${actual[@]}"}; do
+        case " ${EXPECTED_BATS[*]} " in
+            *" $base "*) ;;
+            *) problems+=("期待リストに未登録のテストファイル: $base") ;;
+        esac
+    done
+
+    if [ "${#problems[@]}" -gt 0 ]; then
+        echo "run-tests: $TESTS_DIR の構成が期待リストと一致しません" >&2
+        for f in "${problems[@]}"; do
+            echo "  - $f" >&2
+        done
+        echo "  増減が意図したものなら scripts/run-tests.sh の EXPECTED_BATS を更新してください" >&2
         return 1
     fi
     return 0
@@ -140,6 +180,17 @@ for entry in "${SUITES[@]}"; do
     if [ "$name" = "bats" ] && [ "$rc" -eq 0 ] &&
         grep -q 'Executed .* instead of expected' "$log"; then
         rc=1
+    fi
+
+    # 上のガードは bats 自身が食い違いを報告した場合しか効かない。TAP のプラン行と実際の
+    # 報告件数を runner 側でも突き合わせ、0件実行や件数不足が緑に見えることを防ぐ。
+    if [ "$name" = "bats" ] && [ "$rc" -eq 0 ]; then
+        planned=$(sed -n 's/^1\.\.\([0-9][0-9]*\)$/\1/p' "$log" | head -1)
+        reported=$(grep -c '^ok \|^not ok ' "$log")
+        if [ -z "$planned" ] || [ "$planned" -eq 0 ] || [ "$planned" -ne "$reported" ]; then
+            echo "run-tests: bats のプラン行と報告件数が一致しません（plan=${planned:-無し} / reported=$reported）" >&2
+            rc=1
+        fi
     fi
 
     if [ "$rc" -eq 0 ]; then
