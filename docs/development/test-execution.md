@@ -69,9 +69,11 @@ mise exec -- bats --count scripts/tests/*.bats
 テストフレームワークは bats-core であり、版は `mise.toml` で固定している。
 
 ```bash
-mise trust     # 初回のみ。未信頼のまま mise は mise.toml を読まない
+mise trust     # チェックアウトごとに一度。未信頼のまま mise は mise.toml を読まない
 mise install   # bats 1.14.0 が入る
 ```
+
+`mise trust` の信頼はディレクトリ単位で効く。project root を信頼していても、新しく作った worktree は未信頼のままであり、そこで初めて作業するときに再度必要になる（§2 の注意2）。
 
 runner は bats を **`mise exec` 優先・PATH フォールバック**の順で解決する。版固定を効かせつつ、mise を使わない環境での手動実行経路を残すためである。
 
