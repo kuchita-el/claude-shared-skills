@@ -59,20 +59,6 @@ setup_file() {
     common_setup_file
 }
 
-lint_corpus() {
-    run bash "$SUT" "$1"
-}
-
-collect_rc() {
-    local expect="$1" label="$2"
-    if [ "$status" -eq "$expect" ]; then
-        collect_ok "$label"
-    else
-        collect_fail "$label" "exit $expect を期待したが $status / output: $output"
-    fi
-    return 0
-}
-
 # lint-adr.sh 本体を実行せずにパターン定義だけを取り出す
 # （source すると ADR_DIR 不在で exit 2 になるため、定義行を eval する）。
 load_stem_pattern() {
@@ -161,21 +147,21 @@ load_stem_pattern() {
 @test "面④: ファイル名形式違反の検出" {
     collect_init
 
-    lint_corpus "$CORPUS_DIR/invalid/24-filename-format-invalid"
+    run_sut "$CORPUS_DIR/invalid/24-filename-format-invalid"
     collect_rc 1 "(AC1/レイヤ5): 時刻部の桁数不足を形式違反として検出: exit 1"
     collect_contains "$output" "ファイル名形式違反" \
         '(AC1/レイヤ5): 時刻部の桁数不足を形式違反として検出: "ファイル名形式違反" を含む'
     collect_contains "$output" "ADR-2026120-01-bad-digits.md" \
         '(AC1/レイヤ5): 時刻部の桁数不足を形式違反として検出: "ADR-2026120-01-bad-digits.md" を含む'
 
-    lint_corpus "$CORPUS_DIR/invalid/25-filename-calendar-invalid"
+    run_sut "$CORPUS_DIR/invalid/25-filename-calendar-invalid"
     collect_rc 1 "(AC1/レイヤ5): 暦として不正な月を形式違反として検出: exit 1"
     collect_contains "$output" "ファイル名形式違反" \
         '(AC1/レイヤ5): 暦として不正な月を形式違反として検出: "ファイル名形式違反" を含む'
     collect_contains "$output" "ADR-202613011030-01-bad-month.md" \
         '(AC1/レイヤ5): 暦として不正な月を形式違反として検出: "ADR-202613011030-01-bad-month.md" を含む'
 
-    lint_corpus "$CORPUS_DIR/invalid/29-missing-adr-prefix"
+    run_sut "$CORPUS_DIR/invalid/29-missing-adr-prefix"
     collect_rc 1 "(AC1/レイヤ5): ADR- 接頭辞を欠く誤名ADRを形式違反として検出: exit 1"
     collect_contains "$output" "ファイル名形式違反" \
         '(AC1/レイヤ5): ADR- 接頭辞を欠く誤名ADRを形式違反として検出: "ファイル名形式違反" を含む'
@@ -191,7 +177,7 @@ load_stem_pattern() {
 @test "面⑤: 識別子重複の検出" {
     collect_init
 
-    lint_corpus "$CORPUS_DIR/invalid/26-duplicate-adr-id"
+    run_sut "$CORPUS_DIR/invalid/26-duplicate-adr-id"
     collect_rc 1 "(AC2/レイヤ5): 識別子重複を検出し全該当ファイルを列挙: exit 1"
     collect_contains "$output" "識別子重複違反" \
         '(AC2/レイヤ5): 識別子重複を検出し全該当ファイルを列挙: "識別子重複違反" を含む'
@@ -202,7 +188,7 @@ load_stem_pattern() {
     collect_contains "$output" "ADR-202612051026-01-dup-second.md" \
         '(AC2/レイヤ5): 識別子重複を検出し全該当ファイルを列挙: "ADR-202612051026-01-dup-second.md" を含む'
 
-    lint_corpus "$CORPUS_DIR/invalid/28-legacy-duplicate-id"
+    run_sut "$CORPUS_DIR/invalid/28-legacy-duplicate-id"
     collect_rc 1 "(AC2/レイヤ5): 旧規約ファイル名どうしの識別子重複も検出: exit 1"
     collect_contains "$output" "識別子重複違反" \
         '(AC2/レイヤ5): 旧規約ファイル名どうしの識別子重複も検出: "識別子重複違反" を含む'
@@ -220,7 +206,7 @@ load_stem_pattern() {
 @test "面⑥: H1 整合違反の検出" {
     collect_init
 
-    lint_corpus "$CORPUS_DIR/invalid/27-h1-id-mismatch"
+    run_sut "$CORPUS_DIR/invalid/27-h1-id-mismatch"
     collect_rc 1 "(AC3/レイヤ5): H1 の識別子部とファイル名の不整合を検出: exit 1"
     collect_contains "$output" "H1 整合違反" \
         '(AC3/レイヤ5): H1 の識別子部とファイル名の不整合を検出: "H1 整合違反" を含む'
@@ -236,7 +222,7 @@ load_stem_pattern() {
 @test "面⑦: 検査対象集合の制約" {
     collect_init
 
-    lint_corpus "$CORPUS_DIR/valid/07-legacy-filename-skipped"
+    run_sut "$CORPUS_DIR/valid/07-legacy-filename-skipped"
     collect_rc 0 "(制約/レイヤ5): front-matter 無しの旧形式ファイル名はスキップされ exit 0: exit 0"
     collect_not_contains "$output" "ファイル名形式違反" \
         '(制約/レイヤ5): front-matter 無しの旧形式ファイル名はスキップされ exit 0: "ファイル名形式違反" を含まない'
@@ -252,12 +238,12 @@ load_stem_pattern() {
 @test "面⑧: 誤検出の回避" {
     collect_init
 
-    lint_corpus "$CORPUS_DIR/valid/08-frontmatter-yaml-comment"
+    run_sut "$CORPUS_DIR/valid/08-frontmatter-yaml-comment"
     collect_rc 0 "(AC5/レイヤ5-誤検出回避): front-matter の YAML コメントを H1 と誤認しない: exit 0"
     collect_not_contains "$output" "H1 整合違反" \
         '(AC5/レイヤ5-誤検出回避): front-matter の YAML コメントを H1 と誤認しない: "H1 整合違反" を含まない'
 
-    lint_corpus "$CORPUS_DIR/valid/01-mixed-validity"
+    run_sut "$CORPUS_DIR/valid/01-mixed-validity"
     collect_rc 0 "(AC5/レイヤ5-誤検出回避): 適合 corpus では発火しない: exit 0"
     collect_not_contains "$output" "ファイル名形式違反" \
         '(AC5/レイヤ5-誤検出回避): 適合 corpus では発火しない: "ファイル名形式違反" を含まない'

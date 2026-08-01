@@ -116,6 +116,24 @@ assert_preconditions_met() {
     return 0
 }
 
+# 被テスト検査器を引数付きで起動する。結果は bats の $status / $output に入る
+# （`run` は既定で stderr を stdout へ併合する）。stdin は明示的に閉じ、検査器が
+# 誤って端末入力を待つことを防ぐ。
+run_sut() {
+    run bash "$SUT" "$@" </dev/null
+}
+
+# 直前の run_sut の exit code を、渡されたラベルで収集する。
+collect_rc() {
+    local expect="$1" label="$2"
+    if [ "$status" -eq "$expect" ]; then
+        collect_ok "$label"
+    else
+        collect_fail "$label" "exit $expect を期待したが $status / output: $output"
+    fi
+    return 0
+}
+
 # ---- 4. 収集型ヘルパ ----
 #
 # 欠落を1件目で打ち切らず配列へ貯め、collect_finish で全件を1メッセージへ整形する。
@@ -171,6 +189,17 @@ collect_not_contains() {
     else
         collect_fail "$label" "出力に現れてはならない部分文字列がある: $needle"
     fi
+    return 0
+}
+
+# 環境の都合で成立しない検査を、合格として数えつつ TAP のコメント channel（FD 3）へ
+# 明示する。`collect_ok` だけでは成功時に何も出力されず、検査が告知なく消える
+# （root 実行や chmod の効かないファイルシステムでは権限依存の検査が該当する）。
+# bats の `skip` は @test 全体を打ち切るため、収集型のケース内では使えない。
+collect_skipped() {
+    local label="$1" reason="$2"
+    printf '# skipped: %s（%s）\n' "$label" "$reason" >&3
+    collect_ok "$label"
     return 0
 }
 

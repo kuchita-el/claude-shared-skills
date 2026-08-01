@@ -23,6 +23,21 @@ setup_file() {
     common_setup_file
 }
 
+# 退避済みの exit code を、渡されたラベルで収集する。
+# 緑経路でも必ず collect_ok を呼ぶ（失敗時にしか数えない形は、旧ランナーの欠陥として
+# lint-adr-surface.bats が名指ししているものと同型であり、報告の分母を失敗の種類で
+# 揺らがせる）。layers / xref / stem が持つ collect_rc と同じ形である。
+collect_saved_rc() {
+    local key="$1" expect="$2" label="$3" rc
+    rc="$(sut_rc "$key")"
+    if [ "$rc" = "$expect" ]; then
+        collect_ok "$label"
+    else
+        collect_fail "$label" "exit $expect を期待したが $rc / output: $(sut_out "$key")"
+    fi
+    return 0
+}
+
 @test "前提: 被テスト検査器と fixture corpus が存在する" {
     assert_preconditions_met
 }
@@ -31,14 +46,12 @@ setup_file() {
 @test "面①: gen-adr-index が有効 ADR のみを列挙する" {
     collect_init
 
-    local rc out
-    rc="$(sut_rc mixed-validity)"
+    local out
     out="$(sut_out mixed-validity)"
 
     # 旧ランナーはここで早期 return し、以降の7項目を1件も評価しなかった。
-    # 打ち切らず、exit code の逸脱を1件として積んだうえで全項目を評価する。
-    [ "$rc" = "0" ] || collect_fail "AC4: gen-adr-index.sh の exit code" \
-        "expected 0, got $rc / output: $out"
+    # 打ち切らず、exit code を1項目として数えたうえで全項目を評価する。
+    collect_saved_rc mixed-validity 0 "AC4: gen-adr-index.sh の exit code"
 
     collect_contains "$out" "ADR-202601010901-01-sample-decision" \
         "AC4: 有効ADR1件目(sample-decision)が含まれる"
@@ -67,24 +80,16 @@ setup_file() {
 @test "面②: validity 抽出が末尾空白をトリムする（回帰）" {
     collect_init
 
-    local gen_rc gen_out lint_rc lint_out label
-    gen_rc="$(sut_rc whitespace-gen)"
+    local gen_out
     gen_out="$(sut_out whitespace-gen)"
 
-    [ "$gen_rc" = "0" ] || collect_fail "回帰(whitespace-validity): gen-adr-index.sh の exit code" \
-        "expected 0, got $gen_rc / output: $gen_out"
+    collect_saved_rc whitespace-gen 0 "回帰(whitespace-validity): gen-adr-index.sh の exit code"
 
     collect_contains "$gen_out" "ADR-202602010903-01-trailing-space-decision" \
         "回帰(whitespace-validity): validity末尾空白ADRがindexに含まれる"
 
-    lint_rc="$(sut_rc whitespace-lint)"
-    lint_out="$(sut_out whitespace-lint)"
-    label="回帰(whitespace-validity): lint-adr.sh は exit 0（レイヤ2 drift 誤検出なし）"
-    if [ "$lint_rc" = "0" ]; then
-        collect_ok "$label"
-    else
-        collect_fail "$label" "expected 0, got $lint_rc / output: $lint_out"
-    fi
+    collect_saved_rc whitespace-lint 0 \
+        "回帰(whitespace-validity): lint-adr.sh は exit 0（レイヤ2 drift 誤検出なし）"
 
     collect_finish
 }

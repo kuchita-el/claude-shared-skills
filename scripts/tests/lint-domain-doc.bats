@@ -27,11 +27,35 @@ VALID_LABELS=(
     "valid-04|valid/04-mermaid-and-symbols.md (exit=0)"
 )
 
-# invalid 群の期待メッセージ（AND 検査）
+# invalid 群の登録一覧と期待メッセージ（AND 検査）
+INVALID_FIXTURES=("03-failure-reason-as-type.md")
 INVALID_03_PATTERNS=("廃止記法" "失敗理由")
 
 setup_file() {
     common_setup_file
+}
+
+# fixture を静的に列挙する以上、ディレクトリへ足しただけのファイルは登録されるまで一度も
+# 検査されない（glob で組み立てないことの代償）。登録漏れを検査項目として検出する。
+# ケースを動的生成せず既存の面の内側で数えるため、報告ケース数は入力で変動しない
+# （`lint-adr-surface.bats` 面②と同型の被覆検査）。
+collect_fixture_coverage() {
+    local subdir="$1" registered="$2"
+    local prev_nullglob present f base label
+    prev_nullglob="$(shopt -p nullglob || true)"
+    shopt -s nullglob
+    present=("$FIXTURES_DIR/lint-domain-doc/$subdir"/*.md)
+    eval "$prev_nullglob"
+
+    for f in ${present[@]+"${present[@]}"}; do
+        base="$(basename "$f")"
+        label="$subdir fixture が登録されている: $base"
+        case " $registered " in
+            *" $base "*) collect_ok "$label" ;;
+            *) collect_fail "$label" "配列へ未登録のため一度も検査されない" ;;
+        esac
+    done
+    return 0
 }
 
 @test "前提: 被テスト検査器と fixture が存在する" {
@@ -53,6 +77,14 @@ setup_file() {
             collect_fail "$label" "expected exit=0, got=$rc / output: $(sut_out "$key")"
         fi
     done
+
+    # VALID_LABELS の各要素は `<キー>|valid/<ファイル名> (exit=0)` の形であり、
+    # ファイル名を含む。被覆検査へはその文字列をそのまま渡す。
+    local registered=""
+    for entry in "${VALID_LABELS[@]}"; do
+        registered="$registered ${entry#*|valid/}"
+    done
+    collect_fixture_coverage valid "$registered"
 
     collect_finish
 }
@@ -80,6 +112,8 @@ setup_file() {
         collect_fail "$label" \
             "expected exit=1 with msg containing \"${INVALID_03_PATTERNS[*]}\", got exit=$rc (missing=\"$missing\")"
     fi
+
+    collect_fixture_coverage invalid "${INVALID_FIXTURES[*]}"
 
     collect_finish
 }

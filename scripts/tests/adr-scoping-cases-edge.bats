@@ -37,6 +37,15 @@ setup_file() {
     common_setup_file
 }
 
+# パーミッションを変えたディレクトリ・ファイルが残ったままだと、bats の tmpdir 掃除自体が
+# 失敗する。各ケース内でも戻しているが、途中で abort した場合に備えて teardown でも
+# 一括で戻す（teardown は errexit で abort した @test の後でも走る）。
+teardown() {
+    [ -n "${BATS_TEST_TMPDIR:-}" ] || return 0
+    chmod -R u+rwX "$BATS_TEST_TMPDIR" 2>/dev/null || true
+    return 0
+}
+
 # ---------------------------------------------------------------- 判定の部品
 
 sc() {
@@ -312,8 +321,8 @@ check_weird_tmpdir() {
     : >"$writeonly_body"
     chmod 200 "$writeonly_body"
     if [ -r "$writeonly_body" ]; then
-        # root 実行等で読めてしまう環境では成立しない検査なので、その旨を記録して飛ばす
-        collect_ok "$wo_label"
+        # root 実行等で読めてしまう環境では成立しない検査なので、その旨を告知して飛ばす
+        collect_skipped "$wo_label" "chmod 200 でも読める環境のため未実行"
     else
         {
             printf '#!/usr/bin/env bash\n'
@@ -503,8 +512,8 @@ check_weird_tmpdir() {
     cp "$JUDGMENTS_DIR/valid-judgments.tsv" "$uj_dir/j.tsv"
     chmod 000 "$uj_dir/j.tsv"
     if [ -r "$uj_dir/j.tsv" ]; then
-        # root 実行等で読めてしまう環境では成立しない検査なので、その旨を記録して飛ばす
-        collect_ok "$uj_label"
+        # root 実行等で読めてしまう環境では成立しない検査なので、その旨を告知して飛ばす
+        collect_skipped "$uj_label" "chmod 000 でも読める環境のため未実行"
     else
         local uj_ok=1 uj_detail=""
         sc report "$uj_dir/j.tsv" "$CASES_DIR/valid"

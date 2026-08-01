@@ -32,6 +32,15 @@ setup_file() {
     common_setup_file
 }
 
+# パーミッションを変えたディレクトリ・ファイルが残ったままだと、bats の tmpdir 掃除自体が
+# 失敗する。各ケース内でも戻しているが、途中で abort した場合に備えて teardown でも
+# 一括で戻す（teardown は errexit で abort した @test の後でも走る）。
+teardown() {
+    [ -n "${BATS_TEST_TMPDIR:-}" ] || return 0
+    chmod -R u+rwX "$BATS_TEST_TMPDIR" 2>/dev/null || true
+    return 0
+}
+
 # ---------------------------------------------------------------- 判定の部品
 
 # 被テストスクリプトを実行し、標準出力と標準エラーを合わせて $output に、
@@ -292,8 +301,8 @@ copy_valid_case_dir() {
     copy_valid_case_dir "$xo_dir"
     chmod 111 "$xo_dir"
     if [ -r "$xo_dir" ]; then
-        # root 実行等で読めてしまう環境では成立しない検査なので、その旨を記録して飛ばす
-        collect_ok "$xo_label"
+        # root 実行等で読めてしまう環境では成立しない検査なので、その旨を告知して飛ばす
+        collect_skipped "$xo_label" "chmod 111 でも読める環境のため未実行"
     else
         sc validate "$xo_dir"
         if [ "$status" -eq 0 ]; then
@@ -330,7 +339,7 @@ check_unreadable_case_dir() {
     chmod "$mode" "$dir"
     # root は権限ビットを無視して辿れてしまうため、実際に塞がっているときだけ判定する。
     if [ -x "$dir" ]; then
-        collect_ok "$label"
+        collect_skipped "$label" "chmod $mode でも辿れる環境のため未実行"
     else
         sc validate "$dir"
         local ok=1 detail=""
@@ -480,8 +489,8 @@ check_unreadable_case_dir() {
     copy_valid_case_dir "$unread_dir"
     chmod 000 "$unread_dir/prompt-template.md"
     if [ -r "$unread_dir/prompt-template.md" ]; then
-        # root 実行等で読めてしまう環境では成立しない検査なので、その旨を記録して飛ばす
-        collect_ok "$unread_label"
+        # root 実行等で読めてしまう環境では成立しない検査なので、その旨を告知して飛ばす
+        collect_skipped "$unread_label" "chmod 000 でも読める環境のため未実行"
     else
         sc prompt "$DOC" CASE-A1 "$unread_dir"
         local unread_ok=1 unread_detail=""

@@ -28,22 +28,6 @@ setup_file() {
     common_setup_file
 }
 
-# corpus を lint する。結果は bats の $status / $output に入る。
-lint_corpus() {
-    run bash "$SUT" "$1"
-}
-
-# 直前の lint_corpus の exit code を、渡されたラベルで収集する。
-collect_rc() {
-    local expect="$1" label="$2"
-    if [ "$status" -eq "$expect" ]; then
-        collect_ok "$label"
-    else
-        collect_fail "$label" "exit $expect を期待したが $status / output: $output"
-    fi
-    return 0
-}
-
 # 面②の対象。`<corpus 名>|<期待メッセージ>|<exit ラベル>|<メッセージラベル>`
 # 9 fixture は「front-matter 違反の検出」という単一の検査意図であるため1ケースへ束ね、
 # fixture ごとの旧ラベルは引数として保持する。
@@ -75,7 +59,7 @@ LAYER1_INVALID_CASES=(
 # （旧形式スキップ・却下/提案中/廃止済みが合法であることを含む）
 @test "面①: レイヤ1 valid corpus が exit 0" {
     collect_init
-    lint_corpus "$CORPUS_DIR/valid/01-mixed-validity"
+    run_sut "$CORPUS_DIR/valid/01-mixed-validity"
     collect_rc 0 "AC1: valid corpus(01-mixed-validity) は exit 0"
     collect_finish
 }
@@ -87,7 +71,7 @@ LAYER1_INVALID_CASES=(
     local entry name needle rc_label msg_label
     for entry in "${LAYER1_INVALID_CASES[@]}"; do
         IFS='|' read -r name needle rc_label msg_label <<<"$entry"
-        lint_corpus "$CORPUS_DIR/invalid/$name"
+        run_sut "$CORPUS_DIR/invalid/$name"
         # 1件目で打ち切らない。9 fixture を同時に壊しても1回の実行で全件出す。
         collect_rc 1 "$rc_label"
         collect_contains "$output" "$needle" "$msg_label"
@@ -99,7 +83,7 @@ LAYER1_INVALID_CASES=(
 # ADR_DIR が存在しない場合は exit 2（fixture 不要、不在パスを渡すだけ）
 @test "面③: レイヤ1 対象ディレクトリ不在" {
     collect_init
-    lint_corpus "$CORPUS_DIR/invalid/__nonexistent__"
+    run_sut "$CORPUS_DIR/invalid/__nonexistent__"
     collect_rc 2 "AC1: ディレクトリ不在は exit 2"
     collect_finish
 }
@@ -108,7 +92,7 @@ LAYER1_INVALID_CASES=(
 @test "面④: レイヤ1 複数違反の同時報告" {
     collect_init
 
-    lint_corpus "$CORPUS_DIR/invalid/06-multi-violation"
+    run_sut "$CORPUS_DIR/invalid/06-multi-violation"
     collect_rc 1 "AC1(multi): exit 1"
     collect_contains "$output" \
         "ADR-202606011006-01-multi-violation-status-missing.md: status が空です" \
@@ -126,7 +110,7 @@ LAYER1_INVALID_CASES=(
 @test "面⑤: レイヤ2 index drift の検出" {
     collect_init
 
-    lint_corpus "$CORPUS_DIR/invalid/04-index-drift"
+    run_sut "$CORPUS_DIR/invalid/04-index-drift"
     collect_rc 1 "AC3: index-drift corpus は exit 1"
     collect_contains "$output" "index 同期違反" "AC3: index-drift corpus の同期違反メッセージ"
 
@@ -136,7 +120,7 @@ LAYER1_INVALID_CASES=(
 # valid 01-mixed-validity はレイヤ2 追加後も exit 0 を維持すること
 @test "面⑥: レイヤ2 追加後も valid が通り続ける" {
     collect_init
-    lint_corpus "$CORPUS_DIR/valid/01-mixed-validity"
+    run_sut "$CORPUS_DIR/valid/01-mixed-validity"
     collect_rc 0 "AC3: valid corpus(01-mixed-validity) はレイヤ2追加後も exit 0"
     collect_finish
 }
@@ -148,7 +132,7 @@ LAYER1_INVALID_CASES=(
 @test "面⑦: レイヤ3 相互参照の欠落検出" {
     collect_init
 
-    lint_corpus "$CORPUS_DIR/invalid/05-xref-missing"
+    run_sut "$CORPUS_DIR/invalid/05-xref-missing"
     collect_rc 1 "AC2: xref-missing corpus は exit 1"
     collect_contains "$output" "相互参照違反" "AC2: xref-missing corpus の相互参照違反メッセージ"
 
@@ -158,7 +142,7 @@ LAYER1_INVALID_CASES=(
 # 相互参照検証専用の valid corpus（双方向一致ペア＋Amends凍結例）は exit 0
 @test "面⑧: レイヤ3 正しい相互参照が通る" {
     collect_init
-    lint_corpus "$CORPUS_DIR/valid/02-xref-valid"
+    run_sut "$CORPUS_DIR/valid/02-xref-valid"
     collect_rc 0 "AC2: xref-valid corpus(02-xref-valid) は exit 0"
     collect_finish
 }
@@ -166,7 +150,7 @@ LAYER1_INVALID_CASES=(
 # valid 01-mixed-validity はレイヤ3 追加後も exit 0 を維持すること
 @test "面⑨: レイヤ3 追加後も validity 混在 corpus が通る" {
     collect_init
-    lint_corpus "$CORPUS_DIR/valid/01-mixed-validity"
+    run_sut "$CORPUS_DIR/valid/01-mixed-validity"
     collect_rc 0 "AC2: valid corpus(01-mixed-validity) はレイヤ3追加後も exit 0"
     collect_finish
 }
@@ -177,7 +161,7 @@ LAYER1_INVALID_CASES=(
 @test "面⑩: レイヤ3 逆向き参照の欠落検出" {
     collect_init
 
-    lint_corpus "$CORPUS_DIR/invalid/07-xref-reverse-missing"
+    run_sut "$CORPUS_DIR/invalid/07-xref-reverse-missing"
     collect_rc 1 "PRレビュー反映(reverse-missing): exit 1"
     collect_contains "$output" "相互参照違反（逆方向" \
         "PRレビュー反映(reverse-missing): 逆方向と分かる違反メッセージ"
@@ -190,7 +174,7 @@ LAYER1_INVALID_CASES=(
 # 入れ子（インデント）バレット `  - Supersedes: ...` を持つ双方向一致ペアは誤検知せず exit 0
 @test "面⑪: レイヤ3 ネストした箇条書きの参照が通る" {
     collect_init
-    lint_corpus "$CORPUS_DIR/valid/02-xref-valid"
+    run_sut "$CORPUS_DIR/valid/02-xref-valid"
     collect_rc 0 \
         "PRレビュー反映(nested-bullet): 入れ子バレット双方向一致ペアを含む02-xref-validはexit 0"
     collect_finish
@@ -204,7 +188,7 @@ LAYER1_INVALID_CASES=(
 # AC1: リスト値の正常分割（A・B 両ファイル存在＋双方が本文逆参照）は違反0件で exit 0
 @test "面⑫: list-aware リスト値の正常分割が exit 0" {
     collect_init
-    lint_corpus "$CORPUS_DIR/valid/04-xref-list"
+    run_sut "$CORPUS_DIR/valid/04-xref-list"
     collect_rc 0 "(AC1): リスト値正常分割は exit 0: exit 0"
     collect_finish
 }
@@ -214,7 +198,7 @@ LAYER1_INVALID_CASES=(
 @test "面⑬: list-aware forward 逆参照欠落は違反側のエッジのみを報告する" {
     collect_init
 
-    lint_corpus "$CORPUS_DIR/invalid/08-xref-list-forward-missing"
+    run_sut "$CORPUS_DIR/invalid/08-xref-list-forward-missing"
     collect_rc 1 "(AC2-forward): 後継Bのみ forward 違反: exit 1"
     collect_contains "$output" "相互参照違反" \
         '(AC2-forward): 後継Bのみ forward 違反: "相互参照違反" を含む'
@@ -231,7 +215,7 @@ LAYER1_INVALID_CASES=(
 @test "面⑭: list-aware reverse 列挙欠落は非列挙の第三 ADR のみを報告する" {
     collect_init
 
-    lint_corpus "$CORPUS_DIR/invalid/09-xref-list-reverse-missing"
+    run_sut "$CORPUS_DIR/invalid/09-xref-list-reverse-missing"
     collect_rc 1 "(AC3-reverse): 非列挙Cのみ reverse 違反: exit 1"
     collect_contains "$output" "相互参照違反（逆方向" \
         '(AC3-reverse): 非列挙Cのみ reverse 違反: "相互参照違反（逆方向" を含む'
@@ -248,7 +232,7 @@ LAYER1_INVALID_CASES=(
 @test "面⑮: list-aware 後継ファイル不在はリスト要素単位の違反になる" {
     collect_init
 
-    lint_corpus "$CORPUS_DIR/invalid/10-xref-list-forward-file-missing"
+    run_sut "$CORPUS_DIR/invalid/10-xref-list-forward-file-missing"
     collect_rc 1 "(AC2-file-missing): 後継Bのみ参照先不在違反: exit 1"
     collect_contains "$output" "ADR-202610121010-01-xref-list-fm-missing-b" \
         '(AC2-file-missing): 後継Bのみ参照先不在違反: "ADR-202610121010-01-xref-list-fm-missing-b" を含む'
@@ -268,12 +252,12 @@ LAYER1_INVALID_CASES=(
 @test "面⑯: list-aware 空要素の扱い" {
     collect_init
 
-    lint_corpus "$CORPUS_DIR/invalid/11-xref-list-empty-superseded"
+    run_sut "$CORPUS_DIR/invalid/11-xref-list-empty-superseded"
     collect_rc 1 "(空要素のみ): 有効な参照先stem 0件を違反として検出: exit 1"
     collect_contains "$output" "有効な参照先 stem がありません" \
         '(空要素のみ): 有効な参照先stem 0件を違反として検出: "有効な参照先 stem がありません" を含む'
 
-    lint_corpus "$CORPUS_DIR/valid/05-xref-list-trailing-comma"
+    run_sut "$CORPUS_DIR/valid/05-xref-list-trailing-comma"
     collect_rc 0 "(末尾カンマ): 末尾カンマは無害で exit 0: exit 0"
 
     collect_finish
