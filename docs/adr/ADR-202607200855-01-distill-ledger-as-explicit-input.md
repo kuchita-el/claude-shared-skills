@@ -37,7 +37,7 @@ ADR-202607112231-01 決定3 の開示義務に従い、逐語 restate に際し�
 
 ### 参照の時点固定
 
-原 ADR の Context は `personal-store-spec.md`・`distill-procedure.md`・`distill/SKILL.md` の当時の記述を現在形で参照していた。ADR-202607191825-01 決定4（記録の参照原則）に従い、本 ADR ではこれらの可変文書を現在の参照先として指さない。本 ADR が拡張の対象とした入力契約は、原 ADR 起票時点（2026-06-29）において「入力源は正準パス `captures.md` のみ。in-repo の `plugins/growth/.local/` は走査しない」と定められていた、という時点を固定した事実として記録する。
+原 ADR の Context は `personal-store-spec.md`・`distill-procedure.md`・`distill/SKILL.md` の当時の記述を現在形で参照していた。ADR-202608011355-01 決定1（記録の参照原則）に従い、本 ADR ではこれらの可変文書を現在の参照先として指さない。本 ADR が拡張の対象とした入力契約は、原 ADR 起票時点（2026-06-29）において「入力源は正準パス `captures.md` のみ。in-repo の `plugins/growth/.local/` は走査しない」と定められていた、という時点を固定した事実として記録する。
 
 決定の背景は #417 にある。growth の capture/distill が生成した store を評価したところ、`candidates.md` が環境摩擦と既知ルールの再発見で希釈されており、本当に学びとなる判断誤りが候補の中に埋もれていた。台帳突合と再発の知見化は、distill が既存ルール台帳の現在の状態を読むことを必要とし、これは入力契約の拡大にあたる。
 

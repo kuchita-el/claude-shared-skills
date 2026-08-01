@@ -16,7 +16,7 @@ plan 段階で「人間判断が必要な観点」を plan ドキュメントに
 - [#109](https://github.com/kuchita-el/claude-shared-skills/issues/109)（CLOSED）「スキル間インターフェース契約ファイルの設計・作成」の規約（`docs/delivery-workflow/plan-dev-contract.md`）を踏襲し、新規規約フレームワークは発明しない
 - [ADR-202605131437-02](./ADR-202605131437-02-review-contract-in-plan-issue.md) で plan-issue 側に移行したレビュー契約と並ぶ、plan-issue 側で確定する語彙資産として位置付ける
 
-関連 Issue [#319](https://github.com/kuchita-el/claude-shared-skills/issues/319) 起票時（2026-06-21）に種別 spike / サイズ Medium / Ready 判定済み。ADR-202607191825-01 決定1 の粒度判定基準4項目すべてに該当（後戻りコスト高・複数モジュール波及・採用理由揮発リスク・自動強制不可）するため ADR 化する。
+関連 Issue [#319](https://github.com/kuchita-el/claude-shared-skills/issues/319) 起票時（2026-06-21）に種別 spike / サイズ Medium / Ready 判定済み。ADR-202608011350-01 決定1 の粒度判定基準4項目すべてに該当（後戻りコスト高・複数モジュール波及・採用理由揮発リスク・自動強制不可）するため ADR 化する。
 
 ## Decision
 
