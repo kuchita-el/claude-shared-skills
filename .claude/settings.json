@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(bash scripts/lint-domain-doc.sh*)"
+      "Bash(bash scripts/lint-domain-doc.sh*)",
+      "Bash(bash scripts/run-tests.sh*)"
     ]
   },
   "hooks": {
