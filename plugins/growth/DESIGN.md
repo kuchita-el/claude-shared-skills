@@ -273,7 +273,7 @@ dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 
 9. **バージョニング規約と進捗の単一出典**:
    - **Phase = minor**。`plugin.json` の version は Phase 完了ごとに minor を上げる（Phase N 完了 → `0.N.0`、Phase 1 → 0.1.0 … Phase 6 → 0.6.0）。Phase 0 は plugin.json 未登録（marketplace / plugin.json は Phase 1 で同時登録）。Phase 内のバグ修正・スキル調整・配布物フォーマットの破壊的変更は patch。pre-1.0 は配布物（`learnings.md` / `captures.md` スキーマ）フォーマットの非安定を semver 的に正しく表現する。ループが Capture→Retire まで一巡し実運用で安定したら 1.0.0。version の正は `plugin.json`。
    - **進捗の単一出典＝GitHub Issue / PR**。実装進捗の正は Issue / PR（Phase 1 = #343–#348、Phase 2–6 エピック = #349–#353）に置く。**DESIGN.md は進捗を一切保持しない**——§5 ロードマップは Phase 構成と version 対応（設計属性）のみを持ち、進捗状態の列を持たない。§ステータスも現在地を書かず Issue / PR を参照する。チャット文脈・「次の一手」は memory `project_growth_plugin` が担う。三者の役割を分離し、従来 §ステータス・§5「状態」列・memory の 3 箇所に分散していた進捗記述を SoT 一本化する。DESIGN 側に写しを持たないため、Phase 遷移時の更新漏れによる乖離（origin/main で実際に「実装は未着手」のまま放置されていた事象）が構造的に起きない。
-   - **ADR 化は不要**。運用ルールであり後戻りコストは限定的。本決定事項＋§5 の記述で足り、§7 の ADR 化候補には挙げない（ADR 運用ルールの粒度判定 3 点未満）。
+   - **ADR 化は不要**。運用ルールであり後戻りコストは限定的。本決定事項＋§5 の記述で足り、ADR 化候補として追跡しない（ADR 運用ルールの粒度判定 3 点未満）。
 
 2026-07-05 に混在ゾーン（1観測が両知識型にまたがる領域）の partition 硬度を #440 で確定した。
 
@@ -310,7 +310,7 @@ dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 
      - **(4) ADR-202607050028-01 の能動推論不採用＝requisite variety（検出器2本維持）**: 非排他 tag 表現は検出器2本（教示信号検出器／予測誤差検出器）・知識型2系統（`behavior-diff`／`decision-record`）を単一検出器・単一値へ畳み戻さない。両知識型が `tags` 多値 set で併存表現され、variety を減らさない。
      - **軸区別（J3・前提確認クリア）**: #440 の混在ゾーン（**知識型軸**: behavior-diff / decision-record）は、distill-procedure.md §4.1 の既存「**混在クラスタ**」（**痕跡種別軸**: user-utterance / tool-result）と直交する別概念。前者は「1観測が両知識型にまたがる」、後者は「痕跡種別の異なる観察が1仮説へ畳まれる」。両者は独立軸であり互いを置換しない。
 
-   - **ADR 記録＝ADR-202607051220-01 の Amend（AC5・J2 確定）**: `manage-adr` の粒度判定基準（`plugins/adr/skills/manage-adr/references/adr-scoping.md`）の4項目に本決定を照らすと、①後戻りコスト高（`type`↔`tags` はスキーマ・distill・promote・spec へ波及し事後変更は配布物フォーマットの破壊的変更）②複数モジュール波及（personal-store-spec.md・distill・promote・candidates.md）③採用理由揮発（tag を採る理由＝二重損失回避・直交性は時間で忘れやすい）④ツール自動強制不可（enum/set の設計選択は linter で強制できない）——**4点、ADR 級**。記録形式は新規 ADR ではなく **ADR-202607051220-01 の Amend で確定**（J2）。partition 硬度は同 ADR decision 2 が #440 へ委譲した未決事項であり、同一系譜への in-place 追補が自然（新規 ADR は起票しない）。この in-place 追補は現行の3段構え編集機構（ADR-202607261501-01 決定1）では非core改訂（ADR-202607051220-01 を直接編集し `## 変更履歴` に追記）に相当する（旧 Amend 機構は決定4 で廃止）。ADR-202607051220-01 decision 2 へ確定を追補し、同 ADR「関連ADR」節へ #440 逆参照を併記（`Amends:`/`Amended by:` の代替。Status は Accepted 維持）、本決定事項10 と相互参照を張った。
+   - **ADR 記録＝ADR-202607051220-01 の Amend（AC5・J2 確定）**: `manage-adr` の粒度判定基準の4項目に本決定を照らすと、①後戻りコスト高（`type`↔`tags` はスキーマ・distill・promote・spec へ波及し事後変更は配布物フォーマットの破壊的変更）②複数モジュール波及（personal-store-spec.md・distill・promote・candidates.md）③採用理由揮発（tag を採る理由＝二重損失回避・直交性は時間で忘れやすい）④ツール自動強制不可（enum/set の設計選択は linter で強制できない）——**4点、ADR 級**。記録形式は新規 ADR ではなく **ADR-202607051220-01 の Amend で確定**（J2）。partition 硬度は同 ADR decision 2 が #440 へ委譲した未決事項であり、同一系譜への in-place 追補が自然（新規 ADR は起票しない）。この in-place 追補は現行の3段構え編集機構（ADR-202607261501-01 決定1）では非core改訂（ADR-202607051220-01 を直接編集し `## 変更履歴` に追記）に相当する（旧 Amend 機構は決定4 で廃止）。ADR-202607051220-01 decision 2 へ確定を追補し、同 ADR「関連ADR」節へ #440 逆参照を併記（`Amends:`/`Amended by:` の代替。Status は Accepted 維持）、本決定事項10 と相互参照を張った。
 
 ### 実装時に一次確認する事項
 
@@ -321,18 +321,11 @@ dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 
 
 ## 7. ADR 化候補
 
-本構想から切り出しうる確定判断。ADR 運用ルールの粒度判定（後戻りコスト高 / 複数モジュール波及 / 採用理由揮発 / ツール自動強制不可、3点以上で ADR 化）に照らした暫定評価を付す。起票タイミングは「まず本ドキュメントに判断を書き、横断再発または実装 PR 時に昇格」とする。
+本節が持っていた候補表は**配布元へ移設した**（#652）。本リポジトリの Issue 番号と ADR ファイルを名指す配布元固有の管理情報であり、配布物と配布元の境界規約に照らして配布物へ置かない資産にあたるため。移設先は本リポジトリの開発ドキュメント配下にあり、配布物からはパスで指さない（参照方向を配布元 → 配布物の一方向に保つ）。
 
-| 候補 | 粒度判定（暫定） | 昇格タイミング |
-|---|---|---|
-| 内省機能を dev-workflow に混ぜず独立プラグイン growth として分離 | 後戻りコスト高・横断・却下選択肢あり・自動強制不可 → 3点以上、ADR 級 | 昇格済み: [ADR-202606261847-01-growth-plugin-separation](../../docs/adr/ADR-202606261847-01-growth-plugin-separation.md)（#343 のスケルトン作成 PR で昇格） |
-| 学びの共有は配布物（git ファイル）を本体とし、Issue は前段の品質ゲートとする | 横断・採用理由揮発 → 要再判定 | 再発時 |
-| 配布ファイルの内容モデル（2面 origin/consumer・fan-out/fan-in 分離・配布の2空間・1欄スキーマ・整理＝物理除去） | 後戻りコスト高・複数モジュール波及・採用理由揮発・自動強制不可 → 3点以上、ADR 級 | #344 で DESIGN.md＋[`references/learning-store-spec.md`](references/learning-store-spec.md) に記述。横断再発または別キャリアへの波及時に昇格（現状は spec 参照で足りる） |
-| 二段ゲート（保存=自動 / 仕組み化=レビュー） | 整合確認済み（2026-06-26）。既存の自律度 L0–L3／承認ゲート軸（ADR-202606012328-01 / ADR-202606020032-01）で表現でき矛盾なし。新規 ADR 不要 | — |
-| 活性化モデル（時間軸折衷）＋発火観測（本文スキル経由の使用台帳・fan-in） | 後戻りコスト高・複数モジュール波及・採用理由揮発 → 3点以上、ADR 級。ただし現状は §6 決定事項7＋[`references/learning-store-spec.md`](references/learning-store-spec.md) の記述で足りる | #380 で DESIGN.md §6＋spec に記述。Phase 3 実装 PR 時に昇格候補 |
-| ライブ相乗り解析 UX の適否（mid-session 割り込み型を不採用、境界・別時間型へ再定義） | 後戻りコスト低〜中・複数モジュール波及中・採用理由揮発高・自動強制不可 → 2〜3点。現状は §6 決定事項4「4-補」の記述で足りる | #381 で DESIGN.md §6 に記述。Phase 3 実装 PR 時に昇格候補（争点は (b-2) deliver 層の just-in-time 提示） |
-| 学習シグナルの復元不能性基準と distill 出力2系統分離（原理3 精緻化・判断知/摩擦知の2軸・decision-record） | 後戻りコスト高・複数モジュール波及・採用理由揮発・自動強制不可 → 4点、ADR 級 | 昇格済み: [ADR-202607010734-01-learning-signal-recoverability-and-output-forms](../../docs/adr/ADR-202607010734-01-learning-signal-recoverability-and-output-forms.md)（#432 のドッグフーディングを再発契機として昇格） |
-| 混在ゾーンの partition 硬度＝非排他 tag（`type`→`tags` 改称・distill evidence-gated 分岐。決定事項10） | 後戻りコスト高・複数モジュール波及・採用理由揮発・自動強制不可 → 4点、ADR 級 | 記録済み（Amend）: [ADR-202607051220-01](../../docs/adr/ADR-202607051220-01-growth-learning-vocabulary-frame.md) decision 2 へ #440 で追補（同 ADR が委譲した partition 硬度の確定。新規 ADR は起票せず自己 Amend） |
+節番号は据え置く。本節を名指す既存の記録（ADR-202606261847-01 / ADR-202607010734-01 の Context）は当時の所在を述べたものであり、遡及して改めない。
+
+昇格メカニズム（まず本ドキュメントに判断を書き、横断再発または実装 PR 時に ADR へ昇格する）自体は変わらず、その所在は本書冒頭「この文書の位置づけ」が持つ。
 
 ---
 
@@ -347,7 +340,7 @@ dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 
 | Issue を前段の品質ゲートに | memory 直行 / Issue を省いて PR 直行のみ | 未検証の学びをそのまま配布する危険。再現集約・議論の場が要る |
 | git ファイルを配布の本体に | Issue だけで共有 | Issue は各 Claude Code に届かない。配布は committed ファイルでしか起きない |
 | 独立プラグイン growth | dev-workflow に混在 | 関心が異なる（開発ワークフロー vs 学習メタ機構）。常時ロードの分離・単独導入のため |
-| plugins/growth/ 同梱 | docs/development/ に設計ドキュメント | 複数プラグイン文書の混在を避け、設計とコードをコロケーション。DESIGN.md は自動ロードされず配布の害がない |
+| plugins/growth/ 同梱 | docs/development/ に設計ドキュメント | 複数プラグイン文書の混在を避け、設計とコードをコロケーション。DESIGN.md は自動ロードされず配布の害がない（**射程注記**: 却下したのは設計文書本体の移設である。配布元固有の管理表〔旧 §7 の候補表〕の配置は本行の判断ではなく配布境界規約の判断軸で決まり、#652 で配布元へ移した。「配布の害」を自動ロードの有無で測る本行の見方と、参照の解決性・配布元固有データで測る同規約の見方は別軸） |
 | ローカル → 検証後 committed | 最初から committed | 未検証ノイズがリポジトリを汚す |
 | 提示を境界・別時間に置く自発解析（境界・別時間型） | mid-session 割り込み型のライブ相乗り解析 UX | 即時性は precision にも recall にも寄与せず（観測はログ事後解析＝決定事項2）、妨害コストは実在。横断確認は構造的にバッチで非両立。検証済みナレッジの just-in-time 提示 (b-2) は capture/reflect でなく deliver 層の別論点（決定事項4「4-補」/ #381） |
 
@@ -356,5 +349,5 @@ dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 
 ## 関連
 
 - 既存 ADR 群（自己評価バイアス対策・自律度ゲート）の逆引き: 各 ADR 本文（Context / Decision）を参照（意味的逆引き索引は廃止、各 ADR 本文で代替＝ADR-202607261503-02 決定1）
-- dev-workflow プラグイン: `plugins/dev-workflow/`
+- dev-workflow プラグイン（開発ワークフローのスキル群。本プラグインとは独立に配布され、依存関係を持たない）
 - 完了判定の原則（早期収束防止）: SessionStart hook 注入の `completion-judgment.md`
