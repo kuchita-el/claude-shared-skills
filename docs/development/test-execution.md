@@ -26,9 +26,9 @@ runner は commit ゲート（`scripts/hooks/pre-commit-gate.sh`）から起動�
 
 ### git worktree で作業する場合
 
-本リポジトリの作業は git worktree 上で行うことが多い。ここには**フックの起動と検査対象の解決という2段の落とし穴**がある。
+本リポジトリの作業は git worktree 上で行うことが多い。**この経路でも自動起動は働き、検査対象になるのは worktree のツリーである**（実測は §8）。ただしそれが成り立つのはゲート側の仕掛けによるものであり、worktree 固有の注意も2点ある。
 
-**1段目（検査対象の解決）はゲート側で塞いである。** `.claude/settings.json` のフックは `${CLAUDE_PROJECT_DIR}` 配下のゲートを起動し、同変数は project root（既定のチェックアウト）を指す。ゲートがそのまま `CLAUDE_PROJECT_DIR` を検査対象にすると、走るのは**コミット対象ではない別のツリー**に対する検査になり、project root が緑なら worktree の変更内容と無関係に通ってしまう。そこでゲートは「コミットが実際に走る git コンテキスト」から検査対象を解決する。候補を上から順に試し、git のトップレベルが取れ、かつそこに runner が在る最初のものを採る。
+**検査対象はゲートが git コンテキストから解決する。** `.claude/settings.json` のフックは `${CLAUDE_PROJECT_DIR}` 配下のゲートを起動し、同変数は project root（既定のチェックアウト）を指す。ゲートがそのまま `CLAUDE_PROJECT_DIR` を検査対象にすると、走るのは**コミット対象ではない別のツリー**に対する検査になり、project root が緑なら worktree の変更内容と無関係に通ってしまう。そこでゲートは「コミットが実際に走る git コンテキスト」から検査対象を解決する。候補を上から順に試し、git のトップレベルが取れ、かつそこに runner が在る最初のものを採る。
 
 1. PreToolUse の JSON が載せる `cwd`（ツール実行時の作業ディレクトリ）
 2. フックプロセス自身の cwd
@@ -36,7 +36,11 @@ runner は commit ゲート（`scripts/hooks/pre-commit-gate.sh`）から起動�
 
 どの候補でも解決できなければ exit 2 とする（fail-closed）。runner の実在を条件に含めるのは、無関係なリポジトリで作業しているときに候補1・2 がそちらを指しても、本ゲートがその commit を巻き込んで止めないためである。
 
-**2段目（フックの起動そのもの）は塞げていない。** worktree で開いたセッションからは、そもそもフックが worktree 側のゲートを呼ばないことがある（診断用に「必ず exit 2」で終わるゲートを worktree へ置いても commit が通ることを実測した。フックのコマンドが `${CLAUDE_PROJECT_DIR}` 配下の実体を指すためである）。**この経路では自動起動が働かないため、runner の手動実行が要る。**
+実測では、この解決の結果として worktree のツリーが検査対象になった。候補1が project root を指していれば project root が選ばれるはずである（git のトップレベルであり runner も在るため、候補2 へ進まない）。そうならなかったことから、**候補1は project root を指していない**と言える。候補1と候補2 のどちらで解決したかは切り分けていない。観測される結果はどちらでも同じであるため、機構は断定しない。
+
+**注意1: 起動されるゲートの実体は project root 側のものである。** フックのコマンドが `${CLAUDE_PROJECT_DIR}` 配下を指すため、worktree 側の `scripts/hooks/pre-commit-gate.sh` は呼ばれない（診断用に「必ず exit 2」で終わるゲートを worktree へ置いても commit が通ることを実測した）。検査対象は worktree でも、**判定を下すコードは project root のものである**。したがってゲート自体を改修する場合、その変更は自動経路では検証されない。stdin へ PreToolUse の JSON を投入する形で手元から確かめる（コマンドの形は §8）。
+
+**注意2: worktree ごとに `mise trust` が要る。** `mise` の信頼はディレクトリ単位であり、project root を信頼していても新しく作った worktree は未信頼のままである。この状態では bats を解決できず、runner が非0で終わり、ゲートが exit 2 で commit をブロックする。stderr に導入（`mise install`）と信頼（`mise trust`）の案内が出るので、それに従う。fail-closed が意図どおり働いた結果であり、異常ではない。
 
 `plugins/adr/hooks/adr-commit-gate` は別のゲートであり、`lint-adr.sh` を `docs/adr` へ掛けるだけで runner を呼ばない。この役割分離は意図的なものであり、本経路とは独立している。
 
@@ -205,5 +209,10 @@ FAILED: 1/2 suites (6s) -- bats
     - 期待リストを復元 → runner が exit 0、ゲートが exit 0。
   - この失敗は Issue #645 の発端となった検知漏れ（`manage-adr/references/` へファイルが増えたのに期待リストへ未登録）と同一の型である。
   - **検査対象ツリーの解決**（§2「git worktree で作業する場合」）: JSON の `cwd` に worktree を、`CLAUDE_PROJECT_DIR` に project root を与えた状態で、worktree 側だけを壊すと exit 2、戻すと exit 0 になることを確認。`cwd` を持たない JSON・git 外の cwd・runner を持たないツリーの各分岐についても、フォールバック順と fail-closed（exit 2）を確認した。
-  - **観測方法についての注記**: 上記のゲート観測は PreToolUse の JSON を stdin へ直接投入する形で行った。ハーネス経由（Claude Code の Bash ツールで実際に `git commit` を打つ形）の実地確認は、git worktree 内のセッションからは取れない（§2 の2段目）。ゲートが受け取る入力は PreToolUse の JSON そのものであり、投入経路はゲートの判定に影響しないため、ブロック挙動の証拠としては等価である。
+  - **観測方法についての注記**: 上記のゲート観測は PreToolUse の JSON を stdin へ直接投入する形で行った。ゲートが受け取る入力は PreToolUse の JSON そのものであり、投入経路はゲートの判定に影響しないため、ブロック挙動の証拠としては等価である。ハーネス経由での実地確認は #653 で別途行った（下記）。
   - **bats 解決失敗時の fail-closed**: `mise` も PATH 上の `bats` も見えない環境（`env -i PATH=/usr/bin:/bin`）で runner を起動すると exit 1 で終わり、導入手順（`mise install` / `mise trust`）が stderr に出ることを確認。
+- **2026-08-01（#653）**: worktree セッションからハーネス経由（Claude Code の Bash ツールで `git commit --allow-empty` を打つ形）で観測した。`EnterWorktree` で入った worktree から2回実施し、いずれも同じ結果。
+  - 観測手段は2系統。`ps -eo pid=,args=` を 0.05 秒間隔でポーリングして `pre-commit-gate.sh` / `run-tests.sh` / `bats` のプロセスを拾い `readlink /proc/<pid>/cwd` で cwd を読む方法と、worktree 側の `scripts/run-tests.sh` 冒頭にのみ `$PWD` を追記するマーカーを一時的に仕込む方法（観測後に `git restore` で戻す）。
+  - **ゲートは発火する**。起動されたのは project root 側の `pre-commit-gate.sh` であり、その配下で `bash scripts/run-tests.sh` が **cwd=worktree** で走った。worktree 側マーカーも `PWD=worktree` で発火した。観測期間中、cwd が project root のプロセスは1つも現れていない。所要は約6.2秒（プロセス初出から最終出現まで）、commit は exit 0 で通った。
+  - **未信頼 worktree での fail-closed**: 1回目は worktree の `mise.toml` が未信頼で bats を解決できず、runner が非0、ゲートが exit 2 で commit をブロックした。`mise trust --show` で project root=trusted / worktree=untrusted を確認。`mise trust` 後に上記の緑になった。
+  - この観測により、#645 時点の §2 の記述（worktree では自動起動が働かないため手動実行が要る）が誤りであることが確定した。
