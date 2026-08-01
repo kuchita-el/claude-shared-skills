@@ -153,7 +153,13 @@ for entry in "${SUITES[@]}"; do
         printf '[%-5s] %-20s ... FAILED (exit %d, %ds)\n' "$kind" "$name" "$rc" "$elapsed"
         failed_names+=("$name")
         # 失敗したスイートの出力のみ展開する。行頭にスイート名を添えて出所を明示する。
-        sed "s/^/    $name| /" "$log"
+        # bats は TAP で通過ケースも1行ずつ出すため、成功行だけは畳む（プラン行・失敗行・
+        # 診断行は残す）。ゲート経由では stderr だけが渡るので、埋もれさせない。
+        if [ "$name" = "bats" ]; then
+            grep -v '^ok ' "$log" | sed "s/^/    $name| /"
+        else
+            sed "s/^/    $name| /" "$log"
+        fi
     fi
 done
 
