@@ -26,7 +26,7 @@ runner は commit ゲート（`scripts/hooks/pre-commit-gate.sh`）から起動�
 
 ### git worktree で作業する場合
 
-本リポジトリの作業は git worktree 上で行うことが多い。**この経路でも自動起動は働き、検査対象になるのは worktree のツリーである**（実測は §8）。ただしそれが成り立つのはゲート側の仕掛けによるものであり、worktree 固有の注意も2点ある。
+本リポジトリの作業は git worktree 上で行うことが多い。**この経路でも自動起動は働き、検査対象になるのは worktree のツリーである**（`EnterWorktree` で入った worktree セッションでの実測。詳細は §8）。ただしそれが成り立つのはゲート側の仕掛けによるものであり、worktree 固有の注意も2点ある。
 
 **検査対象はゲートが git コンテキストから解決する。** `.claude/settings.json` のフックは `${CLAUDE_PROJECT_DIR}` 配下のゲートを起動し、同変数は project root（既定のチェックアウト）を指す。ゲートがそのまま `CLAUDE_PROJECT_DIR` を検査対象にすると、走るのは**コミット対象ではない別のツリー**に対する検査になり、project root が緑なら worktree の変更内容と無関係に通ってしまう。そこでゲートは「コミットが実際に走る git コンテキスト」から検査対象を解決する。候補を上から順に試し、git のトップレベルが取れ、かつそこに runner が在る最初のものを採る。
 
