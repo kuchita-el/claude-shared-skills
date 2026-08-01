@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # PreToolUse フックの commit ゲート本体。
 #
-# 役割は「本当に git commit のときだけ検査を走らせる」ことに限る。検査の中身は
-# scripts/validate-skills.sh が持ち、本スクリプトは持たない（ADR drift-lint は
+# 役割は「本当に git commit のときだけ検査を走らせる」ことに限る。何を走らせるかは
+# scripts/run-tests.sh が持ち、本スクリプトは持たない（ADR drift-lint は
 # adr プラグインの同梱ゲートへ分離済み）。
 #
 # なぜ settings.json の `if` だけでは足りないか:
@@ -44,7 +44,7 @@ case "$command" in
     *) exit 0 ;;
 esac
 
-# フックの cwd に依存しない。validate-skills.sh は相対パス前提であり、
+# フックの cwd に依存しない。runner が呼ぶ検査は相対パス前提のものを含み、
 # glob がリポジトリルート以外で空振りし errors=0 のまま exit 0 を返す（検査が素通りする）。
 # `${VAR:?}` は set -u 下では展開時点でシェルを終了させ exit 127 になる。PreToolUse は
 # exit 2 以外を非ブロックとして扱うため、それでは前提が壊れているのに commit が通る。
@@ -54,9 +54,9 @@ if [ -z "${CLAUDE_PROJECT_DIR:-}" ]; then
 fi
 cd "$CLAUDE_PROJECT_DIR" || exit 2
 
-# validate-skills を走らせて判定する。
+# 全スイート runner を走らせて判定する。個々のスイートの選定と集約は runner 側の責務。
 failed=0
-bash scripts/validate-skills.sh >&2 || failed=1
+bash scripts/run-tests.sh >&2 || failed=1
 
 [ "$failed" -eq 0 ] || exit 2
 exit 0
