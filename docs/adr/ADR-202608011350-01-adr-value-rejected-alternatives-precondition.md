@@ -1,7 +1,7 @@
 ---
 status: 承認済み
-validity: 有効
-superseded-by:
+validity: 上書き済み
+superseded-by: ADR-202608011651-01-adr-value-precondition-criteria-in-operating-doc
 ---
 
 # ADR-202608011350-01: ADR の固有価値を却下代替に定め、起票の必要条件として前置する
@@ -68,6 +68,7 @@ superseded-by:
 ## 関連ADR
 
 - Supersedes: ADR-202607191825-01-adr-scoping-criteria-and-record-reference-principle（決定1「粒度判定基準」の反転。同 ADR の決定2〜4 は本 ADR とは別の後継が引き継ぐ）
+- Superseded by: ADR-202608011651-01-adr-value-precondition-criteria-in-operating-doc（必要条件は変更せず、4項目の名称とスコア境界の逐語保持をやめた後継）
 - Related: ADR-202608011351-01-adr-demotion-independent-criteria（本 ADR が定める固有価値の定義を、既存 ADR の退役判定の側で用いる）
 
 関連Issue: #631（本 ADR の起票元）

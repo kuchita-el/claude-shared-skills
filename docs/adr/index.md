@@ -43,8 +43,8 @@
 - [ADR-202607261501-01-adr-edit-mechanism-and-amend-abolition](./ADR-202607261501-01-adr-edit-mechanism-and-amend-abolition.md): ADR の編集機構（3段構え・凍結原則・ADR分割）と Amended 機構の廃止
 - [ADR-202607261503-01-adr-lifecycle-tooling-delegation](./ADR-202607261503-01-adr-lifecycle-tooling-delegation.md): ADR のライフサイクル操作を tooling へ委譲する
 - [ADR-202607261503-03-adr-flat-layout](./ADR-202607261503-03-adr-flat-layout.md): ADR ファイルは docs/adr/ 配下にフラット構造で配置する
-- [ADR-202608011350-01-adr-value-rejected-alternatives-precondition](./ADR-202608011350-01-adr-value-rejected-alternatives-precondition.md): ADR の固有価値を却下代替に定め、起票の必要条件として前置する
 - [ADR-202608011351-01-adr-demotion-independent-criteria](./ADR-202608011351-01-adr-demotion-independent-criteria.md): 格下げ判定を起票判定と独立の基準として立て、必要条件の連言で判定する
 - [ADR-202608011353-01-adr-demotion-input-selection](./ADR-202608011353-01-adr-demotion-input-selection.md): 格下げ判定が使える運用実績のうち、被参照と再燃を条件に採らない
 - [ADR-202608011354-01-adr-issuance-timing-and-naming-scope](./ADR-202608011354-01-adr-issuance-timing-and-naming-scope.md): ADR 起票のタイミングと命名規約の ADR 化基準
 - [ADR-202608011355-01-record-reference-principle](./ADR-202608011355-01-record-reference-principle.md): 記録は可変文書を現在の参照先として指さない
+- [ADR-202608011651-01-adr-value-precondition-criteria-in-operating-doc](./ADR-202608011651-01-adr-value-precondition-criteria-in-operating-doc.md): ADR の固有価値を却下代替に定めて起票の必要条件とし、粒度判定基準の項目と境界は運用文書へ委ねる
