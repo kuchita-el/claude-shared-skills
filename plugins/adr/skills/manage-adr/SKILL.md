@@ -64,14 +64,21 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 
 ### ADR 化要否の判定（起票の前段）
 
-ある決定を ADR にすべきか、いつ起票するか、命名規約を ADR の対象に含めるかは、粒度判定基準で判定する。判定境界では「書かない」を優先する。判定項目・スコア境界・昇格のタイミング・判定結果の行き先・新規 ADR の束ねの制約・命名規約の振り分けは `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` を参照し、スキル独自の基準を導入しない。
+ある決定を ADR にすべきか、いつ起票するか、命名規約を ADR の対象に含めるかは、却下代替の必要条件と粒度判定基準で判定する。まず当該決定が採らなかった選択肢とその却下理由を持つかを確認し、持たなければ点数を数えず ADR 化しない。持つ場合に4項目で採点し、判定境界では「書かない」を優先する。必要条件・判定項目・スコア境界・昇格のタイミング・判定結果の行き先・新規 ADR の束ねの制約・命名規約の振り分けは `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` を参照し、スキル独自の基準を導入しない。
 
 要否の判定は起票操作の前段であり、ADR 化すると判断した場合のみ起票（5遷移）へ進む。ただしその行き先は新規 ADR とは限らず、既存 ADR への非core 改訂の側もある（分類の確定は粒度判定ではなく前掲の編集判定フローに従う）。ADR 化しないと判断した対象にも置き場所の一般則がある。いずれの振り分けも前掲の `adr-scoping.md`「判定結果の行き先」節に従う。
+
+### 格下げ判定（既存 ADR を退役させるか）
+
+既に記録された ADR を `validity: 廃止済み` へ移して index から外すかは、起票の判定とは別の基準で決める。実体は `${CLAUDE_SKILL_DIR}/references/adr-demotion.md` に在り、判定条件・判定形式（必要条件の連言）・安全側の向き（迷ったら残す）をここ以外で再定義しない。**`adr-scoping.md` の粒度判定基準を既存 ADR へ遡及適用して退役を決めない。** 退役と判定した場合は前掲5遷移の「廃止」へ進む（手順の実体は `${CLAUDE_SKILL_DIR}/references/transitions.md`「廃止（廃止済み）」節）。
+
+判定を誰がいつ起動するか（起動主体・起動タイミング・入力範囲）は同ファイルの対象外であり、本スキルも既定を与えない。
 
 ## 手順の参照（各 references を直接参照）
 
 - `${CLAUDE_SKILL_DIR}/references/adr-model.md` — 状態の2軸の値域・遷移ごとの front-matter 必須ルール表・配置・採番方式（full slug の定義）
-- `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` — ADR 化要否の粒度判定基準・起票のタイミング・判定結果の行き先・新規 ADR の束ねの制約・命名規約の ADR 化基準
+- `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` — ADR 化要否の必要条件（却下代替）・粒度判定基準・起票のタイミング・判定結果の行き先・新規 ADR の束ねの制約・命名規約の ADR 化基準
+- `${CLAUDE_SKILL_DIR}/references/adr-demotion.md` — 既存 ADR の格下げ（退役）判定の条件・判定形式・安全側の向き・格下げ固有の入力の採否
 - `${CLAUDE_SKILL_DIR}/references/template.md` — 新規 ADR の雛形（front-matter＋見出し骨格。起票時にこの構成へ準拠する）
 - `${CLAUDE_SKILL_DIR}/references/transitions.md` — 5遷移と分割の実行手順・採番規則・双方向相互参照の書き込み・index の再生成
 - `${CLAUDE_SKILL_DIR}/references/edit-decision.md` — core／非core／些末 の判定と `AskUserQuestion` 問い設計・操作分岐、および ADR 本文へ参照を書く／直す際の判定（記録の参照原則。起票時にも適用する）
