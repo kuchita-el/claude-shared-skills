@@ -22,7 +22,7 @@ superseded-by:
 
 既に記録された ADR を退役させる（`validity: 廃止済み` へ移して index から外す）かの判定は、起票判定とは別の基準で行う。**起票判定の粒度判定基準を既存 ADR へ遡及適用して退役を決めない。**
 
-両基準が共有するのは、ADR の固有価値を却下代替に置く定義だけである（ADR-202608011350-01）。判定項目・境界・安全側は共有しない。
+両基準が共有するのは、ADR の固有価値を却下代替に置く定義だけである（ADR-202608011651-01）。判定項目・境界・安全側は共有しない。
 
 ### 2. 判定形式は必要条件の連言とする
 
@@ -67,7 +67,7 @@ superseded-by:
 
 ## 関連ADR
 
-- Related: ADR-202608011350-01-adr-value-rejected-alternatives-precondition（条件1 が用いる ADR の固有価値の定義。同 ADR は同じ定義を起票の必要条件として用いる）
+- Related: ADR-202608011651-01-adr-value-precondition-criteria-in-operating-doc（条件1 が用いる ADR の固有価値の定義。同 ADR は同じ定義を起票の必要条件として用いる）
 - Related: ADR-202607261501-01-adr-edit-mechanism-and-amend-abolition（退役後の本文を凍結する原則。退役の不可逆性を構成する）
 
 関連Issue: #631（本 ADR の起票元）、#634（既知12本への本基準の適用と復帰条件の要否）、#635（本判定の起動条件の設計）
