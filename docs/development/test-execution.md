@@ -24,6 +24,20 @@ runner は commit ゲート（`scripts/hooks/pre-commit-gate.sh`）から起動�
 
 **これらの経路で作業する場合は、runner を手動実行する必要がある。** GitHub Actions 等の CI は導入していない（理由は §6 の問い1）。
 
+### git worktree で作業する場合
+
+本リポジトリの作業は git worktree 上で行うことが多い。ここには**フックの起動と検査対象の解決という2段の落とし穴**がある。
+
+**1段目（検査対象の解決）はゲート側で塞いである。** `.claude/settings.json` のフックは `${CLAUDE_PROJECT_DIR}` 配下のゲートを起動し、同変数は project root（既定のチェックアウト）を指す。ゲートがそのまま `CLAUDE_PROJECT_DIR` を検査対象にすると、走るのは**コミット対象ではない別のツリー**に対する検査になり、project root が緑なら worktree の変更内容と無関係に通ってしまう。そこでゲートは「コミットが実際に走る git コンテキスト」から検査対象を解決する。候補を上から順に試し、git のトップレベルが取れ、かつそこに runner が在る最初のものを採る。
+
+1. PreToolUse の JSON が載せる `cwd`（ツール実行時の作業ディレクトリ）
+2. フックプロセス自身の cwd
+3. `CLAUDE_PROJECT_DIR`（上2つが解決できない環境向けのフォールバック）
+
+どの候補でも解決できなければ exit 2 とする（fail-closed）。runner の実在を条件に含めるのは、無関係なリポジトリで作業しているときに候補1・2 がそちらを指しても、本ゲートがその commit を巻き込んで止めないためである。
+
+**2段目（フックの起動そのもの）は塞げていない。** worktree で開いたセッションからは、そもそもフックが worktree 側のゲートを呼ばないことがある（診断用に「必ず exit 2」で終わるゲートを worktree へ置いても commit が通ることを実測した。フックのコマンドが `${CLAUDE_PROJECT_DIR}` 配下の実体を指すためである）。**この経路では自動起動が働かないため、runner の手動実行が要る。**
+
 `plugins/adr/hooks/adr-commit-gate` は別のゲートであり、`lint-adr.sh` を `docs/adr` へ掛けるだけで runner を呼ばない。この役割分離は意図的なものであり、本経路とは独立している。
 
 ## 3. 手動実行
@@ -190,5 +204,6 @@ FAILED: 1/2 suites (6s) -- bats
       ```
     - 期待リストを復元 → runner が exit 0、ゲートが exit 0。
   - この失敗は Issue #645 の発端となった検知漏れ（`manage-adr/references/` へファイルが増えたのに期待リストへ未登録）と同一の型である。
-  - **観測方法についての注記**: 上記のゲート観測は PreToolUse の JSON を stdin へ直接投入する形で行った。ハーネス経由（Claude Code の Bash ツールで実際に `git commit` を打つ形）の実地確認は、git worktree 内のセッションからは取れない（フックの `${CLAUDE_PROJECT_DIR}` が main チェックアウトを指すため、worktree 側のゲートが呼ばれない）。ゲートが受け取る入力は PreToolUse の JSON そのものであり、投入経路はゲートの判定に影響しないため、ブロック挙動の証拠としては等価である。
+  - **検査対象ツリーの解決**（§2「git worktree で作業する場合」）: JSON の `cwd` に worktree を、`CLAUDE_PROJECT_DIR` に project root を与えた状態で、worktree 側だけを壊すと exit 2、戻すと exit 0 になることを確認。`cwd` を持たない JSON・git 外の cwd・runner を持たないツリーの各分岐についても、フォールバック順と fail-closed（exit 2）を確認した。
+  - **観測方法についての注記**: 上記のゲート観測は PreToolUse の JSON を stdin へ直接投入する形で行った。ハーネス経由（Claude Code の Bash ツールで実際に `git commit` を打つ形）の実地確認は、git worktree 内のセッションからは取れない（§2 の2段目）。ゲートが受け取る入力は PreToolUse の JSON そのものであり、投入経路はゲートの判定に影響しないため、ブロック挙動の証拠としては等価である。
   - **bats 解決失敗時の fail-closed**: `mise` も PATH 上の `bats` も見えない環境（`env -i PATH=/usr/bin:/bin`）で runner を起動すると exit 1 で終わり、導入手順（`mise install` / `mise trust`）が stderr に出ることを確認。
