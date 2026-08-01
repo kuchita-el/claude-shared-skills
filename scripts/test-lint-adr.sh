@@ -691,6 +691,7 @@ EDIT_DECISION="$MANAGE_ADR_DIR/references/edit-decision.md"
 # 期待リストを固定し、存在チェックと surface の構成元をこのリストに一致させる。
 AC5_SURFACE_FILES=(
     "$MANAGE_ADR_DIR/SKILL.md"
+    "$MANAGE_ADR_DIR/references/adr-demotion.md"
     "$MANAGE_ADR_DIR/references/adr-model.md"
     "$MANAGE_ADR_DIR/references/adr-scoping.md"
     "$EDIT_DECISION"
