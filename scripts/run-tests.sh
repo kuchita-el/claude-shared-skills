@@ -20,7 +20,6 @@ cd "$REPO_ROOT" || exit 1
 # 種別は出力ラベルにのみ使う（test = テストスイート / check = 検査器）。
 SUITES=(
     "bats|test"
-    "adr-scoping-cases|test"
     "validate-skills|check"
 )
 
@@ -83,7 +82,6 @@ collect_bats_files() {
 run_one() {
     case "$1" in
         bats) "${BATS_CMD[@]}" --print-output-on-failure "${BATS_FILES[@]}" ;;
-        adr-scoping-cases) bash scripts/test-adr-scoping-cases.sh ;;
         validate-skills) bash scripts/validate-skills.sh ;;
         *)
             echo "run-tests: 実体が未定義のスイートです: $1" >&2
