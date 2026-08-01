@@ -44,3 +44,4 @@ ADR-202607230648-01（ADR 運用機構のプラグイン抽出）の決定2 は�
 
 - `docs/adr/ADR-202607230648-01-adr-machinery-plugin-extraction.md` — ADR 運用機構のプラグイン抽出。決定2 が集約対象を定め、その射程注記が本書との関係を述べる
 - `docs/development/adr-plugin-portability-seams.md` — 配布物が配布元固有の面を跨いだ事例の台帳。本書が固定する一方向性が破れた過去の実測を持つ
+- `docs/development/growth/adr-candidates.md` — growth の ADR 化候補表。配布物内に在った配布元固有の管理表を、本書 §2 の判断軸により配布元へ移したもの（#652）
