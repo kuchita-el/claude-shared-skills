@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # PreToolUse フックの commit ゲート本体。
 #
-# 役割は「本当に git commit のときだけ検査を走らせる」ことに限る。検査の中身は
-# scripts/validate-skills.sh が持ち、本スクリプトは持たない（ADR drift-lint は
+# 役割は「本当に git commit のときだけ検査を走らせる」ことに限る。何を走らせるかは
+# scripts/run-tests.sh が持ち、本スクリプトは持たない（ADR drift-lint は
 # adr プラグインの同梱ゲートへ分離済み）。
 #
 # なぜ settings.json の `if` だけでは足りないか:
@@ -44,19 +44,48 @@ case "$command" in
     *) exit 0 ;;
 esac
 
-# フックの cwd に依存しない。validate-skills.sh は相対パス前提であり、
-# glob がリポジトリルート以外で空振りし errors=0 のまま exit 0 を返す（検査が素通りする）。
-# `${VAR:?}` は set -u 下では展開時点でシェルを終了させ exit 127 になる。PreToolUse は
-# exit 2 以外を非ブロックとして扱うため、それでは前提が壊れているのに commit が通る。
-if [ -z "${CLAUDE_PROJECT_DIR:-}" ]; then
-    echo "pre-commit-gate: CLAUDE_PROJECT_DIR が未設定のため検査できません" >&2
+# 検査対象のツリーを解決する。
+#
+# `CLAUDE_PROJECT_DIR` を無条件に使ってはならない。同変数は project root（既定のチェック
+# アウト）を指すため、git worktree で作業しているセッションから commit すると、走るのは
+# **コミット対象ではない別のツリー**に対する検査になる。project root が緑なら worktree の
+# 変更内容と無関係に exit 0 となり、自動経路が守っているつもりで守っていない状態になる。
+# 本リポジトリの作業は worktree 上で行われるため、この分岐は例外ではなく常態である。
+#
+# そこで「コミットが実際に走る git コンテキスト」から解決する。候補を上から順に試し、
+# git のトップレベルが取れ、かつそこに runner が在る最初のものを採る。
+#   1. PreToolUse の JSON が載せる cwd（ツール実行時の作業ディレクトリ）
+#   2. フックプロセス自身の cwd
+#   3. CLAUDE_PROJECT_DIR（従来の挙動。上2つが解決できない環境向けのフォールバック）
+#
+# runner の実在を条件に含めるのは、無関係なリポジトリで作業しているときに候補1・2 が
+# そちらを指しても、本ゲートがその commit を巻き込んで止めないためである。
+# どの候補でも解決できなければ exit 2 とする。前提が壊れているのに commit を通すと、
+# 検査が一度も走らないまま素通りする（本ゲートが排してきた silent fail-open になる）。
+#
+# 相対パス前提の検査を含むため、解決したトップレベルへ cd してから起動する。
+# glob がリポジトリルート以外で空振りすると errors=0 のまま exit 0 を返し、検査が素通りする。
+json_cwd=$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null || true)
+
+target=""
+for candidate in "$json_cwd" "$PWD" "${CLAUDE_PROJECT_DIR:-}"; do
+    [ -n "$candidate" ] && [ -d "$candidate" ] || continue
+    toplevel=$(git -C "$candidate" rev-parse --show-toplevel 2>/dev/null) || continue
+    [ -f "$toplevel/scripts/run-tests.sh" ] || continue
+    target="$toplevel"
+    break
+done
+
+if [ -z "$target" ]; then
+    echo "pre-commit-gate: 検査対象のツリーを解決できません（runner を持つ git トップレベルが見つからない）" >&2
+    echo "  試した候補: JSON の cwd / フックの cwd / CLAUDE_PROJECT_DIR" >&2
     exit 2
 fi
-cd "$CLAUDE_PROJECT_DIR" || exit 2
+cd "$target" || exit 2
 
-# validate-skills を走らせて判定する。
+# 全スイート runner を走らせて判定する。個々のスイートの選定と集約は runner 側の責務。
 failed=0
-bash scripts/validate-skills.sh >&2 || failed=1
+bash scripts/run-tests.sh >&2 || failed=1
 
 [ "$failed" -eq 0 ] || exit 2
 exit 0

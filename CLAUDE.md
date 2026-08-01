@@ -9,8 +9,12 @@ Claude Code向けの汎用スキルライブラリ。プロジェクト固有の
 ## Local Development Setup
 
 ```bash
-./setup-local.sh   # dev-workflow と adr のプラグインを --plugin-dir で読み込んで起動
+./setup-local.sh          # dev-workflow と adr のプラグインを --plugin-dir で読み込んで起動
+mise trust && mise install # 初回のみ。テストフレームワーク（bats）を版固定で導入する
+bash scripts/run-tests.sh # テストと検査器を一括実行する
 ```
+
+テストの実行経路（自動起動の射程・手動実行・失敗時の読み方・移行の対応）は `docs/development/test-execution.md` が定める。
 
 ## Architecture
 

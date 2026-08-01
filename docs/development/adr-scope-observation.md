@@ -44,7 +44,7 @@ git grep -hoE "$PAT" "$REF" -- 'docs/adr' ':!docs/adr/index.md' \
 | 4 | `plugins/adr/scripts/test-next-adr-id.sh` |
 | 3 | `plugins/adr/skills/manage-adr/references/adr-model.md` |
 
-本テーブルのパスも `REF` 時点のものである。`test-lint-adr.sh` と `test-next-adr-id.sh` は #623 で `scripts/` 配下へ移設したため、現在の HEAD には当該パスが存在しない。
+本テーブルのパスも `REF` 時点のものである。`test-lint-adr.sh` と `test-next-adr-id.sh` は #623 で `scripts/` 配下へ移設したため、現在の HEAD には当該パスが存在しない。その後さらに #645（2026-08-01）で bats のケース（`scripts/tests/lint-adr-*.bats` / `scripts/tests/next-adr-id.bats`）へ移行し、両ランナーは退役した。
 
 `':!plugins/adr/scripts/fixtures'` と `':!scripts/fixtures'` はいずれも fixture ディレクトリを除くだけで、テストスクリプト本体は除かない。本文書で外部参照といえば**絞り込みあり（334件）**を指す。
 
