@@ -30,6 +30,8 @@ ADR 運用機構を独立プラグイン `plugins/adr/` へ抽出（#492/#493）
 | 11 | ローカルプラグインを消費側リポの `.claude/settings.json` `enabledPlugins` で常時有効化する手段が docs 未明記 | 解消済 | J10 案A で実現可を実地確認（2026-07-23・#493）。`enabledPlugins` に `adr@claude-shared-skills` を登録した通常セッション（`setup-local.sh` 非経由）で commit ゲートが発火＝drift 投入でブロック・clean で通過。案B（repo-root shim）フォールバックは不要 |
 | 12 | `gen-adr-index.sh` の生成コメントが `scripts/` パスを焼き込み、生成物 `index.md` に載る | 解消済 | A.12（PR #546）でパス焼き込みを汎用化し index 再生成 |
 
+**台帳の記述時点について（2026-08-01 追記）**: 項番 7・9・10 が名指す `test-lint-adr.sh` は、記述当時に存在した bash のテストランナーである。同ファイルは #645 で bats のケース（`scripts/tests/lint-adr-*.bats`）へ移行し退役した。各項の記述は当時のファイルを指すものとしてそのまま保つ。継ぎ目の解消状態は移行後も変わらない（移行はアサーションの器を移すだけで、入力・期待値・判定を保存している）。
+
 ## 未反映（後続・別リポ試用で扱う）
 
 - **ADR_DIR の override**: `lint-adr.sh` / `gen-adr-index.sh` は `ADR_DIR`（既定 `docs/adr`）を引数で受け上書き可能だが、宣言ファイル駆動の full config override は #493 のレイヤ上書きへ。

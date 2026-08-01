@@ -70,7 +70,7 @@ ADR-YYYYMMDDHHMM-NN-<slug>.md
 - 既存 ADR の遡及リネームと、それに伴う full slug 参照・H1 見出しの書き替え、および既に発生している識別子重複の解消は #567 に委ねる。上記の混在はその完了により解消する。
 - ファイル名形式の検査と識別子重複の検査を drift-lint へ加えることは、別途扱う。
 
-**退役（2026-07-30）**: 本 ADR は `validity: 廃止済み` へ退役した。決定内容を `next-adr-id.sh` の発番と lint-adr.sh のレイヤ5（ファイル名形式・識別子重複）が現に強制しており、現行の ADR 化要否基準では ADR として保持する要件を満たさない。決定を放棄したのではなく、記録の正本を ADR 外の資産へ移した移管による退役である。移送先は `plugins/adr/scripts/next-adr-id.sh`（2026-07-26 に2本の PR が当時の日単位手順を正しく実行して同一識別子を発番した実測、受容したトレードオフ3件、遡及移行規則）、`plugins/adr/scripts/lint-adr.sh` レイヤ5（同一分・同一連番の重複が構造的に残るため検出を lint 側へ委ねた理由）、`scripts/test-next-adr-id.sh` および `scripts/test-lint-adr.sh`（両テストが固定している中核の由来。併記した時点では両テストとも `plugins/adr/scripts/` に在り、2026-07-31 に現在の所在へ移設した）であり、2026-07-30 時点でいずれも当該箇所へ併記した。日単位の最大 + 1 を採らない理由は、退役以前から `next-adr-id.sh` のヘッダへ併記されていた。
+**退役（2026-07-30）**: 本 ADR は `validity: 廃止済み` へ退役した。決定内容を `next-adr-id.sh` の発番と lint-adr.sh のレイヤ5（ファイル名形式・識別子重複）が現に強制しており、現行の ADR 化要否基準では ADR として保持する要件を満たさない。決定を放棄したのではなく、記録の正本を ADR 外の資産へ移した移管による退役である。移送先は `plugins/adr/scripts/next-adr-id.sh`（2026-07-26 に2本の PR が当時の日単位手順を正しく実行して同一識別子を発番した実測、受容したトレードオフ3件、遡及移行規則）、`plugins/adr/scripts/lint-adr.sh` レイヤ5（同一分・同一連番の重複が構造的に残るため検出を lint 側へ委ねた理由）、`scripts/test-next-adr-id.sh` および `scripts/test-lint-adr.sh`（両テストが固定している中核の由来。併記した時点では両テストとも `plugins/adr/scripts/` に在り、2026-07-31 に `scripts/` 配下へ移設した。さらに 2026-08-01 に bats のケースへ移行し、由来記述の現在の所在は `scripts/tests/next-adr-id.bats` および `scripts/tests/lint-adr-stem.bats` である）であり、2026-07-30 時点でいずれも当該箇所へ併記した。日単位の最大 + 1 を採らない理由は、退役以前から `next-adr-id.sh` のヘッダへ併記されていた。
 
 ## 関連ADR
 
