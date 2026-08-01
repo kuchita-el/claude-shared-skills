@@ -46,21 +46,34 @@ sc_stdout() {
 }
 
 # 作業ディレクトリを変えてから実行する（相対パスを引数として渡す検査で使う）。
+#
+# cd に失敗したら SUT を起動できない。ここで黙って戻ると $status / $output に直前の
+# 実行結果が残り、呼び出し側の判定がその値を読んで緑のまま素通りする（fail-open）。
+# 失敗が分かる値へ明示的に置き換えてから戻す。復路の cd 失敗は以降の実行が別ディレクトリで
+# 走ることを意味するため、握り潰さずケースを落とす。
 sc_in() {
     local dir="$1" prev="$PWD"
     shift
-    cd "$dir" || return 0
+    cd "$dir" || {
+        status=127
+        output="cd に失敗した: $dir"
+        return 0
+    }
     run bash "$SUT" "$@" </dev/null
-    cd "$prev" || return 0
+    cd "$prev" || return 1
     return 0
 }
 
 sc_stdout_in() {
     local dir="$1" prev="$PWD"
     shift
-    cd "$dir" || return 0
+    cd "$dir" || {
+        status=127
+        output="cd に失敗した: $dir"
+        return 0
+    }
     run --separate-stderr bash "$SUT" "$@" </dev/null
-    cd "$prev" || return 0
+    cd "$prev" || return 1
     return 0
 }
 

@@ -70,9 +70,12 @@ setup_file() {
 @test "面②: 参照ファイルが期待リストに被覆されている" {
     collect_init
 
+    # `shopt -p` はオプションが off のとき exit 1 を返すため、errexit 下では `|| true` が要る。
+    local prev_nullglob
+    prev_nullglob="$(shopt -p nullglob || true)"
     shopt -s nullglob
     local actual_refs=("$MANAGE_ADR_DIR"/references/*.md)
-    shopt -u nullglob
+    eval "$prev_nullglob"
 
     local actual rel
     for actual in ${actual_refs[@]+"${actual_refs[@]}"}; do

@@ -518,7 +518,10 @@ check_weird_tmpdir() {
         esac
         [ "$uj_ok" -eq 1 ] && collect_ok "$uj_label" || collect_fail "$uj_label" "$uj_detail"
     fi
-    chmod 644 "$uj_dir/j.tsv"
+    # 復元に失敗しても collect_finish まで到達させる（内訳の報告を落とさない）。
+    # bats の tmpdir 掃除のためにパーミッションは戻す必要があるが、被テスト側が
+    # ファイルを消していれば chmod は空振りする。
+    chmod 644 "$uj_dir/j.tsv" 2>/dev/null || true
 
     collect_finish
 }
