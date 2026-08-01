@@ -1,0 +1,160 @@
+# テストの実行
+
+本リポジトリのテストと検査器を、何がいつ走り、どの範囲は手動で走らせる必要があるかを定める。
+
+## 1. 何が走るか
+
+実行経路は `scripts/run-tests.sh`（以下 runner）の1本である。runner は次の2スイートを順に実行する。
+
+| スイート | 実体 | 内容 |
+|---|---|---|
+| `bats` | `scripts/tests/*.bats` | 同梱スクリプト（`lint-adr.sh` / `gen-adr-index.sh` / `next-adr-id.sh` / `adr-scoping-cases.sh` / `lint-domain-doc.sh`）のテスト |
+| `validate-skills` | `scripts/validate-skills.sh` | スキル定義の `allowed-tools` 検査 |
+
+runner はいずれかが失敗しても残りを最後まで実行してから非0で終わる。失敗を1回の実行で出揃わせるためである。成功したスイートの出力は畳み、失敗したスイートの出力だけを展開する（bats については通過ケースの `ok ` 行も畳む）。
+
+## 2. いつ走るか — 自動起動の射程
+
+runner は commit ゲート（`scripts/hooks/pre-commit-gate.sh`）から起動される。ゲートは `.claude/settings.json` の PreToolUse フックに登録されており、検査が違反していれば exit 2 で commit をブロックする。
+
+**自動起動が覆うのは、Claude Code の Bash ツール経由の `git commit` だけである。** 次の経路は素通りする。
+
+- 素の端末（Claude Code を介さないシェル）からの `git commit`
+- `git -C <path> commit`（ゲートのヘッダが既知の穴として明記している。ゲートは事故を防ぐガードレールであってセキュリティ境界ではないため、意図的な回避までは塞がない）
+
+**これらの経路で作業する場合は、runner を手動実行する必要がある。** GitHub Actions 等の CI は導入していない（理由は §6 の問い1）。
+
+`plugins/adr/hooks/adr-commit-gate` は別のゲートであり、`lint-adr.sh` を `docs/adr` へ掛けるだけで runner を呼ばない。この役割分離は意図的なものであり、本経路とは独立している。
+
+## 3. 手動実行
+
+```bash
+# 全スイート（commit ゲートが呼ぶ形と同じ）
+bash scripts/run-tests.sh
+
+# スイートを1本に絞る（開発時の反復用）
+bash scripts/run-tests.sh bats
+bash scripts/run-tests.sh validate-skills
+
+# スイート名の一覧
+bash scripts/run-tests.sh --list
+
+# bats のテストファイルをさらに絞る（runner を介さず直接呼ぶ）
+mise exec -- bats scripts/tests/lint-adr-stem.bats
+
+# ケース数だけを数える
+mise exec -- bats --count scripts/tests/*.bats
+```
+
+## 4. セットアップ
+
+テストフレームワークは bats-core であり、版は `mise.toml` で固定している。
+
+```bash
+mise trust     # 初回のみ。未信頼のまま mise は mise.toml を読まない
+mise install   # bats 1.14.0 が入る
+```
+
+runner は bats を **`mise exec` 優先・PATH フォールバック**の順で解決する。版固定を効かせつつ、mise を使わない環境での手動実行経路を残すためである。
+
+**どちらでも解決できない場合、runner は成功扱いにせず非0で終わる（fail-closed）。**
+
+```
+$ bash scripts/run-tests.sh
+run-tests: bats を解決できません（mise exec・PATH のいずれでも見つからない）
+  導入: mise install   （リポジトリ直下の mise.toml が版を固定する）
+  信頼: mise trust     （初回のみ。未信頼のまま mise は設定を読まない）
+$ echo $?
+1
+```
+
+スキップして成功にすると、検査が一度も走らないまま commit が通り、しかも警告が出ない。既存のゲートが jq 不在時の挙動を fail-safe 側へ倒しているのと同じ方針である。
+
+`mise.toml` が未信頼のとき、mise は `mise ERROR Config files in ... are not trusted.` を出して exit 1 する。これは対話・非対話を問わない挙動であり（信頼を求めるプロンプトは出ない）、fail-closed は成立する。
+
+`scripts/tests/` にテストファイルが1つも無い場合も非0で終わる。空実行を成功扱いにすると、パス誤りが緑として通るためである。
+
+## 5. 失敗時の読み方
+
+bats は TAP 形式で報告する。runner は失敗したスイートの出力にスイート名を前置し、通過ケースの行を畳んで出す。
+
+```
+[test ] bats                 ... FAILED (exit 1, 6s)
+    bats| 1..76
+    bats| not ok 56 面②: 参照ファイルが期待リストに被覆されている
+    bats| #   `collect_finish' failed
+    bats| # 1/7 件の検査項目が失敗しました（全件を列挙する）:
+    bats| #   [FAIL] AC5: surface file list covers: .../adr-demotion.md -- surface file list does not cover: ...
+[check] validate-skills      ... ok (0s)
+FAILED: 1/2 suites (6s) -- bats
+```
+
+読み方の要点は3つ。
+
+- **`1..76` が報告ケース総数**である。この値は失敗の有無・件数によらず一定である。テストファイルの前提（fixture corpus や被テスト検査器）が満たされない場合も、そのファイルのケース群が1件へ潰れることはなく、専用の「前提: …」ケースが1件失敗するだけである。
+- **`not ok` の行が失敗したケース**であり、続く `#` 行がその内訳である。1ケースは複数の検査項目を束ねており、`collect_finish` が**落ちた項目を全件列挙する**。1件目で打ち切らないため、複数の欠落があれば1回の実行で出揃う。
+- **ケース説明文の「面」は検査の面**を指す。旧ランナーの `[PASS]` ラベルは各面の内側に検査項目のラベルとして残っている（§7 参照）。
+
+## 6. 実行経路に関する決定
+
+### 問い1: 実行経路をどこに置くか
+
+**決定**: 既存の commit ゲート（`scripts/hooks/pre-commit-gate.sh`）の呼び先を全スイート runner へ差し替える。GitHub Actions 等の CI は新設しない。
+
+**理由**:
+
+- ゲートは既に存在し、`git commit` という「変更が確定する瞬間」に発火する。テストが走る契機としてはこれで足りる。CI を新設すると、同じ検査を2箇所で維持することになる。
+- 本リポジトリはスキル定義とスクリプトの集合であり、ビルド成果物や配布パイプラインを持たない。CI が担う典型的な役割（マトリクス実行・成果物の生成・デプロイ）のいずれも現時点で必要としていない。
+- `plugins/adr/hooks/adr-commit-gate` へテスト全体の実行を足すことは採らない。同フックは ADR 検査へ役割を絞ることを冒頭コメントで明示しており、配布物として利用者のリポジトリでも動く。配布元固有のテストをそこへ足すと、配布先で解決できない参照が生じる。
+
+**受容した犠牲**: 自動起動の射程が Claude Code の Bash ツール経由の commit に限られる（§2）。素の端末からの commit と `git -C` は素通りする。これは手動実行の明記で補う。
+
+### 問い2: 実行経路は配布物境界のどちら側に属するか
+
+**決定**: 配布物外（配布元）に置く。runner（`scripts/run-tests.sh`）・テスト（`scripts/tests/*.bats`）・fixture（`scripts/fixtures/`）のいずれもリポジトリルート配下に置き、配布物（`plugins/`）には持ち込まない。
+
+**理由**:
+
+- `docs/distribution-boundary.md` §2 の判断軸は「引数ですべての入力を受け既定値を持たない検査器は配布物へ、特定の corpus を前提とするテストは配布元へ」である。runner は本リポジトリのスイート構成・スクリプト配置を直接知っており、この軸では配布元側に落ちる。
+- 参照方向の一方向性（配布物外 → 配布物内）を保つ。runner は配布物内の検査器を起動するが、配布物側は runner の存在を知らない。
+
+**この決定を `docs/distribution-boundary.md` へ節として足さず、本書へ記録した理由**: 同文書 §1 が「配布物の内部構成（スキル・スクリプト・hook の分割）」を定めないと自ら宣言しており、実行経路の帰属はその明文の外にある。節を足すのは文書が引いた射程線を動かす行為であり、後続の判断が「どこまでがこの文書の責務か」を再び曖昧にする。ただし §3（テストと fixture の配置）は現況の置き場所を述べる記述であるため、`scripts/tests/` への移動はそちらへ反映してある。
+
+## 7. 移行の対応（旧ランナー → bats）
+
+テストは bash のランナー4本（`scripts/test-*.sh`）から bats のケースへ載せ替えた。対応の要約は次のとおり。
+
+| 移行前のランナー | 緑経路の `[PASS]` ラベル数 | 移行後のファイル | ケース数 |
+|---|---|---|---|
+| `test-lint-adr.sh` | 137 | `lint-adr-index.bats` / `lint-adr-layers.bats` / `lint-adr-xref.bats` / `lint-adr-surface.bats` / `lint-adr-stem.bats` | 3 / 17 / 8 / 5 / 9 = 42 |
+| `test-adr-scoping-cases.sh` | 75 | `adr-scoping-cases-basic.bats` / `adr-scoping-cases-edge.bats` | 16 / 8 = 24 |
+| `test-lint-domain-doc.sh` | 5 | `lint-domain-doc.bats` | 3 |
+| `test-next-adr-id.sh` | 14 | `next-adr-id.bats` | 7 |
+| 合計 | 231 | 9ファイル | **76** |
+
+**ケース数はアサーション数ではない。** 1ケースは検査の面に対応し、その面に属する検査項目（旧ランナーの `[PASS]` ラベル）を内側に束ねている。旧ラベル231件はすべて `.bats` 本文へ文字列として残してあり、`grep -F` で1件ずつ突き合わせて欠落0件を確認した。
+
+76 の内訳は **面 67 ＋ 前提不成立 9** である。旧ラベルを持たない新規ケースは次の **11件** に限る。
+
+- **前提不成立ケース 9件**（`.bats` ファイル1つにつき1件）— fixture corpus・被テスト検査器の不在を、ファイル全体の潰れではなく専用ケースの失敗として報告するためのもの。bats は `setup_file` が失敗するとそのファイルの全ケースを1件へ潰し、報告総数が失敗の有無で変動する。これを避けるため、共有 `setup_file` は判定を一切せず常に `return 0` で終わり、前提の判定は専用ケースが行う。
+- **`lint-adr-surface.bats` の面①（期待リストのファイル存在）と面②（参照ファイルの被覆）の 2件** — 旧 `run_ac5_edit_mechanism` はこの2検査について失敗時にしか総数を加算せず、緑経路では `[PASS]` を1件も出さなかった。集約報告化に伴い緑経路でも報告される独立ケースになるため、旧ラベルを持たない新規ケースとして扱う。前提不成立ケースではない。
+
+移行前後で「実行アサーション数が保存される」という不変条件は採らない。旧ランナーの総数加算箇所の多くは前提不成立分岐であり、それをケース化すれば総数は必ず増えるため、等号は算術的に成立しない。代わりに「旧ラベル集合の包含」と「増分の事前宣言（上記11件）」を不変条件とした。
+
+## 8. 動作確認済み
+
+- **2026-08-01（#645）**: 移行完了時点の実測。
+  - `bash scripts/run-tests.sh` が exit 0。報告ケース数 76、失敗 0。
+  - 所要時間は 6.0〜9.4 秒（同一環境で3回計測。初回 9.44s / 2回目 6.84s / 3回目 6.04s）。実装時の見込み（約6秒）の範囲内であり、面のさらなる集約を検討する閾値（10秒）は超えていない。
+  - **AC2 の失敗観測**: `scripts/tests/lint-adr-surface.bats` の期待リストから `adr-demotion.md` を1件外した状態で、
+    - `bash scripts/run-tests.sh` → exit 1。`not ok 56 面②: 参照ファイルが期待リストに被覆されている` と、未登録ファイル名を名指す `[FAIL]` 行が出る。報告ケース総数は 76 のまま変わらない。
+    - commit ゲートへ PreToolUse の JSON を投入 → **exit 2**（commit をブロックする状態）。stderr に失敗したスイート名とケース名が現れる。
+
+      ```bash
+      printf '%s' '{"tool_input":{"command":"git commit -m \"任意の変更\""}}' \
+        | CLAUDE_PROJECT_DIR="$PWD" bash scripts/hooks/pre-commit-gate.sh
+      ```
+    - 期待リストを復元 → runner が exit 0、ゲートが exit 0。
+  - この失敗は Issue #645 の発端となった検知漏れ（`manage-adr/references/` へファイルが増えたのに期待リストへ未登録）と同一の型である。
+  - **観測方法についての注記**: 上記のゲート観測は PreToolUse の JSON を stdin へ直接投入する形で行った。ハーネス経由（Claude Code の Bash ツールで実際に `git commit` を打つ形）の実地確認は、git worktree 内のセッションからは取れない（フックの `${CLAUDE_PROJECT_DIR}` が main チェックアウトを指すため、worktree 側のゲートが呼ばれない）。ゲートが受け取る入力は PreToolUse の JSON そのものであり、投入経路はゲートの判定に影響しないため、ブロック挙動の証拠としては等価である。
+  - **bats 解決失敗時の fail-closed**: `mise` も PATH 上の `bats` も見えない環境（`env -i PATH=/usr/bin:/bin`）で runner を起動すると exit 1 で終わり、導入手順（`mise install` / `mise trust`）が stderr に出ることを確認。
