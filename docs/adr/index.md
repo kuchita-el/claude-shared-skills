@@ -33,7 +33,6 @@
 - [ADR-202607160857-01-inquiry-skill-question-governance](./ADR-202607160857-01-inquiry-skill-question-governance.md): inquiry スキルによる問いの統治と spike の下流非伝播
 - [ADR-202607160857-02-completion-judgment-inquiry-value-range](./ADR-202607160857-02-completion-judgment-inquiry-value-range.md): completion-judgment の判定値域を調査の問いへ拡張する
 - [ADR-202607182303-01-workflow-design-v2-terminology-flow-stock-axes](./ADR-202607182303-01-workflow-design-v2-terminology-flow-stock-axes.md): workflow-design.md v2 構造 — 用語のフレームワーク非依存化とフロー／ストック軸の分離
-- [ADR-202607191825-01-adr-scoping-criteria-and-record-reference-principle](./ADR-202607191825-01-adr-scoping-criteria-and-record-reference-principle.md): ADR 化判断の3基準を決定として確定し、記録は可変文書を現在の参照先として指さない
 - [ADR-202607200855-01-distill-ledger-as-explicit-input](./ADR-202607200855-01-distill-ledger-as-explicit-input.md): distill の入力定義の拡張 — 既存ルール台帳を明示的入力とする
 - [ADR-202607200856-01-distill-pending-reevaluation-policy](./ADR-202607200856-01-distill-pending-reevaluation-policy.md): distill の pending 候補再評価ポリシー
 - [ADR-202607200858-01-distill-ledger-matching-responsibility-boundary](./ADR-202607200858-01-distill-ledger-matching-responsibility-boundary.md): 台帳突合の責務境界 — distill と promote の線引き
@@ -44,3 +43,8 @@
 - [ADR-202607261501-01-adr-edit-mechanism-and-amend-abolition](./ADR-202607261501-01-adr-edit-mechanism-and-amend-abolition.md): ADR の編集機構（3段構え・凍結原則・ADR分割）と Amended 機構の廃止
 - [ADR-202607261503-01-adr-lifecycle-tooling-delegation](./ADR-202607261503-01-adr-lifecycle-tooling-delegation.md): ADR のライフサイクル操作を tooling へ委譲する
 - [ADR-202607261503-03-adr-flat-layout](./ADR-202607261503-03-adr-flat-layout.md): ADR ファイルは docs/adr/ 配下にフラット構造で配置する
+- [ADR-202608011350-01-adr-value-rejected-alternatives-precondition](./ADR-202608011350-01-adr-value-rejected-alternatives-precondition.md): ADR の固有価値を却下代替に定め、起票の必要条件として前置する
+- [ADR-202608011351-01-adr-demotion-independent-criteria](./ADR-202608011351-01-adr-demotion-independent-criteria.md): 格下げ判定を起票判定と独立の基準として立て、必要条件の連言で判定する
+- [ADR-202608011353-01-adr-demotion-input-selection](./ADR-202608011353-01-adr-demotion-input-selection.md): 格下げ判定が使える運用実績のうち、被参照と再燃を条件に採らない
+- [ADR-202608011354-01-adr-issuance-timing-and-naming-scope](./ADR-202608011354-01-adr-issuance-timing-and-naming-scope.md): ADR 起票のタイミングと命名規約の ADR 化基準
+- [ADR-202608011355-01-record-reference-principle](./ADR-202608011355-01-record-reference-principle.md): 記録は可変文書を現在の参照先として指さない

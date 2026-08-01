@@ -1,7 +1,7 @@
 ---
 status: 承認済み
-validity: 有効
-superseded-by:
+validity: 上書き済み
+superseded-by: ADR-202608011350-01-adr-value-rejected-alternatives-precondition, ADR-202608011354-01-adr-issuance-timing-and-naming-scope, ADR-202608011355-01-record-reference-principle
 ---
 
 # ADR-202607191825-01: ADR 化判断の3基準を決定として確定し、記録は可変文書を現在の参照先として指さない
@@ -107,6 +107,7 @@ ADR 化を検討すべき決定が発生したことを示す実務シグナル�
 
 - 状態モデル（承認軸と有効性軸の2軸分離）は ADR-202607261459-01-adr-state-model-and-drift-lint が定めた。同 ADR は 2026-07-30 に `廃止済み` へ退役し、状態モデルの規定は、同日時点では `adr` プラグインの `manage-adr` スキル（状態モデルの参照ファイル）が保持していた。
 - Related: ADR-202607261501-01-adr-edit-mechanism-and-amend-abolition（凍結原則。決定4の適用限界が優先を譲る先）
+- Superseded by: ADR-202608011350-01-adr-value-rejected-alternatives-precondition（決定1「粒度判定基準」の反転）、ADR-202608011354-01-adr-issuance-timing-and-naming-scope（決定2・決定3 の引き継ぎ）、ADR-202608011355-01-record-reference-principle（決定4 の引き継ぎ）
 
 関連Issue: #515（ADR 運用の正本反転、本 ADR の起票元）、#532（`plugins/growth/` 配下の参照修復）
 
