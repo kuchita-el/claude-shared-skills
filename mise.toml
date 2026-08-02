@@ -1,7 +1,7 @@
 # 開発ツールの版固定。
 #
 # 導入: `mise install`
-# 信頼: `mise trust`（初回のみ。未信頼のまま mise は本ファイルを読まない）
+# 信頼: `mise trust`（チェックアウトごとに一度。未信頼のまま mise は本ファイルを読まない）
 #
 # bats — scripts/tests/*.bats を実行するテストフレームワーク。
 # scripts/run-tests.sh が `mise exec` 経由で起動し、解決できない場合は非0で終わる

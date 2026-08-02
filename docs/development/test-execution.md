@@ -26,7 +26,7 @@ runner は commit ゲート（`scripts/hooks/pre-commit-gate.sh`）から起動�
 
 ### git worktree で作業する場合
 
-本リポジトリの作業は git worktree 上で行うことが多い。**この経路でも自動起動は働き、検査対象になるのは worktree のツリーである**（`EnterWorktree` で入った worktree セッションでの実測。詳細は §8）。ただしそれが成り立つのはゲート側の仕掛けによるものであり、worktree 固有の注意も2点ある。
+本リポジトリの作業は git worktree 上で行うことが多い。**この経路でも自動起動は働き、検査対象になるのは worktree のツリーである**（`EnterWorktree` で入った worktree セッションでの実測。詳細は §8）。ただし検査対象が worktree になるのはゲート側の仕掛けによるものであり、worktree 固有の注意も2点ある。
 
 **検査対象はゲートが git コンテキストから解決する。** `.claude/settings.json` のフックは `${CLAUDE_PROJECT_DIR}` 配下のゲートを起動し、同変数は project root（既定のチェックアウト）を指す。ゲートがそのまま `CLAUDE_PROJECT_DIR` を検査対象にすると、走るのは**コミット対象ではない別のツリー**に対する検査になり、project root が緑なら worktree の変更内容と無関係に通ってしまう。そこでゲートは「コミットが実際に走る git コンテキスト」から検査対象を解決する。候補を上から順に試し、git のトップレベルが取れ、かつそこに runner が在る最初のものを採る。
 
@@ -40,7 +40,7 @@ runner は commit ゲート（`scripts/hooks/pre-commit-gate.sh`）から起動�
 
 **注意1: 起動されるゲートの実体は project root 側のものである。** フックのコマンドが `${CLAUDE_PROJECT_DIR}` 配下を指すため、worktree 側の `scripts/hooks/pre-commit-gate.sh` は呼ばれない（診断用に「必ず exit 2」で終わるゲートを worktree へ置いても commit が通ることを実測した）。検査対象は worktree でも、**判定を下すコードは project root のものである**。したがってゲート自体を改修する場合、その変更は自動経路では検証されない。stdin へ PreToolUse の JSON を投入する形で手元から確かめる（コマンドの形は §8）。
 
-**注意2: worktree ごとに `mise trust` が要る。** `mise` の信頼はディレクトリ単位であり、project root を信頼していても新しく作った worktree は未信頼のままである。この状態では bats を解決できず、runner が非0で終わり、ゲートが exit 2 で commit をブロックする。stderr に導入（`mise install`）と信頼（`mise trust`）の案内が出るので、それに従う。fail-closed が意図どおり働いた結果であり、異常ではない。
+**注意2: worktree ごとに `mise trust` が要る。** `mise` の信頼はディレクトリ単位であり、project root を信頼していても新しく作った worktree は未信頼のままである。この状態では `mise exec` 経由で bats を解決できない。PATH にも bats が無ければ runner は非0で終わり（§4 の fail-closed）、ゲートが exit 2 で commit をブロックする。§8 の実測はこの条件下のものである。stderr に導入（`mise install`）と信頼（`mise trust`）の案内が出るので、それに従う。fail-closed が意図どおり働いた結果であり、異常ではない。
 
 `plugins/adr/hooks/adr-commit-gate` は別のゲートであり、`lint-adr.sh` を `docs/adr` へ掛けるだけで runner を呼ばない。この役割分離は意図的なものであり、本経路とは独立している。
 
@@ -83,7 +83,7 @@ runner は bats を **`mise exec` 優先・PATH フォールバック**の順で
 $ bash scripts/run-tests.sh
 run-tests: bats を解決できません（mise exec・PATH のいずれでも見つからない）
   導入: mise install   （リポジトリ直下の mise.toml が版を固定する）
-  信頼: mise trust     （初回のみ。未信頼のまま mise は設定を読まない）
+  信頼: mise trust     （チェックアウトごとに一度。未信頼のまま mise は設定を読まない）
 $ echo $?
 1
 ```
@@ -216,5 +216,5 @@ FAILED: 1/2 suites (6s) -- bats
 - **2026-08-01（#653）**: worktree セッションからハーネス経由（Claude Code の Bash ツールで `git commit --allow-empty` を打つ形）で観測した。`EnterWorktree` で入った worktree から2回実施し、いずれも同じ結果。
   - 観測手段は2系統。`ps -eo pid=,args=` を 0.05 秒間隔でポーリングして `pre-commit-gate.sh` / `run-tests.sh` / `bats` のプロセスを拾い `readlink /proc/<pid>/cwd` で cwd を読む方法と、worktree 側の `scripts/run-tests.sh` 冒頭にのみ `$PWD` を追記するマーカーを一時的に仕込む方法（観測後に `git restore` で戻す）。
   - **ゲートは発火する**。起動されたのは project root 側の `pre-commit-gate.sh` であり、その配下で `bash scripts/run-tests.sh` が **cwd=worktree** で走った。worktree 側マーカーも `PWD=worktree` で発火した。観測期間中、cwd が project root のプロセスは1つも現れていない。所要は約6.2秒（プロセス初出から最終出現まで）、commit は exit 0 で通った。
-  - **未信頼 worktree での fail-closed**: 1回目は worktree の `mise.toml` が未信頼で bats を解決できず、runner が非0、ゲートが exit 2 で commit をブロックした。`mise trust --show` で project root=trusted / worktree=untrusted を確認。`mise trust` 後に上記の緑になった。
+  - **未信頼 worktree での fail-closed**: 1回目は worktree の `mise.toml` が未信頼で bats を解決できず、runner が非0、ゲートが exit 2 で commit をブロックした。runner は `mise exec` に失敗すると PATH へフォールバックする（§4）ため、この環境では PATH 上にも `bats` が無かったことになる。`mise trust --show` で project root=trusted / worktree=untrusted を確認。`mise trust` 後に上記の緑になった。
   - この観測により、#645 時点の §2 の記述（worktree では自動起動が働かないため手動実行が要る）が誤りであることが確定した。

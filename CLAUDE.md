@@ -10,7 +10,7 @@ Claude Code向けの汎用スキルライブラリ。プロジェクト固有の
 
 ```bash
 ./setup-local.sh          # dev-workflow と adr のプラグインを --plugin-dir で読み込んで起動
-mise trust && mise install # 初回のみ。テストフレームワーク（bats）を版固定で導入する
+mise trust && mise install # チェックアウト（worktree 含む）ごとに一度。テストフレームワーク（bats）を版固定で導入する
 bash scripts/run-tests.sh # テストと検査器を一括実行する
 ```
 
