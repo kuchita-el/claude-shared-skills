@@ -22,7 +22,7 @@ superseded-by:
 
 値は役割ごとの**必要最小水準**として選ぶ。すなわち、その役割が成立するために必要な下限を値とする。定型性が高く処理量が出る役割については、例外として**許容最大水準**として選ぶ。すなわち、その役割に対して許容する上限を値とする。
 
-規約の正本を `plugins/dev-workflow/references/subagent-execution-parameters.md` に置き、現行値の一覧を `plugins/dev-workflow/README.md` に置くこととした。値そのものは各 `agents/{name}.md` の front-matter を権威とし、正本には転記しない。
+規約の正本を `plugins/dev-workflow/references/subagent-execution-parameters.md` に置き、現行値の一覧を `plugins/dev-workflow/README.md` に置くこととした。値そのものは各サブエージェント定義の front-matter を権威とし、正本には転記しない。
 
 ## Consequences
 
@@ -34,7 +34,7 @@ superseded-by:
 
 起票時点の Agent tool には `effort` 引数が存在しない（引数は `description` / `isolation` / `model` / `prompt` / `run_in_background` / `subagent_type`）。このため、スキルから `subagent_type` を指定せず Agent tool を呼ぶ形では effort を制御できない。effort を制御したい役割には専用のサブエージェント定義を設ける必要がある。この制約により、Issue 精査には専用定義を新設した。
 
-値が実際に効いているかはセッション記録から検証できる。ただしその値が役割に対して妥当かの判断は人手を要する。また新規サブエージェントを追加する際に `model` と `effort` を書き忘れても検出されないため、正本の手順に従うことで担保する。
+値が実際に効いているかはセッション記録から検証できる。ただしその値が役割に対して妥当かの判断は人手を要する。また新規サブエージェントを追加する際に `model` と `effort` を書き忘れても、起票時点では検出する機構が無く、正本に置いた手順に従うことで担保していた。
 
 値を選ぶ際、`effort` を上げれば `model` の差を埋められるとは限らない。本 ADR の適用にあたって行った実測では、受入条件が検証可能かを分析する役割において `sonnet` は `high` へ上げても届かず、`opus` は `medium` で届いた。同じ実測で `opus` / `medium` は `opus` / `xhigh` が挙げなかった論点にも到達しており、effort を上げれば品質が上がるという単純な関係でもない。役割に必要なのが分析の深さである場合、`model` が支配的な要因になる。
 
@@ -54,3 +54,4 @@ superseded-by:
 ## 変更履歴
 
 - 2026-07-25: Consequences の副作用の見積もりを訂正。「高い設定の利用者は環境変数を用いているはず」「影響は `/effort max` のセッションに限られる」は誤りで、`effort` は `settings.json` の `effortLevel` として `xhigh` まで永続できる。モデル既定の effort が `high` であることを踏まえ、モデル既定を下回る値は既定構成の利用者に対して上限として働くこと、`model` と `effort` で作用が異なりうることを追記した（決定は不変）
+- 2026-08-02: 記録の参照原則に沿い、可変文書を現在の参照先として指していた記述を自己完結的な記述および時点を固定した記述へ改めた。決定の骨子・却下理由は不変（#658）。
