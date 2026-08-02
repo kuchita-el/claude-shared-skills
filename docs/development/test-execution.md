@@ -36,9 +36,9 @@ runner は commit ゲート（`scripts/hooks/pre-commit-gate.sh`）から起動�
 
 どの候補でも解決できなければ exit 2 とする（fail-closed）。runner の実在を条件に含めるのは、無関係なリポジトリで作業しているときに候補1・2 がそちらを指しても、本ゲートがその commit を巻き込んで止めないためである。
 
-実測では、この解決の結果として worktree のツリーが検査対象になった。候補1が project root を指していれば project root が選ばれるはずである（git のトップレベルであり runner も在るため、候補2 へ進まない）。そうならなかったことから、**候補1は project root を指していない**と言える。候補1と候補2 のどちらで解決したかは切り分けていない。観測される結果はどちらでも同じであるため、機構は断定しない。
+実測では、この解決の結果として worktree のツリーが検査対象になった。候補1が project root のツリー内のいずれかを指していれば、そこで確定していたはずである。ゲートは候補を `git -C <候補> rev-parse --show-toplevel` に掛けるため、指しているのがサブディレクトリであってもトップレベルは project root に解決され、runner も在るため候補2 へ進まない。そうならなかったことから、**候補1は project root のツリー内のどこも指していない**と言える。候補1と候補2 のどちらで解決したかは切り分けていない。観測される結果はどちらでも同じであるため、機構は断定しない。
 
-**注意1: 起動されるゲートの実体は project root 側のものである。** フックのコマンドが `${CLAUDE_PROJECT_DIR}` 配下を指すため、worktree 側の `scripts/hooks/pre-commit-gate.sh` は呼ばれない（診断用に「必ず exit 2」で終わるゲートを worktree へ置いても commit が通ることを実測した）。検査対象は worktree でも、**判定を下すコードは project root のものである**。したがってゲート自体を改修する場合、その変更は自動経路では検証されない。stdin へ PreToolUse の JSON を投入する形で手元から確かめる（コマンドの形は §8）。
+**注意1: 起動されるゲートの実体は project root 側のものである。** フックのコマンドが `${CLAUDE_PROJECT_DIR}` 配下を指すため、worktree 側の `scripts/hooks/pre-commit-gate.sh` は呼ばれない（診断用に「必ず exit 2」で終わるゲートを worktree へ置いても commit が通ることを実測した）。ただし **project root 側なのはゲート本体だけである**。ゲートは解決したツリーへ `cd` してから runner を相対パスで起動するため、その配下で走る runner・テスト・検査器はいずれも worktree 側のものになる（§8 のマーカー観測）。したがって自動経路で検証されないのは `pre-commit-gate.sh` 自身の改修に限る。その場合は stdin へ PreToolUse の JSON を投入する形で手元から確かめる（コマンドの形は §8）。
 
 **注意2: worktree ごとに `mise trust` が要る。** `mise` の信頼はディレクトリ単位であり、project root を信頼していても新しく作った worktree は未信頼のままである。この状態では `mise exec` 経由で bats を解決できない。PATH にも bats が無ければ runner は非0で終わり（§4 の fail-closed）、ゲートが exit 2 で commit をブロックする。§8 の実測はこの条件下のものである。stderr に導入（`mise install`）と信頼（`mise trust`）の案内が出るので、それに従う。fail-closed が意図どおり働いた結果であり、異常ではない。
 
