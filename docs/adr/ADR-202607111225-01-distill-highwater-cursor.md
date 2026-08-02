@@ -41,7 +41,7 @@ distill の処理源有界化を **recency 窓から「distill 処理済みカ�
 
 6. **カーソル欠損時は「先頭」を既定とする**。一度だけ全走査して安全に劣化する（データ損失を招かない）。
 
-カーソルは append-only な `captures.md` の `## <timestamp>`（ISO 8601）見出しと同じキー空間で比較する。観測は capture 時刻の単調増加 timestamp を持つため「カーソルより新しい」は一意に定まる。
+カーソルは、append-only な `captures.md` が各観測に付す timestamp と同じキー空間で比較する。観測は capture 時刻の単調増加 timestamp を持つため「カーソルより新しい」は一意に定まる。
 
 ## Consequences
 
@@ -61,3 +61,7 @@ distill の処理源有界化を **recency 窓から「distill 処理済みカ�
 - Superseded by: ADR-202607121331-01-captures-bounded-retention-aging（retention 射程 facet ＝ 全履歴到達 → 有界 retention horizon。生観測に経年削除を導入。カーソル機構〔guarantee-once・provenance 重複排除・欠損時既定〕は同 ADR に restate して存続）
 - Related: ADR-202606291631-01-distill-input-contract-and-ledger-matching（決定3 rejected/promoted 不可侵。カーソル巻き戻し時の同一仮説復活抑止として依拠）
 - 関連Issue: #455, #459
+
+## 変更履歴
+
+- 2026-08-02: 記録の参照原則に沿い、可変文書を現在の参照先として指していた記述を自己完結的な記述へ改めた。決定の骨子・却下理由は不変。退役 ADR を射程へ含める本Issue限りの特例に基づく非core 編集（#658）。
