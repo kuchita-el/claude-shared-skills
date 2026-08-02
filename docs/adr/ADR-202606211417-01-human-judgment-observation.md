@@ -9,11 +9,11 @@ validity: 有効
 
 plan 段階で「人間判断が必要な観点」を plan ドキュメントに明示する仕組み（親 Epic [#318](https://github.com/kuchita-el/claude-shared-skills/issues/318) 軸1）と、実装後に PR 本文で「人間に確認してほしい観点」セクションを出す仕組み（[#314](https://github.com/kuchita-el/claude-shared-skills/issues/314)）は、同じ「人間判断要観点」というデータ概念を異なるフェーズで扱う。両者が個別に語彙・データ構造を発明すると、レビュアーが plan と PR 本文で同じ観点を二度認知することになり、シフトレフトの効果が相殺される。
 
-既存資産として、plan 側には `plan-output-format.md` の `## 判断依頼` セクション（plan-issue が生成する plan ドキュメントの正規セクション）が既に運用されており、実装後側には dev-loop の `escalation-template.md` の「人間判断の選択肢」セクション、`SKILL.md` の「人間判断」用語（収束失敗時のエスカレーション文脈）が存在する。本 ADR はこれら既存資産の上に語彙を統合し、両フェーズで同一の正準用語・最小データ構造を共有可能にする。
+既存資産として、起票時点（2026-06-21）の plan 側には `plan-output-format.md` の `## 判断依頼` セクション（plan-issue が生成する plan ドキュメントの正規セクション）が既に運用されており、実装後側には dev-loop の `escalation-template.md` の「人間判断の選択肢」セクション、`SKILL.md` の「人間判断」用語（収束失敗時のエスカレーション文脈）が存在した。本 ADR はこれら既存資産の上に語彙を統合し、両フェーズで同一の正準用語・最小データ構造を共有可能にする。
 
 先行 ADR との関係性:
 
-- [#109](https://github.com/kuchita-el/claude-shared-skills/issues/109)（CLOSED）「スキル間インターフェース契約ファイルの設計・作成」の規約（`docs/delivery-workflow/plan-dev-contract.md`）を踏襲し、新規規約フレームワークは発明しない
+- [#109](https://github.com/kuchita-el/claude-shared-skills/issues/109)（CLOSED）「スキル間インターフェース契約ファイルの設計・作成」の規約（起票時点では `docs/delivery-workflow/plan-dev-contract.md` に在った）を踏襲し、新規規約フレームワークは発明しない
 - [ADR-202605131437-02](./ADR-202605131437-02-review-contract-in-plan-issue.md) で plan-issue 側に移行したレビュー契約と並ぶ、plan-issue 側で確定する語彙資産として位置付ける
 
 関連 Issue [#319](https://github.com/kuchita-el/claude-shared-skills/issues/319) 起票時（2026-06-21）に種別 spike / サイズ Medium / Ready 判定済み。ADR-202608011350-01 決定1 の粒度判定基準4項目すべてに該当（後戻りコスト高・複数モジュール波及・採用理由揮発リスク・自動強制不可）するため ADR 化する。
@@ -26,7 +26,7 @@ plan 段階で「人間判断が必要な観点」を plan ドキュメントに
 
 **本 ADR 以降の正準用語は「判断依頼」とする。**
 
-- plan-issue 側の現行 `plan-output-format.md` の `## 判断依頼` セクションで既に運用されている既存資産との段差を最小化する選択
+- plan-issue 側で起票時点に既に運用されていた `plan-output-format.md` の `## 判断依頼` セクションという既存資産との段差を最小化する選択
 - Issue 表題・親 Epic [#318](https://github.com/kuchita-el/claude-shared-skills/issues/318) で使用される文言「人間判断要観点」は、本 ADR 上の概念名（カテゴリ名）として保持する。データインスタンス・セクション名・テンプレート見出しは「判断依頼」を使用する
 - 検討した代替案: 「人間判断要観点」（Issue 表題準拠、plan 側の改名コストあり）、新規造語（既存資産の上書きコスト最大）
 
@@ -74,14 +74,14 @@ plan 段階で「人間判断が必要な観点」を plan ドキュメントに
 
 | データ構造フィールド | plan-issue 側の現行語彙・参照箇所 | dev-loop / code-reviewer 側の現行語彙・参照箇所 |
 |---|---|---|
-| （セクション名） | `## 判断依頼`（`plugins/dev-workflow/skills/plan-issue/references/plan-output-format.md` L11） | （現行該当なし。Issue [#314](https://github.com/kuchita-el/claude-shared-skills/issues/314) AC2 で PR 本文に `### 人間に確認してほしい観点` セクションとして導入予定） |
-| 観点ID | （現行未定義、本 ADR で導入） | （現行未定義、本 ADR で導入） |
-| 説明 | `## 判断依頼` 配下の `**[判断待ち / 前提確認]**` 項目本文（`plan-output-format.md` L15）、`plan-prompt.md` L9「判断依頼の生成指示」節 | （現行該当なし。Issue [#314](https://github.com/kuchita-el/claude-shared-skills/issues/314) AC2 で `### 人間に確認してほしい観点` 配下の項目本文として導入予定） |
-| 検出フェーズ | 暗黙的に `plan`（plan-issue が生成するため） | 暗黙的に `impl`（dev-loop が生成するため） |
-| 判断者ロール | （現行未定義、本 ADR で導入） | （現行未定義、本 ADR で導入） |
-| 関連AC番号 | （現行未定義、本 ADR で任意フィールドとして導入） | （現行未定義、本 ADR で任意フィールドとして導入） |
+| （セクション名） | `## 判断依頼`（`plugins/dev-workflow/skills/plan-issue/references/plan-output-format.md` が同名の節見出しを置いていた） | （起票時点（2026-06-21）では該当なし。Issue [#314](https://github.com/kuchita-el/claude-shared-skills/issues/314) AC2 で PR 本文に `### 人間に確認してほしい観点` セクションとして導入予定） |
+| 観点ID | （同時点で未定義、本 ADR で導入） | （同時点で未定義、本 ADR で導入） |
+| 説明 | `## 判断依頼` 配下の `**[判断待ち / 前提確認]**` 項目本文（`plan-output-format.md` は当該項目を `- **[判断待ち / 前提確認]** [確認事項と具体的な確認ポイント（2-3行）]` の書式で定めていた）、`plan-prompt.md` の `## 判断依頼の生成指示` 節 | （同時点では該当なし。Issue [#314](https://github.com/kuchita-el/claude-shared-skills/issues/314) AC2 で `### 人間に確認してほしい観点` 配下の項目本文として導入予定） |
+| 検出フェーズ | 暗黙的に `plan`（生成元のフェーズから定まるため明示のフィールドを持たない） | 暗黙的に `impl`（生成元のフェーズから定まるため明示のフィールドを持たない） |
+| 判断者ロール | （同時点で未定義、本 ADR で導入） | （同時点で未定義、本 ADR で導入） |
+| 関連AC番号 | （同時点で未定義、本 ADR で任意フィールドとして導入） | （同時点で未定義、本 ADR で任意フィールドとして導入） |
 
-注: 既存の `plugins/dev-workflow/skills/dev-loop/references/escalation-template.md` L47 `### 人間判断の選択肢` セクション、および同セクションを参照する `plugins/dev-workflow/skills/dev-loop/SKILL.md` L124 の「人間判断」用語は、**収束失敗時のエスカレーション専用文脈**（dev-loop の失敗手段として「続行 / 破棄して再生成 / 計画の見直し」の3択を提示するもの）で使用されており、本 ADR の「判断依頼」（レビュアーへの判断要請）とは別概念である。対応表からは意図的に除外しており、将来の語彙改変時に dev-loop 側を「判断依頼」に揃える判断は本注に該当する箇所を変更対象としない（既存エスカレーションフローの破壊を避けるため）。両者の関係性整理は将来の dev-loop 仕様改修（[#314](https://github.com/kuchita-el/claude-shared-skills/issues/314) 配下）で行う。
+注: 既存の `plugins/dev-workflow/skills/dev-loop/references/escalation-template.md` が節見出しとして置いていた `### 人間判断の選択肢` セクション、および同セクションを参照する `plugins/dev-workflow/skills/dev-loop/SKILL.md` の「人間判断」用語（エスカレーション時に `escalation-template.md` の「収束失敗」節に沿って「収束しなかった理由」「未解消ブロッカー一覧」「人間判断の選択肢」を記載すると規定していた箇所）は、**収束失敗時のエスカレーション専用文脈**（dev-loop の失敗手段として「続行 / 破棄して再生成 / 計画の見直し」の3択を提示するもの）で使用されており、本 ADR の「判断依頼」（レビュアーへの判断要請）とは別概念である。対応表からは意図的に除外しており、将来の語彙改変時に dev-loop 側を「判断依頼」に揃える判断は本注に該当する箇所を変更対象としない（既存エスカレーションフローの破壊を避けるため）。両者の関係性整理は将来の dev-loop 仕様改修（[#314](https://github.com/kuchita-el/claude-shared-skills/issues/314) 配下）で行う。
 
 ## Consequences
 
@@ -95,7 +95,7 @@ plan 段階で「人間判断が必要な観点」を plan ドキュメントに
 ### 受容したトレードオフ
 
 - Issue [#319](https://github.com/kuchita-el/claude-shared-skills/issues/319) 表題および親 Epic [#318](https://github.com/kuchita-el/claude-shared-skills/issues/318) の文言「人間判断要観点」と、本 ADR の正準用語「判断依頼」に文言差が生じる（カテゴリ名／インスタンス名の使い分けで運用）
-- 既存 `dev-loop/SKILL.md` L124 の「人間判断」用語との段差が残る（収束失敗エスカレーション専用文脈との区別を将来の改修で整理する必要）
+- 既存 `dev-loop/SKILL.md` の「人間判断」用語（エスカレーション時に「人間判断の選択肢」の記載を求めていた規定）との段差が残る（収束失敗エスカレーション専用文脈との区別を将来の改修で整理する必要）
 - ADR を参照しない開発者・サブエージェントによる独自語彙混入リスクは規律で防ぐしかない（ツール強制不可。粒度判定基準項目4に該当）
 
 ### 将来の留保事項
@@ -111,3 +111,7 @@ plan 段階で「人間判断が必要な観点」を plan ドキュメントに
 - Related: [ADR-202606040737-01-dor-shared-resource-consolidation](./ADR-202606040737-01-dor-shared-resource-consolidation.md)（共有資源をプラグインルートに集約する原則。本 ADR の語彙資産も将来共有資源化する余地に関連）
 
 関連Issue: [#319](https://github.com/kuchita-el/claude-shared-skills/issues/319)（本ADR）、[#318](https://github.com/kuchita-el/claude-shared-skills/issues/318) 軸1（本ADRを参照する側）、[#314](https://github.com/kuchita-el/claude-shared-skills/issues/314)（本ADRを参照する側）、[#109](https://github.com/kuchita-el/claude-shared-skills/issues/109)（CLOSED、先行規約として踏襲）
+
+## 変更履歴
+
+- 2026-08-02: 記録の参照原則に沿い、可変文書を現在の参照先として指していた記述を自己完結的な記述および時点を固定した記述へ改めた。決定の骨子・却下理由は不変（#658）。
