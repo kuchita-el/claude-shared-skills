@@ -46,7 +46,7 @@ superseded-by: ADR-202606020010-01-principles-rationale-hub, ADR-202607182303-01
 **将来の留保事項**:
 
 - spec.md のライフサイクル管理（Issue #95 OPEN）、Delivery→Discovery のフィードバックループ詳細（Issue #94 CLOSED で初期定義）は別Issueで継続検討
-- 採番方式 `docs/adr/{番号}-{タイトル}.md` の旧記述（v1 名残）は ADR-202605110956-01 で `ADR-YYYYMMDD[-N]` に上書き済。workflow-design.md 本文の整合は別途必要
+- 採番方式 `docs/adr/{番号}-{タイトル}.md` の旧記述（v1 名残）は ADR-202605110956-01 で `ADR-YYYYMMDD[-N]` に上書き済。起票時点（2026-05-13）では workflow-design.md 本文の整合が別途必要であった
 
 ## 関連ADR
 
@@ -57,3 +57,7 @@ Related: ADR-202607112231-01-adr-two-axis-status-validity-model（ADR採番方�
 関連Issue: PR #89（workflow-design.md v2 改訂本体）、#94（Delivery→Discovery フィードバックループ）、#95（spec.md ライフサイクル）、#100（AIエラー時の再開・引き継ぎ）
 
 由来memory: `project_workflow_design_v2.md`（本ADR起票によりmemory削除済、個人スコープ要素なしのため全削除）
+
+## 変更履歴
+
+- 2026-08-02: 記録の参照原則に沿い、可変文書を現在の参照先として指していた記述を時点を固定した記述へ改めた。決定の骨子・却下理由は不変。退役 ADR を射程へ含める本Issue限りの特例に基づく非core 編集（#658）。

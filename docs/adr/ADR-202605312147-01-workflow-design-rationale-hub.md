@@ -8,15 +8,15 @@ superseded-by: ADR-202606020010-01-principles-rationale-hub
 
 ## Context
 
-`docs/workflow-design.md` は、性質の異なる3層を一身に抱えてきた。
+本 ADR の起票時点（2026-05-31）の `docs/workflow-design.md` は、性質の異なる3層を一身に抱えていた。
 
 - **構造層**: 全体フロー概観、ドメイン構造「決めること」、Delivery 各ゲート記述、検証ゲート構成定義
 - **操作層**: spec.md 構成例、デリバリーアイテム粒度ガイドライン、ADR 記録の判断基準、テスト方針、ドキュメンテーション戦略、ドキュメント間結合度原則、スキルとフェーズの対応、作業単位の階層・Sprint 運用
 - **根拠層**: 基本原則①②③、なぜ事前にドメイン構造が必要か（70%見通し）、変更パターン A/B/C、責任分担マトリクス、アンチパターン
 
-構造層・操作層には他に SoT が存在する（構造は `docs/development/event-storming.md` / domain-model、操作は各 SKILL.md・`CLAUDE.md`・ADR 運用ルール・`docs/references/`）。これらを workflow-design.md が二重に抱えることが、構造ドリフトの温床になっていた。一方、根拠層には固有のホームが無い。
+構造層・操作層には他に SoT が存在する（構造はドメイン構造を記述する専用文書、操作は各スキル定義・リポジトリ横断の運用ルール文書・ADR 運用ルール・参照資料）。これらを workflow-design.md が二重に抱えることが、構造ドリフトの温床になっていた。一方、根拠層には固有のホームが無い。
 
-当初 #221 は「workflow-design.md と event-storming/domain-model 間の構造ドリフト同期」を想定したが、両者を突き合わせた結果この前提は不成立と判明した（workflow-design.md は具体的な集約名・状態名・ポリシーを記述しておらず、粗い散文要約に留まる。明確な構造の二重定義は検証ゲート構成定義のみ）。よって #221 を「workflow-design.md の縮退・再定義」へ再定義した。
+当初 #221 は「workflow-design.md と event-storming/domain-model 間の構造ドリフト同期」を想定したが、両者を突き合わせた結果この前提は不成立と判明した（当時の workflow-design.md は具体的な集約名・状態名・ポリシーを記述しておらず、粗い散文要約に留まっていた。明確な構造の二重定義は検証ゲート構成定義のみだった）。よって #221 を「workflow-design.md の縮退・再定義」へ再定義した。
 
 ADR-202605131437-01 は workflow-design.md v2 の構造（Discovery 追加・用語非依存化・フロー/ストック軸分離）を6決定で確定したが、「workflow-design.md がどの責務を保持する文書か」という**責務定義の facet** は当時の前提（構造・操作・根拠を集約した設計図）に立脚していた。本 ADR はこの facet のみを改訂する。残り5決定（用語フレームワーク非依存化、フロー/ストック軸分離、ドメイン分類配置、spec.md 集約、廃止事項）は今も有効なため、ADR-202605131437-01 全体の Supersede はしない。
 
@@ -24,11 +24,11 @@ ADR-202605131437-01 は workflow-design.md v2 の構造（Discovery 追加・用
 
 縮退後の `docs/workflow-design.md`（リネーム後 `docs/principles.md`）の責務を以下に再定義する。
 
-1. **文書類型 = Diátaxis の Explanation（根拠ハブ）**。Reference（event-storming / domain-model）、How-to（各 SKILL.md）、原子的決定（ADR）と役割分担し、本 repo に欠けていた「方法論の根拠・哲学」ジャンルを埋める。
+1. **文書類型 = Diátaxis の Explanation（根拠ハブ）**。Reference（ドメイン構造を記述する専用文書）、How-to（各スキル定義）、原子的決定（ADR）と役割分担し、本 repo に欠けていた「方法論の根拠・哲学」ジャンルを埋める。
 2. **保持する内容は根拠層のみ**。基本原則①②③、70%見通し、変更パターン A/B/C、責任分担マトリクス、アンチパターン。構造層・操作層は各 SoT へ移転する。
-3. **結合方向は一方向**: 根拠（hub）→ 参照 → 構造（event-storming / domain-model / big-picture）／操作（各 SKILL.md / CLAUDE.md / adr/README）。構造・操作の唯一の SoT はそれぞれの専用文書であり、根拠ハブは再記述せずリンクで委譲する。
+3. **結合方向は一方向**: 根拠（hub）→ 参照 → 構造／操作。構造・操作の唯一の SoT はそれぞれの専用文書であり、根拠ハブは再記述せずリンクで委譲する。
 4. **編成はフェーズ別でなく原則別**。原則①②③・責任分担・アンチパターンは全ライフサイクルに効く横断原則であり、フェーズに縛らない。
-5. **スコープは build スライス（Discovery→Delivery）と明示**。ライフサイクル全体の広さの SoT は `docs/big-picture.md` が持つため、再記述せずリンクで委譲する。
+5. **スコープは build スライス（Discovery→Delivery）と明示**。ライフサイクル全体の広さの SoT は全体像を扱う専用文書が持つため、再記述せずリンクで委譲する。
 
 ## Consequences
 
@@ -53,3 +53,7 @@ ADR-202605131437-01 は workflow-design.md v2 の構造（Discovery 追加・用
 - Related: ADR-202605131437-06-workflow-design-scope-team（スコープ・チーム規模方針）、ADR-202605311500-01-superpowers-delegation-boundary（Delivery 散文の接続契約化・スキル委譲）
 
 関連Issue: #221（workflow-design.md 縮退・再編本体）
+
+## 変更履歴
+
+- 2026-08-02: 記録の参照原則に沿い、可変文書を現在の参照先として指していた記述を自己完結的な記述および時点を固定した記述へ改めた。同一 `## Decision` 内で決定3・決定5 が是正され決定1 が手つかずで残る非対称を避けるため、走査の母集合から漏れていた決定1 も同じ規律で是正した。決定の骨子・却下理由は不変。退役 ADR を射程へ含める本Issue限りの特例に基づく非core 編集（#658）。

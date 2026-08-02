@@ -22,6 +22,10 @@ growth 学習ループの「distill の再走査抑止」責務が、候補の�
 3. **陳腐化ゆえ有界でよい**: 観測は時間とともに陳腐化するため、改善された distiller による再検討を全コーパスに毎回かける必要はない。recency 窓で有界化すれば足りる。
 4. **promote の裁定だけは下流 commitment**: `rejected` / `promoted` は distiller 相対でなく、配布経路（Issue）への commitment。ここは明示状態として残す必要がある（ADR-202606291631-01 決定3「rejected/promoted 不可侵」に一致）。
 
+### 参照の時点固定
+
+`## Decision` と `## Consequences` は後継 ADR-202607130831-01 が逐語 restate の対象としているため、文言を保つ。そこでいう `personal-store-spec.md` の「冪等性」節・「状態管理」節、および `DESIGN.md` の stateDiagram は、いずれも本 ADR の起票時点（2026-07-11）のものを指し、以後の仕様変更を追わない。
+
 ## Decision
 
 個人 store の状態モデルを以下へ改める。実装（spec/DESIGN/スキル本体の書換）は本 ADR に含めず follow-up 実装 Issue で扱う。
@@ -30,7 +34,7 @@ growth 学習ループの「distill の再走査抑止」責務が、候補の�
 
 2. **ループの状態は候補側 `candidate-status`（pending / rejected / promoted）に集約する**。`rejected` / `promoted` は promote の commitment ゆえ導出でなく明示状態として残す（根拠4。ADR-202606291631-01 決定3 に依拠し、distill は再導出でこれらを覆さない）。
 
-3. **distill の処理源選択を「`status: unprocessed` の走査」から「provenance 導出 ＋ recency 窓」へ改める**。観測は、その timestamp が **`promoted` または `pending` の候補**の provenance に現れれば「処理済み」と導出し、処理源から除外する。一方、**`rejected` 候補しか持たない観測、および候補を持たない観測（未 distill／観測棄却）は処理源に残す（再走査に開く）**。これにより賢い distiller が rejected 観測から別の仮説を立てる余地を保つ（Consequence (c)）。rejected された同一仮説の復活は候補層（distill が `candidate-status: rejected` を尊重）が抑止し、現行「冪等性」節の層分離（観測は再走査に開き、同一仮説の再提示だけを候補層で止める）を踏襲する。`pending` 観測は ADR-202606291631-01 決定3 の pending 候補再評価で別途再考されるため処理源からは除外する。観測棄却の再走査は無音（候補を生まない）で、改善された distiller が回った時のみ新たにシグナルを拾う。全再導出でなく recency 窓で有界化する（窓のサイズ・述語は実装 Issue で具体化）。
+3. **distill の処理源選択を「`status: unprocessed` の走査」から「provenance 導出 ＋ recency 窓」へ改める**。観測は、その timestamp が **`promoted` または `pending` の候補**の provenance に現れれば「処理済み」と導出し、処理源から除外する。一方、**`rejected` 候補しか持たない観測、および候補を持たない観測（未 distill／観測棄却）は処理源に残す（再走査に開く）**。これにより賢い distiller が rejected 観測から別の仮説を立てる余地を保つ（Consequence (c)）。rejected された同一仮説の復活は候補層（distill が `candidate-status: rejected` を尊重）が抑止し、「冪等性」節の層分離（観測は再走査に開き、同一仮説の再提示だけを候補層で止める）を踏襲する。`pending` 観測は ADR-202606291631-01 決定3 の pending 候補再評価で別途再考されるため処理源からは除外する。観測棄却の再走査は無音（候補を生まない）で、改善された distiller が回った時のみ新たにシグナルを拾う。全再導出でなく recency 窓で有界化する（窓のサイズ・述語は実装 Issue で具体化）。
 
 4. **観測 retention の目的を「監査保持」から「distiller 改善時の窓内再導出」へ再定義する**。観測は削除しない。retention は監査要件（単独利用者ゆえ不要）でなく、改善された distiller による再導出を可能にするために保持する。
 
@@ -56,3 +60,7 @@ growth 学習ループの「distill の再走査抑止」責務が、候補の�
 - Superseded by: ADR-202607130831-01-captures-stateless-candidate-side-state（ADR分割により生存決定1〜3 を逐語 restate で re-home。`superseded-by` に列挙）
 - Superseded by: ADR-202607121331-01-captures-bounded-retention-aging（決定4 の retention 姿勢〔観測は削除しない〕を有界保持＋経年削除へ改訂して引き継いだ後継。`superseded-by` に列挙）
 - 関連Issue: #455（本 ADR の起票元）, #488（ADR分割による生存決定 re-home）
+
+## 変更履歴
+
+- 2026-08-02: 記録の参照原則に沿い、可変文書を現在の参照先として指していた記述を時点を固定した記述へ改めた。`## Decision`・`## Consequences` は後継 ADR-202607130831-01 との逐語 restate を保つため現在形の指示語（「現行」）を落とすにとどめ、指し先の時点は `## Context` の「参照の時点固定」節で明示する形を採った。決定の骨子・却下理由は不変。退役 ADR を射程へ含める本Issue限りの特例に基づく非core 編集（#658）。
