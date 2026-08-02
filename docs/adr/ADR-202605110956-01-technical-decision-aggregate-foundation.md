@@ -10,7 +10,7 @@ superseded-by: ADR-202607112231-01-adr-two-axis-status-validity-model
 
 ホットスポット H4「ADR（Architecture Decision Records）のライフサイクル管理が未定義。横断的技術方針の蓄積・参照・廃止の仕組みがない」由来の決定。Issue #130 で技術的意思決定を独立集約として正式モデル化し（旧「横断的技術方針」を改名）、状態遷移・コマンド・イベントを確定した。しかし集約の実体（ADR ファイル）を運用するための採番方式・配置場所・ライフサイクル状態名・後継参照の扱いが Issue #130 と Issue #169 にまたがって決定されており、ADR として一括参照可能な単一の根拠ドキュメントが存在しない状態だった。
 
-本 ADR は Issue #130 で確定した4項目（採番方式・配置・ライフサイクル状態・廃止時の扱い）を ADR 形式で正式化し、`docs/development/event-storming.md`「技術的意思決定」集約および本リポジトリの ADR 運用ルールの根拠として位置付ける。
+本 ADR は Issue #130 で確定した4項目（採番方式・配置・ライフサイクル状態・廃止時の扱い）を ADR 形式で正式化し、当時の `docs/development/event-storming.md`「技術的意思決定」集約および本リポジトリの ADR 運用ルールの根拠として位置付けた。
 
 関連ホットスポット: H4（Issue #130 で部分解消、運用基盤は Issue #169 で確定）
 
@@ -33,14 +33,14 @@ superseded-by: ADR-202607112231-01-adr-two-axis-status-validity-model
 
 **得られた利益**:
 
-- 集約モデル（`docs/development/event-storming.md`・`docs/development/domain-model.md`「技術的意思決定」集約）とファイル運用（`docs/adr/`）の表記が一致する
+- 当時の集約モデル（`docs/development/event-storming.md`・`docs/development/domain-model.md`「技術的意思決定」集約）とファイル運用（`docs/adr/`）の表記が一致した
 - 検索性は採番（日付）＋slug（内容）で担保される。日付からは時系列、slug からは内容軸でナビゲート可能
 - Phase 1（Issue #170）以降で既存 memory 判定の遡及 ADR 化に着手可能となる
 
 **受容したトレードオフ**:
 
-- ライフサイクル状態名のみ英文表記（他集約は和文）。`docs/development/event-storming.md:478` の設計判断「技術的意思決定集約の状態名を英文表記とする」と整合。代替案（和文統一・併記）は ADR ファイル Status 欄との二重管理や記述冗長化のため却下
-- 採番方式 `ADR-YYYYMMDD[-N]` は `docs/workflow-design.md:166-186` の旧採番方式（`docs/adr/{番号}-{タイトル}.md`）と矛盾するが、本 ADR を正とし、`workflow-design.md` の旧記述整合は Issue #170 以降の Phase 1 整合作業に委譲する
+- ライフサイクル状態名のみ英文表記（他集約は和文）。当時の `docs/development/event-storming.md` が置いていた設計判断「技術的意思決定集約の状態名 `Proposed / Accepted / Deprecated / Superseded` を英文表記で確定。他集約の状態名（和文表記）と命名規則が揃わないが、意図的選択とする」と整合。代替案（和文統一・併記）は ADR ファイル Status 欄との二重管理や記述冗長化のため却下
+- 採番方式 `ADR-YYYYMMDD[-N]` は `docs/workflow-design.md` の旧採番方式（`docs/adr/{番号}-{タイトル}.md`）と矛盾するが、本 ADR を正とし、`workflow-design.md` の旧記述整合は Issue #170 以降の Phase 1 整合作業に委譲する
 
 **将来の留保事項**:
 
@@ -54,3 +54,7 @@ superseded-by: ADR-202607112231-01-adr-two-axis-status-validity-model
 本リポジトリにおける最初の ADR。
 
 関連Issue: #130（技術的意思決定集約モデル化、CLOSED）、#169（ADR運用基盤整備、本 ADR の起票元）
+
+## 変更履歴
+
+- 2026-08-02: 記録の参照原則に沿い、可変文書を現在の参照先として指していた記述を自己完結的な記述および時点を固定した記述へ改め、あわせて参照先の行番号を落とした。決定の骨子・却下理由は不変。退役 ADR を射程へ含める本Issue限りの特例に基づく非core 編集（#658）。
