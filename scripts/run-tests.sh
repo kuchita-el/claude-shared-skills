@@ -60,7 +60,7 @@ resolve_bats() {
     cat >&2 <<'MSG'
 run-tests: bats を解決できません（mise exec・PATH のいずれでも見つからない）
   導入: mise install   （リポジトリ直下の mise.toml が版を固定する）
-  信頼: mise trust     （初回のみ。未信頼のまま mise は設定を読まない）
+  信頼: mise trust     （チェックアウトごとに一度。未信頼のまま mise は設定を読まない）
 MSG
     return 1
 }
