@@ -35,9 +35,13 @@ ADR の各遷移（起票 → 承認 → 上書き / 廃止 / 却下）で front
 
 **将来の留保事項（本 ADR のスコープ外＝ downstream）**:
 
-- 機構の実装（`scripts/lint-adr.sh` と PreToolUse フック合流、`docs/adr/index.md` 生成、`docs/adr/README.md` 廃止手順・`template.md` の改訂、ライフサイクル操作スキル）は実装 Issue に委ねる。この機構は実装済み。drift-lint はその後 ADR 運用機構のプラグイン抽出（#492/#493）で独立プラグイン `adr` 同梱の `plugins/adr/scripts/lint-adr.sh`＋同プラグインの PreToolUse ゲートへ移った（現配置は決定5 本文と 2026-07-21 変更履歴を参照。ここでの `scripts/lint-adr.sh` は起票当時に想定した合流先を指す）。
+- 機構の実装（`scripts/lint-adr.sh` と PreToolUse フック合流、`docs/adr/index.md` 生成、`docs/adr/README.md` 廃止手順・`template.md` の改訂、ライフサイクル操作スキル）は実装 Issue に委ねる。この機構は、本 ADR の起票時点（2026-07-26）では実装済みであり、drift-lint はその後 ADR 運用機構のプラグイン抽出（#492/#493）で独立プラグイン `adr` 同梱の `plugins/adr/scripts/lint-adr.sh`＋同プラグインの PreToolUse ゲートへ移っていた（現配置は決定5 本文と 2026-07-21 変更履歴を参照。ここでの `scripts/lint-adr.sh` は起票当時に想定した合流先を指す）。
 
 ## 関連ADR
 
 - Supersedes: ADR-202607112231-01-adr-two-axis-status-validity-model（ADR分割〔ADR-202607261501-01 決定1〕により、原 ADR の決定6 を逐語 restate で re-home。原 ADR の決定1・2・5 は ADR-202607261459-01、決定3・4 は ADR-202607261501-01、決定7 は ADR-202607261503-02、決定8 の配置項は ADR-202607261503-03 が担い、決定8 の採番方式項は ADR-202607261504-01 が反転した。原 ADR の `superseded-by` はこれら6本の後継を列挙する）
 - 関連Issue: #463（原 ADR の起票元）, #462（外部監査の見取り図）, #570（ADR分割による re-home）
+
+## 変更履歴
+
+- 2026-08-02: 記録の参照原則に沿い、可変文書を現在の参照先として指していた記述の時点を固定した。決定の骨子・却下理由は不変（#658）。
