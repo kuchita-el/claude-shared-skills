@@ -9,17 +9,17 @@ validity: 有効
 
 growth Phase 2 は #349 D1 で career（学びの活用先の4分類: `learnings.md` / ADR 差分 / dev-workflow 転送 / 強キャリア）を定め、#382（`promotion-issue-spec.md`）はこれを **promote 起票時・候補単位**の決定表で一意出力する規約とした。#384 のプラン検討中に、この設計に2つの問題が判明した。
 
-1. **未配線ギャップ**: 現行の promote は空間軸 `scope-hypothesis` の本文注記のみを実装し、career の Route 判定実行・キャリアラベル付与は未実装（`promote-procedure.md` §5「ラベル付与は任意」）。`promote:*` ラベルの実体作成も #385 へ委譲され未作成。career ラベルで Issue を絞り込む後段ハンドラ（#383 / #384）の入力前提が成立していない。
+1. **未配線ギャップ**: 当時の promote は空間軸 `scope-hypothesis` の本文注記のみを実装し、career の Route 判定実行・キャリアラベル付与は未実装だった（当時の promote 手順はラベル付与を任意と定めていた）。`promote:*` ラベルの実体作成も #385 へ委譲され未作成。career ラベルで Issue を絞り込む後段ハンドラ（#383 / #384）の入力前提が成立していない。
 
-2. **設計上の不整合**: career を promote が候補単位で決めることが、フリート学習（DESIGN.md 原理6「一人の N セッションより、M 人の集合ログの方が豊か」）と噛み合わない。`promote` は構造上、1人・1プロジェクトの個人ローカル store（`~/.claude/projects/<project-id>/growth/candidates.md`、`personal-store-spec.md`）しか参照できない。career をここで縛ると、フリート視界ゼロの単独判定が下流ルーティングを確定させてしまう。
+2. **設計上の不整合**: career を promote が候補単位で決めることが、フリート学習（当時の DESIGN.md 原理6「一人の N セッションより、M 人の集合ログの方が豊か」）と噛み合っていなかった。`promote` は構造上、1人・1プロジェクトの個人ローカル store しか参照できない設計だった。career をここで縛ると、フリート視界ゼロの単独判定が下流ルーティングを確定させてしまう。
 
-なお、DESIGN.md 決定事項8 が「仮説のまま終点・最終裁定は人間」と規定するのは**空間軸（scope: `project-local` / `universal`）**についてであり、career 軸には全面的な「仮説どまり」規定は無かった。career だけが起票時に決定表で縛られる非対称な設計になっていた。
+なお、当時の DESIGN.md 決定事項8 が「仮説のまま終点・最終裁定は人間」と規定していたのは**空間軸（scope: `project-local` / `universal`）**についてであり、career 軸には全面的な「仮説どまり」規定は無かった。career だけが起票時に決定表で縛られる非対称な設計になっていた。
 
 ## Decision
 
 career の決定を「promote 起票時・候補単位の確定」から外し、以下のモデルへ再設計する。
 
-1. **career 仮説の生成は distill の責務とする**。`distill` が候補ごとに `career-hypothesis`（＋宛先 repo 仮説）を `candidates.md` へ出力する。scope 仮説（`scope-hypothesis`）と対称・直交な2つのメタ欄として持つ。これは DESIGN.md 決定事項8「Route を distill へ統合する」を、scope だけでなく career についても完成させる変更にあたる。
+1. **career 仮説の生成は distill の責務とする**。`distill` が候補ごとに `career-hypothesis`（＋宛先 repo 仮説）を `candidates.md` へ出力する。scope 仮説（`scope-hypothesis`）と対称・直交な2つのメタ欄として持つ。これは当時の DESIGN.md 決定事項8「Route を distill へ統合する」を、scope だけでなく career についても完成させる変更にあたる。
 
 2. **promote はルーティング不可知とする**。promote は決定表を持たず、distill が出した `career-hypothesis` と `scope-hypothesis` を昇格 Issue 本文に注記として運ぶだけにする。career の確定（裁定）は行わない。
 
@@ -41,7 +41,7 @@ career の決定を「promote 起票時・候補単位の確定」から外し�
 |---|---|---|
 | #382 `promotion-issue-spec.md` | 再定義 | 決定表を distill 側仕様へ移設。`promote:*` 4 career ラベル体系を削除。career を binding label → 本文注記の仮説へ。行2 を「任意プラグイン／コミュニティ改善還元」へ一般化。 |
 | #383 `learning-promotion-spec.md`（マージ済） | 再訪 | 入力前提を「`promote:learnings` ラベルで絞った Issue」→「取り込み Issue の裁定結果」へ改訂。ラベル filter 依存を除去。 |
-| #384 `career-promotion-spec.md`（pause 中・未作成） | 再定義 | career ラベルベースのハンドラ入力前提が失効。入力を取り込み Issue の裁定結果へ。#405 確定後に再定義して再開。 |
+| #384 `career-promotion-spec.md`（当時 pause 中・未作成） | 再定義 | career ラベルベースのハンドラ入力前提が失効。入力を取り込み Issue の裁定結果へ。#405 確定後に再定義して再開。 |
 | #349 D1 | 改訂 | career の適用タイミングを「promote 起票時・候補単位で確定」→「career 仮説は distill が出し、裁定は集約点」へ。行2 一般化を反映。 |
 | #348 `promote-procedure.md` | 改訂 | §5 の Route 注記／career 決定表を除去し、distill 由来の `career-hypothesis` を運ぶ注記に変更。promote をルーティング不可知に。 |
 | #385 | 縮小 | ラベル作成スコープを inbox 識別子 `growth:promote`（＋ `growth`）のみに縮小。4 career ラベルは作らない。 |
@@ -70,3 +70,7 @@ career の決定を「promote 起票時・候補単位の確定」から外し�
 Related: [ADR-202606261847-01-growth-plugin-separation](./ADR-202606261847-01-growth-plugin-separation.md)
 
 関連Issue: #405（本決定の spike）, #349（Phase 2 エピック / D1）, #382, #383, #384, #348, #385, #160
+
+## 変更履歴
+
+- 2026-08-02: 記録の参照原則に沿い、可変文書を現在の参照先として指していた記述を自己完結的な記述および時点を固定した記述へ改めた。決定の骨子・却下理由は不変（#658）。

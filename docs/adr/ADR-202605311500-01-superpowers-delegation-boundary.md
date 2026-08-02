@@ -22,14 +22,14 @@ dev-workflow を superpowers と正面競合させず、**実装メカニクス�
 1. **superpowers に委譲する（再発明・保守しない）**:
     - 汎用実装メカニクス: TDD小サイクル、検証ゲート、リファクタリング、raw なコードレビュー、git worktree 並列、subagent 駆動実装
     - 対応 superpowers スキル: `test-driven-development` / `executing-plans` / `requesting-code-review` / `subagent-driven-development` / `using-git-worktrees` / `finishing-a-development-branch`
-    - 計画骨格（マイクロタスク分解の雛形）: superpowers `writing-plans`。ただし plan-issue が生成する検証方針・判断依頼・AC↔テストケース対応表は接続契約として dev-workflow が保持する（項2参照）
+    - 計画骨格（マイクロタスク分解の雛形）: superpowers `writing-plans`。ただし検証方針・判断依頼・AC↔テストケース対応表の3点は接続契約として dev-workflow が保持する（項2参照）
 
 2. **dev-workflow が保持する（superpowers に存在しない）**:
     - **Discovery（堀）**: problem-statement、event-storming、domain-modeling、ユースケース仕様、ADR
-    - **接続契約（結合組織）**: plan-issue の検証方針・判断依頼、dev-loop のレビュー契約・Issue コメントへのエスカレーション。Discovery と superpowers 実行層を繋ぐ
+    - **接続契約（結合組織）**: 計画側の検証方針・判断依頼、実装ループ側のレビュー契約・Issue コメントへのエスカレーション。Discovery と superpowers 実行層を繋ぐ
     - 依存分析（dependency-check）、日本語成果物・運用規約
 
-3. **ドメインモデルに委譲境界を書かない**: `docs/{domain}/event-storming.md` ・ `domain-model.md` はツール非依存を保つ。superpowers への委譲対応は `docs/references/skill-phase-mapping.md`（スキル対応表）に記載し、本 ADR を根拠として参照する（#221 で `docs/workflow-design.md` 本体から同 reference へ移設）。委譲は実装・技術の決定であり、ドメインの事実ではないため、モデル層に漏らさない。
+3. **ドメインモデルに委譲境界を書かない**: `docs/{domain}/event-storming.md` ・ `domain-model.md` はツール非依存を保つ。superpowers への委譲対応はスキル対応表に記載し、本 ADR を根拠として参照する（#221 で `docs/workflow-design.md` 本体から同対応表へ移設）。委譲は実装・技術の決定であり、ドメインの事実ではないため、モデル層に漏らさない。
 
 4. **差別化の縦軸**: DDD戦略設計を背骨に先行 → Issue/AC 追跡は需要検証後に接続 → 敵対的検証でドメイン不変条件＋AC充足を保証。
 
@@ -60,3 +60,7 @@ Related: ADR-202606062346-01-superpowers-soft-delegation（本ADRがパークし
 Related: ADR-202606071222-01-workflow-unit-validity-reference-mechanism（本ADRがパークした委譲境界の単位/シーム実現を 607 が精緻化。上書きでない）
 Related: ADR-202606020010-01-principles-rationale-hub（workflow-design.md の責務定義 facet の現行の住処。本ADRが規定する Delivery 層への委譲境界は、この責務分割に依拠する。旧 ADR-202605131437-01 の決定1の後継）、ADR-202607182303-01-workflow-design-v2-terminology-flow-stock-axes（v2 構造のうち生存する決定群の現行の住処。本ADRは同構造の Delivery 層に superpowers 委譲境界を導入する。ADR分割以前は上書き済みの ADR-202605131437-01-workflow-design-v2-structure を指していた）
 Related: ADR-202605131437-06-workflow-design-scope-team（workflow-design.md のスコープ限定の先行例。本ADRも同設計書の責務範囲を規定する）
+
+## 変更履歴
+
+- 2026-08-02: 記録の参照原則に沿い、可変文書を現在の参照先として指していた記述を自己完結的な記述へ改めた。決定の骨子・却下理由は不変（#658）。
