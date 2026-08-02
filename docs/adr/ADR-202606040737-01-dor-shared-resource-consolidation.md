@@ -9,7 +9,7 @@ validity: 有効
 
 DoR（Definition of Ready）定義 `dor-default.md` は、これまで `refine-issue` スキル配下 `skills/refine-issue/references/dor-default.md` に置かれ、`refine-issue` のみが参照していた。
 
-`create-issue` スキルの新設（#231）により、DoR定義は**2スキルが共有する資源**になった。`create-issue` は作成時にDoRを前倒し充足させ（shift-left）、`refine-issue` は作成後の精査で同じDoRを適用する。両者が同一基準を参照しなければ、作成側と精査側で判定基準がドリフトし、「create-issue が満たしたはずのDoRを refine-issue が不足と指摘する」矛盾が生じる。
+`create-issue` スキルの新設（#231）により、DoR定義は**2スキルが共有する資源**になった。DoR の適用時点は作成時の前倒し充足（shift-left）と作成後の精査の2つに分かれ、前者を `create-issue`、後者を `refine-issue` が担う構成となった。両者が同一基準を参照しなければ、作成側と精査側で判定基準がドリフトし、「create-issue が満たしたはずのDoRを refine-issue が不足と指摘する」矛盾が生じる。
 
 共有資源を一方のスキル（`refine-issue`）配下に置いたままにすると、`create-issue` が `refine-issue` の内部ディレクトリ構造へ依存する**逆コンポーネント結合**が発生する。`create-issue` が `../refine-issue/references/dor-default.md` を参照する形は、スキル間の独立性を損ない、`refine-issue` のリファクタで `create-issue` が壊れる。
 
@@ -40,3 +40,7 @@ ADR-202605250838-01 は、共有資源（サブエージェント定義）を各
 ## 関連ADR
 
 Related: ADR-202605250838-01-subagent-agents-consolidation（共有資源をプラグインルートへ集約する同型の原則。本ADRはその参照資源版）。関連Issue: #231
+
+## 変更履歴
+
+- 2026-08-02: 記録の参照原則に沿い、可変文書を現在の参照先として指していた記述を自己完結的な記述へ改めた。決定の骨子・却下理由は不変（#658）。
