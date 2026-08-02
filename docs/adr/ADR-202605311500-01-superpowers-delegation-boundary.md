@@ -26,10 +26,10 @@ dev-workflow を superpowers と正面競合させず、**実装メカニクス�
 
 2. **dev-workflow が保持する（superpowers に存在しない）**:
     - **Discovery（堀）**: problem-statement、event-storming、domain-modeling、ユースケース仕様、ADR
-    - **接続契約（結合組織）**: plan-issue の検証方針・判断依頼、dev-loop のレビュー契約・Issue コメントへのエスカレーション。Discovery と superpowers 実行層を繋ぐ
+    - **接続契約（結合組織）**: 計画側の検証方針・判断依頼、実装ループ側のレビュー契約・Issue コメントへのエスカレーション。Discovery と superpowers 実行層を繋ぐ
     - 依存分析（dependency-check）、日本語成果物・運用規約
 
-3. **ドメインモデルに委譲境界を書かない**: `docs/{domain}/event-storming.md` ・ `domain-model.md` はツール非依存を保つ。superpowers への委譲対応はスキル対応表に記載し、本 ADR を根拠として参照する（#221 で `docs/workflow-design.md` 本体から同 reference へ移設）。委譲は実装・技術の決定であり、ドメインの事実ではないため、モデル層に漏らさない。
+3. **ドメインモデルに委譲境界を書かない**: `docs/{domain}/event-storming.md` ・ `domain-model.md` はツール非依存を保つ。superpowers への委譲対応はスキル対応表に記載し、本 ADR を根拠として参照する（#221 で `docs/workflow-design.md` 本体から同対応表へ移設）。委譲は実装・技術の決定であり、ドメインの事実ではないため、モデル層に漏らさない。
 
 4. **差別化の縦軸**: DDD戦略設計を背骨に先行 → Issue/AC 追跡は需要検証後に接続 → 敵対的検証でドメイン不変条件＋AC充足を保証。
 

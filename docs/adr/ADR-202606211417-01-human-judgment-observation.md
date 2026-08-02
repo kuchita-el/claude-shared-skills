@@ -72,7 +72,7 @@ plan 段階で「人間判断が必要な観点」を plan ドキュメントに
 
 将来の語彙改変は必ず本 ADR の対応表を更新し、両側で同期する。片側のみの語彙変更を禁止する。
 
-| データ構造フィールド | plan-issue 側の現行語彙・参照箇所 | dev-loop / code-reviewer 側の現行語彙・参照箇所 |
+| データ構造フィールド | plan-issue 側の起票時点の語彙・参照箇所 | dev-loop / code-reviewer 側の起票時点の語彙・参照箇所 |
 |---|---|---|
 | （セクション名） | `## 判断依頼`（`plugins/dev-workflow/skills/plan-issue/references/plan-output-format.md` が同名の節見出しを置いていた） | （起票時点（2026-06-21）では該当なし。Issue [#314](https://github.com/kuchita-el/claude-shared-skills/issues/314) AC2 で PR 本文に `### 人間に確認してほしい観点` セクションとして導入予定） |
 | 観点ID | （同時点で未定義、本 ADR で導入） | （同時点で未定義、本 ADR で導入） |
