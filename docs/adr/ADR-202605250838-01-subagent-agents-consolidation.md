@@ -7,7 +7,7 @@ validity: 有効
 
 ## Context
 
-`dev-workflow` プラグインのサブエージェント定義（code-reviewer / refactorer / test-designer / test-spec-validator / plan-reviewer）は、各スキル配下 `skills/*/agents/*.md` にプロンプトテンプレートとして配置していた。`plugin.json` にエージェント登録はなく、Claude Code 公式のサブエージェント自動検出機構を使っていない。
+`dev-workflow` プラグインのサブエージェント定義（code-reviewer / refactorer / test-designer / test-spec-validator / plan-reviewer）は、各スキル配下 `skills/*/agents/*.md` にプロンプトテンプレートとして配置していた。起票時点（2026-05-25）では `plugin.json` にエージェント登録はなく、Claude Code 公式のサブエージェント自動検出機構を使っていなかった。
 
 この方式では、`dev-loop` の各 Phase でメインエージェントが定義ファイルを `Read` してからプロンプトに埋め込んで `Agent` ツールに委任する必要があり、以下の問題が生じていた（#217）。
 
@@ -38,3 +38,7 @@ validity: 有効
 ## 関連ADR
 
 Related: ADR-202605250658-01-subagent-claude-md-injection（同じくサブエージェント起動時の余分な Read を扱う）。関連Issue: #217, #216
+
+## 変更履歴
+
+- 2026-08-02: 記録の参照原則に沿い、可変文書を現在の参照先として指していた記述の時点を固定した。決定の骨子・却下理由は不変（#658）。
