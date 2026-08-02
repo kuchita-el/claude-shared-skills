@@ -29,7 +29,7 @@ growth 学習ループの「distill の再走査抑止」責務が、候補の�
 
 2. **ループの状態は候補側 `candidate-status`（pending / rejected / promoted）に集約する**。`rejected` / `promoted` は promote の commitment ゆえ導出でなく明示状態として残す（根拠4。ADR-202606291631-01 決定3 に依拠し、distill は再導出でこれらを覆さない）。
 
-3. **distill の処理源選択を「`status: unprocessed` の走査」から「provenance 導出 ＋ recency 窓」へ改める**。観測は、その timestamp が **`promoted` または `pending` の候補**の provenance に現れれば「処理済み」と導出し、処理源から除外する。一方、**`rejected` 候補しか持たない観測、および候補を持たない観測（未 distill／観測棄却）は処理源に残す（再走査に開く）**。これにより賢い distiller が rejected 観測から別の仮説を立てる余地を保つ（Consequence (c)）。rejected された同一仮説の復活は候補層（distill が `candidate-status: rejected` を尊重）が抑止し、現行「冪等性」節の層分離（観測は再走査に開き、同一仮説の再提示だけを候補層で止める）を踏襲する。`pending` 観測は ADR-202606291631-01 決定3 の pending 候補再評価で別途再考されるため処理源からは除外する。観測棄却の再走査は無音（候補を生まない）で、改善された distiller が回った時のみ新たにシグナルを拾う。全再導出でなく recency 窓で有界化する（窓のサイズ・述語は実装 Issue で具体化）。
+3. **distill の処理源選択を「`status: unprocessed` の走査」から「provenance 導出 ＋ recency 窓」へ改める**。観測は、その timestamp が **`promoted` または `pending` の候補**の provenance に現れれば「処理済み」と導出し、処理源から除外する。一方、**`rejected` 候補しか持たない観測、および候補を持たない観測（未 distill／観測棄却）は処理源に残す（再走査に開く）**。これにより賢い distiller が rejected 観測から別の仮説を立てる余地を保つ（Consequence (c)）。rejected された同一仮説の復活は候補層（distill が `candidate-status: rejected` を尊重）が抑止し、本 ADR 起票時点（2026-07-13）の「冪等性」節の層分離（観測は再走査に開き、同一仮説の再提示だけを候補層で止める）を踏襲する。`pending` 観測は ADR-202606291631-01 決定3 の pending 候補再評価で別途再考されるため処理源からは除外する。観測棄却の再走査は無音（候補を生まない）で、改善された distiller が回った時のみ新たにシグナルを拾う。全再導出でなく recency 窓で有界化する（窓のサイズ・述語は実装 Issue で具体化）。
 
 ## Consequences
 
@@ -39,8 +39,8 @@ growth 学習ループの「distill の再走査抑止」責務が、候補の�
   - 状態軸が候補側 1 本になり、mental model が単純化する。retention の目的が「再導出」へ明確化する。
 - **moot 化する先行決定**（follow-up 実装 Issue で記述を書き換える）:
   - #348: promote が `captures.status` を反転する決定。反転対象が消えるため moot。
-  - `references/personal-store-spec.md`「状態管理」節: `status` 2値とインライン反転の監査保持機構。
-  - `DESIGN.md` stateDiagram の `captures.md（status）` 状態、および PR #454 が追加した「`status`＝再走査抑止フラグ」注記。
+  - 起票時点の `references/personal-store-spec.md`「状態管理」節が定めていた `status` 2値とインライン反転の監査保持機構。
+  - 同じく起票時点の `DESIGN.md` stateDiagram の `captures.md（status）` 状態、および PR #454 が追加した「`status`＝再走査抑止フラグ」注記。
 - **受容したコスト**:
   - (a) recency 窓は処理源選択に時間依存を追加し、ADR-202606291631-01 決定2 が既に受容した時間不変性の放棄へ上乗せする。再現性は窓境界の固定・記録で担保する（ADR-202606291631-01 の将来留保事項と同系の扱い）。
   - (b) `candidates.md` 消失時は窓内の観測を再導出する（#455 の検討で受容。`captures.md` を保持するため再生成は可能）。
@@ -55,3 +55,7 @@ growth 学習ループの「distill の再走査抑止」責務が、候補の�
 - Related: ADR-202607200855-01-distill-ledger-as-explicit-input（本 ADR が改訂しなかった ADR-202606291631-01（629）決定1 の参照源 facet〔1b＝既存ルール台帳〕を引き取った後継。本 ADR が上書きするのは決定1 の処理源 facet のみで、参照源 facet は同後継へ生存 re-home された。処理源／参照源で対をなす）
 - Related: ADR-202607121331-01-captures-bounded-retention-aging（本 ADR 決定3 の有界化機構 facet〔recency 窓〕は ADR-202607111225-01-distill-highwater-cursor で処理済みカーソルへ改訂され、さらに同 ADR-202607121331-01 で retention 射程が改訂されている。この facet の後続改訂を指していた歴史的相互参照が持っていた固有情報を、ADR-202607112231-01 決定3 の移設に従い生存語彙へ移した）
 - 関連Issue: #455（決定1〜3 の起票元）, #488（ADR分割による re-home）
+
+## 変更履歴
+
+- 2026-08-02: 記録の参照原則に沿い、可変文書を現在の参照先として指していた記述の時点を固定した。決定の骨子・却下理由は不変（#658）。
