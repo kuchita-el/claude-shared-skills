@@ -9,7 +9,7 @@ validity: 有効
 
 `docs/workflow-design.md` がチーム規模・チーム構成（例: 1人開発 / 小規模チーム / 大規模チーム）への対応を含むべきかが議論となった。記述を含めると AI と人間の協働における作業フロー設計に「人間チーム間の合意形成プロセス」が混在し、設計書の焦点がぼやけるリスクが識別された。
 
-由来Issue/PR の特定が困難（memory `feedback_workflow_scope_team.md` の mtime 2026-04-04 から議論時期は推定可能だが、紐づく Issue/PR は不明）。本 ADR は計画書「選択肢B」の fallback ルールに従い、本Issue（#170）着手日 2026-05-13 で採番する。
+由来Issue/PR の特定は困難であった（起票時点で、memory `feedback_workflow_scope_team.md` の mtime 2026-04-04 から議論時期は推定できたが、紐づく Issue/PR は不明であった）。本 ADR は当時の計画書「選択肢B」の fallback ルールに従い、本Issue（#170）着手日 2026-05-13 で採番した。
 
 ## Decision
 
@@ -52,3 +52,4 @@ Related: ADR-202606020010-01-principles-rationale-hub（workflow-design.md の�
 ## 変更履歴
 
 - 2026-06-09 正誤更新: チーム規模軸の切り出し先を `workflow-patterns.md`（#118）→ `team-workflow-patterns.md`（#284）へ是正。#118 でスコープを「パターン軸＝変更影響度に限定」と再定義し、チーム規模軸を別ファイルへ分離する決定に伴う前方参照の更新であり、本ADRの主決定（workflow-design.md からのチーム規模別フロー除外）は不変。
+- 2026-08-02: 記録の参照原則に沿い、可変文書を現在の参照先として指していた記述の時点を固定した。決定の骨子・却下理由は不変（#658）。
