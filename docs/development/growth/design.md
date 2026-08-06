@@ -119,7 +119,7 @@ memory と PR の間に欠けていた「共有可能な揉む場」が Issue �
 
 ### 保存設計
 
-学習ループを流れるデータは **観測記録**（旧 観察 / `observation`。観測が記録した事実のみの記録——解釈・原因分析・対策を含まない＝生記録性）→ **仮説**（仮説検証待ちの振る舞い差分。`candidates.md` のエントリ）→ **規範**（learnings.md の見出し一文＝テキストとして配布される最も弱いキャリア）と姿を変える。貫く学びの核は **振る舞い差分**（「次回どう違う行動を取るか」を一文で表す実行可能な差分。原理1）。これらが載る成果物 `captures.md`（観測記録置き場）・`candidates.md`（仮説ファイル。観測記録置き場でも learnings.md でもない第3の成果物）・`learnings.md`（学び置き場）の役割・パスは、射影テーブル（上記「学習ループ」）と各 spec（personal-store-spec.md / learning-store-spec.md）が持つ。
+学習ループを流れるデータは **観測記録**（旧 観察 / `observation`。観測が記録した事実のみの記録——解釈・原因分析・対策を含まない＝生記録性）→ **仮説**（仮説検証待ちの振る舞い差分。`candidates.md` のエントリ）→ **規範**（learnings.md の見出し一文＝テキストとして配布される最も弱いキャリア）と姿を変える。貫く学びの核は **振る舞い差分**（「次回どう違う行動を取るか」を一文で表す実行可能な差分。原理1）。これらが載る成果物 `captures.md`（観測記録置き場）・`candidates.md`（仮説ファイル。観測記録置き場でも learnings.md でもない第3の成果物）・`learnings.md`（学び置き場）の役割・パスは、各 spec（personal-store-spec.md / learning-store-spec.md）が持つ。
 
 - **学び置き場の形式**: 単一の人間可読ファイル。学びを1ファイルに集約することで全体を一覧でき、肥大が一目で分かる。これが原理5（足場を痩せさせる）の前提になる。内容モデル——2面（origin 権威 / consumer 読み取り専用ミラー）・fan-out 配布と fan-in フィードバックの分離・配布の2空間（パブリック / 閉じた）・per-entry は振る舞い差分（規範）の1欄・忘却は物理除去——および配置・ライフサイクルは [`learning-store-spec.md`](../../../plugins/growth/references/learning-store-spec.md) で確定（#344）。
 - **個人 store**: 生の観測は個人ローカル（memory 等、共有されない）に置く。検証を経て共有価値が確認されたものだけ committed へ昇格させる。二段ゲート（保存＝ローカル自動 / 仕組み化＝committed）と整合し、未検証ノイズをリポジトリに入れない。memory の欠点は「昇格経路を必ず持つ」ことで克服する——ローカルは出発点であって終点ではない。具体形式・置き場・状態管理は [`personal-store-spec.md`](../../../plugins/growth/references/personal-store-spec.md) で確定（#345）。
