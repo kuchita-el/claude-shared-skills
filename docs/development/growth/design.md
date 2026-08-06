@@ -66,18 +66,9 @@ flowchart LR
 
 凡例: 角丸＝起点（学習の契機）／四角＝知識の状態（観測記録・仮説・規範）／六角＝裁定点（制度化＝人による二段ゲート L2）／〔 〕＝動作に伴うゲート／破線＝撤回ループ。
 
-上図がドメインモデルの正典（ユビキタス言語）。知識の状態・ドメイン動作・ゲートを domain 語で一箇所に固定し、実装の担い手は下表へ射影する。学習シグナルの価値は単一でなく2軸——**摩擦知**（環境摩擦・手続違反）と**判断知**（選好・却下理由・設計判断）——で、型は観測記録・仮説を貫く **`type` 属性**として運ばれる（fork でなく同一流路・共有ライフサイクル。ADR-202607010734-01）。1観測が両型にまたがる混在ゾーンの partition 硬度は非排他 tag（多値 set）で確定し、`candidates.md` の `type`（単値）→ `tags`（多値 set）改称を設計決定として記録した（決定事項10・#440）。
+上図がドメインモデルの正典（ユビキタス言語）。知識の状態・ドメイン動作・ゲートを domain 語で一箇所に固定する。各段を実装する担い手（スキルと成果物）は §4 と配布物側の各 spec・各 SKILL.md が持ち、本書では再述しない。学習シグナルの価値は単一でなく2軸——**摩擦知**（環境摩擦・手続違反）と**判断知**（選好・却下理由・設計判断）——で、型は観測記録・仮説を貫く **`type` 属性**として運ばれる（fork でなく同一流路・共有ライフサイクル。ADR-202607010734-01）。1観測が両型にまたがる混在ゾーンの partition 硬度は非排他 tag（多値 set）で確定し、`candidates.md` の `type`（単値）→ `tags`（多値 set）改称を設計決定として記録した（決定事項10・#440）。
 
-| ドメイン概念 | 実装の担い手 |
-|---|---|
-| 観測 → 観測記録 | `capture`（2検出器: 予測誤差検出器・教示信号検出器）→ `captures.md` |
-| 仮説形成 → 仮説 | `distill` → `candidates.md`（`type: behavior-diff｜decision-record`・`candidate-status`） |
-| 仮説検証〔型適応検証〕 | `promote`（摩擦系＝予測・反証／判断系＝復元不能・有効・配布価値）→ `gh` で Issue 起票 |
-| 制度化（二段ゲート L2） | `intake` → GitHub Issue ＋ refine / DoR / PR |
-| 配布 → 規範 | `distribute` → learnings.md（behavior-diff）・ADR 差分（decision-record） |
-| 測定 → 撤回 | 使用台帳 → 集約ダイジェスト（fan-in） |
-
-以下は図・表が表せない理由・制約の補足のみ:
+以下は図が表せない理由・制約の補足のみ:
 
 - **価値の2軸（ゲートを型に一致させる）**: 摩擦知の価値軸は再発（#417。単発は無価値、横断で「配布ルールが効いていない」が出る）、判断知の価値軸は復元不能性（捕まえないと消える）。1本のゲートで両型を測らないため promote を型適応させる（ADR-202607010734-01）。
 - **capture のフィルタ**: ハーネス強制摩擦（File-not-read ガード・worktree ガード・スキーマ検証・API 一時障害等）は既定除外。判断知は予測誤差の形を持たないため教示信号検出器で別途拾う。判断は後回しにする。
@@ -132,22 +123,9 @@ memory と PR の間に欠けていた「共有可能な揉む場」が Issue �
 
 - **学び置き場の形式**: 単一の人間可読ファイル。学びを1ファイルに集約することで全体を一覧でき、肥大が一目で分かる。これが原理5（足場を痩せさせる）の前提になる。内容モデル——2面（origin 権威 / consumer 読み取り専用ミラー）・fan-out 配布と fan-in フィードバックの分離・配布の2空間（パブリック / 閉じた）・per-entry は振る舞い差分（規範）の1欄・忘却は物理除去——および配置・ライフサイクルは [`../../../plugins/growth/references/learning-store-spec.md`](../../../plugins/growth/references/learning-store-spec.md) で確定（#344）。
 - **個人 store**: 生の観測は個人ローカル（memory 等、共有されない）に置く。検証を経て共有価値が確認されたものだけ committed へ昇格させる。二段ゲート（保存＝ローカル自動 / 仕組み化＝committed）と整合し、未検証ノイズをリポジトリに入れない。memory の欠点は「昇格経路を必ず持つ」ことで克服する——ローカルは出発点であって終点ではない。具体形式・置き場・状態管理は [`../../../plugins/growth/references/personal-store-spec.md`](../../../plugins/growth/references/personal-store-spec.md) で確定（#345）。
-- **個人 store のエントリ状態（実装層の正典モデル）**: 状態軸は候補側 `candidate-status` の1本に集約する。`captures.md` は無状態の append-only 観測コーパスであり、エントリ単位の状態フィールドを持たない（ADR-202607111014-01）。`captures.md` と `candidates.md` は `provenance`（由来＝`captures.md` の `## <timestamp>` 見出し）で結ばれるが、これは同一性追跡のためであり状態同期のためではない。distill が処理すべき観測の選定（処理源選択）は、provenance 導出（`promoted`/`pending` 候補を持つ観測の除外）と distill 専用の処理済みカーソル（`distill-state.md` の `distill-cursor`）の合成で有界化する（ADR-202607111225-01〔ADR-202607121331-01 が restate〕）。promote（仮説検証）が Issue 起票に成功すると `candidate-status` のみを前進させ、`captures.md` は書き換えない。値のスキーマ詳細は [`../../../plugins/growth/references/personal-store-spec.md`](../../../plugins/growth/references/personal-store-spec.md) が SoT（#345、ADR-202607111014-01 / ADR-202607111225-01〔ADR-202607121331-01 が restate〕）で、下図は状態遷移の正典。
+- **個人 store のエントリ状態（実装層の正典モデル）**: 状態軸は候補側 `candidate-status` の1本に集約する。`captures.md` は無状態の append-only 観測コーパスであり、エントリ単位の状態フィールドを持たない（ADR-202607111014-01）。`captures.md` と `candidates.md` は `provenance`（由来＝`captures.md` の `## <timestamp>` 見出し）で結ばれるが、これは同一性追跡のためであり状態同期のためではない。distill が処理すべき観測の選定（処理源選択）は、provenance 導出（`promoted`/`pending` 候補を持つ観測の除外）と distill 専用の処理済みカーソル（`distill-state.md` の `distill-cursor`）の合成で有界化する（ADR-202607111225-01〔ADR-202607121331-01 が restate〕）。promote（仮説検証）が Issue 起票に成功すると `candidate-status` のみを前進させ、`captures.md` は書き換えない。値のスキーマ詳細（`candidate-status` の値域・`provenance` の値・カーソルの格納と前進規約）と状態遷移は [`../../../plugins/growth/references/personal-store-spec.md`](../../../plugins/growth/references/personal-store-spec.md) が SoT（#345、ADR-202607111014-01 / ADR-202607111225-01〔ADR-202607121331-01 が restate〕）。
 
-```mermaid
-stateDiagram-v2
-    direction LR
-
-    state "candidates.md（candidate-status）" as CAND {
-        [*] --> pending: distill が生成
-        pending --> rejected: promote が棄却
-        pending --> promoted: promote 起票成功
-    }
-```
-
-  - **`captures.md` は無状態、distill の処理済みカーソルが有界化を担う**: `captures.md` は append-only の観測コーパスであり、旧 `status`（再走査抑止フラグ）のようなエントリ単位の状態フィールドを持たない（ADR-202607111014-01）。distill の再走査範囲は、専用ファイル `distill-state.md` の `distill-cursor`（ISO8601 timestamp）と provenance 導出（`promoted`/`pending` 候補を持つ観測の処理源からの除外）の合成で有界化する。カーソルは distill が処理後に今回走査した観測の最新 timestamp へ前進させ、前進主体は distill のみ（promote はカーソルに触れない）（ADR-202607111225-01〔ADR-202607121331-01 が restate〕、[`../../../plugins/growth/references/personal-store-spec.md`](../../../plugins/growth/references/personal-store-spec.md)）。
-  - **`candidate-status`**: `pending`（検証待ち・既定）/ `rejected`（promote が棄却）/ `promoted`（promote が起票成功後に必須で付与。付与しないと pending のまま二重起票を招く）の3値。状態軸はこの1本に集約する。
-  - **`provenance`（由来）**: 仮説の出自を追跡するメタ。値は `captures.md` の `## <timestamp>` 見出し。distill の upsert・処理源選択の同一性判定、および promote の `candidate-status` 前進で同一性判定に使う（避ける語: 出自キー・由来参照）。
+  - **避ける語**: `provenance`（由来）を `出自キー` / `由来参照` と呼ばない（旧 glossary の drift-guard の残余。定義そのものは上記 SoT が持つ）。
 
 ### 客観痕跡の取得
 
@@ -195,8 +173,8 @@ growth プラグインは2つの顔を持つ。
 
 1. **エンジン**: 学習ループの各段を担うスキル群。1段＝1スキルで関心を分離し、段ごとに別タイミングで起動する。
    - `capture` スキル（Capture）: 現セッションの会話履歴から摩擦知（予測誤差検出器）と判断知（教示信号検出器）の2種を検知し、生観察を個人ローカル store に記録する。
-   - `distill` スキル（Distill＋Route 統合）: store に溜まった未処理の生観察を Capture と非同期にバッチで仮説形成し、クラスタ化・重複排除して仮説へ変換する。出力は知識型に応じた2系統——摩擦知は実行可能な振る舞い差分（`type: behavior-diff`）、判断知は文脈付き決定知（`type: decision-record`＝decision / rejected-alternatives / rationale / context。behavior-diff 要求と N 再発カウントを免除）。各仮説に**スコープタグ**（`project-local` / `universal`）・**career 仮説タグ**（昇格先キャリア＋宛先 repo の仮説）・provenance を付与し、仮説ファイル（`candidates.md`）へ永続化する（Route をタグ付与として統合。scope・career とも仮説どまりで、確定（裁定）は集約点に置く。仮説永続化までで責務を終える）。
-   - `promote` スキル（Promote・新規）: `candidates.md` の仮説を検証し（原理2＝未検証を配布経路に乗せないフィルタ。検証は `type` で適応し、behavior-diff は予測・反証、decision-record は「復元不能で・まだ有効で・配布価値があるか」を検査する）、検証通過仮説を `gh` で**自動起票**（起票前ゲートなし）して既存ワークフローへ疎結合に渡す。起票成功後に候補側 `candidate-status` を `pending → promoted` へ前進させる（`captures.md` は無状態のため書き換えない。ADR-202607111014-01）。promote は**ルーティング不可知**で、distill の scope・career 仮説を昇格 Issue 本文へ注記として運ぶのみ（career の裁定は行わない）。L2 承認は起票後の既存ワークフロー（refine-issue / DoR / PR レビュー）が担う。
+   - `distill` スキル（Distill＋Route 統合）: store に溜まった未処理の生観察を Capture と非同期にバッチで仮説形成し、クラスタ化・重複排除して仮説へ変換する。Route をタグ付与として統合し、スコープ・キャリアはいずれも仮説どまりで、確定（裁定）は集約点に置く。
+   - `promote` スキル（Promote・新規）: 仮説を検証し（原理2＝未検証を配布経路に乗せないフィルタ）、通過した仮説だけを `gh` で**自動起票**して既存ワークフローへ疎結合に渡す。起票前に人間承認ゲートを置かず、L2 承認は起票後の既存ワークフロー（refine-issue / DoR / PR レビュー）が担う。promote は**ルーティング不可知**で、スコープ・キャリアの裁定を行わない。
    - 残る Distribute（検証済みの学びの `learnings.md` への物理昇格）は後続 Phase（Phase 2）。検証を経た仮説は Issue 起票（小さければ PR）として既存ワークフローに渡す。昇格 Issue のテンプレートは [`../../../plugins/growth/references/promotion-issue-spec.md`](../../../plugins/growth/references/promotion-issue-spec.md)（#382）で定義する。昇格先キャリアは distill が仮説単位で生成し、確定（裁定）は集約点（取り込み Issue）で人間が行う（career 決定モデルは ADR-202606282107-01。#382 は本決定に合わせ再定義予定）。出来事ベースの昇格 Issue を `learnings.md` の1欄エントリへ翻訳する変換規約は [`../../../plugins/growth/references/learning-promotion-spec.md`](../../../plugins/growth/references/learning-promotion-spec.md)（#383）で定義する。
 2. **配布物**: 蓄積された汎用の学び置き場。プラグイン配布によって全利用者の Claude Code に届く学びの実体。
 
@@ -220,7 +198,7 @@ dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 
 | 5 | チーム / 組織配布: team private marketplace を Route 対象に追加 | 共有範囲の拡大 | 0.5.0 |
 | 6 | メタ学習: 内省の仕組み自体（検知基準・昇格閾値）を内省対象に。仕組み変更は人間ゲート必須 | 自己改修 | 0.6.0 |
 
-> **version 規約**: 表の version は `plugin.json` の値。Phase 完了ごとに minor を上げる（Phase N 完了 → `0.N.0`）。Phase 内のバグ修正・スキル調整・配布物フォーマットの破壊的変更は patch。pre-1.0 は配布物（`learnings.md` / `captures.md` スキーマ）フォーマットの非安定を semver 的に表現し、ループが Capture→Retire まで一巡して実運用で安定したら 1.0.0 とする。version の正は `plugin.json`（marketplace / plugin.json は Phase 1 で同時登録）。詳細は §6 決定事項9。
+> **version 規約**: 表の version は `plugin.json` の値であり、正は `plugin.json` が持つ。Phase と version の対応規則（minor / patch の使い分け・pre-1.0 の意味）は §6 決定事項9。
 
 設計上の新規性は「配布物への移送パイプライン」（個人ローカルから共有配布物への昇格）に集中する。個人境界（memory / user CLAUDE.md）は既存機構が担う。
 
