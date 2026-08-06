@@ -60,8 +60,8 @@ superseded-by:
 - Supersedes: ADR-YYYYMMDDHHMM-NN-<slug>    （本ADRが旧ADRを全体上書きする場合。旧ADR側 front-matter の superseded-by が本ADRを指す）
 - Superseded by: ADR-YYYYMMDDHHMM-NN-<slug>  （本ADRが後継ADRに全体上書きされた場合。本ADR自身の front-matter superseded-by にも後継の full slug を記載する）
 - Related: ADR-YYYYMMDDHHMM-NN-<slug>        （直接の上書き関係はない関連ADR）
-- Amends / Amended by: 旧運用で使われ、現行スキーマでは廃止済みの表記。既存ファイルに残る記載は凍結保持せず、生存語彙（Supersedes: / Superseded by: / Related: および ## 変更履歴）へ移行したうえで corpus から除去する。新規起票では使わない。
 該当なしの場合は「該当なし」と記述。関連Issueも併記可（書式: `関連Issue: #<番号>`、複数件はカンマ区切り）
+書式規約と機械検査の範囲は「相互参照の規約」に従う。
 -->
 
 <先行ADR・後継ADR・関連ADRを full slug で列挙。該当なしの場合は「該当なし」と明記>
