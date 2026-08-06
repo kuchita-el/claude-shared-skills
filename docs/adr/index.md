@@ -48,3 +48,4 @@
 - [ADR-202608011354-01-adr-issuance-timing-and-naming-scope](./ADR-202608011354-01-adr-issuance-timing-and-naming-scope.md): ADR 起票のタイミングと命名規約の ADR 化基準
 - [ADR-202608011355-01-record-reference-principle](./ADR-202608011355-01-record-reference-principle.md): 記録は可変文書を現在の参照先として指さない
 - [ADR-202608011651-01-adr-value-precondition-criteria-in-operating-doc](./ADR-202608011651-01-adr-value-precondition-criteria-in-operating-doc.md): ADR の固有価値を却下代替に定めて起票の必要条件とし、粒度判定基準の項目と境界は運用文書へ委ねる
+- [ADR-202608061516-01-distribution-boundary-inexecutability-test](./ADR-202608061516-01-distribution-boundary-inexecutability-test.md): 配布境界の第3の判断軸に実行不能性テストを据える
