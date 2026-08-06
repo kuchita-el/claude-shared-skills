@@ -47,6 +47,7 @@ ADR-202607230648-01（ADR 運用機構のプラグイン抽出）の決定2 は�
 
 ## 関連
 
+- `docs/adr/ADR-202608061516-01-distribution-boundary-inexecutability-test.md` — §2 の第3軸（実行不能性テスト）を据えた決定。採らなかった代替（被参照テスト）とその却下理由を持つ
 - `docs/adr/ADR-202607230648-01-adr-machinery-plugin-extraction.md` — ADR 運用機構のプラグイン抽出。決定2 が集約対象を定め、その射程注記が本書との関係を述べる
 - `docs/development/adr-plugin-portability-seams.md` — 配布物が配布元固有の面を跨いだ事例の台帳。本書が固定する一方向性が破れた過去の実測を持つ
 - `docs/development/growth/README.md` — growth の配布元文書の入口。配布物内に在った配布元固有の管理表・設計文書を、本書 §2 の判断軸により配布元へ移した先（#652・#657）。各文書の性質（ストック／時点固定）の別も同書が持つ
