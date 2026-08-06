@@ -77,7 +77,7 @@ growth プラグインの学習ループ（`[Capture] → [Distill] → [Route] 
 
 ## 配布反映（既存ワークフローと PR マージ）
 
-- learnings.md への1欄エントリ追加は、**新規ワークフローを設けず**既存の implementation → PR ワークフローで行う（#349 D2）。変換結果のエントリを `plugins/growth/learnings.md` へ追記する変更を作成し、PR として提出する。
+- learnings.md への1欄エントリ追加は、**新規ワークフローを設けず**既存の implementation → PR ワークフローで行う（#349 D2）。変換結果のエントリを `${CLAUDE_PLUGIN_ROOT}/learnings.md`（配布物ルート直下の `learnings.md`）へ追記する変更を作成し、PR として提出する。
 - **PR マージをもって配布反映とする**。PR が未マージの段階では、当該エントリは committed な配布物（origin 面の `learnings.md`）に現れない。マージ後に初めてエントリとして現れ、consumer 面（各利用者のミラー）へ配布される。
 - 検証は git 履歴・PR 状態の目視で足りる。未マージ非出現の自動チェック等は設けない（Phase 3 / 本仕様の対象外）。
 

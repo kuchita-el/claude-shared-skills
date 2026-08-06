@@ -47,7 +47,7 @@ distill の入力は**処理源**と**参照源**の2種に分離する（処理
 
 **巻き戻し（再導出）**: distiller を改善したときは、カーソルを意図的に**保持集合の先頭**（retention horizon 先頭。または再走査したい範囲の起点）へ巻き戻して1回だけ再導出する。`candidates.md` が消失した場合も**保持集合の先頭**へ巻き戻し、保持されているバケット群（`captures-*.md`）から再導出する。horizon を超えたバケットは経年削除済みで物理的に存在しないため、再導出の到達射程は自然に horizon 先頭で有界化される（ADR-202607121331-01 決定2）。いずれの巻き戻し再導出でも、provenance 導出（手順6）が live 候補（`promoted`/`pending`）の重複を止め、`candidate-status: rejected` 不可侵（§7.4・ADR-202607200856-01 決定1）が棄却済み同一仮説の pending 復活を止める。再導出後はカーソルを最新へ戻す（前進と同じ）。改善判定は自動化せず、改善を入れた開発者が明示操作として巻き戻す（personal-store-spec.md「前進・巻き戻し・欠損規則」）。
 
-> 処理源は正準パス（セグメント `captures-*.md`）のみ。in-repo の `plugins/growth/.local/` は走査しない（personal-store-spec.md「構成上の保証」）。冪等性（カーソルによる有界化＋provenance 導出による重複排除）はこの処理源に紐づく。
+> 処理源は正準パス（セグメント `captures-*.md`）のみ。in-repo の `plugins/growth/.local/` は走査しない（personal-store-spec.md「構成上の保証」）。当該パスは配布元リポジトリで growth 自身を開発・dogfooding する際の運用の説明であり、配布先で解決すべき参照ではない。冪等性（カーソルによる有界化＋provenance 導出による重複排除）はこの処理源に紐づく。
 
 ### 経年削除（retention・distill のみ）
 

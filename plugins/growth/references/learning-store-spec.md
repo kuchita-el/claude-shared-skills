@@ -40,7 +40,7 @@ growth プラグインの学習ループ（`[Capture] → [Distill] → [Route] 
 パブリック/グローバル空間の具体インスタンスを以下に置く。
 
 ```
-plugins/growth/learnings.md
+${CLAUDE_PLUGIN_ROOT}/learnings.md
 ```
 
 - 単一の人間可読ファイル。複数ファイル分割・DB 化はしない。
@@ -143,5 +143,5 @@ Markdown 等の長文を CLI オプションに直接渡さない。ファイル
 
 ## 関連
 
-- `plugins/growth/references/personal-store-spec.md` — 個人ローカル store（生観測）仕様（#345）。学習ループの起点
-- `plugins/growth/references/learning-promotion-spec.md` — 出来事ベースの昇格 Issue を本仕様の1欄エントリへ翻訳する変換規約（#383）。本仕様「記法ルール」を出口ゲートとして参照する
+- [`personal-store-spec.md`](personal-store-spec.md) — 個人ローカル store（生観測）仕様（#345）。学習ループの起点
+- [`learning-promotion-spec.md`](learning-promotion-spec.md) — 出来事ベースの昇格 Issue を本仕様の1欄エントリへ翻訳する変換規約（#383）。本仕様「記法ルール」を出口ゲートとして参照する

@@ -209,7 +209,7 @@ Distill が生成し `promote` が消費する**仮説ファイル**の置き場
 
 - `captures.md` と**同一階層**（`~/.claude/projects/<project-id>/growth/`）に置く。per-project・user-local。`<project-id>` の解決は「project-id とパスの解決手順」を共通参照する（Distill・promote とも同手順）。
 - captures.md 同様ユーザースコープ（`~/.claude/` 配下）にあり work tree の外。配布物に物理的に含まれない。
-- **in-repo dogfooding**: growth プラグイン自身を本リポジトリで開発・dogfooding する際にリポジトリ内へ仮説を書き出す運用も、既存 `.gitignore` の `plugins/growth/.local/` がディレクトリごと追跡対象外にするためカバーされる。仮説ファイルのための `.gitignore` 追加変更は不要。
+- **in-repo dogfooding**: growth プラグイン自身を本リポジトリで開発・dogfooding する際にリポジトリ内へ仮説を書き出す運用も、既存 `.gitignore` の `plugins/growth/.local/` がディレクトリごと追跡対象外にするためカバーされる。仮説ファイルのための `.gitignore` 追加変更は不要。本項が名指すリポジトリ内のパスは、配布元リポジトリで growth 自身を開発する際の運用の説明であり、配布先で解決すべき参照ではない。
 
 ### 形式とスキーマ
 
@@ -323,6 +323,8 @@ ExitWorktree はマージ済みかを確認しないため、削除前に gh pr 
 正準の置き場 `~/.claude/projects/<project-id>/growth/`（セグメント `captures-*.md` 群）は本リポジトリの work tree の外にあるため、リポジトリの `git status` には原理上現れない。リポジトリのどのブランチからもトラッキング対象にならないことが、置き場の選定そのものによって保証される。
 
 ### in-repo dogfooding 時の防御
+
+> **本節の位置づけ**: 本節が名指すリポジトリ内のパスは、配布元リポジトリで growth 自身を開発・dogfooding する際の運用の説明である。配布先で解決すべき参照ではないため、配布先の環境で当該パスを探す必要はない。
 
 growth プラグイン自身を本リポジトリで開発・dogfooding する際、リポジトリ内のパスへ観測を書き出す運用がありうる。その場合に未検証観測が誤ってコミットされないよう、リポジトリルートの `.gitignore` で `plugins/growth/.local/` を追跡対象外にする。検証手順は以下。
 
