@@ -37,7 +37,7 @@ intake スキルの各段の判定基準・コマンド・本文書式の詳細�
   - learnings.md（テキスト規範として置く汎用ルール）
   - ADR 差分（後戻りコスト高・横断再発する構造的設計判断）
   - 改善還元 Issue（任意プラグイン・コミュニティの改善。dev-workflow 含む。ADR-202606282107-01 決定6 で一般化）
-  - 強キャリア（skill / hook / lint / test へ構造変換可能）
+  - 強キャリア（[`career-spec.md`](../../../references/career-spec.md)「強キャリアの内訳」が定める値域へ構造変換可能）
   - 仮説本文に distill の career 仮説欄があればそれを第一提案の種にする(career 仮説配線は別 Issue のため、無い場合は振る舞い差分から推定する)。
 - **空間の提案**: 仮説の `## スコープ`（`universal` / `project-local`）を公開ゲートに流用する（intake-issue-spec.md 不変条件3）。`universal` → パブリック、`project-local` → 閉じた を提案する。
 - 提案はあくまで仮説。人間が §4 で career・空間を変更でき、public への昇格を拒否（パブリック→閉じた へ変更）できる。
@@ -117,4 +117,3 @@ AskUserQuestion で、次をまとめて提示し承認を得る。承認され�
 - [`intake-examples.md`](intake-examples.md) — 各段を検証する worked example(手順トレース用)
 - [`intake-issue-spec.md`](../../../references/intake-issue-spec.md) — 取り込み Issue の構造・裁定結果の記録形式・取り込み時クローズ規約・不変条件・`growth:intake` ラベル
 - [`promotion-issue-spec.md`](../../../references/promotion-issue-spec.md) — 入力源 `growth:promote` 仮説 Issue のテンプレート(#382)
-- [`DESIGN.md`](../../../DESIGN.md) — 設計母艦(学習ループ・二段ゲート・共有境界軸)

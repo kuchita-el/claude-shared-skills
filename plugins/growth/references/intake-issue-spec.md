@@ -12,7 +12,6 @@ growth プラグインの学習ループにおいて、複数の `growth:promote
 - **関連仕様との関係**:
   - [`promotion-issue-spec.md`](promotion-issue-spec.md) — 入力源となる `growth:promote` 仮説 Issue のテンプレートを定義する（ADR-202606282107-01 に合わせ #382 で再定義予定）。本規約はその仮説 Issue を**入力として束ねる**側であり、仮説テンプレート自体は再定義しない。
   - [`learning-promotion-spec.md`](learning-promotion-spec.md) — learnings.md 行きと裁定された成果を1欄エントリへ翻訳する変換規約（#383）。本規約の**裁定結果を将来の入力境界**として受ける（ラベル filter 依存から裁定結果依存への改訂は #383 側で行う。本規約はその入力となりうる形式を提供する）。
-  - [`DESIGN.md`](../DESIGN.md) — 設計母艦（学習ループ・学びの2系統・共有境界軸・二段ゲート）。
 
 ## 取り込み Issue の構造
 
@@ -35,7 +34,7 @@ growth プラグインの学習ループにおいて、複数の `growth:promote
 | 列 | 内容 | 取りうる値 |
 |---|---|---|
 | **仮説** | 束ねた仮説 Issue 番号 | `#仮説番号` |
-| **career** | #349 D1 の昇格先キャリア（4分類）のいずれか1つ | learnings.md / ADR 差分 / 改善還元 Issue（任意プラグイン・コミュニティ）/ 強キャリア（skill / hook / lint / test） |
+| **career** | #349 D1 の昇格先キャリア（4分類）のいずれか1つ | learnings.md / ADR 差分 / 改善還元 Issue（任意プラグイン・コミュニティ）/ 強キャリア（値域は [`career-spec.md`](career-spec.md)「強キャリアの内訳」が単一出典） |
 | **空間** | 公開ゲートの裁定結果（scope 軸を流用。後述「不変条件」） | パブリック / 閉じた |
 | **備考** | distill 仮説の転記や裁定理由（任意） | 自由記述 |
 
@@ -102,5 +101,4 @@ gh label create growth:intake --color 1D76DB --description "取り込み Issue�
 - [`../skills/intake/SKILL.md`](../skills/intake/SKILL.md) — 本規約を実行する取り込みスキル（仮説の束ね・裁定提示・取り込み時クローズ）
 - [`promotion-issue-spec.md`](promotion-issue-spec.md) — 入力源 `growth:promote` 仮説 Issue のテンプレート（#382 で本決定に合わせ再定義予定）
 - [`learning-promotion-spec.md`](learning-promotion-spec.md) — 裁定結果を将来の入力境界とする learnings.md 変換規約（#383）
-- [`DESIGN.md`](../DESIGN.md) — 設計母艦（学習ループ・二段ゲート・共有境界軸）
 - ADR-202606282107-01 — career 決定モデルの再設計（distill 仮説 ＋ 集約点裁定）。本規約の決定根拠

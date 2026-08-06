@@ -4,14 +4,14 @@ promote スキルの各段の判定基準の詳細。SKILL.md の手順 overview
 
 ## 1. 目的・責務境界
 
-- **目的**: distill が `candidates.md` へ永続化した仮説を検証し（原理2）、検証を通過したものだけを `gh` で Issue へ自動起票して既存ワークフローへ渡す。起票成功後に候補の `candidate-status` を前進させる。
+- **目的**: distill が `candidates.md` へ永続化した仮説を検証し、検証を通過したものだけを `gh` で Issue へ自動起票して既存ワークフローへ渡す。起票成功後に候補の `candidate-status` を前進させる。
 - **責務境界**: promote が担うのは「検証 → Route 注記 → 自動起票 → candidate-status 前進」の4段。**promote はルーティング不可知である**——career（昇格先キャリア）も scope（適用範囲）も**確定（裁定）しない**。distill が `candidates.md` に出した `scope-hypothesis` / `career-hypothesis` の両仮説を、昇格 Issue 本文へ**注記として運ぶのみ**（ADR-202606282107-01）。次は**行わない**:
   - 仮説の生成・クラスタ化（distill の責務）
   - career の Route 判定・決定表評価・キャリアラベル付与（決定表は distill 側＝distill-procedure.md へ移設済み。promote は決定表を持たない）
   - `learnings.md`（配布物）への物理書き込み（Distribute、Phase 2 の責務）。Route はタグの**注記**までで終端し、物理昇格はしない。
   - dev-workflow スキルの直接呼び出し（疎結合。起票は `gh` 直接のみ）
   - scope / career 仮説タグの確証・真化（仮説のまま終点。scope の最終裁定は人間 refine/review、career の確定は集約点＝取り込み Issue）
-- **二段ゲートの位置**: promote の検証段（§3）が二段ゲートの「未検証を配布経路に乗せない」フィルタ。起票前に人間承認ゲートは置かない（§5）。L2 の規範的ゲート（承認/マルチエージェントレビュー）は起票後の既存ワークフロー（refine-issue / DoR / PR レビュー）が担う（DESIGN.md 二段ゲート）。
+- **二段ゲートの位置**: promote の検証段（§3）が二段ゲートの「未検証を配布経路に乗せない」フィルタ。起票前に人間承認ゲートは置かない（§5）。L2 の規範的ゲート（承認/マルチエージェントレビュー）は起票後の既存ワークフロー（refine-issue / DoR / PR レビュー）が担う。
 
 ## 2. 仮説読取（入力選択）
 
@@ -24,9 +24,9 @@ promote スキルの各段の判定基準の詳細。SKILL.md の手順 overview
 
 各仮説を配布経路（Issue）へ乗せる価値があるかを評価する。検証は promote 自身が行う自己検証（Phase 1 の最小形。独立検証エージェント化は Phase 4）。
 
-**検証軸は仮説の `tags` の各要素で分岐する**（ADR-202607010734-01 D5）。摩擦知（`behavior-diff`）は予測誤差の反証（原理2）で、判断知（`decision-record`）は復元不能性で測る——フィルタは対象の価値軸と一致していなければ精度・再現のいずれかを失うため、1本のゲートで両型を測らない。仮説の `tags`（多値 set）の各タグに、対応する型適応検証をそれぞれ適用する。混在ゾーン（`tags: [behavior-diff, decision-record]`）仮説は behavior-diff 検証と decision-record 検証の両方を受ける。`tags` の値域・本文スキーマ正準は personal-store-spec.md「tags 別スキーマ」を参照する（promote 側で二重定義しない）。旧スキーマ（`type` 単値・`type`/`tags` とも欠落）は後方互換規約（personal-store-spec.md「後方互換規約」）で `tags` へ写して読む（単値 `type: <値>`＝`[<値>]`、欠落＝`[behavior-diff]`）。
+**検証軸は仮説の `tags` の各要素で分岐する**（ADR-202607010734-01 D5）。摩擦知（`behavior-diff`）は予測誤差の反証で、判断知（`decision-record`）は復元不能性で測る——フィルタは対象の価値軸と一致していなければ精度・再現のいずれかを失うため、1本のゲートで両型を測らない。仮説の `tags`（多値 set）の各タグに、対応する型適応検証をそれぞれ適用する。混在ゾーン（`tags: [behavior-diff, decision-record]`）仮説は behavior-diff 検証と decision-record 検証の両方を受ける。`tags` の値域・本文スキーマ正準は personal-store-spec.md「tags 別スキーマ」を参照する（promote 側で二重定義しない）。旧スキーマ（`type` 単値・`type`/`tags` とも欠落）は後方互換規約（personal-store-spec.md「後方互換規約」）で `tags` へ写して読む（単値 `type: <値>`＝`[<値>]`、欠落＝`[behavior-diff]`）。
 
-### behavior-diff（摩擦知）: 予測・反証（原理2）
+### behavior-diff（摩擦知）: 予測・反証
 
 各仮説について以下を添えて評価する（現行どおり。変更なし）:
 
@@ -35,7 +35,7 @@ promote スキルの各段の判定基準の詳細。SKILL.md の手順 overview
 
 ### decision-record（判断知）: 復元不能性
 
-判断知（選好・却下理由・目標表明・設計判断）は一回性の設計境界＝予測誤差の形を持たないため、原理2 の予測的反証では測れない。代わりに「**復元不能で・まだ有効で・配布価値があるか**」を検査する。`decision-record` の本文4欄（`decision` / `rejected-alternatives` / `rationale` / `context`）を判断材料に、以下3条件をすべて満たせば合格、いずれかに該当すれば不合格とする:
+判断知（選好・却下理由・目標表明・設計判断）は一回性の設計境界＝予測誤差の形を持たないため、予測的反証では測れない。代わりに「**復元不能で・まだ有効で・配布価値があるか**」を検査する。`decision-record` の本文4欄（`decision` / `rejected-alternatives` / `rationale` / `context`）を判断材料に、以下3条件をすべて満たせば合格、いずれかに該当すれば不合格とする:
 
 - **復元不能か**: その決定知が既にリポ（コード・git 履歴・ADR・spec）に記録済みなら**復元可能**＝不合格（反証条件(a)。捕まえ直す価値がない）。
 - **まだ有効か**: その決定が後に覆されているなら不合格（反証条件(b)。陳腐化）。
@@ -52,7 +52,7 @@ promote スキルの各段の判定基準の詳細。SKILL.md の手順 overview
 - いずれのタグも**不合格仮説は起票段へ進めない**。`candidate-status` を `rejected` へ更新する（§6 の冪等性）。`captures.md` は `status` フィールドを持たないため、`candidate-status: rejected` の更新のみで冪等性が完結する（captures.md への書き込みは発生しない）。
 
 - 不合格仮説は `candidates.md` の当該エントリの `candidate-status: pending` を `rejected` へ Edit で更新する。これにより次回 distill / promote 実行で同一仮説が再提示・再評価されるループを断つ（personal-store-spec.md「冪等性」）。`- candidate-status: pending` 行は仮説間で同一テキストのため、対象仮説の**一意な `- provenance:` 行を含む見出しブロック**（`## <見出し>` ＋ `- tags: …` ＋ `- provenance: …` ＋ `- scope-hypothesis: …` ＋ `- career-hypothesis: …` ＋ `- candidate-status: pending`）を `old_string` アンカーにして Edit する（provenance は一意キー。§6 ステップ2 と同じハザード回避）。旧スキーマ仮説は実ファイルの記法に合わせ、`- tags:` の代わりに `- type: …` 行を（`type`/`tags` とも無ければ当該行を省いて）アンカーに用いる。複数仮説を更新する場合は仮説ごとに個別アンカーで行う。
-- 検証は仮説を**棄却する方向に厳しく**倒す。未検証の幻覚を配布経路に漏らさないことが原理2／復元不能性ゲートの要請（疑わしきは rejected）。両型とも合格仮説の流路は不変（`candidates.md → promote → Issue → 既存ワークフロー`。decision-record を learnings.md へ直送しない）。
+- 検証は仮説を**棄却する方向に厳しく**倒す。未検証の幻覚を配布経路に漏らさないことが予測的反証／復元不能性ゲートの要請（疑わしきは rejected）。両型とも合格仮説の流路は不変（`candidates.md → promote → Issue → 既存ワークフロー`。decision-record を learnings.md へ直送しない）。
 
 ## 4. Route 注記（tags ＋ scope ＋ career）
 
@@ -147,4 +147,3 @@ Issue 本文に含める career 注記欄の書式:
 - [`promote-examples.md`](promote-examples.md) — 各段を検証する worked example（手順トレース用）
 - `${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` — 入力源 仮説ファイルの形式・メタ欄スキーマ・provenance 規約、`candidate-status` 状態機械・パス解決手順
 - `${CLAUDE_PLUGIN_ROOT}/references/learning-store-spec.md` — Route 注記が指す2空間モデル
-- `${CLAUDE_PLUGIN_ROOT}/DESIGN.md` — 設計母艦（§3 Promote・§4 プラグイン構成・原理2・二段ゲート）

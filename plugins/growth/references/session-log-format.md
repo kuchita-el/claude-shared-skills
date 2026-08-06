@@ -15,14 +15,14 @@
 
 **横断解析の実現可能性 ＝ 条件付き可。**
 
-- **可である根拠**: 形式（JSONL・per-project・構造化フィールド）も走査コストも問題なし。原理3の学習シグナル（拒否・訂正・再試行・ツールエラー・タイムスタンプ）はすべて取得可能（§4）。全ログの全文走査が実測 0.08 秒（§5）で、原理6（個人版フリート学習）のコスト条件を満たす。
+- **可である根拠**: 形式（JSONL・per-project・構造化フィールド）も走査コストも問題なし。原理3の学習シグナル（拒否・訂正・再試行・ツールエラー・タイムスタンプ）はすべて取得可能。全ログの全文走査が実測 0.08 秒（§5）で、原理6（個人版フリート学習）のコスト条件を満たす。
 - **条件**: 生ログは**約30日でローテーション消滅する揮発資産**（§3）。原理6 を満たすには「ログ消滅前にシグナルを抽出し、個人 store に永続化する」運用が前提になる。
 
 ## 2. 後続実装（#350 横断解析）への前提条件
 
 1. **走査対象**: 親セッション `~/.claude/projects/*/*.jsonl` に加え、**サブエージェントログ `~/.claude/projects/*/*/subagents/agent-*.jsonl` も含める**。後者は `<session-uuid>/subagents/` 配下に分離保存され `*/*.jsonl` の glob では拾えないが、サブエージェントが起こした拒否・訂正・ツールエラーはこちらに記録されるため、走査から外すと取りこぼす（本環境実測で 195 ファイル・ツール呼び出し 1,922 件・`is_error` 46 件・`thinking` 159 件）。全 project-id 横断（worktree は別 project-id として並ぶため自動的に含まれる）。
 2. **30日ローテに先んじた抽出**: 生ログは既定30日で削除される（§3）。一度きりの解析では30日より前が欠落する。Phase 3 の自発トリガーは、取りこぼしを避けるため**30日より十分短い周期**（マージンを見て週次程度）で走査し、抽出済みシグナルを個人 store に永続化する設計とする。これは決定事項2 / 決定事項4（自発トリガー）に効く設計ドライバ。
-3. **抽出ロジック**: §4 のフィールドマッピングに準拠。ただし§4は版依存スナップショットであり、実装時に再検証する。
+3. **抽出ロジック**: 学習シグナルのフィールドマッピングに準拠。ただし当該マッピングは版依存スナップショットであり、実装時に再検証する。
 4. **compaction 耐性のため raw 全行スキャン**: 会話の compaction はディスクログを書き換えないが（§6）、session loader の patched chain を経由すると compaction 前の生エントリを取りこぼす。抽出器は `compact_boundary` を無視して raw JSONL を全行走査し、シグナルは生エントリから取る（§6）。
 
 ---
@@ -44,34 +44,11 @@
 - **project-id**: 作業ディレクトリ（cwd）の絶対パスのスラッシュ `/` を `-` に置換したもの。例: `/home/kuchita/Development/claude-shared-skills` → `-home-kuchita-Development-claude-shared-skills`。
 - **per-project**: グローバル集約ではない。ただし全プロジェクトが `~/.claude/projects/` 配下に並ぶため、横断走査は1ディレクトリ階層で完結する。worktree は別 project-id ディレクトリに分離される。
 - **形式**: JSONL（1行1レコード）。**1ファイル ＝ 1セッション**（`sessionId` は全イベントレコードでファイル名の UUID と一致）。
-- **付随**: `<session-uuid>/` サブディレクトリにスナップショット類（file-history 等）と、**サブエージェントログ `<session-uuid>/subagents/agent-*.jsonl`**（＋ メタ `agent-*.meta.json`）。サブエージェントログは親セッションの JSONL とは別ファイルで、サブエージェントのツール呼び出し・結果・思考・ツールエラーを含む。学習シグナル（§4.3）を漏れなく取得するには親と併せて走査する（§2 走査対象を参照）。
+- **付随**: `<session-uuid>/` サブディレクトリにスナップショット類（file-history 等）と、**サブエージェントログ `<session-uuid>/subagents/agent-*.jsonl`**（＋ メタ `agent-*.meta.json`）。サブエージェントログは親セッションの JSONL とは別ファイルで、サブエージェントのツール呼び出し・結果・思考・ツールエラーを含む。学習シグナルを漏れなく取得するには親と併せて走査する（§2 走査対象を参照）。
 
 ### 4.2 レコード種別（観測例：370行のセッション）
 
 `assistant` / `user` を主軸に、`system`・`mode`・`worktree-state`・`ai-title`・`last-prompt`・`attachment`・`queue-operation`・`pr-link`・`file-history-snapshot` 等。各レコードに `timestamp`・`version`・`sessionId`・`uuid`・`parentUuid`（会話ツリーの親子）・`cwd`・`gitBranch` 等のメタを持つ。
-
-### 4.3 学習シグナルのフィールドマッピング（原理3）
-
-| シグナル | 取得元 | 形式 |
-|---|---|---|
-| タイムスタンプ | 全レコード `.timestamp` | ISO 8601 UTC ミリ秒（例 `2026-06-26T11:51:06.912Z`） |
-| ツール呼び出し | `assistant.message.content[]` の `type=tool_use`（`name` / `input` / `id`） | 構造化 |
-| ツール結果 | `user.message.content[]` の `type=tool_result`、および同レコード top-level の `toolUseResult`（構造化結果） | 構造化 |
-| ツール拒否（ユーザー中断） | マーカー文字列 `"Request interrupted by user"` / `"The user doesn't want to proceed"` | 文字列 |
-| ツール失敗 | `tool_result.is_error: true` | bool |
-| ユーザー訂正 | `type=user` の text / string content（`tool_result` 以外の発話） | 自然文 |
-| 再試行 | `tool_use.id` ↔ `tool_result.tool_use_id` の紐付け＋連続する同一ツール呼び出し | 相関で導出 |
-| 思考過程 | `assistant.message.content[]` の `type=thinking` | 自然文 |
-| 痕跡種別＝tool-result | `user.message.content[]` の `type=tool_result` / top-level `toolUseResult` の存在 → `tool-result` | 構造化 |
-| 痕跡種別＝user-utterance | `type=user` の text / string content（`tool_result` 以外の発話）→ `user-utterance` | 自然文 |
-| expected（予測） | `assistant.message.content[]` の `type=thinking` / `tool_use.input`（予測の手掛かり） | 自然文 / 構造化 |
-| actual（実際） | `tool_result`（`is_error` 含む）/ 後続の user 発話（実際の結果） | 構造化 / 自然文 |
-
-> **痕跡種別 / expected / actual の抽出元（capture 新スキーマ #416）**: capture 観察スキーマの `origin`（痕跡種別）・`expected`・`actual` フィールドは上表のフィールドから抽出する。痕跡種別はツール結果由来（`tool-result`）かユーザー発話由来（`user-utterance`）かの2値で、いずれも transcript に実在するフィールドへ対応し、capture が引用元を持つ（捏造でない）ことを裏付ける。`actual` は逐語断片を含む引用（要点が transcript に実在する文字列）、`expected` は上表の手掛かり（`type=thinking` / `tool_use.input`）に基づく再構成、`origin` は痕跡がどのフィールドに現れたかの2値判別である（引用可能性の非対称は personal-store-spec.md「生記録性」節）。本節は版依存スナップショットであり、抽出ロジックを上記フィールド名へ強依存させない設計方針（本文書冒頭の⚠️＝揮発性の注意）と整合させる。
-
-補助的に `permissionMode` / `mode`（権限・モード）、`gitBranch` / `cwd`（文脈）、`attributionSkill` / `attributionPlugin`（どのスキル・プラグイン起因か）、`system` の `away_summary`（区切りごとの自動要約）も取得可能。
-
-> **git revert** は本ログ外（`git log`）が一次ソース。ログ内 Bash `tool_use` からも部分検知できるが、Phase 3 では git log を主とする。
 
 ---
 
@@ -95,9 +72,9 @@
 - 実例: 手動 `/compact` のセッションで `preTokens 104,487 → postTokens 3,882`・preserved 3 件だが、境界前の生エントリ（全 139 行中 115 行目が境界、前 114 行）はディスクに残存。
 - compaction 後も同一 `<session-uuid>.jsonl` に追記が続く（新ファイルへ切り替わらない）。session loader は読み込み時に preserved segment だけを繋ぎ直す——これは**コンテキスト再構成**であってディスク操作ではない。
 
-**抽出精度への含意**: 本設計の抽出は決定事項2 によりログの**事後解析**（ディスク JSONL を読む）を主軸とするため、compaction によって**抽出精度は劣化しない**——学習シグナル（§4.3）は全てディスクの生エントリに残る。これは決定事項2 の頑健性であり、mid-session ライブ相乗りを退けた #381 の採用形（境界・別時間の事後解析）への追加論拠でもある（ライブ相乗りでモデルのコンテキストから読む設計だと、compaction 後はコンテキストに要約しか残らず生信号を失い精度が劣化する）。
+**抽出精度への含意**: 本設計の抽出は決定事項2 によりログの**事後解析**（ディスク JSONL を読む）を主軸とするため、compaction によって**抽出精度は劣化しない**——学習シグナルは全てディスクの生エントリに残る。これは決定事項2 の頑健性であり、mid-session ライブ相乗りを退けた #381 の採用形（境界・別時間の事後解析）への追加論拠でもある（ライブ相乗りでモデルのコンテキストから読む設計だと、compaction 後はコンテキストに要約しか残らず生信号を失い精度が劣化する）。
 
-**実装要件**: 上記の精度不変は「抽出が生のフラット JSONL を**全行**読む」場合に限る。session loader の patched chain（preserved＋境界後のみの compaction 後ビュー）を経由すると境界前の生エントリを取りこぼすため、抽出器は **`compact_boundary` を無視して raw JSONL を全行スキャン**する（§2 前提条件4）。`away_summary`（§4.3）や `compact_boundary` の要約・メタは lossy であり、シグナルは常に生エントリから取る。
+**実装要件**: 上記の精度不変は「抽出が生のフラット JSONL を**全行**読む」場合に限る。session loader の patched chain（preserved＋境界後のみの compaction 後ビュー）を経由すると境界前の生エントリを取りこぼすため、抽出器は **`compact_boundary` を無視して raw JSONL を全行スキャン**する（§2 前提条件4）。`away_summary` や `compact_boundary` の要約・メタは lossy であり、シグナルは常に生エントリから取る。
 
 ---
 
