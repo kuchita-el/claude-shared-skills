@@ -153,7 +153,7 @@
 
 ## 5. 複利ループ（レイヤー6）— 「一人で全部」を可能にする唯一の倍率
 
-> **［重複・SoT は別文書］** 本節は `plugins/growth/DESIGN.md`（Capture→Distill→Route→Promote→Distribute→Measure/Retire の完全ループ・7原理・二段ゲート・個人store＝生捕捉→committed昇格・フリート配布）の劣化要約である。原型はスナップショットとして残すが、**今後の更新はロードマップ側ではなくリンク先（`plugins/growth/DESIGN.md`）で行う**。差異が生じた場合はリンク先を正とする。本書側に残す固有の論点は「複利＝solo運転の前提条件」という位置づけのみ。
+> **［重複・SoT は別文書］** 本節は `docs/development/growth/design.md`（Capture→Distill→Route→Promote→Distribute→Measure/Retire の完全ループ・7原理・二段ゲート・個人store＝生捕捉→committed昇格・フリート配布）の劣化要約である。原型はスナップショットとして残すが、**今後の更新はロードマップ側ではなくリンク先（`docs/development/growth/design.md`）で行う**。差異が生じた場合はリンク先を正とする。本書側に残す固有の論点は「複利＝solo運転の前提条件」という位置づけのみ。
 
 **「なんでもやる」を一人で実現する正攻法は、全部を手で建てることではない——システムが自分自身に機能を足し続ける状態を作ること。**
 
@@ -222,7 +222,7 @@
 |---|---|---|
 | §3.3 独立レビュー | `principles.md:35-36`（原則③）, `:177-205`（レビュー役割分担）, `:234-238`（再帰性対策＝L0/L2独立レビュー） | refute多数決・mutation test は細部追加余地 |
 | §3.5 説明の強制力 | `principles.md:29-30`（原則①）, `:115-133`（パターンA/B/C）, CLAUDE.md DoR Framework | 既存が十分カバー |
-| §5 複利ループ | `plugins/growth/DESIGN.md` 全体（Capture→Distill→Route→Promote→Distribute→Measure/Retire・7原理・二段ゲート・個人store=生捕捉→committed昇格・フリート配布） | 本書§5はこの劣化要約。委譲が理想保全。唯一の差分＝「複利＝solo運転の前提条件」という位置づけ強調 |
+| §5 複利ループ | `docs/development/growth/design.md` 全体（Capture→Distill→Route→Promote→Distribute→Measure/Retire・7原理・二段ゲート・個人store=生捕捉→committed昇格・フリート配布） | 本書§5はこの劣化要約。委譲が理想保全。唯一の差分＝「複利＝solo運転の前提条件」という位置づけ強調 |
 | 高自律＝原則委任の語彙 | `principles.md:162-171`（承認ゲート軸 L0–L3、L3＝AI自律・ゲートなし、SoT） | 「原則委任」は正式には **L3**。語彙を L3 に揃える |
 
 **C群（tracked gap＝既存が「未実施」と認識済み、本書の内容が設計素材になる）**

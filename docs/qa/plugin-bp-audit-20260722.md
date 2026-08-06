@@ -112,9 +112,9 @@ dev-workflow 中核4スキルの共有参照 10箇所（DoR定義・種別プロ
 
 | ID | 重要度 | 対象 | 指摘 |
 |---|---|---|---|
-| GRW-07 | High | `references/career-promotion-spec.md`（168行） | どのファイルからも参照されない**完全な孤立ファイル**（grep 再検証済み）。#532 で更新された生きた仕様書なのに、ファイル名を知らない限り到達不能。DESIGN.md Distribute 段・姉妹規約 learning-promotion-spec からの導線追加を推奨 |
+| GRW-07 | High | `references/career-promotion-spec.md`（168行） | どのファイルからも参照されない**完全な孤立ファイル**（grep 再検証済み）。#532 で更新された生きた仕様書なのに、ファイル名を知らない限り到達不能。DESIGN.md Distribute 段・姉妹規約 learning-promotion-spec からの導線追加を推奨 **（#657 で `docs/development/growth/career-promotion-spec.md` へ移し、配布元の入口 `docs/development/growth/README.md` の文書一覧に載せて解消済み。推奨した配布物内からの導線追加は採らなかった——移設後は配布物→配布元の参照になり、`docs/distribution-boundary.md` §3 の一方向性に反するため）** |
 | GRW-04 | Medium | `capture/SKILL.md`（206行） | 唯一の170行超過。他3スキルの procedure/examples 分離パターン未踏襲。記述例 約54行を `references/` へ抽出すれば170行前後に収まる。**（#557 で `capture-procedure.md` / `capture-examples.md` へ分離し本文120行へ縮退・解消済み。記載の行数は全行基準の観測値）** |
-| GRW-11 | Medium | `DESIGN.md`（360行） | 内部設計文書が配布物ルートに同居。リポ慣習（設計文書は `docs/` 配下）からの逸脱で、`docs/development/` への移動を検討（実行時 Read 対象でないことは確認済み、移動してもスキル動作に影響なし） |
+| GRW-11 | Medium | `DESIGN.md`（360行） | 内部設計文書が配布物ルートに同居。リポ慣習（設計文書は `docs/` 配下）からの逸脱で、`docs/development/` への移動を検討（実行時 Read 対象でないことは確認済み、移動してもスキル動作に影響なし） **（#657 で `docs/development/growth/design.md` へ移し、配布物から設計文書を無くして解消済み。判断軸は `docs/distribution-boundary.md` §2）** |
 | GRW-08 | Medium（要検証） | `*-procedure.md` | 地の文引用による実質2ホップ参照。実行時に誤読が起きるかドッグフーディングでの確認を推奨 |
 | GRW-06 | Medium | `distill-examples.md`（821行） | 分岐網羅のテストケース集として機能しており分割は必須でないが、目次追加は最優先（所見B） |
 | GRW-12, GRW-13 | Low | — | capture のみ `## 関連` 節がない / learnings.md の役割説明の導線 |
@@ -134,7 +134,7 @@ dev-workflow 中核4スキルの共有参照 10箇所（DoR定義・種別プロ
 - DWC-12: CLAUDE.md の「カテゴリ別コメント」文言を実態に合わせるか、implementation の見出しコメントを撤去するか
 - DWR-32: workflow-patterns.md を結線するか、設計中と明記するか、docs/ へ降格・削除するか
 - GRW-09: growth version を 0.2.0 へ上げるか、DESIGN.md ロードマップ側に現状ステータスを明記するか
-- GRW-11: DESIGN.md を `docs/development/` へ移動するか
+- GRW-11: DESIGN.md を `docs/development/` へ移動するか（#657 で移動と決着。上記 growth 表の GRW-11 を参照）
 - DWR-15: 検証系エージェントへの `effort: high` 明示（予防的提案。品質低下の実測証跡はない）
 - DWC-06: refine-issue 1件モードのモデル方針（sonnet に揃えるか、inherit の意図を明記するか）
 - 3プラグイン共通の plugin.json メタデータ（author/license/keywords）拡充方針
