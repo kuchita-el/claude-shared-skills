@@ -1,6 +1,6 @@
 # career 昇格手順（ADR 差分・改善還元 Issue）仕様
 
-growth プラグインの学習ループ（`[Capture] → [Distill] → [Route] → [Promote] → [Distribute]`）の Distribute 段のうち、取り込み Issue で career＝**ADR 差分** または **改善還元 Issue** と裁定された仮説を、それぞれ ADR 運用ルールに沿った ADR 差分・宛先 repo への疎結合な Issue として昇格する**移送規約**を定義する。learnings.md 行きは姉妹規約 [`learning-promotion-spec.md`](learning-promotion-spec.md)（#383）が、強キャリア（skill / hook / lint / test）行きは本規約の対象外（通常の実装ワークフローへ振り分け）。本規約と #383 を合わせ、#349 D1 の全キャリアを Phase 2 でカバーする。
+growth プラグインの学習ループ（`[Capture] → [Distill] → [Route] → [Promote] → [Distribute]`）の Distribute 段のうち、取り込み Issue で career＝**ADR 差分** または **改善還元 Issue** と裁定された仮説を、それぞれ ADR 運用ルールに沿った ADR 差分・宛先 repo への疎結合な Issue として昇格する**移送規約**を定義する。learnings.md 行きは姉妹規約 [`learning-promotion-spec.md`](learning-promotion-spec.md)（#383）が、強キャリア行きは本規約の対象外（通常の実装ワークフローへ振り分け）。本規約と #383 を合わせ、#349 D1 の全キャリアを Phase 2 でカバーする。
 
 ## 位置づけ
 
@@ -55,7 +55,7 @@ ADR 化要否の判定例は「入出力例」節に示す（ADR 化する例・
 
 ## 強キャリアの振り分け
 
-取り込み Issue で career＝`強キャリア`（skill / hook / lint / test）と裁定された仮説は、**本規約の昇格対象外**である。強キャリアは「構造変換可能」と裁定されており、専用の移送手順を持たず通常の実装ワークフロー（既存の implementation → PR）へ帰着する（#384 スコープ OUT）。
+取り込み Issue で career＝`強キャリア`（値域は [`career-spec.md`](career-spec.md)「強キャリアの内訳」が単一出典）と裁定された仮説は、**本規約の昇格対象外**である。強キャリアは「構造変換可能」と裁定されており、専用の移送手順を持たず通常の実装ワークフロー（既存の implementation → PR）へ帰着する（#384 スコープ OUT）。
 
 本規約が担うのは**振り分けの確認のみ**——career 列＝`強キャリア` の仮説を ADR 差分・改善還元 Issue のいずれにも反映せず、通常実装ワークフローへ送ったことを確認する。専用ハンドラを新設しない。
 
@@ -137,7 +137,7 @@ gh issue create \
 |---|---|
 | ADR 差分行き仮説の当該 repo の ADR 配置への昇格手順（粒度判定基準の適用・上書き（Superseded）／編集機構への照合・ADR 化要否の判定例） | 粒度判定基準・上書き（Superseded）手続き自体の定義（当該 repo の ADR 運用ルールが担う） |
 | 改善還元 Issue 行き仮説の宛先 repo への `gh` 経由の疎結合転送手順（宛先 repo は Issue 作成側が決定・dev-workflow 固定でなく可変） | career / 空間の裁定（集約点＝取り込み Issue が担う＝[`intake-issue-spec.md`](intake-issue-spec.md)）・裁定結果テーブルへの宛先 repo 列追加 |
-| 強キャリア行き仮説の通常実装ワークフローへの振り分け確認（専用ハンドラを設けない） | 強キャリア（skill / hook / lint / test）への構造変換そのもの（通常の implementation → PR） |
+| 強キャリア行き仮説の通常実装ワークフローへの振り分け確認（専用ハンドラを設けない） | 強キャリアへの構造変換そのもの（通常の implementation → PR） |
 | 同一仮説 ID の単一出力先保証（重複出現の防止）・裁定外仮説の非反映の確認 | learnings.md 行きの変換（[`learning-promotion-spec.md`](learning-promotion-spec.md) #383） |
 | 既存ワークフロー（implementation → PR / `gh issue create`）での昇格と PR マージ人間ゲート | 承認フロー配線・越境ゲートの新設（既存の PR マージゲートを再利用。#385） |
 
