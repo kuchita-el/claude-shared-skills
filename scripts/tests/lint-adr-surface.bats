@@ -110,9 +110,6 @@ setup_file() {
     collect_finish
 }
 
-# 恒久ガードの対象は「節ごと移設・再編された旧節」に限る。再出現が構造の後退にあたり、
-# かつ文字列一致で検出できるものだけを置く。廃止語彙そのもの（節ではなく表記）の再出現は
-# 対象外とし、規約側の記述で担保する。
 @test "面④: manage-adr スキル面からの旧節除去" {
     collect_init
 
@@ -121,6 +118,8 @@ setup_file() {
 
     collect_not_contains "$surface" "## モデル制約由来の設計判断インデックス" \
         "AC5: 旧モデル制約由来の設計判断インデックス節が manage-adr スキル面から除去されている"
+    collect_not_contains "$surface" "### Amended（部分改訂）" \
+        "AC5: 旧 Amended（部分改訂）手順節が manage-adr スキル面から除去されている"
 
     collect_finish
 }
