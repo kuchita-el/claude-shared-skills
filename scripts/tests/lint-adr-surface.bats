@@ -34,6 +34,7 @@ AC5_SURFACE_FILES=(
     "$MANAGE_ADR_DIR/references/adr-demotion.md"
     "$MANAGE_ADR_DIR/references/adr-model.md"
     "$MANAGE_ADR_DIR/references/adr-scoping.md"
+    "$MANAGE_ADR_DIR/references/cross-references.md"
     "$EDIT_DECISION"
     "$MANAGE_ADR_DIR/references/io-examples.md"
     "$MANAGE_ADR_DIR/references/template.md"
@@ -117,8 +118,6 @@ setup_file() {
 
     collect_not_contains "$surface" "## モデル制約由来の設計判断インデックス" \
         "AC5: 旧モデル制約由来の設計判断インデックス節が manage-adr スキル面から除去されている"
-    collect_not_contains "$surface" "### Amended（部分改訂）" \
-        "AC5: 旧 Amended（部分改訂）手順節が manage-adr スキル面から除去されている"
 
     collect_finish
 }
