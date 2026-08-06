@@ -127,5 +127,5 @@ store: ~/.claude/projects/-home-user-myproject/growth/captures-2026-06-26.md
 - `${CLAUDE_SKILL_DIR}/references/capture-procedure.md` — 判定基準の詳細（シグナル検知の2群・ハーネス強制摩擦の既定除外・痕跡種別の判定・expected / actual の抽出・エントリ形式と書き込み方式）の単一出典
 - `${CLAUDE_SKILL_DIR}/references/capture-examples.md` — 記述例（observation 本文・tool-result 由来のエントリ・判断知のエントリ）
 - `${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` — 出力先 store の形式・シグナル種別／痕跡種別の値域・project-id とパスの解決手順・バケット名生成規約・パース規約
-- `${CLAUDE_PLUGIN_ROOT}/references/session-log-format.md` — 痕跡ソース session jsonl の形式（§4.3 が `origin`（痕跡種別）/ `expected` / `actual` の抽出元）
+- `${CLAUDE_PLUGIN_ROOT}/references/capture-signal-spec.md` — 痕跡ソース session jsonl からの `origin`（痕跡種別）/ `expected` / `actual` の抽出元
 - `${CLAUDE_PLUGIN_ROOT}/DESIGN.md` — 設計母艦（§2 原理3・§3 学習ループ／保存設計／客観痕跡の取得／二段ゲート・§4 プラグイン構成）

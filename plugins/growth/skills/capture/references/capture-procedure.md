@@ -53,7 +53,7 @@ origin=tool-result のうち、ハーネスが既に強制済みの摩擦は cap
 各シグナルについて、当方が予測した結果（`expected`）と実際に起きた結果（`actual`）を transcript から取り出す。引用可能性は**非対称**である（spec「生記録性」節）:
 
 - `actual`（実際の結果）は transcript に実在する痕跡（`tool_result`〔`is_error` 含む〕/ 後続のユーザー発話）の**逐語断片を含む引用**で記す（要点が transcript に実在する文字列であればよく、地の文で囲んでよい。全文の逐語転記は不要。複数行は単一行に畳み込む。spec「パース規約」節参照）。
-- `expected`（予測した結果）は逐語では存在しないことが多いため、痕跡（`type=thinking` / `tool_use.input`）に基づき「何を予測していたか」を**再構成**してよい（逐語引用に限らない）。抽出元は session-log-format.md §4.3。
+- `expected`（予測した結果）は逐語では存在しないことが多いため、痕跡（`type=thinking` / `tool_use.input`）に基づき「何を予測していたか」を**再構成**してよい（逐語引用に限らない）。抽出元は capture-signal-spec.md。
 
 - **捏造禁止**: 痕跡（手掛かり）が無い `expected` / `actual` は**空にする**（フィールド自体は常設、値は該当時のみ）。`ツール拒否`・`反復試行` や判断知（`選好`・`却下理由`・`目標表明`・`設計判断`）等で予測の手掛かりが無い観察では expected / actual が空になりうる。手掛かりの無い予測を埋めようとして解釈を混入させない（生記録性の契約）。
 - origin・expected・actual はいずれも、再構成は「何が起きたか／何を予測したか」の事実の言語化までに限り、摩擦/学びの価値判断・原因分析・改善案は加えない（Distill の責務）。
@@ -86,5 +86,5 @@ origin=tool-result のうち、ハーネスが既に強制済みの摩擦は cap
 
 - [`capture-examples.md`](capture-examples.md) — 本ファイルの判定基準に対応する記述例（observation 本文・エントリ）
 - `${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` — 本文中の「spec」の実体。シグナル種別・痕跡種別の値域、生記録性・パース規約、project-id とパスの解決手順、バケット名生成規約の単一出典
-- `${CLAUDE_PLUGIN_ROOT}/references/session-log-format.md` — 痕跡ソース session jsonl の形式。§4.3 が `origin`（痕跡種別）/ `expected` / `actual` の抽出元
+- `${CLAUDE_PLUGIN_ROOT}/references/capture-signal-spec.md` — 痕跡ソース session jsonl からの `origin`（痕跡種別）/ `expected` / `actual` の抽出元
 - `${CLAUDE_PLUGIN_ROOT}/DESIGN.md` — 設計母艦（§2 原理3・§3 学習ループ／保存設計／客観痕跡の取得／二段ゲート・§4 プラグイン構成）
