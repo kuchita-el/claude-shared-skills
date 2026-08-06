@@ -71,7 +71,7 @@ growth プラグインの学習ループにおいて、`promote` スキル（#34
 
 ### learnings.md の1欄スキーマを壊さない制約
 
-昇格 Issue が運ぶメタ情報（昇格先キャリア・空間・provenance・予測/検証観点）は、**Issue 側に保持する**。learnings.md へ昇格する段（Distribute、#383/#384）で、これらメタ欄は配布物エントリへ持ち込まない。learnings.md は見出し＋本文の1欄スキーマ（[`learning-store-spec.md`](learning-store-spec.md)「1欄スキーマ」）であり、共有境界・provenance・撤回追跡は空間と git 履歴が担う。昇格 Issue のメタ情報はあくまで「揉む場」である Issue に留め、配布物の薄さ（原理5）を壊さない。
+昇格 Issue が運ぶメタ情報（昇格先キャリア・空間・provenance・予測/検証観点）は、**Issue 側に保持する**。learnings.md へ昇格する段（Distribute、#383/#384）で、これらメタ欄は配布物エントリへ持ち込まない。learnings.md は見出し＋本文の1欄スキーマ（[`learning-store-spec.md`](learning-store-spec.md)「1欄スキーマ」）であり、共有境界・provenance・撤回追跡は空間と git 履歴が担う。昇格 Issue のメタ情報はあくまで「揉む場」である Issue に留め、配布物の薄さを壊さない。
 
 ## ラベル体系
 

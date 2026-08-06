@@ -90,7 +90,7 @@ growth プラグインの学習ループ（`[Capture] → [Distill] → [Route] 
 - 発火/効果メモ
 - 畳み込み先参照・導入元参照
 
-昇格 Issue が運ぶメタ情報は Issue 側に留め、配布物の薄さ（原理5）を壊さない。
+昇格 Issue が運ぶメタ情報は Issue 側に留め、配布物の薄さを壊さない。
 
 ## 入出力例（worked example）
 
