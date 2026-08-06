@@ -343,9 +343,9 @@ extract_body_related() {
             after="${line#*Related:}"
             if [[ "$after" =~ (ADR-[A-Za-z0-9-]+) ]]; then
                 stem="${BASH_REMATCH[1]}"
-                # 同一 stem の重複登録を避ける（複数 `Related:` 行が同じ退役/非存在 ADR を
-                # 指す場合の二重報告を防ぐ。markdown リンク形式 `[stem](./stem.md)` が
-                # ラベル部とパス部で同一 stem を持つ場合も1件へ集約される）。
+                # 同一 stem の重複登録を避ける（複数の `Related:` 行が同じ退役/非存在 ADR を
+                # 指す場合の二重報告を防ぐ）。行内の重複は上記の先頭 stem 抽出が防いでおり、
+                # 本 dedup が担うのは行をまたいだ重複のみである。
                 dup=0
                 for existing in ${BODY_RELATED_TARGETS[@]+"${BODY_RELATED_TARGETS[@]}"}; do
                     if [ "$existing" = "$stem" ]; then

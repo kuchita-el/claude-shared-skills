@@ -180,15 +180,15 @@ FAILED: 1/2 suites (6s) -- bats
 
 | 移行前のランナー | 緑経路の `[PASS]` ラベル数 | 移行後のファイル | ケース数 |
 |---|---|---|---|
-| `test-lint-adr.sh` | 137 | `lint-adr-index.bats` / `lint-adr-layers.bats` / `lint-adr-xref.bats` / `lint-adr-surface.bats` / `lint-adr-stem.bats` | 3 / 17 / 8 / 5 / 9 = 42 |
+| `test-lint-adr.sh` | 137 | `lint-adr-index.bats` / `lint-adr-layers.bats` / `lint-adr-xref.bats` / `lint-adr-surface.bats` / `lint-adr-stem.bats` | 3 / 17 / 7 / 5 / 9 = 41 |
 | `test-adr-scoping-cases.sh` | 75 | `adr-scoping-cases-basic.bats` / `adr-scoping-cases-edge.bats` | 16 / 8 = 24 |
 | `test-lint-domain-doc.sh` | 5 | `lint-domain-doc.bats` | 3 |
 | `test-next-adr-id.sh` | 14 | `next-adr-id.bats` | 7 |
-| 合計 | 231 | 9ファイル | **76** |
+| 合計 | 231 | 9ファイル | **75** |
 
-**ケース数はアサーション数ではない。** 1ケースは検査の面に対応し、その面に属する検査項目（旧ランナーの `[PASS]` ラベル）を内側に束ねている。旧ラベル231件はすべて `.bats` 本文へ文字列として残してあり、`grep -F` で1件ずつ突き合わせて欠落0件を確認した。
+**ケース数はアサーション数ではない。** 1ケースは検査の面に対応し、その面に属する検査項目（旧ランナーの `[PASS]` ラベル）を内側に束ねている。移行の完了時点では、旧ラベル231件はすべて `.bats` 本文へ文字列として残してあり、`grep -F` で1件ずつ突き合わせて欠落0件を確認した。その後 2026-08-07 のパーク欄廃止（#563）で `lint-adr-xref.bats` の park 系ラベル（`AC6/AC7` の dangling 2件・`park link dedup`・`AC2/AC7-誤検出回避`）を意図的に落としており、以降は欠落0件が成立しない。**移行に伴う喪失と、廃止に伴う意図的な削除を混同しないこと。**
 
-76 の内訳は **面 67 ＋ 前提不成立 9** である。旧ラベルを持たない新規ケースは次の **11件** に限る。
+75 の内訳は **面 66 ＋ 前提不成立 9** である。旧ラベルを持たない新規ケースは次の **11件** に限る。
 
 - **前提不成立ケース 9件**（`.bats` ファイル1つにつき1件）— fixture corpus・被テスト検査器の不在を、ファイル全体の潰れではなく専用ケースの失敗として報告するためのもの。bats は `setup_file` が失敗するとそのファイルの全ケースを1件へ潰し、報告総数が失敗の有無で変動する。これを避けるため、共有 `setup_file` は判定を一切せず常に `return 0` で終わり、前提の判定は専用ケースが行う。
 - **`lint-adr-surface.bats` の面①（期待リストのファイル存在）と面②（参照ファイルの被覆）の 2件** — 旧 `run_ac5_edit_mechanism` はこの2検査について失敗時にしか総数を加算せず、緑経路では `[PASS]` を1件も出さなかった。集約報告化に伴い緑経路でも報告される独立ケースになるため、旧ラベルを持たない新規ケースとして扱う。前提不成立ケースではない。
