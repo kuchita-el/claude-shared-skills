@@ -36,7 +36,6 @@
 - [ADR-202607200855-01-distill-ledger-as-explicit-input](./ADR-202607200855-01-distill-ledger-as-explicit-input.md): distill の入力定義の拡張 — 既存ルール台帳を明示的入力とする
 - [ADR-202607200856-01-distill-pending-reevaluation-policy](./ADR-202607200856-01-distill-pending-reevaluation-policy.md): distill の pending 候補再評価ポリシー
 - [ADR-202607200858-01-distill-ledger-matching-responsibility-boundary](./ADR-202607200858-01-distill-ledger-matching-responsibility-boundary.md): 台帳突合の責務境界 — distill と promote の線引き
-- [ADR-202607201441-01-adr-parked-decision-section](./ADR-202607201441-01-adr-parked-decision-section.md): ADR スキーマに「保留した決定」セクション（意図的な非決定のスナップショット）を導入する
 - [ADR-202607230648-01-adr-machinery-plugin-extraction](./ADR-202607230648-01-adr-machinery-plugin-extraction.md): ADR運用機構を独立プラグイン adr として抽出・配布
 - [ADR-202607251922-01-subagent-execution-parameter-pinning](./ADR-202607251922-01-subagent-execution-parameter-pinning.md): サブエージェントの実行パラメータを front-matter で固定し役割ごとの必要水準として選ぶ
 - [ADR-202607251922-02-execution-parameter-control-point](./ADR-202607251922-02-execution-parameter-control-point.md): 実行パラメータの統制点をサブエージェント定義に集約する
@@ -49,3 +48,5 @@
 - [ADR-202608011355-01-record-reference-principle](./ADR-202608011355-01-record-reference-principle.md): 記録は可変文書を現在の参照先として指さない
 - [ADR-202608011651-01-adr-value-precondition-criteria-in-operating-doc](./ADR-202608011651-01-adr-value-precondition-criteria-in-operating-doc.md): ADR の固有価値を却下代替に定めて起票の必要条件とし、粒度判定基準の項目と境界は運用文書へ委ねる
 - [ADR-202608061516-01-distribution-boundary-inexecutability-test](./ADR-202608061516-01-distribution-boundary-inexecutability-test.md): 配布境界の第3の判断軸に実行不能性テストを据える
+- [ADR-202608070709-01-adr-related-reference-validity-lint](./ADR-202608070709-01-adr-related-reference-validity-lint.md): 非 Supersede 関係の参照妥当性 lint を要件として定める
+- [ADR-202608070711-01-adr-parked-section-abolition](./ADR-202608070711-01-adr-parked-section-abolition.md): 「保留した決定」セクションを廃止し、射程の限定を働く箇所の散文へ戻す
