@@ -35,7 +35,7 @@ Claude（モデル）はセッションをまたいで重みが変わらない�
 2. **気付きは仮説であり、検証されるまで配布しない**: 内省は幻覚しうる。未検証の気付きを全利用者へ配布することは、毒を配ることに等しい。仮説は予測を伴い、次の機会で検証され、支持されて初めて昇格する。
 3. **客観痕跡 > 主観内省（痕跡ベース検出の偽陰性は復元不能性で補う）**: 自己報告は作話（confabulation）でありうる。より信頼できる教師信号は外部の客観痕跡——git revert、CI 失敗、同一指示の反復、ツール拒否、再試行の連続。内省システムは主観内省でなく客観痕跡の計測を主軸に置く。（痕跡を伴わない自発的判断知を痕跡ベース検出が構造的に取りこぼす偽陰性と、それを復元不能性で補う機構は §3「客観痕跡の取得」。）
 4. **強制可能な制約 > 書かれたルール**: 最弱の学習はコンテキストにヒントを書くこと（ルールは無視されうる）。最強は「二度と起こせない構造」への変換——test・型・lint・hook・CI。覚えるのではなく、覚えなくて済むようにする。
-5. **忘却・圧縮を検証と同格に置く**: 足場の肥大は注意を希薄化させ、ある点を越えると性能を下げる。学びを足場に焼くだけでなく、具体ルールを上位原理・強キャリアへ畳む能動的な**畳み込み**を行う。良い内省システムは足場を太らせず、痩せさせる。（痩せさせる操作の総称＝**整理**〔効かない・害ある学びをエントリごと物理除去する**忘却**＋テキスト規範を上位原理・強キャリアへ昇華して除去する**畳み込み**の2形〕の詳細は [`references/learning-store-spec.md`](references/learning-store-spec.md)「整理」。）
+5. **忘却・圧縮を検証と同格に置く**: 足場の肥大は注意を希薄化させ、ある点を越えると性能を下げる。学びを足場に焼くだけでなく、具体ルールを上位原理・強キャリアへ畳む能動的な**畳み込み**を行う。良い内省システムは足場を太らせず、痩せさせる。（痩せさせる操作の総称＝**整理**〔効かない・害ある学びをエントリごと物理除去する**忘却**＋テキスト規範を上位原理・強キャリアへ昇華して除去する**畳み込み**の2形〕の詳細は [`../../../plugins/growth/references/learning-store-spec.md`](../../../plugins/growth/references/learning-store-spec.md)「整理」。）
 6. **フリート学習**: 一人の N セッションより、M 人の集合ログの方が豊か。共有を「配布（自分→他者）」だけでなく「集約（他者→自分）の教師信号」としても使う。
 7. **via negativa（やめる学び）**: 「このルールは要らなかった」「この確認は過剰だった」という除去の気付きを最高品質として扱う。追加を競う内省は必ず肥大化して死ぬ。
 
@@ -81,7 +81,7 @@ flowchart LR
 
 - **価値の2軸（ゲートを型に一致させる）**: 摩擦知の価値軸は再発（#417。単発は無価値、横断で「配布ルールが効いていない」が出る）、判断知の価値軸は復元不能性（捕まえないと消える）。1本のゲートで両型を測らないため promote を型適応させる（ADR-202607010734-01）。
 - **capture のフィルタ**: ハーネス強制摩擦（File-not-read ガード・worktree ガード・スキーマ検証・API 一時障害等）は既定除外。判断知は予測誤差の形を持たないため教示信号検出器で別途拾う。判断は後回しにする。
-- **measure / retire**: 観測値は配布ファイルに持たせず、各コンシューマのローカル使用台帳→集約ダイジェスト（fan-in）に置く。撤回は origin 側 learnings.md からの物理除去。発火観測・使用台帳の事後解析再構成は決定事項7／[`references/learning-store-spec.md`](references/learning-store-spec.md)。
+- **measure / retire**: 観測値は配布ファイルに持たせず、各コンシューマのローカル使用台帳→集約ダイジェスト（fan-in）に置く。撤回は origin 側 learnings.md からの物理除去。発火観測・使用台帳の事後解析再構成は決定事項7／[`../../../plugins/growth/references/learning-store-spec.md`](../../../plugins/growth/references/learning-store-spec.md)。
 - **用語（本節が現行正典）**: 正典フレーム（`観測 → 仮説形成 → 仮説検証`）を #448 で growth 全ドキュメントへ全面反映した。旧名対応: `観測記録`（旧 観察）・`制度化`（旧 取り込み）・起点 `学習の契機`。`摩擦知`/`判断知`/`type`/`behavior-diff`/`decision-record` 等 #432 の語は維持。distill 出力単位名は ADR-202607051220-01 §1 に従い『仮説』へ移行済み（旧名対応は同 ADR §1 を SoT とする。本節の語彙追随は当初 #438 が担う予定だったが、未適用のまま close したため #453 が引き取り本掃引で反映した）。学習語彙での用語見直し（`知` の位置・procedural/declarative 等）・`キャリア`/`スコープ` の日本語化は follow-up の「ユビキタス言語移行」epic（#409）へ。実装識別子（`captures.md`・`candidates.md`・`candidate-status`・各スキル名）は据え置き。**用語集（旧 glossary.md）は #409 で廃止した**——各語の定義は上記の各設計節へ集約し、本設計書が用語の唯一の正典になった（日本語正典名と英語別名の分離規約は ADR-202607051220-01 §0 が保持）。glossary が担っていた drift-guard（避ける語台帳）は手動再建せず、正典（本書）＋意味レビュー＋再発 denylist の follow-up 機構へ委ねる（中間期は drift-guard 空白を許容。将来は設計書の DSL 化で用語 drift を parse error 化する方向）。
 
 ### Issue と git ファイルの役割分担
@@ -113,7 +113,7 @@ memory と PR の間に欠けていた「共有可能な揉む場」が Issue �
 | 任意プラグイン／コミュニティの改善還元 | 当該 repo への Issue / PR |
 | 汎用の振る舞いルール・メタ手順 | growth 自身の学び置き場（配布される） |
 
-この「種別」軸（改善還元 / 汎用ルール）は、学び置き場内の**共有境界軸**（パブリック / 閉じた ＝ universal / project-local。後述「母集団 × 適用範囲マトリクス」）とは直交する。本表下段「汎用ルール → growth 学び置き場」を、[`references/learning-store-spec.md`](references/learning-store-spec.md) が 2空間（共有境界）へ細分して具体化する（#344）。
+この「種別」軸（改善還元 / 汎用ルール）は、学び置き場内の**共有境界軸**（パブリック / 閉じた ＝ universal / project-local。後述「母集団 × 適用範囲マトリクス」）とは直交する。本表下段「汎用ルール → growth 学び置き場」を、[`../../../plugins/growth/references/learning-store-spec.md`](../../../plugins/growth/references/learning-store-spec.md) が 2空間（共有境界）へ細分して具体化する（#344）。
 
 上の2系統を配布媒体の粒度へ具体化すると、学びを載せる先は4種の**キャリア（配布先媒体）**に分かれる。キャリアは共有境界軸（空間軸 ＝ universal / project-local）とは直交する独立軸である（**キャリア軸 ⊥ 空間軸**）。
 
@@ -124,15 +124,15 @@ memory と PR の間に欠けていた「共有可能な揉む場」が Issue �
 | ADR 差分 | ADR ファイル | 判断知（decision-record）を設計判断の記録として配布 |
 | learnings.md | growth 学び置き場 | テキスト規範として配布される最も弱いキャリア |
 
-- **キャリア（career-hypothesis）**: 仮説形成（distill）が仮説へ付与する「配布先キャリア ＋ 宛先 repo」の仮説タグ（`<career> / repo: <宛先 repo 仮説>` の1行）。スコープと対称・直交。distill 時点では確証せず、キャリアと宛先 repo の最終裁定は集約点（取り込み Issue）が担い、promote はルーティング不可知に運ぶ（ADR-202606282107-01）。4分類の判定表は [`skills/distill/references/distill-procedure.md`](skills/distill/references/distill-procedure.md)（「career-hypothesis の判定（決定表）」）を SoT とする。
+- **キャリア（career-hypothesis）**: 仮説形成（distill）が仮説へ付与する「配布先キャリア ＋ 宛先 repo」の仮説タグ（`<career> / repo: <宛先 repo 仮説>` の1行）。スコープと対称・直交。distill 時点では確証せず、キャリアと宛先 repo の最終裁定は集約点（取り込み Issue）が担い、promote はルーティング不可知に運ぶ（ADR-202606282107-01）。4分類の判定表は [`../../../plugins/growth/skills/distill/references/distill-procedure.md`](../../../plugins/growth/skills/distill/references/distill-procedure.md)（「career-hypothesis の判定（決定表）」）を SoT とする。
 
 ### 保存設計
 
 学習ループを流れるデータは **観測記録**（旧 観察 / `observation`。観測が記録した事実のみの記録——解釈・原因分析・対策を含まない＝生記録性）→ **仮説**（仮説検証待ちの振る舞い差分。`candidates.md` のエントリ）→ **規範**（learnings.md の見出し一文＝テキストとして配布される最も弱いキャリア）と姿を変える。貫く学びの核は **振る舞い差分**（「次回どう違う行動を取るか」を一文で表す実行可能な差分。原理1）。これらが載る成果物 `captures.md`（観測記録置き場）・`candidates.md`（仮説ファイル。観測記録置き場でも learnings.md でもない第3の成果物）・`learnings.md`（学び置き場）の役割・パスは、射影テーブル（上記「学習ループ」）と各 spec（personal-store-spec.md / learning-store-spec.md）が持つ。
 
-- **学び置き場の形式**: 単一の人間可読ファイル。学びを1ファイルに集約することで全体を一覧でき、肥大が一目で分かる。これが原理5（足場を痩せさせる）の前提になる。内容モデル——2面（origin 権威 / consumer 読み取り専用ミラー）・fan-out 配布と fan-in フィードバックの分離・配布の2空間（パブリック / 閉じた）・per-entry は振る舞い差分（規範）の1欄・忘却は物理除去——および配置・ライフサイクルは [`references/learning-store-spec.md`](references/learning-store-spec.md) で確定（#344）。
-- **個人 store**: 生の観測は個人ローカル（memory 等、共有されない）に置く。検証を経て共有価値が確認されたものだけ committed へ昇格させる。二段ゲート（保存＝ローカル自動 / 仕組み化＝committed）と整合し、未検証ノイズをリポジトリに入れない。memory の欠点は「昇格経路を必ず持つ」ことで克服する——ローカルは出発点であって終点ではない。具体形式・置き場・状態管理は [`references/personal-store-spec.md`](references/personal-store-spec.md) で確定（#345）。
-- **個人 store のエントリ状態（実装層の正典モデル）**: 状態軸は候補側 `candidate-status` の1本に集約する。`captures.md` は無状態の append-only 観測コーパスであり、エントリ単位の状態フィールドを持たない（ADR-202607111014-01）。`captures.md` と `candidates.md` は `provenance`（由来＝`captures.md` の `## <timestamp>` 見出し）で結ばれるが、これは同一性追跡のためであり状態同期のためではない。distill が処理すべき観測の選定（処理源選択）は、provenance 導出（`promoted`/`pending` 候補を持つ観測の除外）と distill 専用の処理済みカーソル（`distill-state.md` の `distill-cursor`）の合成で有界化する（ADR-202607111225-01〔ADR-202607121331-01 が restate〕）。promote（仮説検証）が Issue 起票に成功すると `candidate-status` のみを前進させ、`captures.md` は書き換えない。値のスキーマ詳細は [`references/personal-store-spec.md`](references/personal-store-spec.md) が SoT（#345、ADR-202607111014-01 / ADR-202607111225-01〔ADR-202607121331-01 が restate〕）で、下図は状態遷移の正典。
+- **学び置き場の形式**: 単一の人間可読ファイル。学びを1ファイルに集約することで全体を一覧でき、肥大が一目で分かる。これが原理5（足場を痩せさせる）の前提になる。内容モデル——2面（origin 権威 / consumer 読み取り専用ミラー）・fan-out 配布と fan-in フィードバックの分離・配布の2空間（パブリック / 閉じた）・per-entry は振る舞い差分（規範）の1欄・忘却は物理除去——および配置・ライフサイクルは [`../../../plugins/growth/references/learning-store-spec.md`](../../../plugins/growth/references/learning-store-spec.md) で確定（#344）。
+- **個人 store**: 生の観測は個人ローカル（memory 等、共有されない）に置く。検証を経て共有価値が確認されたものだけ committed へ昇格させる。二段ゲート（保存＝ローカル自動 / 仕組み化＝committed）と整合し、未検証ノイズをリポジトリに入れない。memory の欠点は「昇格経路を必ず持つ」ことで克服する——ローカルは出発点であって終点ではない。具体形式・置き場・状態管理は [`../../../plugins/growth/references/personal-store-spec.md`](../../../plugins/growth/references/personal-store-spec.md) で確定（#345）。
+- **個人 store のエントリ状態（実装層の正典モデル）**: 状態軸は候補側 `candidate-status` の1本に集約する。`captures.md` は無状態の append-only 観測コーパスであり、エントリ単位の状態フィールドを持たない（ADR-202607111014-01）。`captures.md` と `candidates.md` は `provenance`（由来＝`captures.md` の `## <timestamp>` 見出し）で結ばれるが、これは同一性追跡のためであり状態同期のためではない。distill が処理すべき観測の選定（処理源選択）は、provenance 導出（`promoted`/`pending` 候補を持つ観測の除外）と distill 専用の処理済みカーソル（`distill-state.md` の `distill-cursor`）の合成で有界化する（ADR-202607111225-01〔ADR-202607121331-01 が restate〕）。promote（仮説検証）が Issue 起票に成功すると `candidate-status` のみを前進させ、`captures.md` は書き換えない。値のスキーマ詳細は [`../../../plugins/growth/references/personal-store-spec.md`](../../../plugins/growth/references/personal-store-spec.md) が SoT（#345、ADR-202607111014-01 / ADR-202607111225-01〔ADR-202607121331-01 が restate〕）で、下図は状態遷移の正典。
 
 ```mermaid
 stateDiagram-v2
@@ -145,7 +145,7 @@ stateDiagram-v2
     }
 ```
 
-  - **`captures.md` は無状態、distill の処理済みカーソルが有界化を担う**: `captures.md` は append-only の観測コーパスであり、旧 `status`（再走査抑止フラグ）のようなエントリ単位の状態フィールドを持たない（ADR-202607111014-01）。distill の再走査範囲は、専用ファイル `distill-state.md` の `distill-cursor`（ISO8601 timestamp）と provenance 導出（`promoted`/`pending` 候補を持つ観測の処理源からの除外）の合成で有界化する。カーソルは distill が処理後に今回走査した観測の最新 timestamp へ前進させ、前進主体は distill のみ（promote はカーソルに触れない）（ADR-202607111225-01〔ADR-202607121331-01 が restate〕、[`references/personal-store-spec.md`](references/personal-store-spec.md)）。
+  - **`captures.md` は無状態、distill の処理済みカーソルが有界化を担う**: `captures.md` は append-only の観測コーパスであり、旧 `status`（再走査抑止フラグ）のようなエントリ単位の状態フィールドを持たない（ADR-202607111014-01）。distill の再走査範囲は、専用ファイル `distill-state.md` の `distill-cursor`（ISO8601 timestamp）と provenance 導出（`promoted`/`pending` 候補を持つ観測の処理源からの除外）の合成で有界化する。カーソルは distill が処理後に今回走査した観測の最新 timestamp へ前進させ、前進主体は distill のみ（promote はカーソルに触れない）（ADR-202607111225-01〔ADR-202607121331-01 が restate〕、[`../../../plugins/growth/references/personal-store-spec.md`](../../../plugins/growth/references/personal-store-spec.md)）。
   - **`candidate-status`**: `pending`（検証待ち・既定）/ `rejected`（promote が棄却）/ `promoted`（promote が起票成功後に必須で付与。付与しないと pending のまま二重起票を招く）の3値。状態軸はこの1本に集約する。
   - **`provenance`（由来）**: 仮説の出自を追跡するメタ。値は `captures.md` の `## <timestamp>` 見出し。distill の upsert・処理源選択の同一性判定、および promote の `candidate-status` 前進で同一性判定に使う（避ける語: 出自キー・由来参照）。
 
@@ -185,7 +185,7 @@ stateDiagram-v2
 
 共有は「コミットされた配布物」でしか発生しない。memory と user CLAUDE.md は個人・ローカルであり、共有のデッドエンド。越境の本質は「ローカルなナレッジを配布物へ移送すること」である。
 
-配布物（学び置き場）の**2空間**——パブリック/グローバル（全世界 × 全PJ ＝ public plugin セル）と閉じた空間（チーム/プロジェクト ＝ チーム行のセル）——は、本マトリクスのうち**コミットされた配布物が成立するセル**を Route 粒度で畳んだもの。個人行は共有のデッドエンドであり学び置き場では扱わない（既存 memory 機構が担う）。詳細は [`references/learning-store-spec.md`](references/learning-store-spec.md)（#344）。
+配布物（学び置き場）の**2空間**——パブリック/グローバル（全世界 × 全PJ ＝ public plugin セル）と閉じた空間（チーム/プロジェクト ＝ チーム行のセル）——は、本マトリクスのうち**コミットされた配布物が成立するセル**を Route 粒度で畳んだもの。個人行は共有のデッドエンドであり学び置き場では扱わない（既存 memory 機構が担う）。詳細は [`../../../plugins/growth/references/learning-store-spec.md`](../../../plugins/growth/references/learning-store-spec.md)（#344）。
 
 ---
 
@@ -197,7 +197,7 @@ growth プラグインは2つの顔を持つ。
    - `capture` スキル（Capture）: 現セッションの会話履歴から摩擦知（予測誤差検出器）と判断知（教示信号検出器）の2種を検知し、生観察を個人ローカル store に記録する。
    - `distill` スキル（Distill＋Route 統合）: store に溜まった未処理の生観察を Capture と非同期にバッチで仮説形成し、クラスタ化・重複排除して仮説へ変換する。出力は知識型に応じた2系統——摩擦知は実行可能な振る舞い差分（`type: behavior-diff`）、判断知は文脈付き決定知（`type: decision-record`＝decision / rejected-alternatives / rationale / context。behavior-diff 要求と N 再発カウントを免除）。各仮説に**スコープタグ**（`project-local` / `universal`）・**career 仮説タグ**（昇格先キャリア＋宛先 repo の仮説）・provenance を付与し、仮説ファイル（`candidates.md`）へ永続化する（Route をタグ付与として統合。scope・career とも仮説どまりで、確定（裁定）は集約点に置く。仮説永続化までで責務を終える）。
    - `promote` スキル（Promote・新規）: `candidates.md` の仮説を検証し（原理2＝未検証を配布経路に乗せないフィルタ。検証は `type` で適応し、behavior-diff は予測・反証、decision-record は「復元不能で・まだ有効で・配布価値があるか」を検査する）、検証通過仮説を `gh` で**自動起票**（起票前ゲートなし）して既存ワークフローへ疎結合に渡す。起票成功後に候補側 `candidate-status` を `pending → promoted` へ前進させる（`captures.md` は無状態のため書き換えない。ADR-202607111014-01）。promote は**ルーティング不可知**で、distill の scope・career 仮説を昇格 Issue 本文へ注記として運ぶのみ（career の裁定は行わない）。L2 承認は起票後の既存ワークフロー（refine-issue / DoR / PR レビュー）が担う。
-   - 残る Distribute（検証済みの学びの `learnings.md` への物理昇格）は後続 Phase（Phase 2）。検証を経た仮説は Issue 起票（小さければ PR）として既存ワークフローに渡す。昇格 Issue のテンプレートは [`references/promotion-issue-spec.md`](references/promotion-issue-spec.md)（#382）で定義する。昇格先キャリアは distill が仮説単位で生成し、確定（裁定）は集約点（取り込み Issue）で人間が行う（career 決定モデルは ADR-202606282107-01。#382 は本決定に合わせ再定義予定）。出来事ベースの昇格 Issue を `learnings.md` の1欄エントリへ翻訳する変換規約は [`references/learning-promotion-spec.md`](references/learning-promotion-spec.md)（#383）で定義する。
+   - 残る Distribute（検証済みの学びの `learnings.md` への物理昇格）は後続 Phase（Phase 2）。検証を経た仮説は Issue 起票（小さければ PR）として既存ワークフローに渡す。昇格 Issue のテンプレートは [`../../../plugins/growth/references/promotion-issue-spec.md`](../../../plugins/growth/references/promotion-issue-spec.md)（#382）で定義する。昇格先キャリアは distill が仮説単位で生成し、確定（裁定）は集約点（取り込み Issue）で人間が行う（career 決定モデルは ADR-202606282107-01。#382 は本決定に合わせ再定義予定）。出来事ベースの昇格 Issue を `learnings.md` の1欄エントリへ翻訳する変換規約は [`../../../plugins/growth/references/learning-promotion-spec.md`](../../../plugins/growth/references/learning-promotion-spec.md)（#383）で定義する。
 2. **配布物**: 蓄積された汎用の学び置き場。プラグイン配布によって全利用者の Claude Code に届く学びの実体。
 
 dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 Issue を起票し、その Issue は既存の `refine-issue` / DoR に乗る。スキル同士を直接呼び出さない（各スキルは store／学び置き場というファイルを介して疎に連結する）。足すのはプラグイン1個であり、繋ぎ先（create-issue → refine-issue → plan-issue → implementation、PR レビューは pr-review-toolkit）はすべて既存資産。
@@ -230,10 +230,10 @@ dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 
 
 2026-06-26 に論点1〜6を以下のとおり確定した。
 
-1. **学び置き場の形式**: 単一の人間可読ファイル。全体を一覧でき、肥大が見えるため原理5（足場を痩せさせる）に資する。内容モデル（2面・fan-out/fan-in 分離・配布の2空間・1欄スキーマ・忘却＝物理除去）・スキーマ・配置（パブリック空間の確定パス `plugins/growth/learnings.md`）・ライフサイクルは #344 で確定（[`references/learning-store-spec.md`](references/learning-store-spec.md)）。
-2. **客観痕跡の取得手段**: 現セッションの会話履歴は Phase 1、過去セッションログの横断解析と git revert は Phase 3、CI 失敗は Phase 3 以降（要連携・価値検証後）。取得は hook リアルタイム検知ではなくログ事後解析を主軸とする。なお過去セッションログは既定 **30 日でローテーション消滅する揮発資産**（`cleanupPeriodDays` 既定 30 日。#378 で確認）であり、横断解析は「消滅前にシグナルを抽出して個人 store に永続化する」ことを前提とする。Phase 3 の自発トリガーは取りこぼし回避のため 30 日より十分短い周期で走査する設計ドライバを持つ（決定事項4 に接続。形式詳細は [`references/session-log-format.md`](references/session-log-format.md)）。
-3. **個人 store の置き場**: 生の観測は個人ローカル（共有されない）に置き、検証を経たものだけ committed へ昇格させる。昇格経路を必ず持つことで memory の「個人で終わる」欠点を克服する。具体形式・置き場（`~/.claude/projects/<project-id>/growth/captures-YYYY-MM-DD.md`〔日付バケットのセグメント〕、per-project）・状態管理・有界保持（retention）は #345 / #485 で確定（[`references/personal-store-spec.md`](references/personal-store-spec.md)）。
-4. **`capture` の自発性レベル**: 明示起動（Phase 1）から始め、自発化は Phase 3。Phase 3 の本質的論点は機構（SessionEnd hook か Routines か）ではなく、ナレッジ抽出の**解析単位と UX**である（2026-06-27 確定、#350）。単一セッション内の確認と複数セッション横断の一括確認を併存させ（抽出精度の中核は横断解析＝原理2・6）、ライブセッションに相乗りして解析する UX の適否は要検証とする（→ 後掲 2026-06-28 の追補「4-補」で mid-session 割り込み型を不採用と確定）。なお本 UX 論点は決定事項2 の取得手段軸（リアルタイム検知 vs 事後解析）とは直交する——ライブ相乗りを採っても痕跡の取得はセッションログの事後解析のままであり、決定事項2 / §3「客観痕跡の取得」は変わらない。ただしライブ相乗りをリアルタイム痕跡観測まで踏み込ませる変種を採用する場合は、決定事項2 / L105「事後解析を主軸」を見直す可能性がある。機構・#160 の nightly Routine 基盤への相乗りは実装段階の詳細とし、本設計では固定しない。各機構（SessionEnd hook / Desktop scheduled task / `/loop` / OS ネイティブスケジューラ / クラウド Routine）の発火仕様・取得可能データ・解析単位への適合と非対称性は #379 で対称に調査済み（[`references/auto-trigger-spec.md`](references/auto-trigger-spec.md)）。機構選定の決定的な非対称性は2つ: (1) クラウド Routine はローカル `~/.claude/projects/` にアクセスできず横断解析に不適、(2) Desktop scheduled task は macOS/Windows のみで Linux 不可。CLI/Linux 環境（本リポジトリを含む）の横断機構は OS ネイティブスケジューラ＋`claude -p` が既定解。
+1. **学び置き場の形式**: 単一の人間可読ファイル。全体を一覧でき、肥大が見えるため原理5（足場を痩せさせる）に資する。内容モデル（2面・fan-out/fan-in 分離・配布の2空間・1欄スキーマ・忘却＝物理除去）・スキーマ・配置（パブリック空間の確定パス `plugins/growth/learnings.md`）・ライフサイクルは #344 で確定（[`../../../plugins/growth/references/learning-store-spec.md`](../../../plugins/growth/references/learning-store-spec.md)）。
+2. **客観痕跡の取得手段**: 現セッションの会話履歴は Phase 1、過去セッションログの横断解析と git revert は Phase 3、CI 失敗は Phase 3 以降（要連携・価値検証後）。取得は hook リアルタイム検知ではなくログ事後解析を主軸とする。なお過去セッションログは既定 **30 日でローテーション消滅する揮発資産**（`cleanupPeriodDays` 既定 30 日。#378 で確認）であり、横断解析は「消滅前にシグナルを抽出して個人 store に永続化する」ことを前提とする。Phase 3 の自発トリガーは取りこぼし回避のため 30 日より十分短い周期で走査する設計ドライバを持つ（決定事項4 に接続。形式詳細は [`session-log-format.md`](session-log-format.md)）。
+3. **個人 store の置き場**: 生の観測は個人ローカル（共有されない）に置き、検証を経たものだけ committed へ昇格させる。昇格経路を必ず持つことで memory の「個人で終わる」欠点を克服する。具体形式・置き場（`~/.claude/projects/<project-id>/growth/captures-YYYY-MM-DD.md`〔日付バケットのセグメント〕、per-project）・状態管理・有界保持（retention）は #345 / #485 で確定（[`../../../plugins/growth/references/personal-store-spec.md`](../../../plugins/growth/references/personal-store-spec.md)）。
+4. **`capture` の自発性レベル**: 明示起動（Phase 1）から始め、自発化は Phase 3。Phase 3 の本質的論点は機構（SessionEnd hook か Routines か）ではなく、ナレッジ抽出の**解析単位と UX**である（2026-06-27 確定、#350）。単一セッション内の確認と複数セッション横断の一括確認を併存させ（抽出精度の中核は横断解析＝原理2・6）、ライブセッションに相乗りして解析する UX の適否は要検証とする（→ 後掲 2026-06-28 の追補「4-補」で mid-session 割り込み型を不採用と確定）。なお本 UX 論点は決定事項2 の取得手段軸（リアルタイム検知 vs 事後解析）とは直交する——ライブ相乗りを採っても痕跡の取得はセッションログの事後解析のままであり、決定事項2 / §3「客観痕跡の取得」は変わらない。ただしライブ相乗りをリアルタイム痕跡観測まで踏み込ませる変種を採用する場合は、決定事項2 / L105「事後解析を主軸」を見直す可能性がある。機構・#160 の nightly Routine 基盤への相乗りは実装段階の詳細とし、本設計では固定しない。各機構（SessionEnd hook / Desktop scheduled task / `/loop` / OS ネイティブスケジューラ / クラウド Routine）の発火仕様・取得可能データ・解析単位への適合と非対称性は #379 で対称に調査済み（[`auto-trigger-spec.md`](auto-trigger-spec.md)）。機構選定の決定的な非対称性は2つ: (1) クラウド Routine はローカル `~/.claude/projects/` にアクセスできず横断解析に不適、(2) Desktop scheduled task は macOS/Windows のみで Linux 不可。CLI/Linux 環境（本リポジトリを含む）の横断機構は OS ネイティブスケジューラ＋`claude -p` が既定解。
 5. **チーム層**: team private marketplace の実運用を想定する。Phase 5 を本設計の対象とする（共有リポの CLAUDE.md / ADR への縮退ではない）。
 6. **メタ学習**: 内省の仕組み自体（検知基準・昇格閾値）の改善を Phase 6 として組み込む。仕組みの変更は必ず人間承認ゲートを通す。
 
@@ -244,7 +244,7 @@ dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 
    - **発火観測＝可能**。本文をスキル経由にすることでアクセスがツール使用ログ（客観痕跡。§3「客観痕跡の取得」）として残る。**使用台帳はこのツール使用ログから事後解析で再構成する派生ビュー**であり（決定事項2 / L105「事後解析を主軸」と整合。リアルタイム記帳ではないため、hook が避けた発火タイミング・状態管理の複雑性を持ち込まない）、読み込みスキルは痕跡の生成源として機能する。再構成された各コンシューマのローカル台帳は集約ダイジェスト（fan-in。§3 Measure）へ還流する。粒度はスキルが返したエントリ ID ＝発火（段2）に止め、偽陽性は効果測定（revert 再発・同一指示反復＝段5）で補正する。発火×効果の2点測定で Retire を判断する。Phase 3 で実装。
    - **論拠**: 到達保証と発火観測可能性は二律背反である（常時注入は到達最強だが全エントリ常時ロードで「載った」が発火信号にならない。スキル経由はアクセスがログに残るが起動判断依存で到達が落ちる）。時間軸で分離して両立させる。強制力のはしご（原理4）の各段は固有の発火痕跡を持つ（skill / agent＝ツール使用ログ、hook＝hook 実行ログ）が、最下段 learnings.md だけが常時注入だと痕跡を持たない。本文をスキル経由にすればはしご上段（skill / agent / hook）で観測が統一される。ただし最下段 learnings.md の見出し層（規範本体）は Phase 3 でも常時注入のまま痕跡を持たないため、原理3（観測可能性）との整合は本文ロード層に限られる（下記「発火観測の偽陰性リスク」を参照）。
    - **発火観測の偽陰性リスク（Phase 3 未決）**: spec の1欄スキーマでは見出しが規範本体（振る舞い差分の一文要約）で、本文はその理由。一方 Phase 3 活性化モデルは見出し index を常時注入のまま残し本文のみスキル経由とするため、見出しだけで効く学びは本文をロードせず、発火（段2＝本文ロード）の痕跡を残さない。結果、効果があるのに発火が低く出て Retire されうる（偽陰性）。本文側の偽陽性は効果測定で補正するが、こちらは逆方向の誤差で未手当てである。Phase 3 実装前に次のいずれかで Retire の判定根拠を補強する: (a) 発火定義を本文ロードに限らず見出し層の注入痕跡（hook 実行ログ等）も拾う、(b) 見出し index もスキル経由化して全段をログ化する（活性化モデルの再検討）、(c) 過小計上を許容し効果側主導で Retire するなら「発火×効果の2点測定」前提自体を見直す。
-   - **エントリスキーマへの波及**は [`references/learning-store-spec.md`](references/learning-store-spec.md) に記録。専用トリガ欄は不要（既存の領域・状況の選択軸で本文選択を代替し簡潔さを維持）、安定 ID は使用台帳の参照キーとして Phase 3 で必須化する。
+   - **エントリスキーマへの波及**は [`../../../plugins/growth/references/learning-store-spec.md`](../../../plugins/growth/references/learning-store-spec.md) に記録。専用トリガ欄は不要（既存の領域・状況の選択軸で本文選択を代替し簡潔さを維持）、安定 ID は使用台帳の参照キーとして Phase 3 で必須化する。
 
 2026-06-28 に決定事項4 の要検証 UX 論点（ライブセッション相乗り解析の適否）を #381 で確定した。
 
@@ -254,17 +254,17 @@ dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 
    - **不採用の論拠（原理的根拠）**: (1) 即時性の便益は弱い。本設計の抽出精度の中核は横断解析＝原理2・6（再現したら本物 / フリート学習）であり、精度は単一セッションの鮮度ではなく複数セッション横断の再現から得る。さらに本設計の観測は決定事項2 でログ事後解析に確定しているため、提示タイミング（mid-session か境界か）は観測される候補シグナルの recall にも影響しない——シグナルはログに残り抽出パスが拾うため、recall を左右するのは抽出走査の頻度（30 日ローテ前に拾えるか）であって提示軸ではない。よって提示軸の即時性は precision にも recall にも寄与しない。なお「mid-session 提示はユーザーのその場確認・訂正を能動的に誘発し、受動ログに存在しない新規の再現シグナルを生むため precision にも寄与する」という異論はありうるが、in-session でのユーザー確認の誘発は原理3（客観痕跡 > 主観内省）が退ける主観内省の要求であり、この経路自体を本設計は採らない。(2) 妨害コストは実在し、かつ横断照合前の未検証・低精度シグナルで割り込む二重ペナルティを伴う。(3) 横断一括確認は構造的にバッチ（複数セッションのログを要し週次・ローカル必須＝#379）であり、単一ライブセッションへの相乗りとは非両立。「ライブ」が意味を持つのは単一セッション内確認のみで、そこでも SessionEnd 境界での観測で足りる。
    - **機構の有無に依存しない（補足）**: mid-session 割り込みを担う発火機構は #379 で確立していないが、これは現時点の実装ギャップ（機構を作れば消える可逆な制約）であり、不採用の原理的根拠ではない。仮に将来 mid-session 機構が確立しても、上記 (1)-(3) により不採用は揺るがない。
    - **決定事項2 との関係**: 採用形は提示を境界・別時間に置き、計測は事後ログ解析のまま据え置くため、**決定事項2 / L105「事後解析を主軸」の見直しは不要**。決定事項4 が留保した「リアルタイム痕跡観測まで踏み込む変種は決定事項2 の見直しを要する」はそのまま生きるが、本判断はその変種を採らない。
-   - **compaction 耐性（補強）**: 会話の compaction（コンテキスト圧縮・`/compact`）はオンディスクの JSONL を書き換えず、compaction 前の生エントリは追記専用ログに残る（[`references/session-log-format.md`](references/session-log-format.md) §6、2026-06-28 検証）。よって事後解析主軸（決定事項2）の採用形は compaction に対して構造的に頑健で、抽出精度は劣化しない。逆に mid-session ライブ相乗りがモデルのコンテキストから信号を読む設計だと、compaction 後はコンテキストに要約しか残らず生信号を失い抽出精度が劣化する——これも不採用の補強になる。ただし抽出器は session loader の patched chain を経由せず raw JSONL を全行スキャンすること（実装要件、session-log-format.md §6）。
+   - **compaction 耐性（補強）**: 会話の compaction（コンテキスト圧縮・`/compact`）はオンディスクの JSONL を書き換えず、compaction 前の生エントリは追記専用ログに残る（[`session-log-format.md`](session-log-format.md) §6、2026-06-28 検証）。よって事後解析主軸（決定事項2）の採用形は compaction に対して構造的に頑健で、抽出精度は劣化しない。逆に mid-session ライブ相乗りがモデルのコンテキストから信号を読む設計だと、compaction 後はコンテキストに要約しか残らず生信号を失い抽出精度が劣化する——これも不採用の補強になる。ただし抽出器は session loader の patched chain を経由せず raw JSONL を全行スキャンすること（実装要件、session-log-format.md §6）。
    - **将来の見直し条件（Phase 3 実測）**: 本判断は実プロダクト・実ユーザー不在の現時点での演繹（原理・制約・#379 の機構非対称性からの論証）であり、Phase 3 で次を実測して再評価する。(a) SessionEnd 境界での提示で文脈鮮度が実用上十分か。(b) mid-session 提示の便益が妨害コストを上回るユースケースが実在するか。(b) は性質の異なる2経路に分けて扱う——(b-1) 未検証シグナルの即時提示は論拠(1)(2) で否定済み。(b-2) 既に横断検証を経た学びを関連する瞬間に just-in-time で差し出す経路（例:「このパターンは過去に再現済み、学習済みルールはこれ」）は低精度割り込みではなく論拠(2) が当たらないが、これは capture/reflect（本 spike の解析単位と UX）ではなく deliver / 活性化層（決定事項7・#380）の論点であり、本 spike のスコープ外として deliver 層で別途検討する。危険操作の即時検知のような real-time guard 機能も capture/reflect とは別系統でスコープ外。(b-2) が deliver 層で便益を実証した場合に限り、限定的な live 提示を再導入しうる。
 
 2026-06-28 に Promote 段の実装（#348）に伴い、段マッピングと検証→起票モデルを以下のとおり確定した。
 
 8. **Promote 段の段マッピングと検証→起票モデル**（#348）:
    - **`reflect` には検証・Route・Promote を追加しない**。reflect/distill 分離（#347 / PR #377）後、reflect は Capture 専任（パイプライン最上流）であり、Distill 出力を消費する下流段は論理的に reflect に同居しない（「1段＝1スキル」）。
-   - **Route を `distill` へ統合する**。仮説形成は「どの観点（project-local / universal）で仮説形成するか」の視点を本質的に要するため、スコープタグの付与は Distill と密結合（[`references/learning-store-spec.md`](references/learning-store-spec.md)「仮説形成は project-local と universal の2観点に分かれ…」が裏付け）。distill の責務境界を1段拡張し、仮説を `candidates.md` へ provenance・scope 仮説タグ付きで永続化する。**career（昇格先キャリア）仮説タグの付与も同様に distill の責務とする**（scope と対称・直交。Route→distill 統合を career についても完成させる）。career の確定（裁定）は promote ではなく集約点（取り込み Issue）で行い、promote はルーティング不可知に運ぶのみとする（ADR-202606282107-01）。
+   - **Route を `distill` へ統合する**。仮説形成は「どの観点（project-local / universal）で仮説形成するか」の視点を本質的に要するため、スコープタグの付与は Distill と密結合（[`../../../plugins/growth/references/learning-store-spec.md`](../../../plugins/growth/references/learning-store-spec.md)「仮説形成は project-local と universal の2観点に分かれ…」が裏付け）。distill の責務境界を1段拡張し、仮説を `candidates.md` へ provenance・scope 仮説タグ付きで永続化する。**career（昇格先キャリア）仮説タグの付与も同様に distill の責務とする**（scope と対称・直交。Route→distill 統合を career についても完成させる）。career の確定（裁定）は promote ではなく集約点（取り込み Issue）で行い、promote はルーティング不可知に運ぶのみとする（ADR-202606282107-01）。
    - **`promote` スキルを新規作成する**。Route が distill 側へ移るため、新規スキルはループの Promote 段そのもの（検証＋自動起票＋`candidate-status` 前進）になる。
    - **スコープは仮説タグのまま終点とし、確証しない**。適用範囲は Phase 1 でも経験的に確証できず、Phase 3 でも自動確証は約束されない。最終裁定は人間（refine/review）、横断解析は支援証拠どまり。
-   - **`candidate-status` 前進の実行主体は `promote`**（**supersede 注記**: 本項は元は「`status` 反転〔`unprocessed → promoted`〕の実行主体は `promote`」としていたが、`captures.md` の状態フィールド `status` は ADR-202607111014-01 で廃止され、それに伴い captures 側への反転責務（#348）も同 ADR（決定1・Consequences）で moot 化した。以降は本文のとおり候補側 `candidate-status` の前進のみを主体とする）。起票成功後にのみ provenance 経由で候補側 `candidate-status` を `pending → promoted` へ前進させる（`captures.md` は書き換えない。起票失敗・仮説棄却・ゲート拒否時は前進しない）。[`references/personal-store-spec.md`](references/personal-store-spec.md) が #348 に名指しで defer した昇格主体を promote と確定した判断自体は有効のまま、状態モデルの正典は ADR-202607111014-01 / ADR-202607111225-01〔ADR-202607121331-01 が restate〕に移った。
+   - **`candidate-status` 前進の実行主体は `promote`**（**supersede 注記**: 本項は元は「`status` 反転〔`unprocessed → promoted`〕の実行主体は `promote`」としていたが、`captures.md` の状態フィールド `status` は ADR-202607111014-01 で廃止され、それに伴い captures 側への反転責務（#348）も同 ADR（決定1・Consequences）で moot 化した。以降は本文のとおり候補側 `candidate-status` の前進のみを主体とする）。起票成功後にのみ provenance 経由で候補側 `candidate-status` を `pending → promoted` へ前進させる（`captures.md` は書き換えない。起票失敗・仮説棄却・ゲート拒否時は前進しない）。[`../../../plugins/growth/references/personal-store-spec.md`](../../../plugins/growth/references/personal-store-spec.md) が #348 に名指しで defer した昇格主体を promote と確定した判断自体は有効のまま、状態モデルの正典は ADR-202607111014-01 / ADR-202607111225-01〔ADR-202607121331-01 が restate〕に移った。
    - **起票前に人間承認ゲートを置かず自動起票する**。検証段（原理2）が未検証仮説のフィルタとして残るため未検証の配布は防げる。L2 の規範的ゲートは起票後の既存ワークフロー（refine-issue / DoR / PR レビュー）が担う（起票前ゲートは自動化を阻害し下流ゲートと二重になる）。マルチエージェントレビュー化は Phase 4。
    - **照合監査ループ**（学びが置き場へ移ったか ADR/プラグインと定期照合）は Measure/Retire 寄りの別関心としてパーキング（follow-up）。
 
@@ -314,8 +314,8 @@ dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 
 
 ### 実装時に一次確認する事項
 
-- ~~セッションログの保存場所・形式~~ → **#378 で確認済み**。`~/.claude/projects/<project-id>/<session-uuid>.jsonl`（per-project・JSONL・1ファイル1セッション）、既定 30 日でローテ消滅。学習シグナルは全て取得可能、全文走査は実測 0.08 秒。実現可能性＝**条件付き可**（消滅前の抽出・永続化が条件）。詳細は [`references/session-log-format.md`](references/session-log-format.md)。
-- ~~自発トリガー機構（SessionEnd hook / nightly Routine 等）の発火仕様と取得可能なデータ~~ → **#379 で確認済み**。SessionEnd hook は payload に終了セッションの `session_id`/`transcript_path` を直渡し（単一セッション即時観測に最適、side-effect 専用）。横断解析はローカル実行スケジューラに限られ（**クラウド Routine はローカル `~/.claude/projects/` にアクセスできず不適**）、その具体は環境で分岐する（GUI＝Desktop scheduled task〔macOS/Win のみ〕、CLI/Linux＝OS ネイティブスケジューラ＋`claude -p`、`/loop` はセッション常時起動時のみ）。単一＝hook・横断＝ローカルスケジューラの併存が #350 解析単位に対応。詳細は [`references/auto-trigger-spec.md`](references/auto-trigger-spec.md)。
+- ~~セッションログの保存場所・形式~~ → **#378 で確認済み**。`~/.claude/projects/<project-id>/<session-uuid>.jsonl`（per-project・JSONL・1ファイル1セッション）、既定 30 日でローテ消滅。学習シグナルは全て取得可能、全文走査は実測 0.08 秒。実現可能性＝**条件付き可**（消滅前の抽出・永続化が条件）。詳細は [`session-log-format.md`](session-log-format.md)。
+- ~~自発トリガー機構（SessionEnd hook / nightly Routine 等）の発火仕様と取得可能なデータ~~ → **#379 で確認済み**。SessionEnd hook は payload に終了セッションの `session_id`/`transcript_path` を直渡し（単一セッション即時観測に最適、side-effect 専用）。横断解析はローカル実行スケジューラに限られ（**クラウド Routine はローカル `~/.claude/projects/` にアクセスできず不適**）、その具体は環境で分岐する（GUI＝Desktop scheduled task〔macOS/Win のみ〕、CLI/Linux＝OS ネイティブスケジューラ＋`claude -p`、`/loop` はセッション常時起動時のみ）。単一＝hook・横断＝ローカルスケジューラの併存が #350 解析単位に対応。詳細は [`auto-trigger-spec.md`](auto-trigger-spec.md)。
 
 ---
 

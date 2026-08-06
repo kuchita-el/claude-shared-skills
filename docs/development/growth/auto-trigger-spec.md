@@ -1,6 +1,6 @@
 # 自発トリガー機構の発火仕様・取得可能データの一次調査（spike #379）
 
-> **位置づけ**: growth Phase 3「capture の自発化」（`plugins/growth/DESIGN.md` 決定事項4・#350）の前提となる一次調査の記録。機構選定（単独/併存）の判定材料を、SessionEnd hook と nightly 系スケジューラについて対称に文書化する。決定そのものは実装時でよい（#379 完了定義）。ディスク上のログ形式は #378（[`session-log-format.md`](session-log-format.md)）が確立済みであり、本書はその「形式」に対する「発火点」を埋める。
+> **位置づけ**: growth Phase 3「capture の自発化」（`design.md` 決定事項4・#350）の前提となる一次調査の記録。機構選定（単独/併存）の判定材料を、SessionEnd hook と nightly 系スケジューラについて対称に文書化する。決定そのものは実装時でよい（#379 完了定義）。ディスク上のログ形式は #378（[`session-log-format.md`](session-log-format.md)）が確立済みであり、本書はその「形式」に対する「発火点」を埋める。
 
 ## 調査時点・対象バージョン
 
@@ -140,5 +140,5 @@ CLAUDE_CODE_EXECPATH=…/versions/2.1.195
 
 - 親エピック: #350（growth Phase 3）／本 spike: #379／隣接 spike: #378（ログ形式）・#380（活性化モデル）・#381（ライブ相乗り UX）
 - 隣接: #160（Routines ベース nightly grooming。本書 §6 で相乗り不可と評価）
-- [`plugins/growth/DESIGN.md`](../../../plugins/growth/DESIGN.md) 決定事項2（取得手段＝事後解析主軸）・決定事項4（capture 自発化）・「実装時に一次確認する事項」
+- [`design.md`](design.md) 決定事項2（取得手段＝事後解析主軸）・決定事項4（capture 自発化）・「実装時に一次確認する事項」
 - 形式の一次調査: [`session-log-format.md`](session-log-format.md)（#378）

@@ -35,4 +35,4 @@ growth プラグインの構想から切り出しうる確定判断のうち、A
 
 - `docs/distribution-boundary.md` — 本書を配布元へ置く根拠となる判断軸
 - `plugins/adr/skills/manage-adr/references/adr-scoping.md` — 粒度判定基準の単一出典
-- `plugins/growth/DESIGN.md` — growth の設計母艦。本表が追跡する各判断の本体
+- `design.md` — growth の設計母艦。本表が追跡する各判断の本体

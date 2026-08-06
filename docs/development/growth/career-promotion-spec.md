@@ -4,7 +4,7 @@ growth プラグインの学習ループ（`[Capture] → [Distill] → [Route] 
 
 ## 位置づけ
 
-- 本仕様は `plugins/growth/DESIGN.md` 学習ループの **Distribute 段**（検証済みの学びを配布物・成果物として届ける段）の、ADR 差分（当該 repo の ADR 配置）および改善還元 Issue（宛先 repo）への materialization 手続きを定義する。career の裁定（昇格先キャリアの確定）は集約点＝取り込み Issue で人間が行う（ADR-202606282107-01 決定3）。本規約はその裁定を**再実装せず、確定済みの裁定結果を信頼**して、ADR 差分・宛先 repo 起票へ着地させる手続きに徹する。
+- 本仕様は `design.md` 学習ループの **Distribute 段**（検証済みの学びを配布物・成果物として届ける段）の、ADR 差分（当該 repo の ADR 配置）および改善還元 Issue（宛先 repo）への materialization 手続きを定義する。career の裁定（昇格先キャリアの確定）は集約点＝取り込み Issue で人間が行う（ADR-202606282107-01 決定3）。本規約はその裁定を**再実装せず、確定済みの裁定結果を信頼**して、ADR 差分・宛先 repo 起票へ着地させる手続きに徹する。
 - **新規スキルを設けない**（#349 D2）。本仕様は参照ドキュメントであり、昇格の実行主体は既存ワークフローである。
   - **ADR 差分** → 既存の implementation → PR ワークフロー（当該 repo の ADR 配置への ADR 起票・改訂を PR で提出する）。
   - **改善還元 Issue** → `gh issue create` による宛先 repo への疎結合な起票（起票後は宛先 repo 側の既存ワークフロー＝ refine / DoR / plan / implementation / PR レビューが消費する）。
@@ -147,6 +147,6 @@ gh issue create \
 - [`learning-promotion-spec.md`](../../../plugins/growth/references/learning-promotion-spec.md) — 姉妹規約（#383）。learnings.md 行きの変換4手順。本規約と合わせ #349 D1 の全キャリアを Phase 2 でカバーする
 - 当該 repo の ADR 運用ルール（文脈探索で解決） — ADR 差分の出口ゲート。粒度判定基準・上書き（Superseded）／廃止（Deprecated）／却下／編集機構・命名規約の ADR 化基準。見つからない場合は「ADR 運用ルールが見つからない場合」節のフォールバックに従う
 - [`promotion-issue-spec.md`](../../../plugins/growth/references/promotion-issue-spec.md) — 仮説 Issue（`growth:promote`）のテンプレート（#382。昇格先キャリアの判定＝Route は distill へ移設＝ADR-202606282107-01）
-- [`plugins/growth/DESIGN.md`](../../../plugins/growth/DESIGN.md) — 設計母艦（学習ループ・Distribute 段・学びの2系統・二段ゲート）
+- [`design.md`](design.md) — 設計母艦（学習ループ・Distribute 段・学びの2系統・二段ゲート）
 - ADR-202606282107-01 — career 決定モデルの再設計（distill 仮説 ＋ 集約点裁定・決定表行2の一般化）。本規約の決定根拠
 - #349 — 親エピック。D1（career 4分類）・D2（新規スキルなし・既存ワークフロー再利用・疎結合）
