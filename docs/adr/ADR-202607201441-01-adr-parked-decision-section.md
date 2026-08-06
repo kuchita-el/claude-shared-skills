@@ -1,7 +1,7 @@
 ---
 status: 承認済み
-validity: 有効
-superseded-by:
+validity: 上書き済み
+superseded-by: ADR-202608070709-01-adr-related-reference-validity-lint, ADR-202608070711-01-adr-parked-section-abolition
 ---
 
 # ADR-202607201441-01-adr-parked-decision-section: ADR スキーマに「保留した決定」セクション（意図的な非決定のスナップショット）を導入する
@@ -57,6 +57,8 @@ ADR スキーマに第一級セクション `## 保留した決定` を導入す
 ## 関連ADR
 
 - 本 ADR は ADR-202607261459-01-adr-state-model-and-drift-lint の2軸モデルへ「保留した決定」セクションと非 Supersede 関係の参照妥当性 lint を追加した（上書きではない）。同 ADR は 2026-07-30 に `廃止済み` へ退役し、2軸モデルの規定は、同日時点では `adr` プラグインの `manage-adr` スキル（状態モデルの参照ファイル）が保持していた。
+- Superseded by: ADR-202608070709-01-adr-related-reference-validity-lint（決定3「非 Supersede 関係の参照妥当性 lint」を逐語で引き継いだ分割後継）
+- Superseded by: ADR-202608070711-01-adr-parked-section-abolition（決定1「保留した決定セクションの新設」と決定2「充足・棄却の規約」を反転した分割後継）
 - Related: ADR-202607261501-01-adr-edit-mechanism-and-amend-abolition（ADR-202607112231-01（711-3）の決定を反転せず独立に追加するため、ADR-202607261501-01 決定1「独立に反転しうる core を束ねない」に従い別 ADR とした。上書きでない）
 - 関連Issue: #527（本 ADR の起票元）, #463（ADR 運用再設計トラック）, #496（#526 で `Related:` 実運用を確立）, #474（参照妥当性 lint の実装）
 

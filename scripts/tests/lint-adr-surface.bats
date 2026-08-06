@@ -120,6 +120,8 @@ setup_file() {
         "AC5: 旧モデル制約由来の設計判断インデックス節が manage-adr スキル面から除去されている"
     collect_not_contains "$surface" "### Amended（部分改訂）" \
         "AC5: 旧 Amended（部分改訂）手順節が manage-adr スキル面から除去されている"
+    collect_not_contains "$surface" "## 保留した決定" \
+        "AC5: 旧「保留した決定」節が manage-adr スキル面から除去されている"
 
     collect_finish
 }

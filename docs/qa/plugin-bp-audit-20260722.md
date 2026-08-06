@@ -103,7 +103,7 @@ dev-workflow 中核4スキルの共有参照 10箇所（DoR定義・種別プロ
 |---|---|---|---|
 | ADR-04 | High（要検証） | `scripts/lint-adr.sh:380,384` | `declare -A` が bash 4.0+ を要求（grep 再検証済み）。macOS 既定 bash 3.2 では lint が起動失敗し、commit ゲートが fail-closed のため**全コミットが無条件ブロックされうる**。`BASH_VERSINFO` ガード＋要件明記か bash 3.2 互換化を推奨（実機 3.2 での再現は未実施） |
 | ADR-09 | Medium | transitions.md ほか | 決定的操作（front-matter 遷移・相互参照追記）が非スクリプト化。特に「旧ADR本文への `Superseded by:` 行追記」は lint の検査対象外という既知の盲点が自己文書化されており、この定型書き込みだけでもスクリプト化する価値が高い |
-| ADR-03 | Medium（要検証） | `references/template.md:44` | 「保留した決定」節の“運用規約”の指し先が不明（自己言及か未作成文書か判別不能） |
+| ADR-03 | Medium（要検証）→ **解消済み** | `references/template.md`（当時 `:44`） | 「保留した決定」節の“運用規約”の指し先が不明（自己言及か未作成文書か判別不能）。2026-08-07 に同節が廃止され（ADR-202608070711-01）、雛形から当該注釈ごと除去されたため宙吊りのポインタは消滅した |
 | ADR-02, ADR-07, ADR-08 | Low | — | Grep 許可の使用箇所不記載 / hooks timeout 未指定 / shell形式採用は意図的設計と確認（指摘ではなく記録） |
 
 良好点: exit code 運用（Exit 2 のみブロック）が公式仕様に正確整合、jq 不在時も fail-open を作らないフォールバック、voodoo constants なし、`LC_ALL=C sort` 等の可搬設計、テスト 86/86 パス（実行確認済み）。

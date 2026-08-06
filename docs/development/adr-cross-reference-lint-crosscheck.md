@@ -35,7 +35,7 @@
 | `invalid/18-related-retired-no-bullet` | 2, 8 |
 | `invalid/19-related-retired-link` | 2, 8 |
 | `invalid/20-related-dangling` | 3, 8 |
-| `invalid/21-park-dangling` | **本 PR の射程外**。`## 保留した決定` 欄の dangling 検査に対応する。同節は廃止が決定しており、書式規約と検査範囲は後続 PR で扱う。`cross-references.md` は同節が現に検査対象である事実のみを1行で述べ、規約は定めていない |
+| `invalid/21-park-dangling` | 照合時点では**射程外**とした（`## 保留した決定` 欄の dangling 検査に対応するが、同節は廃止が決定していたため）。2026-08-07 に同節が廃止され、当該検査・fixture ともに撤去されたため、対応条項を持たない fixture は現存しない |
 | `invalid/22-related-link-label` | 2 |
 | `invalid/23-related-dup-report` | 1, 6 |
 | `valid/06-related-valid` | 1, 2, 5、および「検査されないこと」の双方向非強制 |

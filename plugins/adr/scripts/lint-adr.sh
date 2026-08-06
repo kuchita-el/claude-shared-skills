@@ -69,9 +69,9 @@
 # `Supersedes:` 行は行頭空白（入れ子/インデントされたバレット）を許容して
 # 抽出する（forward の照合・reverse の抽出のいずれも同一の緩和を適用）。
 #
-# レイヤ4（Related/park 参照の生存性・実在性）: 非 Supersede 関係の
+# レイヤ4（Related 参照の生存性・実在性）: 非 Supersede 関係の
 # 参照妥当性を lint する。有効 ADR（validity=有効）の本文
-# `## 関連ADR` の `Related:` 行、および `## 保留した決定`（パーク欄）が指す ADR
+# `## 関連ADR` の `Related:` 行が指す ADR
 # 参照先について、参照先の生存性（退役）・実在性（dangling）を検証する。
 #   - 判定単位（書式非依存）: `Related:` 以降で最初に現れる ADR stem を抽出する。行頭
 #     バレット（`-`）の有無・markdown リンク（`[stem](...)`）の有無・リンクラベルが stem
@@ -80,20 +80,15 @@
 #     （誤検出回避）。
 #   - 参照先退役違反: `Related:` 参照先が実在し、かつ validity が 上書き済み／
 #     廃止済み（RETIRED_VALIDITY）なら違反（有効 ADR が退役 ADR を指す参照を残さない）。
-#   - dangling 参照違反: `Related:`／パーク欄の参照先 `<slug>.md` が実在しなければ
+#   - dangling 参照違反: `Related:` の参照先 `<slug>.md` が実在しなければ
 #     違反（full slug 完全一致で解決。解決不能な参照先＝AC8 fail-safe をここに統合）。
-#   - パーク欄は dangling 検査のみ（退役検査は非適用）。パーク欄は凍結スナップショット
-#     で後から編集不能なため、参照先が後に退役しても修復不能な違反を作らない
-#     （`Related:` 双方向を強制しないのと同型）。
 #   - source は有効 ADR のみに限定する。検査対象を「front-matter
 #     を持つ ADR」と広く書くが、退役（凍結）ADR は編集不能で dangling/退役参照を修復
-#     できず修復不能な違反を課すことになる（パーク欄を退役検査から外すのと同じ理由）。
+#     できず修復不能な違反を課すことになる。
 #     提案中・却下 ADR の参照はまだ確定した決定の一部でないため対象外と
 #     する。結果として検査対象は有効 ADR に限定される。
-#   - 双方向性は強制しない（一方向 `Related:` は合法）。パークの open/resolved 状態・
+#   - 双方向性は強制しない（一方向 `Related:` は合法）。
 #     Issue 番号参照（`#<番号>`）は検査しない。
-#   - パーク欄の参照先抽出は節内の ADR トークンを全抽出する（J3）。将来パーク欄の
-#     説明散文が退役/不在 ADR を引用すると誤検出しうる点に注意。
 #   - 既知の限界（意図的）: (a) 1つの `Related:` 行に複数 ADR を列挙した場合は先頭 stem
 #     のみ検査する（判定単位＝先頭 stem。2件目以降は対象外）。
 #     (b) 参照先が旧形式（front-matter 無し）・validity 空（提案中/却下）の場合は退役でも
@@ -348,8 +343,9 @@ extract_body_related() {
             after="${line#*Related:}"
             if [[ "$after" =~ (ADR-[A-Za-z0-9-]+) ]]; then
                 stem="${BASH_REMATCH[1]}"
-                # 同一 stem の重複登録を避ける（複数 `Related:` 行が同じ退役/非存在 ADR を
-                # 指す場合の二重報告を防ぐ。extract_park_adr_refs の dedup と対称）。
+                # 同一 stem の重複登録を避ける（複数の `Related:` 行が同じ退役/非存在 ADR を
+                # 指す場合の二重報告を防ぐ）。行内の重複は上記の先頭 stem 抽出が防いでおり、
+                # 本 dedup が担うのは行をまたいだ重複のみである。
                 dup=0
                 for existing in ${BODY_RELATED_TARGETS[@]+"${BODY_RELATED_TARGETS[@]}"}; do
                     if [ "$existing" = "$stem" ]; then
@@ -361,48 +357,6 @@ extract_body_related() {
                     BODY_RELATED_TARGETS+=("$stem")
                 fi
             fi
-        fi
-    done <"$file"
-}
-
-# ファイル file の本文 `## 保留した決定` 節（次の `## ` 見出しまたはファイル末尾まで）に
-# ある ADR stem（`ADR-<...>`）を全て抽出し、グローバル配列 PARK_ADR_TARGETS へ格納する
-# （0件なら空配列）。「パーク欄が ADR を指す <slug>」の字義に従い節内の
-# ADR トークンを全抽出する。Issue 番号参照（`#<番号>`）は対象外。
-extract_park_adr_refs() {
-    local file="$1"
-    local line in_section=0 rest stem existing dup
-
-    PARK_ADR_TARGETS=()
-
-    while IFS= read -r line || [ -n "$line" ]; do
-        if [[ "$line" =~ ^##[[:space:]]+保留した決定 ]]; then
-            in_section=1
-            continue
-        fi
-        if [ "$in_section" -eq 1 ] && [[ "$line" =~ ^##[[:space:]] ]]; then
-            in_section=0
-            continue
-        fi
-        if [ "$in_section" -eq 1 ]; then
-            rest="$line"
-            while [[ "$rest" =~ (ADR-[A-Za-z0-9-]+) ]]; do
-                stem="${BASH_REMATCH[1]}"
-                rest="${rest#*"$stem"}"
-                # 同一 stem の重複登録を避ける。markdown リンク形式 `[stem](./stem.md)` は
-                # 1参照でラベル部とパス部に同一 stem が2回現れるため、dedup しないと違反を
-                # 二重報告する。抽出は最長トークン（`+` 貪欲）ゆえ prefix 衝突は起きない。
-                dup=0
-                for existing in ${PARK_ADR_TARGETS[@]+"${PARK_ADR_TARGETS[@]}"}; do
-                    if [ "$existing" = "$stem" ]; then
-                        dup=1
-                        break
-                    fi
-                done
-                if [ "$dup" -eq 0 ]; then
-                    PARK_ADR_TARGETS+=("$stem")
-                fi
-            done
         fi
     done <"$file"
 }
@@ -630,7 +584,7 @@ for c_file in "${sorted[@]}"; do
     done
 done
 
-# レイヤ4: 有効ADRの Related/park 参照の退役・dangling 検査
+# レイヤ4: 有効ADRの Related 参照の退役・dangling 検査
 # （判定単位は書式非依存の先頭 stem 抽出）
 for src_file in "${sorted[@]}"; do
     src_stem="$(basename "$src_file" .md)"
@@ -647,15 +601,6 @@ for src_file in "${sorted[@]}"; do
             violations=$((violations + 1))
         elif in_vocab "${FM_VALIDITY_BY_STEM[$t_stem]:-}" "${RETIRED_VALIDITY[@]}"; then
             printf '%s: 参照先退役違反（"## 関連ADR" の Related 参照先 %s は validity=%s の退役ADRです）\n' "$src_file" "$t_stem" "${FM_VALIDITY_BY_STEM[$t_stem]:-}"
-            violations=$((violations + 1))
-        fi
-    done
-
-    # `## 保留した決定`（park）参照先: dangling 検査のみ（退役検査は非適用＝J4）
-    extract_park_adr_refs "$src_file"
-    for p_stem in ${PARK_ADR_TARGETS[@]+"${PARK_ADR_TARGETS[@]}"}; do
-        if [ ! -f "$ADR_DIR/$p_stem.md" ]; then
-            printf '%s: dangling 参照違反（"## 保留した決定" の参照先 %s が見つかりません）\n' "$src_file" "$p_stem"
             violations=$((violations + 1))
         fi
     done

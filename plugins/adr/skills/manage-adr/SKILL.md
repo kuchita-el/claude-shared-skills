@@ -95,7 +95,7 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 
 1. **index 同期**（`validity` を変える操作＝承認・上書き・分割・廃止の後）: `bash ${CLAUDE_SKILL_DIR}/../../scripts/gen-adr-index.sh <対象ディレクトリ>` の出力で `<対象ディレクトリ>/index.md` を再生成する（起票・却下は `validity` を変えないため index 再生成不要）。
 2. **lint 実行**: `bash ${CLAUDE_SKILL_DIR}/../../scripts/lint-adr.sh <対象ディレクトリ>` を実行し exit 0 を確認する。**この exit 0 が合否基準**である。
-3. **フィードバックループ**（exit 0 以外）: lint-adr の出力を利用者へ提示し、指摘に応じて ADR を修正する。レイヤ1 スキーマ／レイヤ3 相互参照なら front-matter（`status`/`validity`/`superseded-by`）または相互参照（旧側 `superseded-by`・後継側 `Supersedes:`）を直す。レイヤ2 index 同期 drift なら `gen-adr-index.sh` を再実行して index を同期する。レイヤ4 Related/park 参照なら、参照先が**退役**していればその決定を引き継いだ後継へ差し替え、参照先が**実在しない**（dangling）なら識別子の誤りを正すか、指すべき対象が無い場合は参照行を除去する（規約と是正手段の詳細は `${CLAUDE_SKILL_DIR}/references/cross-references.md`）。レイヤ5 はファイル名側の是正で、形式違反はリネーム、識別子重複は `next-adr-id.sh` で再発番して片方をリネーム（本文 H1・相互参照・index も追随）、H1 整合違反は H1 見出しの識別子部をファイル名へ揃える。再度 lint-adr を実行し、**exit 0 になるまで反復する**。exit 0 を得られないまま操作を完了扱いにしない。
+3. **フィードバックループ**（exit 0 以外）: lint-adr の出力を利用者へ提示し、指摘に応じて ADR を修正する。レイヤ1 スキーマ／レイヤ3 相互参照なら front-matter（`status`/`validity`/`superseded-by`）または相互参照（旧側 `superseded-by`・後継側 `Supersedes:`）を直す。レイヤ2 index 同期 drift なら `gen-adr-index.sh` を再実行して index を同期する。レイヤ4 Related 参照なら、参照先が**退役**していればその決定を引き継いだ後継へ差し替え、参照先が**実在しない**（dangling）なら識別子の誤りを正すか、指すべき対象が無い場合は参照行を除去する（規約と是正手段の詳細は `${CLAUDE_SKILL_DIR}/references/cross-references.md`）。レイヤ5 はファイル名側の是正で、形式違反はリネーム、識別子重複は `next-adr-id.sh` で再発番して片方をリネーム（本文 H1・相互参照・index も追随）、H1 整合違反は H1 見出しの識別子部をファイル名へ揃える。再度 lint-adr を実行し、**exit 0 になるまで反復する**。exit 0 を得られないまま操作を完了扱いにしない。
 
 `lint-adr.sh` の exit code: `0`＝違反0件／`1`＝違反検出／`2`＝対象ディレクトリ不在。
 
