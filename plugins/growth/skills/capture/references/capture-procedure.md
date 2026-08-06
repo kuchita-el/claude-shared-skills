@@ -87,4 +87,3 @@ origin=tool-result のうち、ハーネスが既に強制済みの摩擦は cap
 - [`capture-examples.md`](capture-examples.md) — 本ファイルの判定基準に対応する記述例（observation 本文・エントリ）
 - `${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` — 本文中の「spec」の実体。シグナル種別・痕跡種別の値域、生記録性・パース規約、project-id とパスの解決手順、バケット名生成規約の単一出典
 - `${CLAUDE_PLUGIN_ROOT}/references/capture-signal-spec.md` — 痕跡ソース session jsonl からの `origin`（痕跡種別）/ `expected` / `actual` の抽出元
-- `${CLAUDE_PLUGIN_ROOT}/DESIGN.md` — 設計母艦（§2 原理3・§3 学習ループ／保存設計／客観痕跡の取得／二段ゲート・§4 プラグイン構成）

@@ -1,10 +1,10 @@
 # 個人ローカル store（生観測）仕様
 
-growth プラグインの学習ループ（概念上の5段: `[Capture] → [Distill] → [Route] → [Promote] → [Distribute]`。Phase 1 のスキルマッピングでは Route は Distill に統合される＝DESIGN.md §4・決定事項8）の起点となる、生観測（未検証の観察）を蓄積する個人ローカル store の置き場・形式・distill 処理源選択（処理済みカーソル）を定義する。あわせて、Distill が生成し `promote` が消費する**仮説ファイル（`candidates.md`）**の置き場・形式・メタ欄スキーマも本仕様で単一出典化する（#348）。
+growth プラグインの学習ループ（概念上の5段: `[Capture] → [Distill] → [Route] → [Promote] → [Distribute]`。Phase 1 のスキルマッピングでは Route は Distill に統合される）の起点となる、生観測（未検証の観察）を蓄積する個人ローカル store の置き場・形式・distill 処理源選択（処理済みカーソル）を定義する。あわせて、Distill が生成し `promote` が消費する**仮説ファイル（`candidates.md`）**の置き場・形式・メタ欄スキーマも本仕様で単一出典化する（#348）。
 
 ## 位置づけ
 
-- `DESIGN.md` 決定事項3「個人 store の置き場」を具体化する文書。生の観測は個人ローカル（共有されない）に置き、検証を経たものだけ committed の学び置き場へ昇格させる。
+- 個人 store の置き場を具体化する文書。生の観測は個人ローカル（共有されない）に置き、検証を経たものだけ committed の学び置き場へ昇格させる。
 - 本 store は学習ループの **Capture の書き込み先**であり、**Distill の入力源**である。Capture の検知ロジック本体・committed な学び置き場（`learnings.md`）への物理昇格（Distribute、Phase 2）・過去セッションログの横断解析は本仕様の対象外（別 Issue / 別 Phase）。一方、**`captures.md` は無状態の append-only 観測コーパスであり（エントリ単位の処理状態フィールドを持たない）、distill の処理源選択（provenance 導出 ＋ 処理済みカーソル）とカーソルの格納・前進・巻き戻し規約は本仕様が定義する**（ADR-202607111014-01 / ADR-202607111225-01〔ADR-202607121331-01 が restate〕。「distill 処理源選択と処理済みカーソル」節）。
 - 本 store は committed な学び置き場（単一の人間可読ファイル）とは別物である。store は未検証の生記録を貯める一時領域であり、検証を経た学びは store の外（昇格先）へ移送される。
 - 本仕様はさらに、Distill が生成し `promote` が消費する**仮説ファイル（`candidates.md`）**の置き場・形式・メタ欄スキーマを単一出典として定義する（#348。「仮説ファイル（candidates.md）」節）。仮説ファイルは store（生観測）でも `learnings.md`（配布物）でもない第3の個人ローカル成果物である。
@@ -51,7 +51,7 @@ git rev-parse --path-format=absolute --git-common-dir
 
 ## 観測エントリの形式
 
-store は Markdown ファイルであり、1観測を1セクション（`##` 見出し）として追記する。人間可読であり、肥大が一目で分かる（`DESIGN.md` 原理5「足場を痩せさせる」の前提）。
+store は Markdown ファイルであり、1観測を1セクション（`##` 見出し）として追記する。人間可読であり、肥大が一目で分かる。
 
 ファイルは Markdown として保存・閲覧するが、パースは行ベースの平文規約で完結させ、YAML パーサによる厳密解釈は前提としない。区切り規約は以下とする。
 
@@ -78,7 +78,7 @@ AC の必須欄「生観察」「シグナル種別」「由来セッション�
 
 ### 生記録性（判断は後回し）
 
-`DESIGN.md` の Capture 原則「判断は後回しにする」を構造的に担保するため、スキーマに**解釈・原因分析・対策・改善案を書くフィールドを設けない**。観測時点では「何が起きたか」（observation）だけを記録し、「なぜ起きたか」「次にどうするか」は Distill 以降の検証フェーズに委ねる。生記録に解釈を混ぜないことが、未検証の幻覚を配布物に流し込まない第一の防波堤になる。observation は複数行記述できるが、記録するのは観察事実に限り、分量は文脈が伝わる範囲に留める（解釈・原因・対策を書かない方針は行数に関わらず保持する）。
+Capture 原則「判断は後回しにする」を構造的に担保するため、スキーマに**解釈・原因分析・対策・改善案を書くフィールドを設けない**。観測時点では「何が起きたか」（observation）だけを記録し、「なぜ起きたか」「次にどうするか」は Distill 以降の検証フェーズに委ねる。生記録に解釈を混ぜないことが、未検証の幻覚を配布物に流し込まない第一の防波堤になる。observation は複数行記述できるが、記録するのは観察事実に限り、分量は文脈が伝わる範囲に留める（解釈・原因・対策を書かない方針は行数に関わらず保持する）。
 
 新フィールドの `origin`（痕跡種別）・`expected`（予測）・`actual`（実際）も同じ生記録性の制約下にあるが、transcript からの**引用可能性は一様でない**。`origin`（痕跡種別の判別）と `actual`（実際に起きた結果）は transcript に実在する痕跡（tool_result のエラー文字列・ユーザーの訂正発話等）に裏付けられる——`actual` はその**逐語断片を含む引用**として記せる（要点が transcript に実在する文字列であればよく、地の文で囲んでよい。全文の逐語転記は不要。「パース規約」節「引用の単一行畳み込み」を参照）。一方 `expected`（予測した結果）は、当方が予測を明示的に言語化していない限り transcript に逐語では存在しないことが多く、痕跡（`type=thinking` / `tool_use.input` 等）に基づく**再構成**を要する。したがって `expected` は逐語に縛らず、痕跡に基づく予測の再構成を許す（`origin` / `actual` は transcript の痕跡に裏付けられた記述に限る）。
 
@@ -103,7 +103,7 @@ user-utterance 由来（ユーザーの訂正）の例:
 
 ## シグナル種別
 
-`signal` の値域は `DESIGN.md` の Capture が定義するシグナルを網羅する。摩擦知（予測誤差＝驚きの源泉）の5値と、判断知（復元不能な会話知）の4値からなる。
+`signal` の値域は Capture が検知するシグナルを網羅する。摩擦知（予測誤差＝驚きの源泉）の5値と、判断知（復元不能な会話知）の4値からなる。
 
 摩擦知シグナル（摩擦サブセットの補助検出器）:
 
@@ -124,7 +124,7 @@ user-utterance 由来（ユーザーの訂正）の例:
 | `目標表明` | ユーザーが目標・意図・継続方針を表明した |
 | `設計判断` | ユーザーが設計境界・方針を確定する判断を示した |
 
-- ラベルは日本語を正準とする（`DESIGN.md` の表記に準拠）。
+- ラベルは日本語を正準とする。
 - **知識型（判断知 / 摩擦知）は signal がどちらの群に属するかで導出する**（独立フィールドは設けない＝additive 拡張。摩擦知5値は破壊・改名しない）。下流 Distill は知識型で出力形を分岐する（摩擦知→`behavior-diff`、判断知→`decision-record`）。
 - `客観痕跡` は Phase 1（痕跡ソースが現セッションの会話履歴に限られる）では投入されない見込みだが、値域には含める。git revert・CI 失敗の取得は Phase 3 以降であり、その時点で同一スキーマに追記できるようにするため。
 
@@ -192,7 +192,7 @@ user-utterance 由来（ユーザーの訂正）の例:
 
 ### 二段ゲートとの整合
 
-この処理源選択と昇格経路は `DESIGN.md` の二段ゲート、および自律度モデル L0–L3 / 承認ゲート軸（ADR-202606012328-01 / ADR-202606020032-01）と整合する。
+この処理源選択と昇格経路は二段ゲート、および自律度モデル L0–L3 / 承認ゲート軸（ADR-202606012328-01 / ADR-202606020032-01）と整合する。
 
 - **保存（store への書き込み）= L3（AI 自律・承認段が縮退）**: 観測は無ゲートで自動的に `captures.md` へ貯まる（無状態の追記）。
 - **仕組み化（昇格＝ committed への移送）= L2（提案→承認の二段）**: 昇格は、promote の検証段（原理2＝未検証仮説を配布経路に乗せないフィルタ）を通過した仮説が `gh` で自動起票されたことを表す。**起票前に人間承認ゲートは置かない**（自動化を阻害し下流ゲートと二重になるため）。L2 の規範的な仕組み化ゲート（承認またはマルチエージェントレビュー）は、起票後の既存ワークフロー（refine-issue / DoR / PR レビュー）が担う。この昇格状態は候補側 `candidate-status: promoted`（「仮説ファイル（candidates.md）」節）が表し、captures 側には状態を持たない。
@@ -241,7 +241,7 @@ Distill が生成し `promote` が消費する**仮説ファイル**の置き場
 
   `decision-record` の `scope-hypothesis` は大半が `project-local`（プロジェクト自身の設計判断は閉じた空間＝当該リポの ADR / docs へ向かう）。`career-hypothesis` は `ADR 差分` または `learnings.md` を取りうる。learnings.md（配布物）への翻訳規約（learning-promotion-spec.md・#383）の decision-record 対応は Phase 2 で定義する（本 Phase は candidates → Issue まで）。
 
-- **混在ゾーン（`tags: [behavior-diff, decision-record]`）**: 1観測が両知識型にまたがる領域（DESIGN.md §6 決定事項10）。本文は両型の本文を併記する（規範差分＋理由の behavior-diff 本文と、4欄の decision-record 本文を両方持つ）。promote の型適応検証は tags の各要素へ個別に適用する（下記「promote の検証」および promote-procedure.md）。第2タグの付与は distill の evidence-gated 分岐で陽性証拠がある時のみ行う（distill-procedure.md 参照）。既定は単一タグであり、両値併記を無条件に既定化しない。
+- **混在ゾーン（`tags: [behavior-diff, decision-record]`）**: 1観測が両知識型にまたがる領域。本文は両型の本文を併記する（規範差分＋理由の behavior-diff 本文と、4欄の decision-record 本文を両方持つ）。promote の型適応検証は tags の各要素へ個別に適用する（下記「promote の検証」および promote-procedure.md）。第2タグの付与は distill の evidence-gated 分岐で陽性証拠がある時のみ行う（distill-procedure.md 参照）。既定は単一タグであり、両値併記を無条件に既定化しない。
 
 ### 後方互換規約
 
@@ -355,4 +355,6 @@ git status --porcelain plugins/growth/.local/   # 出力が空であること
 
 ## 関連
 
-- `plugins/growth/DESIGN.md` — 設計母艦（決定事項3・§3 保存設計・二段ゲート・Capture シグナル定義）
+- [`capture-signal-spec.md`](capture-signal-spec.md) — observation の `origin`（痕跡種別）/ `expected` / `actual` の抽出元
+- [`career-spec.md`](career-spec.md) — `career-hypothesis` の軸の定義（値域・強キャリアの内訳・空間軸との直交）
+- [`learning-store-spec.md`](learning-store-spec.md) — 学習ループの終点（配布される学び置き場）の仕様。本仕様が定義する起点の対

@@ -4,7 +4,7 @@ growth プラグインの学習ループ（`[Capture] → [Distill] → [Route] 
 
 ## 位置づけ
 
-- 本仕様は `DESIGN.md` 学習ループの **Distribute 段**（検証済みの学びを配布物として届ける段）の、`learnings.md`（パブリック/グローバル空間）への materialization 手続きを定義する。[`promotion-issue-spec.md`](promotion-issue-spec.md)（#382）が Promote 段の終端規約（昇格 Issue のテンプレート・識別ラベル。昇格先キャリアの判定＝Route は distill 側へ移設＝ADR-202606282107-01）を定めるのに対し、本仕様はその**昇格 Issue を入力として受け、配布物エントリへ着地させる**手続きに徹する。
+- 本仕様は学習ループの **Distribute 段**（検証済みの学びを配布物として届ける段）の、`learnings.md`（パブリック/グローバル空間）への materialization 手続きを定義する。[`promotion-issue-spec.md`](promotion-issue-spec.md)（#382）が Promote 段の終端規約（昇格 Issue のテンプレート・識別ラベル。昇格先キャリアの判定＝Route は distill 側へ移設＝ADR-202606282107-01）を定めるのに対し、本仕様はその**昇格 Issue を入力として受け、配布物エントリへ着地させる**手続きに徹する。
 - **新規スキルを設けない**（#349 D2）。本仕様は参照ドキュメントであり、既存の implementation → PR ワークフロー（`refine-issue` → `plan-issue` → `implementation` → PR レビュー）が消費する。変換の実行主体は implementation を駆動する開発者／エージェントであり、承認は PR マージ（二段ゲート L2）が担う。
 - **出口ゲートは [`learning-store-spec.md`](learning-store-spec.md) の記法ルール**（同「記法ルール（規範の強制）」）に委ねる。本仕様は記法ルールを再定義せず、変換結果がそれを通過することを各手順の到達条件とする。
 - 本仕様が定義するのは learnings.md（パブリック/グローバル空間）行きの変換のみ。閉じた空間・ADR 差分・改善還元・強キャリアへの配布は対象外（「スコープ境界」節）。
@@ -176,5 +176,4 @@ Markdown 等の長文を CLI オプションに直接渡さない。ファイル
 - [`learning-store-spec.md`](learning-store-spec.md) — 配布物（`learnings.md`）の着地先形式（1欄スキーマ・記法ルール＝出口ゲート・記法例・2空間モデル・参照規約）
 - [`intake-issue-spec.md`](intake-issue-spec.md) — 入力源（#412）。裁定結果の記録形式（career/空間/備考テーブル）の出典であり、本規約の入力境界が参照する裁定結果テーブルを提供する
 - [`promotion-issue-spec.md`](promotion-issue-spec.md) — 入力源 昇格 Issue のテンプレート（必須欄）・識別ラベル（#382。昇格先キャリアの判定＝Route は distill へ移設＝ADR-202606282107-01）
-- [`DESIGN.md`](../DESIGN.md) — 設計母艦（学習ループ・Distribute 段・二段ゲート・原理1/5）
 - #349 — 親エピック。D1（learnings.md＝汎用の振る舞いルールの昇格先）・D2（新規スキルなし・既存ワークフロー再利用）

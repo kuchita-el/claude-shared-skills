@@ -117,4 +117,3 @@ AskUserQuestion で、次をまとめて提示し承認を得る。承認され�
 - [`intake-examples.md`](intake-examples.md) — 各段を検証する worked example(手順トレース用)
 - [`intake-issue-spec.md`](../../../references/intake-issue-spec.md) — 取り込み Issue の構造・裁定結果の記録形式・取り込み時クローズ規約・不変条件・`growth:intake` ラベル
 - [`promotion-issue-spec.md`](../../../references/promotion-issue-spec.md) — 入力源 `growth:promote` 仮説 Issue のテンプレート(#382)
-- [`DESIGN.md`](../../../DESIGN.md) — 設計母艦(学習ループ・二段ゲート・共有境界軸)

@@ -18,7 +18,7 @@ allowed-tools:
 
 - **目的**: 学習シグナルの痕跡を「判断前」の状態で保存する。仮説形成は Distill が担う。
 - **2軸の検知**: 摩擦知（予測誤差検出器＝訂正・ツール拒否・反復試行・期待違反）と、予測誤差の形を持たない判断知（教示信号検出器＝選好・却下理由・目標表明・設計判断）の両方を拾う。復元不能性・価値の判定は Distill / promote に委ね、capture では行わない（ADR-202607010734-01 D2）。
-- **生記録性**: observation には「何が起きたか」のみを記録する。原因分析・対策・分類・昇格判断を書かない。解釈は Distill に委ねる（DESIGN.md 原理3・Capture 原則「判断は後回し」）。
+- **生記録性**: observation には「何が起きたか」のみを記録する。原因分析・対策・分類・昇格判断を書かない。解釈は Distill に委ねる（Capture 原則「判断は後回し」）。
 - **Phase 1 スコープ**: 痕跡ソースは現セッションの session jsonl のみ。明示起動のみ（hook 自発化は Phase 3）。`客観痕跡` は store のシグナル値域に含むが本段では投入しない。
 
 判定基準の詳細は `${CLAUDE_SKILL_DIR}/references/capture-procedure.md` を、記述例は `${CLAUDE_SKILL_DIR}/references/capture-examples.md` を参照する（手順本文を SKILL.md に二重化しない）。
@@ -128,4 +128,3 @@ store: ~/.claude/projects/-home-user-myproject/growth/captures-2026-06-26.md
 - `${CLAUDE_SKILL_DIR}/references/capture-examples.md` — 記述例（observation 本文・tool-result 由来のエントリ・判断知のエントリ）
 - `${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` — 出力先 store の形式・シグナル種別／痕跡種別の値域・project-id とパスの解決手順・バケット名生成規約・パース規約
 - `${CLAUDE_PLUGIN_ROOT}/references/capture-signal-spec.md` — 痕跡ソース session jsonl からの `origin`（痕跡種別）/ `expected` / `actual` の抽出元
-- `${CLAUDE_PLUGIN_ROOT}/DESIGN.md` — 設計母艦（§2 原理3・§3 学習ループ／保存設計／客観痕跡の取得／二段ゲート・§4 プラグイン構成）

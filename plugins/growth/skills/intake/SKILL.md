@@ -55,4 +55,3 @@ inbox 確認: is:open label:growth:promote から3件が外れました。
 - `${CLAUDE_SKILL_DIR}/references/intake-examples.md` — worked example（新規起票／既存合流／承認却下／クローズ失敗時の inbox 維持）
 - `${CLAUDE_PLUGIN_ROOT}/references/intake-issue-spec.md` — 取り込み Issue の構造・裁定結果の記録形式・取り込み時クローズ規約・集約トポロジの不変条件・`growth:intake` ラベル
 - `${CLAUDE_PLUGIN_ROOT}/references/promotion-issue-spec.md` — 入力源 `growth:promote` 仮説 Issue のテンプレート（#382 で再定義予定）
-- `${CLAUDE_PLUGIN_ROOT}/DESIGN.md` — 設計母艦（学習ループ・二段ゲート・共有境界軸）

@@ -15,7 +15,7 @@ distill が仮説ファイル（`candidates.md`）へ永続化した仮説を検
 ## 目的・原則
 
 - **目的**: 未検証の仮説を検証し（原理2＝気付きは仮説、検証されるまで配布しない）、共有に値するものだけを Issue という揉む場・配布経路へ投入する。検証段が未検証仮説を配布経路に乗せないフィルタになる。
-- **疎結合**: 起票は `gh` での直接起票（`gh issue create --body-file`）で行い、**dev-workflow スキル（create-issue 等）を直接呼び出さない**。起票された Issue は既存の refine-issue / DoR / plan-issue / implementation / PR レビューへ自然に乗る（DESIGN.md §4）。
+- **疎結合**: 起票は `gh` での直接起票（`gh issue create --body-file`）で行い、**dev-workflow スキル（create-issue 等）を直接呼び出さない**。起票された Issue は既存の refine-issue / DoR / plan-issue / implementation / PR レビューへ自然に乗る。
 - **起票前ゲートなし（自動起票）**: 検証通過仮説は人間承認ゲートを挟まず自動起票する。起票前ゲートは自動化を阻害し、起票後の既存ワークフローの L2 承認（refine/DoR/PR レビュー）と二重になるため置かない。二段ゲートの L2 は起票後の既存ワークフローが担う。
 - **ルーティング不可知（scope/career 仮説のまま終点）**: 仮説の `scope-hypothesis` ＋ `career-hypothesis` タグ（いずれも distill が付与）を Issue 本文へ**仮説として注記**するだけで、確証も `learnings.md` への物理書き込みもしない。promote は career（昇格先キャリア・宛先 repo）も scope（適用範囲）も確定しない。scope の最終裁定は人間 refine/review（横断解析は Phase 3 の支援どまり）、career の確定（裁定）は集約点（取り込み Issue）が担う（ADR-202606282107-01）。career の決定表は持たない（distill 側へ移設済み）。
 - **`candidate-status` 前進の主体**: 起票成功後にのみ、起票した候補自身の `candidate-status` を `pending → promoted` へ前進させる（`captures.md` は書き換えない。personal-store-spec.md「冪等性（candidate-status による再提示抑止）」で確定）。起票失敗・仮説棄却・ゲート拒否時は前進させない。

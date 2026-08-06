@@ -15,7 +15,7 @@ allowed-tools:
 
 ## 目的・原則
 
-- **目的**: 蓄積した生観察を仮説形成し、知識型に応じた**仮説**にする（DESIGN.md §3 Distill・原理1）。実行不能な内省はここで捨て、肥大を下流へ送らない（原理5）。
+- **目的**: 蓄積した生観察を仮説形成し、知識型に応じた**仮説**にする。実行不能な内省はここで捨て、肥大を下流へ送らない（原理5）。
 - **出力形の2系統（ADR-202607010734-01 D4）**: 仮説の知識型で出力形（`behavior-diff` / `decision-record`）を分岐する。**摩擦知 → `behavior-diff`**（signal が摩擦群。規範差分＋理由。§3 棄却・§7 台帳突合 / N 再発を従来どおり適用、挙動不変）。**判断知 → `decision-record`**（signal が判断群＝選好/却下理由/目標表明/設計判断。`decision`/`rejected-alternatives`/`rationale`/`context` の4欄。原理1 の例外口として behavior-diff 要求と N 再発カウントを免除し、一回性の設計境界を決定の記録として残す）。系統メンバーシップは `tags`（多値 set）で表し、混在ゾーンの第2タグは evidence-gated 分岐で陽性証拠時のみ付与する（既定 both 禁止。procedure §3.3）。知識型の導出規則・値域・スキーマ正準は personal-store-spec.md「シグナル種別」「tags 別スキーマ」を単一出典とし二重定義しない。
 - **Capture と非同期**: distill は capture（Capture）と別タイミングで明示起動するバッチ処理。store に溜まったカーソルより新しい観察を一括で仮説形成する（例: 1日分）。セッション終端には紐づかない。
 - **Route 統合**: 各仮説に**スコープタグ**（`scope-hypothesis`: `project-local` / `universal`）と**キャリアタグ**（`career-hypothesis`: 昇格先キャリア＋宛先 repo 仮説）の直交2軸を付与する（仮説形成観点で判定）。scope は2空間（learning-store-spec.md「2空間モデル」）のいずれへ、career は4分類（決定表は distill-procedure.md）のどの成果物・repo へ向かう仮説かを示す。いずれも**仮説**であり確証しない。scope の最終裁定は人間 refine/review、career の確定（裁定）は集約点（取り込み Issue）が担う。promote はルーティング確定せず本文注記で運ぶのみ（ADR-202606282107-01）。
