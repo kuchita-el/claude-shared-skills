@@ -147,4 +147,3 @@ Issue 本文に含める career 注記欄の書式:
 - [`promote-examples.md`](promote-examples.md) — 各段を検証する worked example（手順トレース用）
 - `${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` — 入力源 仮説ファイルの形式・メタ欄スキーマ・provenance 規約、`candidate-status` 状態機械・パス解決手順
 - `${CLAUDE_PLUGIN_ROOT}/references/learning-store-spec.md` — Route 注記が指す2空間モデル
-- `${CLAUDE_PLUGIN_ROOT}/DESIGN.md` — 設計母艦（§3 Promote・§4 プラグイン構成・原理2・二段ゲート）

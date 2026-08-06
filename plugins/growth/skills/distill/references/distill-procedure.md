@@ -5,7 +5,7 @@ distill スキルの仮説形成判定基準の詳細。SKILL.md の手順 overv
 ## 1. 目的・責務境界
 
 - **目的**: 個人ローカル store に溜まった未処理の生観察を、クラスタ化・重複排除し、実行可能な振る舞い差分（規範）の**仮説**へ変換する（DESIGN.md §3 Distill・原理1）。あわせて観察を知識型と痕跡種別で分類・重み付けし、既存ルール台帳と突合して `candidates.md` の信号対雑音比を高める（#417）。
-- **Route 統合（責務拡張）**: 各仮説に2つの仮説タグを付与する。両者は**直交**する独立2軸であり（キャリア軸 ⊥ 空間軸。DESIGN.md「種別軸 ⊥ 共有境界軸」）、いずれも仮説形成観点で判定する**仮説**として確証せず終点とする。
+- **Route 統合（責務拡張）**: 各仮説に2つの仮説タグを付与する。両者は**直交**する独立2軸であり（キャリア軸 ⊥ 空間軸）、いずれも仮説形成観点で判定する**仮説**として確証せず終点とする。
   - **スコープタグ**（`scope-hypothesis`: `project-local` / `universal`）: 仮説形成時に「どの観点で仮説形成したか」の視点で判定し、2空間（learning-store-spec.md「2空間モデル」）のいずれへ向かう仮説かを示す。最終裁定（適用範囲の確定）は下流の人間 refine/review に委ねる（横断解析は Phase 3 の支援どまり）。
   - **キャリアタグ**（`career-hypothesis`: 昇格先キャリア＋宛先 repo 仮説）: 仮説がどのキャリア（成果物の種別）へ・どの repo へ向かうかを「§ career-hypothesis の判定（決定表）」で判定する。career の確定（裁定）は distill では行わず、最終裁定は集約点（取り込み Issue）が担う。promote はこの仮説をルーティング確定せず本文注記として運ぶのみ（ADR-202606282107-01）。
 - **分類は軽い判定にとどめる（#417・責務境界）**: 観察の優先度付け（重み付け）は**知識型（`behavior-diff` / `decision-record`）で決める軽い判定**で行い、痕跡種別（`origin`）は優先度に用いない（ADR-202607010734-01 決定1）。内容で重い価値判断（本物か・配布価値があるか）はしない（§4）。既存ルールとの突合も「既知 / novel」までしか判定せず、予測力・配布価値の検証には踏み込まない。後者は promote の責務である（§7・ADR-202607200858-01）。
@@ -209,7 +209,7 @@ distill の入力は**処理源**と**参照源**の2種に分離する（処理
 | 「create-issue の AC 生成を検証可能性チェックで厳格化する」型 | 既存プラグインの手順改善 → 行2 | `改善還元 / repo: dev-workflow プラグイン repo（仮説）` |
 | 「長文 CLI 引数の破損を lint で機械的に禁止する」型 | skill/hook/lint へ構造変換可能な強キャリア → 行1 | `強キャリア / repo: 配布元プラグイン repo` |
 
-**キャリア軸 ⊥ 空間軸（直交）**: この4キャリア軸（昇格先＝何の成果物へ配るか）は、scope の2空間軸（`universal` / `project-local`）と**直交する**（DESIGN.md「種別軸 ⊥ 共有境界軸」）。同じ learnings.md 行きの仮説でも universal / project-local に分かれうるため、`career-hypothesis` と `scope-hypothesis` は独立した2メタ欄として持つ。
+**キャリア軸 ⊥ 空間軸（直交）**: この4キャリア軸（昇格先＝何の成果物へ配るか）は、scope の2空間軸（`universal` / `project-local`）と**直交する**。同じ learnings.md 行きの仮説でも universal / project-local に分かれうるため、`career-hypothesis` と `scope-hypothesis` は独立した2メタ欄として持つ。
 
 ## 7. スコープ別台帳突合と既存ルール再発の知見化
 
@@ -300,4 +300,3 @@ store・処理源（カーソルより新しい観測）・棄却の各0件は�
 - [`distill-examples.md`](distill-examples.md) — クラスタ化・棄却・再発知見化・分類順位のサンプル入力＋期待結果（手順トレース用）
 - `${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` — 入力源（処理源 store）の形式・パース規約・パス解決手順・distill 処理源選択（処理済みカーソル＋provenance 導出。`distill-state.md`・前進/巻き戻し/欠損規則。`origin`/`expected`/`actual` 欄を含む）、および出力先 仮説ファイル（`candidates.md`）の形式・メタ欄スキーマ・provenance 規約・upsert 方式
 - `${CLAUDE_PLUGIN_ROOT}/references/learning-store-spec.md` — 仮説が将来昇格する先の1欄スキーマ・記法ルール・記法例（昇格時に残る見出し・本文の規範形）・2空間モデル（scope-hypothesis の値域の裏付け）
-- `${CLAUDE_PLUGIN_ROOT}/DESIGN.md` — 設計母艦（§3 Distill・原理1・4・5・二段ゲート）

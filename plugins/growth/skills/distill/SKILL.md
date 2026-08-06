@@ -61,4 +61,3 @@ candidates: ~/.claude/projects/-home-user-myproject/growth/candidates.md
 - `${CLAUDE_SKILL_DIR}/references/distill-examples.md` — クラスタ化・棄却・再発知見化・分類順位のサンプル入力＋期待結果（手順トレース用）
 - `${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` — 入力源 store の形式・パース規約・パス解決手順・distill 処理源選択（処理済みカーソル＋provenance 導出。`distill-state.md`・前進/巻き戻し/欠損規則。`origin`/`expected`/`actual` 欄を含む）、および**出力先 仮説ファイル（`candidates.md`）の形式・メタ欄スキーマ・provenance 規約・upsert 方式**
 - `${CLAUDE_PLUGIN_ROOT}/references/learning-store-spec.md` — 仮説が将来昇格する先の1欄スキーマ・記法ルール・記法例（仮説見出し・本文が整合すべき規範形）・2空間モデル（scope-hypothesis の値域の裏付け）
-- `${CLAUDE_PLUGIN_ROOT}/DESIGN.md` — 設計母艦（§3 Distill・§4 プラグイン構成・原理1・4・5・二段ゲート）

@@ -51,4 +51,3 @@ candidates: ~/.claude/projects/-home-user-myproject/growth/candidates.md
 - `${CLAUDE_SKILL_DIR}/references/promote-examples.md` — worked example（behavior-diff の検証通過→起票→candidate-status 前進／検証棄却／起票失敗時の candidate-status 非前進／decision-record の復元不能性検証 通過・棄却）
 - `${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` — 入力源 仮説ファイル（`candidates.md`）の形式・メタ欄スキーマ・provenance 規約、`candidate-status` 状態機械・パス解決手順
 - `${CLAUDE_PLUGIN_ROOT}/references/learning-store-spec.md` — Route 注記が指す2空間モデル（universal/project-local＝パブリック/閉じた空間）
-- `${CLAUDE_PLUGIN_ROOT}/DESIGN.md` — 設計母艦（§3 Promote・§4 プラグイン構成・原理2・二段ゲート）
