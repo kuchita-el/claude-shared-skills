@@ -82,6 +82,7 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 - `${CLAUDE_SKILL_DIR}/references/template.md` — 新規 ADR の雛形（front-matter＋見出し骨格。起票時にこの構成へ準拠する）
 - `${CLAUDE_SKILL_DIR}/references/transitions.md` — 5遷移と分割の実行手順・採番規則・双方向相互参照の書き込み・index の再生成
 - `${CLAUDE_SKILL_DIR}/references/edit-decision.md` — core／非core／些末 の判定と `AskUserQuestion` 問い設計・操作分岐、および ADR 本文へ参照を書く／直す際の判定（記録の参照原則。起票時にも適用する）
+- `${CLAUDE_SKILL_DIR}/references/cross-references.md` — `## 関連ADR` の関係語彙・`Related:` の書式規約・機械検査の範囲と是正手段（相互参照を書くときに従う）
 - `${CLAUDE_SKILL_DIR}/references/io-examples.md` — 起票・承認・上書きの入出力例
 
 以降の手順に現れる `<対象ディレクトリ>` の解決（既定と第1引数による上書き）は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「配置」節に従う。
@@ -94,9 +95,13 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 
 1. **index 同期**（`validity` を変える操作＝承認・上書き・分割・廃止の後）: `bash ${CLAUDE_SKILL_DIR}/../../scripts/gen-adr-index.sh <対象ディレクトリ>` の出力で `<対象ディレクトリ>/index.md` を再生成する（起票・却下は `validity` を変えないため index 再生成不要）。
 2. **lint 実行**: `bash ${CLAUDE_SKILL_DIR}/../../scripts/lint-adr.sh <対象ディレクトリ>` を実行し exit 0 を確認する。**この exit 0 が合否基準**である。
-3. **フィードバックループ**（exit 0 以外）: lint-adr の出力を利用者へ提示し、指摘に応じて ADR を修正する。レイヤ1 スキーマ／レイヤ3 相互参照なら front-matter（`status`/`validity`/`superseded-by`）または相互参照（旧側 `superseded-by`・後継側 `Supersedes:`）を直す。レイヤ2 index 同期 drift なら `gen-adr-index.sh` を再実行して index を同期する。レイヤ4 Related/park 参照なら参照先を実在する有効 ADR へ差し替える。レイヤ5 はファイル名側の是正で、形式違反はリネーム、識別子重複は `next-adr-id.sh` で再発番して片方をリネーム（本文 H1・相互参照・index も追随）、H1 整合違反は H1 見出しの識別子部をファイル名へ揃える。再度 lint-adr を実行し、**exit 0 になるまで反復する**。exit 0 を得られないまま操作を完了扱いにしない。
+3. **フィードバックループ**（exit 0 以外）: lint-adr の出力を利用者へ提示し、指摘に応じて ADR を修正する。レイヤ1 スキーマ／レイヤ3 相互参照なら front-matter（`status`/`validity`/`superseded-by`）または相互参照（旧側 `superseded-by`・後継側 `Supersedes:`）を直す。レイヤ2 index 同期 drift なら `gen-adr-index.sh` を再実行して index を同期する。レイヤ4 Related/park 参照なら、参照先が**退役**していればその決定を引き継いだ後継へ差し替え、参照先が**実在しない**（dangling）なら識別子の誤りを正すか、指すべき対象が無い場合は参照行を除去する（規約と是正手段の詳細は `${CLAUDE_SKILL_DIR}/references/cross-references.md`）。レイヤ5 はファイル名側の是正で、形式違反はリネーム、識別子重複は `next-adr-id.sh` で再発番して片方をリネーム（本文 H1・相互参照・index も追随）、H1 整合違反は H1 見出しの識別子部をファイル名へ揃える。再度 lint-adr を実行し、**exit 0 になるまで反復する**。exit 0 を得られないまま操作を完了扱いにしない。
 
 `lint-adr.sh` の exit code: `0`＝違反0件／`1`＝違反検出／`2`＝対象ディレクトリ不在。
+
+**commit 前ゲートとの二面構成**: 同梱の PreToolUse フックが `git commit` 時にも drift-lint を実行し、違反があれば exit 2 で commit をブロックする。本節の自己検証は、そのブロックを操作の直後に前倒しで潰す位置づけである。
+
+ただしゲートの射程は自己検証より狭い。フックは Bash ツール経由の `git commit` にのみ掛かり、端末や IDE から直接打つ commit は通らない。検査対象も既定の配置に固定されており、既定以外の配置を採る導入先ではゲートが働かない（前掲の「配置」節を参照）。いずれの場合も自己検証が唯一の検出機会になるため、ゲートに委ねず本節を実行する。
 
 **フォールバック**: 操作前から対象ディレクトリが exit 1（baseline red）で、本操作と無関係な違反が exit 0 到達を妨げる場合に限り、変更/生成した ADR とその相互参照相手を一時ディレクトリへコピーし、そのディレクトリを対象に手順1〜3を実行してよい（コピーに含めるファイルの規則は `${CLAUDE_SKILL_DIR}/references/transitions.md` を参照）。
 

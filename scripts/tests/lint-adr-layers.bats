@@ -139,7 +139,7 @@ LAYER1_INVALID_CASES=(
     collect_finish
 }
 
-# 相互参照検証専用の valid corpus（双方向一致ペア＋Amends凍結例）は exit 0
+# 相互参照検証専用の valid corpus（双方向一致ペア＋入れ子バレット例＋未知ラベル例）は exit 0
 @test "面⑧: レイヤ3 正しい相互参照が通る" {
     collect_init
     run_sut "$CORPUS_DIR/valid/02-xref-valid"
