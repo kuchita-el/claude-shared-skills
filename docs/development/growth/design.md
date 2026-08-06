@@ -344,7 +344,7 @@ dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 
 
 **問い1(b) `references/` のファイル単位の振り分け**
 
-- 方向: 問い1(a) の軸をファイル単位へ適用し、`personal-store-spec.md` / `learning-store-spec.md` / `intake-issue-spec.md` / `promotion-issue-spec.md` / `learning-promotion-spec.md` を配布物に残し、`career-promotion-spec.md` と `auto-trigger-spec.md` を配布元へ移す。`session-log-format.md` は capture の抽出元にあたる節だけを配布物へ切り出し、残部（spike #378 の一次調査記録）を配布元へ移す。
+- 方向: 境界規約の判断軸をファイル単位へ適用し（振り分けの決め手は第1軸、問い1(a) の実行不能性テストは配布元へ移す側が動作の判定に要る定義を抱えていないことの確認に用いる）、`personal-store-spec.md` / `learning-store-spec.md` / `intake-issue-spec.md` / `promotion-issue-spec.md` / `learning-promotion-spec.md` を配布物に残し、`career-promotion-spec.md` と `auto-trigger-spec.md` を配布元へ移す。`session-log-format.md` は capture の抽出元にあたる節だけを配布物へ切り出し、残部（spike #378 の一次調査記録）を配布元へ移す。
 - 理由: 判定根拠は**配布先の環境で参照が解決できるかを問う軸**であり、被参照の濃度はその軸を当てるための実測値であって根拠そのものではない（被参照の有無だけで配置を決める案＝被参照テストは、決定A の ADR が却下代替として退けている）。`career-promotion-spec.md` と `learning-promotion-spec.md` は #384 / #383 の対をなす移送規約で、実行主体もともに既存ワークフローである。それでも扱いが分かれたのは、後者を配布元へ移すと配布物→配布元の逆向き参照を複数作って参照方向の一方向性に抵触するためである（残留する spec すべてと `learnings.md` から参照されるという実測がその抵触の量を示す）。前者を配布元へ移しても同じ抵触は生じず、スキルからの参照 1 件は fallback 挙動を行内で述べきった出典 citation にすぎないため、実行不能性テストでも配布物へ引き込まれない。
 
 **問い2 動作に要る定義の移設先**
