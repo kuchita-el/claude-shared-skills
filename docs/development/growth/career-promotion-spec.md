@@ -147,6 +147,6 @@ gh issue create \
 - [`learning-promotion-spec.md`](../../../plugins/growth/references/learning-promotion-spec.md) — 姉妹規約（#383）。learnings.md 行きの変換4手順。本規約と合わせ #349 D1 の全キャリアを Phase 2 でカバーする
 - 当該 repo の ADR 運用ルール（文脈探索で解決） — ADR 差分の出口ゲート。粒度判定基準・上書き（Superseded）／廃止（Deprecated）／却下／編集機構・命名規約の ADR 化基準。見つからない場合は「ADR 運用ルールが見つからない場合」節のフォールバックに従う
 - [`promotion-issue-spec.md`](../../../plugins/growth/references/promotion-issue-spec.md) — 仮説 Issue（`growth:promote`）のテンプレート（#382。昇格先キャリアの判定＝Route は distill へ移設＝ADR-202606282107-01）
-- [`design.md`](design.md) — 設計母艦（学習ループ・Distribute 段・学びの2系統・二段ゲート）
+- [`design.md`](design.md) — growth の設計判断の根拠（学習ループ・Distribute 段・学びの2系統・二段ゲート）
 - ADR-202606282107-01 — career 決定モデルの再設計（distill 仮説 ＋ 集約点裁定・決定表行2の一般化）。本規約の決定根拠
 - #349 — 親エピック。D1（career 4分類）・D2（新規スキルなし・既存ワークフロー再利用・疎結合）
