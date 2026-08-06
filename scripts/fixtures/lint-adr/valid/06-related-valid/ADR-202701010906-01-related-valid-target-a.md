@@ -10,7 +10,7 @@ validity: 有効
 
 ## Context
 
-fixture 用（valid/06）。source から Related／park される有効な参照先。
+fixture 用（valid/06）。source から `Related:` される有効な参照先。
 
 ## Decision
 

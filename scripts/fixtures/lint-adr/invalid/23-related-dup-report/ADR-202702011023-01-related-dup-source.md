@@ -10,7 +10,7 @@ validity: 有効
 
 ## Context
 
-fixture 用（invalid/23）。同一の退役（廃止済み）ADR を、書式の異なる2本の `Related:` 行（plain＋markdown リンク）から参照する。extract_body_related のファイル内 dedup により参照先退役違反が**1回のみ**報告される（park 側 dedup と対称）ことを固定する回帰。dedup を外すと二重報告に戻る。
+fixture 用（invalid/23）。同一の退役（廃止済み）ADR を、書式の異なる2本の `Related:` 行（plain＋markdown リンク）から参照する。extract_body_related のファイル内 dedup により参照先退役違反が**1回のみ**報告されることを固定する回帰。dedup を外すと二重報告に戻る。
 
 ## Decision
 

@@ -2,10 +2,9 @@
 # ADR drift-lint のレイヤ4（plugins/adr/scripts/lint-adr.sh）のテスト。
 #
 # 非 Supersede 参照妥当性 lint（退役参照検査・判定単位の書式非依存化）。
-# 有効 ADR の `## 関連ADR`（Related:）／`## 保留した決定`（park）の先頭 ADR stem を、
+# 有効 ADR の `## 関連ADR`（Related:）の先頭 ADR stem を、
 # 行頭バレット有無・markdown リンク形式有無を問わず抽出し、参照先が退役（上書き済み/廃止済み）
-# なら参照先退役違反、非存在なら dangling 参照違反として報告する。park は dangling のみ
-# （退役非適用）。
+# なら参照先退役違反、非存在なら dangling 参照違反として報告する。
 #
 # 【レイヤ4 の判定単位の正本はここにある】
 # `Related:` 以降で最初に現れる ADR stem を、行頭バレットの有無・markdown リンクの有無・
@@ -70,7 +69,6 @@ collect_count() {
 }
 
 # AC6/AC8: Related が非存在 slug を指す → dangling 参照違反（解決不能＝fail-safe を統合）
-# AC6/AC7: park 欄が非存在 slug を指す → dangling 参照違反（park も dangling 検査の対象）
 @test "面②: dangling 参照の検出" {
     collect_init
 
@@ -80,13 +78,6 @@ collect_count() {
         '(AC6/AC8): Related が非存在slugを指すと dangling 参照違反: "dangling 参照違反" を含む'
     collect_contains "$output" "ADR-202612021020-01-does-not-exist" \
         '(AC6/AC8): Related が非存在slugを指すと dangling 参照違反: "ADR-202612021020-01-does-not-exist" を含む'
-
-    run_sut "$CORPUS_DIR/invalid/21-park-dangling"
-    collect_rc 1 "(AC6/AC7): 保留した決定が非存在slugを指すと dangling 参照違反: exit 1"
-    collect_contains "$output" "dangling 参照違反" \
-        '(AC6/AC7): 保留した決定が非存在slugを指すと dangling 参照違反: "dangling 参照違反" を含む'
-    collect_contains "$output" "ADR-202612121021-01-park-missing" \
-        '(AC6/AC7): 保留した決定が非存在slugを指すと dangling 参照違反: "ADR-202612121021-01-park-missing" を含む'
 
     collect_finish
 }
@@ -107,36 +98,24 @@ collect_count() {
     collect_finish
 }
 
-# AC2/AC7(誤検出回避): 全4書式の有効参照・散文の退役引用・park→有効/退役(存在)は
-# いずれも違反にならず exit 0（先頭stem抽出の要、park は dangling のみ＝J4 の正方向固定）
+# AC2(誤検出回避): 全4書式の有効参照・散文の退役引用は
+# いずれも違反にならず exit 0（先頭stem抽出の要）
 @test "面④: 誤検出の回避" {
     collect_init
 
     run_sut "$CORPUS_DIR/valid/06-related-valid"
-    collect_rc 0 "(AC2/AC7-誤検出回避): 全書式の有効参照・散文退役引用・park退役(存在)は exit 0: exit 0"
+    collect_rc 0 "(AC2-誤検出回避): 全書式の有効参照・散文退役引用は exit 0: exit 0"
     collect_not_contains "$output" "参照先退役違反" \
-        '(AC2/AC7-誤検出回避): 全書式の有効参照・散文退役引用・park退役(存在)は exit 0: "参照先退役違反" を含まない'
+        '(AC2-誤検出回避): 全書式の有効参照・散文退役引用は exit 0: "参照先退役違反" を含まない'
     collect_not_contains "$output" "dangling 参照違反" \
-        '(AC2/AC7-誤検出回避): 全書式の有効参照・散文退役引用・park退役(存在)は exit 0: "dangling 参照違反" を含まない'
-
-    collect_finish
-}
-
-# park 参照が markdown リンク形式（`[stem](./stem.md)`）でも dangling 違反は1回のみ報告する
-# （ラベル部とパス部で同一 stem を二重報告しない回帰。invalid/21 の park 参照はリンク形式）。
-@test "面⑤: park リンクの重複排除" {
-    collect_init
-
-    run_sut "$CORPUS_DIR/invalid/21-park-dangling"
-    collect_count "$output" "ADR-202612121021-01-park-missing" 1 \
-        "(park link dedup): リンク形式 park dangling は1回のみ報告（count=1）"
+        '(AC2-誤検出回避): 全書式の有効参照・散文退役引用は exit 0: "dangling 参照違反" を含まない'
 
     collect_finish
 }
 
 # 同一 source が複数の `Related:` 行から同じ退役 ADR を指しても参照先退役違反は1回のみ報告する
-# （extract_body_related のファイル内 dedup。park 側と対称の保護。dedup を外すと二重報告に戻る）。
-@test "面⑥: Related の重複排除" {
+# （extract_body_related のファイル内 dedup。dedup を外すと二重報告に戻る）。
+@test "面⑤: Related の重複排除" {
     collect_init
 
     run_sut "$CORPUS_DIR/invalid/23-related-dup-report"
@@ -154,14 +133,14 @@ collect_count() {
 # 削除してもグリーンのままとなり、保護対象を守れない（レイヤ5 側と同じ限定である）。
 # 加えて検査語はブロック固有の見出しでアンカーする。「生存性・実在性」はファイル冒頭の
 # 要約行（レイヤ横断の性質列挙）にも現れるため、ヘッダへ限定するだけでは不足する。
-@test "面⑦: レイヤ4 仕様のヘッダ成文化" {
+@test "面⑥: レイヤ4 仕様のヘッダ成文化" {
     collect_init
 
     local header
     header=$(sed -n '1,/^set -euo pipefail/p' "$SUT" 2>/dev/null || true)
     collect_contains "$header" "レイヤ4" "(AC5): ヘッダにレイヤ4の記述が存在する"
-    collect_contains "$header" "レイヤ4（Related/park 参照の生存性・実在性）" \
-        "(AC5): ヘッダにレイヤ4（Related/park 参照の生存性・実在性）仕様が成文化されている"
+    collect_contains "$header" "レイヤ4（Related 参照の生存性・実在性）" \
+        "(AC5): ヘッダにレイヤ4（Related 参照の生存性・実在性）仕様が成文化されている"
 
     collect_finish
 }

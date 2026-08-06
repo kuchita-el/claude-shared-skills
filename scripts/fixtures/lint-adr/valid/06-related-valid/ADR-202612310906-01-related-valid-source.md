@@ -10,7 +10,7 @@ validity: 有効
 
 ## Context
 
-fixture 用（valid/06）。バレット有無×リンク有無の4書式の `Related:` がいずれも有効 ADR を先頭 stem に持つ。散文が退役 slug を引用しても先頭 stem が有効なら誤検出しないこと、`## 保留した決定`（パーク欄）が有効先・退役先(存在)のいずれを指しても違反にならないこと（J4＝park は dangling 検査のみ）を確認する。
+fixture 用（valid/06）。バレット有無×リンク有無の4書式の `Related:` がいずれも有効 ADR を先頭 stem に持つ。散文が退役 slug を引用しても先頭 stem が有効なら誤検出しないことを確認する。
 
 ## Decision
 
@@ -19,11 +19,6 @@ fixture 用のため実質的な決定内容は無い。
 ## Consequences
 
 レイヤ4 は退役・dangling とも誤検出せず exit 0 を維持する。
-
-## 保留した決定
-
-- あるfacet を未決のまま残す（想定継承先: ADR-202701010906-01-related-valid-target-a）
-- 別facet を未決のまま残す（想定継承先: ADR-202701030906-01-related-valid-retired-mentioned）（park は dangling 検査のみ＝退役でも違反にしない）
 
 ## 関連ADR
 
