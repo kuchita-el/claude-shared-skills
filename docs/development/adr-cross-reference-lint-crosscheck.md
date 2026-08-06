@@ -45,6 +45,8 @@
 - **条項7（source は有効 ADR のみ）**: 退役した source が `Related:` で退役先や不在先を指す corpus の fixture が無い。`valid/01-mixed-validity` は退役 ADR を含むが `Related:` 行を持たず、`valid/06-related-valid` の退役 ADR も `## 関連ADR` に `Related:` を持たない。したがって「退役 source の `Related:` は検査されない」ことを固定する回帰が存在しない
 - **条項10（fail-open）**: 参照先が旧形式（front-matter 無し）または `validity` 空である `Related:` の fixture が無い。`valid/07-legacy-filename-skipped` は旧形式ファイル名の走査除外を扱うもので、レイヤ4 の fail-open は固定していない
 
+- **未知の関係語彙の行が検査されないこと**: 本 PR で削除した `valid/02-xref-valid` の Amends 凍結例 fixture は、`## 関連ADR` 内の `Related:` 以外のラベルを持つ行が、その参照先が実在しなくても違反にならないことを固定していた唯一の回帰だった（レイヤ4 が `Related:` 行しか抽出しないことの帰結）。関係語彙が3種に閉じた後もこの fail-open は実装として生きているが、固定する fixture は無くなった
+
 いずれも本 PR のスコープ（#561 の成文化）外であり、fixture の追加は行っていない。実装が意図せず変わっても検出されない箇所として記録に残す。
 
 ## 備考
