@@ -3,8 +3,10 @@
 #
 # 非 Supersede 参照妥当性 lint（退役参照検査・判定単位の書式非依存化）。
 # 有効 ADR の `## 関連ADR`（Related:）の先頭 ADR stem を、
-# 行頭バレット有無・markdown リンク形式有無を問わず抽出し、参照先が退役（上書き済み/廃止済み）
+# 行頭バレット有無・markdown リンク形式有無を問わず抽出し、参照先が上書き済み
 # なら参照先退役違反、非存在なら dangling 参照違反として報告する。
+# 後継を持たない退役（廃止済み）は差し替え先が存在せず建設的な是正が無いため対象外であり、
+# 参照先が旧形式・validity 空の場合と同じく違反にならない（fail-open）。
 #
 # 【レイヤ4 の判定単位の正本はここにある】
 # `Related:` 以降で最初に現れる ADR stem を、行頭バレットの有無・markdown リンクの有無・
@@ -44,7 +46,7 @@ collect_count() {
     assert_preconditions_met
 }
 
-# AC1/AC2(穴1): バレット無し＋plain の Related が廃止済みADRを指す → 参照先退役違反
+# AC1/AC2(穴1): バレット無し＋plain の Related が上書き済みADRを指す → 参照先退役違反
 # AC1/AC2(穴2): リンク形式の Related が上書き済みADRを指す → 参照先退役違反（相互参照違反は出ない）
 @test "面①: 退役 ADR への参照の検出" {
     collect_init
@@ -55,6 +57,8 @@ collect_count() {
         '(AC1/AC2-穴1): バレット無し Related が退役ADRを指すと参照先退役違反: "参照先退役違反" を含む'
     collect_contains "$output" "ADR-202611021018-01-related-retired-nb-target" \
         '(AC1/AC2-穴1): バレット無し Related が退役ADRを指すと参照先退役違反: "ADR-202611021018-01-related-retired-nb-target" を含む'
+    collect_not_contains "$output" "相互参照違反" \
+        '(AC1/AC2-穴1): バレット無し Related が退役ADRを指すと参照先退役違反: "相互参照違反" を含まない'
 
     run_sut "$CORPUS_DIR/invalid/19-related-retired-link"
     collect_rc 1 "(AC1/AC2-穴2): リンク形式 Related が退役ADRを指すと参照先退役違反: exit 1"
@@ -94,21 +98,31 @@ collect_count() {
         '(gap1-リンクラベル書式): リンクラベルが説明文でも先頭stem抽出で退役検出: "参照先退役違反" を含む'
     collect_contains "$output" "ADR-202701021022-01-related-linklabel-target" \
         '(gap1-リンクラベル書式): リンクラベルが説明文でも先頭stem抽出で退役検出: "ADR-202701021022-01-related-linklabel-target" を含む'
+    collect_not_contains "$output" "相互参照違反" \
+        '(gap1-リンクラベル書式): リンクラベルが説明文でも先頭stem抽出で退役検出: "相互参照違反" を含まない'
 
     collect_finish
 }
 
-# AC2(誤検出回避): 全4書式の有効参照・散文の退役引用は
-# いずれも違反にならず exit 0（先頭stem抽出の要）
+# AC2(誤検出回避): 全4書式の有効参照・散文が実在しない stem を引用する行・先頭 stem が
+# 後継なし退役の行は、いずれも違反にならず exit 0（先頭stem抽出の要、および退役検査の対象語彙の限定）
+#
+# 散文のデコイに実在しない stem を置くのは、後続 stem を拾う退行が **dangling 違反**として
+# 現れるようにするためである。デコイを退役 ADR にすると、退役検査の対象語彙が縮んだ時点で
+# 退行が違反を生まなくなり、本ケースの検出力が黙って失われる（fixture 側の設計意図）。
 @test "面④: 誤検出の回避" {
     collect_init
 
+    local source_file="$CORPUS_DIR/valid/06-related-valid/ADR-202612310906-01-related-valid-source.md"
+    collect_contains "$(cat "$source_file")" "ADR-209901010101-01-nonexistent-quoted" \
+        "(AC2-誤検出回避): 実在しないstemを引用するデコイ行がfixtureに存在する（行が消えると本ケースの検出力が空回りする）"
+
     run_sut "$CORPUS_DIR/valid/06-related-valid"
-    collect_rc 0 "(AC2-誤検出回避): 全書式の有効参照・散文退役引用は exit 0: exit 0"
+    collect_rc 0 "(AC2-誤検出回避): 全書式の有効参照・散文の非実在stem引用は exit 0: exit 0"
     collect_not_contains "$output" "参照先退役違反" \
-        '(AC2-誤検出回避): 全書式の有効参照・散文退役引用は exit 0: "参照先退役違反" を含まない'
+        '(AC2-誤検出回避): 全書式の有効参照・散文の非実在stem引用は exit 0: "参照先退役違反" を含まない'
     collect_not_contains "$output" "dangling 参照違反" \
-        '(AC2-誤検出回避): 全書式の有効参照・散文退役引用は exit 0: "dangling 参照違反" を含まない'
+        '(AC2-誤検出回避): 全書式の有効参照・散文の非実在stem引用は exit 0: "dangling 参照違反" を含まない'
 
     collect_finish
 }
@@ -119,8 +133,32 @@ collect_count() {
     collect_init
 
     run_sut "$CORPUS_DIR/invalid/23-related-dup-report"
-    collect_count "$output" "ADR-202702021023-01-related-dup-target" 1 \
+    collect_count "$output" "参照先退役違反.*ADR-202702021023-01-related-dup-target" 1 \
         "(related dup dedup): 複数Related行が同一退役ADRを指しても違反は1回のみ（count=1）"
+    collect_not_contains "$output" "相互参照違反" \
+        '(related dup dedup): 複数Related行が同一退役ADRを指しても違反は1回のみ: "相互参照違反" を含まない'
+
+    collect_finish
+}
+
+# AC2(後継なし退役): 先頭 stem が後継を持たずに退役した（廃止済み）ADR である `Related:` 行は
+# 違反にならない。参照先が上書き済みなら「その決定を引き継いだ後継へ差し替える」という一意の是正先が
+# あるが、後継なしの退役には差し替え先が一意に定まらず、検査が具体的な直し方を指示できない。
+# レイヤ4 の参照先退役検査は参照先 validity=上書き済み のみを対象とする。
+# lint-adr.sh は違反を出力するたび violations を加算し violations > 0 なら exit 1 で終わるため、
+# 「出力に当該 stem が現れる」⟹「rc=1」⟹ 面④ の exit 0 チェックも落ちる構造上、本ケース単独の
+# 検出力は無い。面④ と同じ内容を当該 stem 名指しで固定し、何を守っているかの可読性のために残す。
+@test "面⑦: 後継なし退役先への参照は違反にならない" {
+    collect_init
+
+    local source_file="$CORPUS_DIR/valid/06-related-valid/ADR-202612310906-01-related-valid-source.md"
+    collect_contains "$(cat "$source_file")" "ADR-202701030906-01-related-valid-retired-mentioned" \
+        "(AC2-後継なし退役): 後継なし退役ADRを先頭stemに指すRelated行がfixtureに存在する（行が消えると本ケースが自明に成立する）"
+
+    run_sut "$CORPUS_DIR/valid/06-related-valid"
+    collect_rc 0 "(AC2-後継なし退役): 先頭stemが後継なし退役ADRのRelatedは違反にならない: exit 0"
+    collect_not_contains "$output" "ADR-202701030906-01-related-valid-retired-mentioned" \
+        '(AC2-後継なし退役): 先頭stemが後継なし退役ADRのRelatedは違反にならない: 当該 stem が出力に現れない'
 
     collect_finish
 }
