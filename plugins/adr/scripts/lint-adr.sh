@@ -78,8 +78,13 @@
 #     か説明文か（`- Related: [詳細](./ADR-X.md)` も ADR-X を取る）を問わない
 #     （バレット無し・リンク形式・リンクラベル書式を同一に扱う）。説明散文中の後続 stem は先頭優先で拾わない
 #     （誤検出回避）。
-#   - 参照先退役違反: `Related:` 参照先が実在し、かつ validity が 上書き済み／
-#     廃止済み（RETIRED_VALIDITY）なら違反（有効 ADR が退役 ADR を指す参照を残さない）。
+#   - 参照先退役違反: `Related:` 参照先が実在し、かつ validity が 上書き済み
+#     （RELATED_RETIRED_VALIDITY）なら違反（有効 ADR が上書きされた ADR を現行の出典として
+#     指す参照を残さない）。後継を持たない退役（廃止済み）は対象外とする。
+#     採用理由: 参照先が上書き済みなら「その決定を引き継いだ後継へ差し替える」という一意の
+#     是正があるが、後継が無い場合は差し替え先が存在せず、参照行の除去か `Related:` ラベルの
+#     剥がししか選べない。検査が是正ではなく回避を生産するため、建設的な是正が定まる場合へ
+#     限定する。
 #   - dangling 参照違反: `Related:` の参照先 `<slug>.md` が実在しなければ
 #     違反（full slug 完全一致で解決。解決不能な参照先＝AC8 fail-safe をここに統合）。
 #   - source は有効 ADR のみに限定する。検査対象を「front-matter
@@ -92,8 +97,12 @@
 #   - 既知の限界（意図的）: (a) 1つの `Related:` 行に複数 ADR を列挙した場合は先頭 stem
 #     のみ検査する（判定単位＝先頭 stem。2件目以降は対象外）。
 #     (b) 参照先が旧形式（front-matter 無し）・validity 空（提案中/却下）の場合は退役でも
-#     dangling でもないとして違反にしない（fail-open。RETIRED_VALIDITY＝上書き済み/廃止済み
-#     の完全一致のみを退役とみなす）。旧形式ADRはレイヤ1でも検査対象外である点と整合する。
+#     dangling でもないとして違反にしない（fail-open。RELATED_RETIRED_VALIDITY＝上書き済み
+#     の完全一致のみを違反とみなすため、空値・旧形式はどの語彙とも一致しない）。
+#     旧形式ADRはレイヤ1でも検査対象外である点と整合する。
+#     (c) 上書き済みのみを見るため、後継を持たずに退役した参照先を指す参照が陳腐化しても
+#     検出しない。陳腐化の点検は操作手順側（manage-adr の退役に伴う inbound 参照の点検）が
+#     担い、機械検査は負わない。
 #
 # レイヤ5（ファイル名形式・識別子重複・H1 整合）: ファイル名そのものを検査対象に
 # 加える。レイヤ1〜4 はいずれもファイル本文と index しか見ないため、ファイル名が
@@ -160,9 +169,14 @@ fi
 # 経緯による。いずれも承認の歴史事実と現在の効力を同じ値域へ同居させ、2軸が語彙レベルで衝突する。
 STATUS_VOCAB=("提案中" "承認済み" "却下")
 VALIDITY_VOCAB=("有効" "上書き済み" "廃止済み")
-# レイヤ4で「退役」とみなす validity 値（VALIDITY_VOCAB の部分集合）。
-# 正本語彙が変わった際の追随点を1箇所へ集約する。
+# ADR の効力が終わったことを表す validity 値（VALIDITY_VOCAB の部分集合）。
+# 退役語彙一般を表す定義であり、正本語彙が変わった際の追随点を1箇所へ集約する。
+# どの語彙を違反とみなすかは各レイヤが自身の部分集合で決める（本配列をそのまま
+# 判定に使うと、退役の種別で是正手段が異なることを取りこぼす）。
 RETIRED_VALIDITY=("上書き済み" "廃止済み")
+# レイヤ4 の参照先退役違反が対象とする validity 値（RETIRED_VALIDITY の部分集合）。
+# 後継を持たない退役（廃止済み）を含めない理由はファイル冒頭のレイヤ4 仕様に述べる。
+RELATED_RETIRED_VALIDITY=("上書き済み")
 
 # レイヤ5: ファイル名 stem が満たすべき形式（`ADR-<YYYYMMDDHHMM>-<NN>-<slug>`）。
 # 時刻部の暦妥当性の水準は next-adr-id.sh の ADR_TIMESTAMP 検査と同一に保つ
@@ -593,13 +607,14 @@ for src_file in "${sorted[@]}"; do
         continue
     fi
 
-    # `## 関連ADR` の Related 参照先: 非存在→dangling、実在かつ退役→参照先退役違反
+    # `## 関連ADR` の Related 参照先: 非存在→dangling、実在かつ上書き済み→参照先退役違反
+    # （後継なしの廃止済みは建設的な是正が無いため対象外。ファイル冒頭のレイヤ4 仕様を参照）
     extract_body_related "$src_file"
     for t_stem in ${BODY_RELATED_TARGETS[@]+"${BODY_RELATED_TARGETS[@]}"}; do
         if [ ! -f "$ADR_DIR/$t_stem.md" ]; then
             printf '%s: dangling 参照違反（"## 関連ADR" の Related 参照先 %s が見つかりません）\n' "$src_file" "$t_stem"
             violations=$((violations + 1))
-        elif in_vocab "${FM_VALIDITY_BY_STEM[$t_stem]:-}" "${RETIRED_VALIDITY[@]}"; then
+        elif in_vocab "${FM_VALIDITY_BY_STEM[$t_stem]:-}" "${RELATED_RETIRED_VALIDITY[@]}"; then
             printf '%s: 参照先退役違反（"## 関連ADR" の Related 参照先 %s は validity=%s の退役ADRです）\n' "$src_file" "$t_stem" "${FM_VALIDITY_BY_STEM[$t_stem]:-}"
             violations=$((violations + 1))
         fi
