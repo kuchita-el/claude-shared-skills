@@ -113,6 +113,10 @@ collect_count() {
 @test "面④: 誤検出の回避" {
     collect_init
 
+    local source_file="$CORPUS_DIR/valid/06-related-valid/ADR-202612310906-01-related-valid-source.md"
+    collect_contains "$(cat "$source_file")" "ADR-209901010101-01-nonexistent-quoted" \
+        "(AC2-誤検出回避): 実在しないstemを引用するデコイ行がfixtureに存在する（行が消えると本ケースの検出力が空回りする）"
+
     run_sut "$CORPUS_DIR/valid/06-related-valid"
     collect_rc 0 "(AC2-誤検出回避): 全書式の有効参照・散文の非実在stem引用は exit 0: exit 0"
     collect_not_contains "$output" "参照先退役違反" \
@@ -129,7 +133,7 @@ collect_count() {
     collect_init
 
     run_sut "$CORPUS_DIR/invalid/23-related-dup-report"
-    collect_count "$output" "ADR-202702021023-01-related-dup-target" 1 \
+    collect_count "$output" "参照先退役違反.*ADR-202702021023-01-related-dup-target" 1 \
         "(related dup dedup): 複数Related行が同一退役ADRを指しても違反は1回のみ（count=1）"
     collect_not_contains "$output" "相互参照違反" \
         '(related dup dedup): 複数Related行が同一退役ADRを指しても違反は1回のみ: "相互参照違反" を含まない'
@@ -141,9 +145,15 @@ collect_count() {
 # 違反にならない。参照先が上書き済みなら「その決定を引き継いだ後継へ差し替える」という一意の是正先が
 # あるが、後継なしの退役には差し替え先が一意に定まらず、検査が具体的な直し方を指示できない。
 # レイヤ4 の参照先退役検査は参照先 validity=上書き済み のみを対象とする。
-# 面④ が corpus 全体の exit 0 を見るのに対し、本ケースは当該 stem が報告に現れないことを名指しで固定する。
+# lint-adr.sh は違反を出力するたび violations を加算し violations > 0 なら exit 1 で終わるため、
+# 「出力に当該 stem が現れる」⟹「rc=1」⟹ 面④ の exit 0 チェックも落ちる構造上、本ケース単独の
+# 検出力は無い。面④ と同じ内容を当該 stem 名指しで固定し、何を守っているかの可読性のために残す。
 @test "面⑦: 後継なし退役先への参照は違反にならない" {
     collect_init
+
+    local source_file="$CORPUS_DIR/valid/06-related-valid/ADR-202612310906-01-related-valid-source.md"
+    collect_contains "$(cat "$source_file")" "ADR-202701030906-01-related-valid-retired-mentioned" \
+        "(AC2-後継なし退役): 後継なし退役ADRを先頭stemに指すRelated行がfixtureに存在する（行が消えると本ケースが自明に成立する）"
 
     run_sut "$CORPUS_DIR/valid/06-related-valid"
     collect_rc 0 "(AC2-後継なし退役): 先頭stemが後継なし退役ADRのRelatedは違反にならない: exit 0"
