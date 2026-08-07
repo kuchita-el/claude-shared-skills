@@ -57,7 +57,7 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 `validity: 有効` な ADR への変更は、変更種別（core／非core／些末）を `AskUserQuestion` で利用者へ問って確定する。既定選択肢は core（安全則「迷ったら core」）。分類に応じて操作を分岐する。
 
 - **core** → 新規 ADR 起票＋旧 ADR 上書き（5遷移へ）
-- **非core** → 直接編集＋本文 `## 変更履歴` に1行追記（front-matter は不変）
+- **非core** → 直接編集＋本文 `## 変更履歴` に1行追記（front-matter は不変）。節を持たない ADR で新設する場合の配置は後掲の雛形が定める
 - **些末** → 直接編集のみ（front-matter・`## 変更履歴` 不変、履歴は git）
 
 分類はスキルが自動判定せず、必ず利用者へ問う。判定基準・問い設計・分岐の詳細は `${CLAUDE_SKILL_DIR}/references/edit-decision.md` を参照する。`上書き済み`／`廃止済み` に退役した ADR は凍結された歴史的成果物であり本文編集しない。
@@ -79,7 +79,7 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 - `${CLAUDE_SKILL_DIR}/references/adr-model.md` — 状態の2軸の値域・遷移ごとの front-matter 必須ルール表・配置・採番方式（full slug の定義）
 - `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` — ADR 化要否の必要条件（却下代替）・粒度判定基準・起票のタイミング・判定結果の行き先・新規 ADR の束ねの制約・命名規約の ADR 化基準
 - `${CLAUDE_SKILL_DIR}/references/adr-demotion.md` — 既存 ADR の格下げ（退役）判定の条件・判定形式・安全側の向き・格下げ固有の入力の採否
-- `${CLAUDE_SKILL_DIR}/references/template.md` — 新規 ADR の雛形（front-matter＋見出し骨格。起票時にこの構成へ準拠する）
+- `${CLAUDE_SKILL_DIR}/references/template.md` — 新規 ADR の雛形（front-matter＋見出し骨格。起票時にこの構成へ準拠する）と、`## 変更履歴` 節の配置規約（節を持たない ADR で新設するときに従う単一出典）
 - `${CLAUDE_SKILL_DIR}/references/transitions.md` — 5遷移と分割の実行手順・採番規則・双方向相互参照の書き込み・index の再生成
 - `${CLAUDE_SKILL_DIR}/references/edit-decision.md` — core／非core／些末 の判定と `AskUserQuestion` 問い設計・操作分岐、および ADR 本文へ参照を書く／直す際の判定（記録の参照原則。起票時にも適用する）
 - `${CLAUDE_SKILL_DIR}/references/cross-references.md` — `## 関連ADR` の関係語彙・`Related:` の書式規約・機械検査の範囲と是正手段（相互参照を書くときに従う）
