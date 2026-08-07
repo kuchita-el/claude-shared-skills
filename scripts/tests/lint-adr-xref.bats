@@ -100,17 +100,21 @@ collect_count() {
     collect_finish
 }
 
-# AC2(誤検出回避): 全4書式の有効参照・散文の退役引用・先頭 stem が後継なし退役の行は
-# いずれも違反にならず exit 0（先頭stem抽出の要、および退役検査の対象語彙の限定）
+# AC2(誤検出回避): 全4書式の有効参照・散文が実在しない stem を引用する行・先頭 stem が
+# 後継なし退役の行は、いずれも違反にならず exit 0（先頭stem抽出の要、および退役検査の対象語彙の限定）
+#
+# 散文のデコイに実在しない stem を置くのは、後続 stem を拾う退行が **dangling 違反**として
+# 現れるようにするためである。デコイを退役 ADR にすると、退役検査の対象語彙が縮んだ時点で
+# 退行が違反を生まなくなり、本ケースの検出力が黙って失われる（fixture 側の設計意図）。
 @test "面④: 誤検出の回避" {
     collect_init
 
     run_sut "$CORPUS_DIR/valid/06-related-valid"
-    collect_rc 0 "(AC2-誤検出回避): 全書式の有効参照・散文退役引用は exit 0: exit 0"
+    collect_rc 0 "(AC2-誤検出回避): 全書式の有効参照・散文の非実在stem引用は exit 0: exit 0"
     collect_not_contains "$output" "参照先退役違反" \
-        '(AC2-誤検出回避): 全書式の有効参照・散文退役引用は exit 0: "参照先退役違反" を含まない'
+        '(AC2-誤検出回避): 全書式の有効参照・散文の非実在stem引用は exit 0: "参照先退役違反" を含まない'
     collect_not_contains "$output" "dangling 参照違反" \
-        '(AC2-誤検出回避): 全書式の有効参照・散文退役引用は exit 0: "dangling 参照違反" を含まない'
+        '(AC2-誤検出回避): 全書式の有効参照・散文の非実在stem引用は exit 0: "dangling 参照違反" を含まない'
 
     collect_finish
 }
