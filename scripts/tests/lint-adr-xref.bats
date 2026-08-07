@@ -57,6 +57,8 @@ collect_count() {
         '(AC1/AC2-穴1): バレット無し Related が退役ADRを指すと参照先退役違反: "参照先退役違反" を含む'
     collect_contains "$output" "ADR-202611021018-01-related-retired-nb-target" \
         '(AC1/AC2-穴1): バレット無し Related が退役ADRを指すと参照先退役違反: "ADR-202611021018-01-related-retired-nb-target" を含む'
+    collect_not_contains "$output" "相互参照違反" \
+        '(AC1/AC2-穴1): バレット無し Related が退役ADRを指すと参照先退役違反: "相互参照違反" を含まない'
 
     run_sut "$CORPUS_DIR/invalid/19-related-retired-link"
     collect_rc 1 "(AC1/AC2-穴2): リンク形式 Related が退役ADRを指すと参照先退役違反: exit 1"
@@ -96,6 +98,8 @@ collect_count() {
         '(gap1-リンクラベル書式): リンクラベルが説明文でも先頭stem抽出で退役検出: "参照先退役違反" を含む'
     collect_contains "$output" "ADR-202701021022-01-related-linklabel-target" \
         '(gap1-リンクラベル書式): リンクラベルが説明文でも先頭stem抽出で退役検出: "ADR-202701021022-01-related-linklabel-target" を含む'
+    collect_not_contains "$output" "相互参照違反" \
+        '(gap1-リンクラベル書式): リンクラベルが説明文でも先頭stem抽出で退役検出: "相互参照違反" を含まない'
 
     collect_finish
 }
@@ -127,14 +131,16 @@ collect_count() {
     run_sut "$CORPUS_DIR/invalid/23-related-dup-report"
     collect_count "$output" "ADR-202702021023-01-related-dup-target" 1 \
         "(related dup dedup): 複数Related行が同一退役ADRを指しても違反は1回のみ（count=1）"
+    collect_not_contains "$output" "相互参照違反" \
+        '(related dup dedup): 複数Related行が同一退役ADRを指しても違反は1回のみ: "相互参照違反" を含まない'
 
     collect_finish
 }
 
 # AC2(後継なし退役): 先頭 stem が後継を持たずに退役した（廃止済み）ADR である `Related:` 行は
-# 違反にならない。参照先が上書き済みなら「その決定を引き継いだ後継へ差し替える」という一意の是正が
-# あるが、後継なしの退役には差し替え先が無く、参照行の除去かラベル剥がししか選べない。検査が是正
-# ではなく回避を生産するため、レイヤ4 の参照先退役検査は参照先 validity=上書き済み のみを対象とする。
+# 違反にならない。参照先が上書き済みなら「その決定を引き継いだ後継へ差し替える」という一意の是正先が
+# あるが、後継なしの退役には差し替え先が一意に定まらず、検査が具体的な直し方を指示できない。
+# レイヤ4 の参照先退役検査は参照先 validity=上書き済み のみを対象とする。
 # 面④ が corpus 全体の exit 0 を見るのに対し、本ケースは当該 stem が報告に現れないことを名指しで固定する。
 @test "面⑦: 後継なし退役先への参照は違反にならない" {
     collect_init
