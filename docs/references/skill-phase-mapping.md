@@ -9,6 +9,6 @@
 | 技術設計+タスク分解 | `plan-issue` | dev-workflow（接続契約: 検証方針・判断依頼）／ 計画骨格は superpowers `writing-plans` に委譲（参照機構③）。**単位は現状維持**（ADR-202606071222-01） | 実装済み | Issue番号 | `docs/plans/issue-{番号}.md`（判断依頼・検証方針を含む） |
 | 実装+レビュー+PR | `implementation` | 実装メカニクス（TDD・検証ゲート・rawレビュー・worktree）は superpowers へ委譲／ 接続契約（レビュー契約・Issueエスカレーション）は dev-workflow が保持。**単位は現状維持・参照機構②中心**（ADR-202606071222-01。撤去/保持の線引きは方針C・子D/子E） | 実装済み | Issue番号 or 計画ファイル | 実装コード + テスト + PR |
 
-**委譲先 superpowers スキル**: 計画骨格 `writing-plans`、実装メカニクス `test-driven-development` / `executing-plans` / `requesting-code-review` / `subagent-driven-development` / `using-git-worktrees` / `finishing-a-development-branch`。
+**委譲先 superpowers スキル**: 計画骨格 `writing-plans`、実装メカニクス `test-driven-development` / `executing-plans` / `requesting-code-review` / `subagent-driven-development` / `using-git-worktrees` / `finishing-a-development-branch`、レビュー受理 `receiving-code-review`（参照機構②。シーム S8）。
 
 各スキルの内部フェーズ・サブエージェント構成の詳細は、各 `plugins/dev-workflow/skills/{skill-name}/SKILL.md` を参照。全スキルの一覧は [README.md「スキル一覧」](../../README.md#スキル一覧) を参照。
