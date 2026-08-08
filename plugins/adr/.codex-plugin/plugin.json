@@ -1,0 +1,22 @@
+{
+  "name": "adr",
+  "version": "0.1.0",
+  "description": "ADRのライフサイクル管理と検証を支援するCodexプラグイン。",
+  "author": {
+    "name": "Kuchita El"
+  },
+  "repository": "https://github.com/kuchita-el/claude-shared-skills",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "ADR",
+    "shortDescription": "ADRの作成、更新、検証を支援します。",
+    "longDescription": "ADRの起票、承認、上書き、廃止、却下と、front-matterや参照関係の検証を支援します。",
+    "developerName": "Kuchita El",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "defaultPrompt": "ADRのライフサイクル操作と整合性検証を手伝ってください。"
+  }
+}

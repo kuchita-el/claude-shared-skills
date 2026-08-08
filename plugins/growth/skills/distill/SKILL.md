@@ -1,4 +1,5 @@
 ---
+name: distill
 description: distill は個人ローカル store（セグメント captures-*.md）からカーソルより新しい生観察を provenance 導出で選びバッチ仮説形成し、知識型で出力形を2分する（摩擦知→behavior-diff、判断知→decision-record）。知識型で分類・重み付けし（判断知→高優先、摩擦知→再発Nで重み付け）、各仮説に scope/career 仮説タグと provenance を付与し candidates.md へ upsert する。既存ルール台帳と突合し既知ルール再発を知見化する（behavior-diff のみ）。horizon 超の古いバケットを経年削除し store を有界化する。検証・配布は行わない。Capture と非同期に明示起動（Phase 1）。
 allowed-tools:
   - Read

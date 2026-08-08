@@ -1,4 +1,5 @@
 ---
+name: domain-modeling
 description: ドメイン名を起点にデータ型・状態・コマンド・イベント・ワークフローを擬似言語で対話的に定義し、関数型ドメインモデル文書を生成する。型による不変条件の表現、OR 排除の状態遷移、ワークフローの契約定義に使用。「ドメインモデリング」「型でドメインを表現」「Domain Modeling Made Functional」等の依頼にも使用。イベント・集約の戦略的洗い出しはevent-storming、後続として型・状態・ワークフローを形式化する
 allowed-tools:
   - Read
