@@ -101,7 +101,7 @@ cp plugins/dev-workflow/skills/refine-issue/references/dor-default.md /path/to/y
 ./setup-local.sh
 ```
 
-`claude --plugin-dir ./plugins/dev-workflow --plugin-dir ./plugins/adr` で両プラグインを読み込んだClaude Codeが起動します。各スキルは `/dev-workflow:{skill-name}`・`/adr:{skill-name}` のスコープ付き呼び出しで利用できます。
+`claude --plugin-dir ./plugins/dev-workflow --plugin-dir ./plugins/adr --plugin-dir ./plugins/writing` で3つのプラグインを読み込んだClaude Codeが起動します。各スキルは `/dev-workflow:{skill-name}`・`/adr:{skill-name}` のスコープ付き呼び出しで利用できます。
 
 テストと検査器は `bash scripts/run-tests.sh` で一括実行します（`mise trust && mise install` がチェックアウトごとに一度必要です。worktree も別のチェックアウトとして扱われます）。実行経路の詳細は [docs/development/test-execution.md](docs/development/test-execution.md) を参照してください。
 
