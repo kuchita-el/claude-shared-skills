@@ -8,7 +8,7 @@ allowed-tools:
   - Bash(printenv *)
   - Bash(git rev-parse *)
   - Bash(grep *)
-  - Bash(find ~/.claude/projects *)
+  - Bash(find ~/.claude/projects -maxdepth 2 -name *)
 ---
 
 # capture
