@@ -16,6 +16,9 @@
 # 字数の数え方と一文の切り方は references/japanese-writing.md の「一文の長さの計数規則」
 # が単一の出典である。本スクリプトはその規則を実装するだけで、独自の規則を持たない。
 #
+# 検査していないことと違反が無いことを、同じ終了コードにしない。資源が読めない・基点が
+# 解決できない・対象が Markdown でないといった事態は、いずれも終了コード2で止める。
+#
 # 使い方:
 #   bash lint-ja.sh [パス...]           変更のあった箇所だけを検査する（既定）
 #   bash lint-ja.sh --all パス...        ファイル全体を検査する
@@ -23,13 +26,14 @@
 # オプション:
 #   --type <種別>       文書種別。プロファイルの行を選ぶ（既定: 汎用）
 #   --profile <パス>    文書種別プロファイル（既定: プロジェクト固有 → 同梱の既定）
-#   --base <ref>        差分の基点（既定: HEAD）
+#   --base <ref>        差分の基点（既定: HEAD）。指定した ref と HEAD の分岐点を採る
+#   --two-dot           --base を分岐点ではなく2点間差分として解釈する
 #   --all               ファイル全体を検査する。パスの指定が必須
 #
 # exit code:
 #   0: 違反なし（候補だけが出た場合を含む）
 #   1: 違反あり
-#   2: 入力が不正（ファイル不在・パスの指定漏れ・プロファイルの解決失敗・git の解決失敗）
+#   2: 入力が不正、または検査に必要な資源を解決できない
 
 set -uo pipefail
 
@@ -76,13 +80,29 @@ CLOSE_BRACKETS=('）' '」' '』' '】' '］' ')' ']')
 # 現れるためである（共通規約「どこまでを一文と数えるか」）。
 SENT_DELIMS=('。' '？' '！')
 
+# 検査対象の行を絞らないことを表す番兵。空文字と区別する。空文字を「絞らない」の意味に
+# 使うと、追加行がゼロの差分（純削除・改名・属性変更）が全行検査へ落ちる。
+SCOPE_ALL='ALL'
+
 # 正規表現は変数へ入れてから [[ =~ ]] へ渡す。角括弧を退避した形を直接書くと、
 # bash は退避を解いた文字列として扱わず、一致しないまま静かに素通りする。
 LINK_RE='\[([^]]*)\]\([^)]*\)'
+REFLINK_RE='\[([^]]*)\]\[[^]]*\]'
 TABLE_SEP_RE='^\|[-:|[:space:]]*$'
 HEADING_RE='^#{1,6}([[:space:]]|$)'
 LIST_RE='^([-*+][[:space:]]+|[0-9]+\.[[:space:]]+)'
+TABLE_ROW_RE='^\|'
+QUOTE_ROW_RE='^>'
 ID_RE='(ADR-[0-9]{8,12}-[0-9]+|#[0-9]+)'
+
+# 文書冒頭のメタデータを挟む区切り線。
+FRONT_MATTER_MARK='---'
+
+# 読み手の画面に現れない強調の記号。囲みの内側の文字は数え、記号だけを落とす。
+EMPHASIS_MARKS=('**' '__' '~~')
+
+# 不透明な識別子を候補として挙げる骨格位置。主語と目的語を作る助詞に限る。
+SKELETON_PARTICLES=('は' 'が' 'を')
 
 usage() {
     cat <<'USAGE'
@@ -94,10 +114,11 @@ usage: bash lint-ja.sh [オプション] [パス...]
 オプション:
   --type <種別>       文書種別。プロファイルの行を選ぶ（既定: 汎用）
   --profile <パス>    文書種別プロファイル（既定: プロジェクト固有 → 同梱の既定）
-  --base <ref>        差分の基点（既定: HEAD）
+  --base <ref>        差分の基点（既定: HEAD）。指定した ref と HEAD の分岐点を採る
+  --two-dot           --base を分岐点ではなく2点間差分として解釈する
 
 exit code:
-  0 違反なし / 1 違反あり / 2 入力が不正
+  0 違反なし / 1 違反あり / 2 入力が不正、または資源を解決できない
 USAGE
 }
 
@@ -111,6 +132,7 @@ die() {
 DOC_TYPE="汎用"
 PROFILE_PATH=""
 DIFF_BASE="HEAD"
+TWO_DOT=0
 SCAN_ALL=0
 PATHS=()
 
@@ -135,6 +157,10 @@ while [ "$#" -gt 0 ]; do
             DIFF_BASE="$2"
             shift 2
             ;;
+        --two-dot)
+            TWO_DOT=1
+            shift
+            ;;
         --all)
             SCAN_ALL=1
             shift
@@ -155,6 +181,23 @@ while [ "$#" -gt 0 ]; do
             ;;
     esac
 done
+
+# ---- リポジトリの基点 ----
+#
+# 上限値の解決先を作業ディレクトリに従属させない。サブディレクトリから起動しただけで
+# プロジェクト固有のプロファイルが見つからなくなると、同じファイルを同じオプションで
+# 検査した結果が場所によって変わる。
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || REPO_ROOT=""
+
+project_base() {
+    if [ -n "${CLAUDE_PROJECT_DIR:-}" ]; then
+        printf '%s' "$CLAUDE_PROJECT_DIR"
+    elif [ -n "$REPO_ROOT" ]; then
+        printf '%s' "$REPO_ROOT"
+    else
+        printf '%s' "."
+    fi
+}
 
 # ---- 文字列の操作 ----
 #
@@ -178,12 +221,20 @@ resolve_max_len() {
 
     if [ -n "$PROFILE_PATH" ]; then
         [ -f "$PROFILE_PATH" ] || die "文書種別プロファイルが見つかりません: $PROFILE_PATH"
+        [ -r "$PROFILE_PATH" ] || die "文書種別プロファイルを読めません: $PROFILE_PATH"
         chain+=("$PROFILE_PATH")
     else
-        local project_profile="${CLAUDE_PROJECT_DIR:-.}/.claude/writing/type-profiles.md"
-        [ -f "$project_profile" ] && chain+=("$project_profile")
+        local project_profile
+        project_profile="$(project_base)/.claude/writing/type-profiles.md"
+        if [ -f "$project_profile" ]; then
+            [ -r "$project_profile" ] || die "文書種別プロファイルを読めません: $project_profile"
+            chain+=("$project_profile")
+        fi
     fi
-    [ -f "$DEFAULT_PROFILE" ] && chain+=("$DEFAULT_PROFILE")
+    if [ -f "$DEFAULT_PROFILE" ]; then
+        [ -r "$DEFAULT_PROFILE" ] || die "同梱の文書種別プロファイルを読めません: $DEFAULT_PROFILE"
+        chain+=("$DEFAULT_PROFILE")
+    fi
 
     local path want
     for want in "$DOC_TYPE" "汎用"; do
@@ -231,6 +282,8 @@ PROFILE_VALUE=""
 profile_lookup() {
     local path="$1" want="$2"
     PROFILE_VALUE=""
+
+    [ -r "$path" ] || die "文書種別プロファイルを読めません: $path"
 
     local line col=-1 idx digits value pending=0
     local -a header=()
@@ -281,7 +334,6 @@ profile_lookup() {
         digits="${value//[^0-9]/}"
         [ -n "$digits" ] ||
             die "文書種別プロファイルの一文長の上限に数値がありません: $path（種別 $want、値「$value」）"
-        # 先頭の 0 を落として10進として解釈する
         digits="$((10#$digits))"
         if [ "$digits" -lt "$MIN_ACCEPTED_LEN" ] || [ "$digits" -gt "$MAX_ACCEPTED_LEN" ]; then
             die "文書種別プロファイルの一文長の上限が想定の範囲を外れています: $path（種別 $want、値 $digits）"
@@ -311,25 +363,51 @@ mask_codespans() {
     MASKED="$out$t"
 }
 
-# 表示に現れない記法の記号を落とす。字数はこの結果に対して数える。
-DISPLAY=""
-display_text() {
+# 表示に現れない記法の記号を落とす。インラインコードの内側は対象にしない。コードと
+# して書かれた記号は読み手の画面に現れるためである。
+STRIPPED=""
+strip_markup() {
     local s="$1"
-    # リンク記法は表示テキストだけを残す。置換のたびに角括弧と丸括弧の分だけ縮むため
-    # 必ず停止する。
+    # 置換のたびに角括弧と丸括弧の分だけ縮むため、いずれの繰り返しも必ず停止する。
     while [[ "$s" =~ $LINK_RE ]]; do
         s="${s/"${BASH_REMATCH[0]}"/"${BASH_REMATCH[1]}"}"
     done
+    while [[ "$s" =~ $REFLINK_RE ]]; do
+        s="${s/"${BASH_REMATCH[0]}"/"${BASH_REMATCH[1]}"}"
+    done
+    local m
+    for m in "${EMPHASIS_MARKS[@]}"; do
+        s="${s//"$m"/}"
+    done
+    # 対を成さないバッククォートはコードスパンを作らないが、記法の記号として数えない。
     s="${s//\`/}"
-    s="${s//\*\*/}"
-    s="${s//__/}"
-    DISPLAY="$s"
+    STRIPPED="$s"
+}
+
+DISPLAY=""
+display_text() {
+    local s="$1" out="" pre rest body
+    while [[ "$s" == *'`'*'`'* ]]; do
+        pre="${s%%\`*}"
+        rest="${s#*\`}"
+        body="${rest%%\`*}"
+        s="${rest#*\`}"
+        strip_markup "$pre"
+        # 囲みの2字だけを除き、中身はそのまま数える。
+        out="$out$STRIPPED$body"
+    done
+    strip_markup "$s"
+    DISPLAY="$out$STRIPPED"
 }
 
 # ---- 段落の抽出 ----
 #
 # 検査の単位は段落である。行の切れ目で文を切ると、1つの長い文が短い文の並びとして
-# 通ってしまう。コードブロック・見出し・表・引用・文書冒頭のメタデータは対象から外す。
+# 通ってしまう。コードブロック・見出し・表・引用・冒頭のメタデータ・注釈は対象から外す。
+#
+# 囲みの範囲は先に全行を走査して決める。開いた記号を見た時点でトグルすると、閉じない
+# 記号1つで以降がファイル末尾まで黙って未検査になる。条文は「囲まれた範囲」「挟まれた
+# 範囲」と定めており、閉じない開き記号は範囲を成さない。
 
 PARA_TEXT=()
 PARA_FIRST=()
@@ -343,9 +421,93 @@ collect_paragraphs() {
     PARA_LAST=()
     PARA_OFFSETS=()
 
-    local buf="" buf_first=0 buf_last=0 buf_offsets=""
-    local in_fence=0 in_front=0 lineno=0 line s
+    [ -r "$file" ] || die "検査対象を読めません: $file"
 
+    local -a lines=()
+    local line
+    while IFS= read -r line || [ -n "$line" ]; do
+        lines+=("$line")
+    done <"$file"
+
+    local n="${#lines[@]}"
+    [ "$n" -gt 0 ] || return 0
+
+    local -a skip=()
+    local i j k
+    for ((i = 0; i < n; i++)); do skip[i]=0; done
+
+    # 冒頭のメタデータ。閉じる区切り線があるときだけ範囲を成す。
+    trim "${lines[0]}"
+    if [ "$TRIMMED" = "$FRONT_MATTER_MARK" ]; then
+        for ((j = 1; j < n; j++)); do
+            trim "${lines[j]}"
+            if [ "$TRIMMED" = "$FRONT_MATTER_MARK" ]; then
+                for ((k = 0; k <= j; k++)); do skip[k]=1; done
+                break
+            fi
+        done
+    fi
+
+    # フェンスで囲まれたコードブロック。開いた記号と同じ種類で閉じたときだけ範囲を成す。
+    local marker close
+    i=0
+    while [ "$i" -lt "$n" ]; do
+        if [ "${skip[i]}" -eq 1 ]; then
+            i=$((i + 1))
+            continue
+        fi
+        trim "${lines[i]}"
+        marker=""
+        case "$TRIMMED" in
+            '```'*) marker='```' ;;
+            '~~~'*) marker='~~~' ;;
+        esac
+        if [ -n "$marker" ]; then
+            close=-1
+            for ((j = i + 1; j < n; j++)); do
+                trim "${lines[j]}"
+                case "$TRIMMED" in
+                    "$marker"*)
+                        close="$j"
+                        break
+                        ;;
+                esac
+            done
+            if [ "$close" -ge 0 ]; then
+                for ((k = i; k <= close; k++)); do skip[k]=1; done
+                i=$((close + 1))
+                continue
+            fi
+        fi
+        i=$((i + 1))
+    done
+
+    # 読み手の画面に現れない注釈。閉じるときだけ範囲を成す。
+    i=0
+    while [ "$i" -lt "$n" ]; do
+        if [ "${skip[i]}" -eq 1 ]; then
+            i=$((i + 1))
+            continue
+        fi
+        trim "${lines[i]}"
+        if [[ "$TRIMMED" == '<!--'* ]]; then
+            close=-1
+            for ((j = i; j < n; j++)); do
+                if [[ "${lines[j]}" == *'-->'* ]]; then
+                    close="$j"
+                    break
+                fi
+            done
+            if [ "$close" -ge 0 ]; then
+                for ((k = i; k <= close; k++)); do skip[k]=1; done
+                i=$((close + 1))
+                continue
+            fi
+        fi
+        i=$((i + 1))
+    done
+
+    local buf="" buf_first=0 buf_last=0 buf_offsets="" s lineno
     flush() {
         if [ -n "$buf" ]; then
             PARA_TEXT+=("$buf")
@@ -359,37 +521,24 @@ collect_paragraphs() {
         buf_offsets=""
     }
 
-    while IFS= read -r line || [ -n "$line" ]; do
-        lineno=$((lineno + 1))
+    for ((i = 0; i < n; i++)); do
+        lineno=$((i + 1))
+        if [ "${skip[i]}" -eq 1 ]; then
+            flush
+            continue
+        fi
+        line="${lines[i]}"
         trim "$line"
         s="$TRIMMED"
-
-        if [ "$lineno" -eq 1 ] && [ "$s" = "---" ]; then
-            in_front=1
-            continue
-        fi
-        if [ "$in_front" -eq 1 ]; then
-            [ "$s" = "---" ] && in_front=0
-            continue
-        fi
-
-        case "$s" in
-            '```'* | '~~~'*)
-                in_fence=$((1 - in_fence))
-                flush
-                continue
-                ;;
-        esac
-        [ "$in_fence" -eq 0 ] || continue
 
         if [ -z "$s" ]; then
             flush
             continue
         fi
 
-        # 4字下げのコードブロック。段落の途中の行は継続行であってコードではないため、
-        # 直前が空行など段落の切れ目である場合に限る。
-        if [ -z "$buf" ] && [[ "$line" == '    '* ]]; then
+        # 字下げのコードブロック。段落の途中の行は継続行であってコードではないため、
+        # 直前が段落の切れ目である場合に限る。字下げは半角4字またはタブ1字とする。
+        if [ -z "$buf" ] && { [[ "$line" == '    '* ]] || [[ "$line" == $'\t'* ]]; }; then
             continue
         fi
 
@@ -399,12 +548,10 @@ collect_paragraphs() {
             flush
             continue
         fi
-        case "$s" in
-            \|* | '>'*)
-                flush
-                continue
-                ;;
-        esac
+        if [[ "$s" =~ $TABLE_ROW_RE ]] || [[ "$s" =~ $QUOTE_ROW_RE ]]; then
+            flush
+            continue
+        fi
 
         # 箇条書きと番号付きの項目は、先頭のマーカーを除いた残りを1つの段落として扱う。
         if [[ "$s" =~ $LIST_RE ]]; then
@@ -429,7 +576,7 @@ collect_paragraphs() {
             buf="$buf$s"
         fi
         buf_last="$lineno"
-    done <"$file"
+    done
 
     flush
     unset -f flush
@@ -452,10 +599,6 @@ line_for_offset() {
 }
 
 # ---- 文への分割 ----
-#
-# 句点・疑問符・感嘆符で切る。ただし括弧の内側の区切りでは切らない。インラインコードの
-# 内側の記号は区切りにも括弧の数え上げにも使わない。括弧の対応が段落の終わりまでに
-# 閉じない場合は、段落の終わりで打ち切る。
 
 SENTS=()
 SENT_OFF=()
@@ -531,7 +674,6 @@ split_sentences() {
 # ---- 検出 ----
 
 VIOLATIONS=0
-CANDIDATES=0
 
 report() {
     printf '%s:%s: [%s] %s\n' "$1" "$2" "$3" "$4"
@@ -542,7 +684,6 @@ report() {
 # 終了コードへ落とすと、書き手はレビューの確定を待たずに書き換える側へ倒れる。
 note() {
     printf '%s:%s: [候補: %s] %s\n' "$1" "$2" "$3" "$4"
-    CANDIDATES=$((CANDIDATES + 1))
 }
 
 excerpt() {
@@ -580,12 +721,16 @@ check_identifiers() {
         after="$rest"
         after="${after#"${after%%[![:space:]]*}"}"
         # 骨格位置（主語・目的語）にあるものだけを挙げる。
-        case "$after" in
-            'は'* | 'が'* | 'を'*)
-                note "$file" "$line" "不透明な識別子" \
-                    "$id が骨格位置にある。参照先を開かずに読めるかを確認: $(excerpt "$sentence")"
-                ;;
-        esac
+        local particle
+        for particle in "${SKELETON_PARTICLES[@]}"; do
+            case "$after" in
+                "$particle"*)
+                    note "$file" "$line" "不透明な識別子" \
+                        "$id が骨格位置にある。参照先を開かずに読めるかを確認: $(excerpt "$sentence")"
+                    break
+                    ;;
+            esac
+        done
     done
     return 0
 }
@@ -595,6 +740,7 @@ check_identifiers() {
 # 行の範囲が検査対象と交差するかを見る。
 range_in_scope() {
     local from="$1" to="$2" scope="$3" ln
+    [ "$scope" = "$SCOPE_ALL" ] && return 0
     for ((ln = from; ln <= to; ln++)); do
         case " $scope " in
             *" $ln "*) return 0 ;;
@@ -605,7 +751,7 @@ range_in_scope() {
 
 check_file() {
     # file は報告に用いる名前、source は実際に読むパス、scope は検査対象の
-    # 行番号の集合（空なら全行）。差分モードでは報告名がリポジトリ相対、
+    # 行番号の集合（SCOPE_ALL なら全行）。差分モードでは報告名がリポジトリ相対、
     # 読み取りパスが絶対になるため、両者を分けて受け取る。
     local file="$1" source="$2" scope="$3"
     local i n_para
@@ -616,7 +762,7 @@ check_file() {
 
     for ((i = 0; i < n_para; i++)); do
         # 段落が検査範囲とまったく交差しなければ、文へ分ける手前で飛ばす。
-        if [ -n "$scope" ] && ! range_in_scope "${PARA_FIRST[i]}" "${PARA_LAST[i]}" "$scope"; then
+        if ! range_in_scope "${PARA_FIRST[i]}" "${PARA_LAST[i]}" "$scope"; then
             continue
         fi
 
@@ -635,7 +781,7 @@ check_file() {
             # 判定の単位は文である。段落を単位にすると、同じ段落にある触れていない文の
             # 既存の違反まで赤くなり、既定を差分にした理由（既存文書を1行直しただけで
             # 既存の違反が赤になることを避ける）が段落の内側で崩れる。
-            if [ -n "$scope" ] && ! range_in_scope "$start_line" "$end_line" "$scope"; then
+            if ! range_in_scope "$start_line" "$end_line" "$scope"; then
                 continue
             fi
 
@@ -651,40 +797,58 @@ check_file() {
 # 既定の入力単位が差分なのは、規約の適用範囲が新規起草物と編集で触れた箇所に限られる
 # ためである。ファイル全体を既定にすると、既存文書を1行直しただけで既存の違反が赤になる。
 declare -A CHANGED_LINES=()
-REPO_ROOT=""
+BASE_COMMIT=""
 
 # ファイルの列挙とハンクの取得を分ける。差分本文の `+++` 行からファイル名を読むと、
 # diff.noprefix ・ diff.mnemonicPrefix の設定下で接頭辞が変わり、非 ASCII のファイル名は
 # core.quotePath により引用されるため、いずれの場合も対象を見失ったまま成功を返す。
 collect_changed_lines() {
-    REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" ||
+    [ -n "$REPO_ROOT" ] ||
         die "git リポジトリの中ではありません（ファイル全体を検査するには --all を指定してください）"
-    git rev-parse --verify --quiet "$DIFF_BASE" >/dev/null ||
-        die "差分の基点を解決できません: $DIFF_BASE"
+
+    # commit を指しているかまで確かめる。実在の確認だけでは、blob や tree を渡された
+    # ときに後段の git diff が使い方の誤りで落ち、その失敗が握り潰されて全件0になる。
+    local resolved
+    resolved="$(git rev-parse --verify --quiet "${DIFF_BASE}^{commit}" 2>/dev/null)" ||
+        die "差分の基点を commit として解決できません: $DIFF_BASE"
+
+    if [ "$TWO_DOT" -eq 1 ]; then
+        BASE_COMMIT="$resolved"
+    else
+        # 分岐点を採る。2点間差分にすると、基点のブランチが進んだ時点で、このブランチが
+        # 触れていないファイルまで報告される。規約の適用範囲は編集で触れた箇所である。
+        BASE_COMMIT="$(git merge-base "$resolved" HEAD 2>/dev/null)" || BASE_COMMIT="$resolved"
+        [ -n "$BASE_COMMIT" ] || BASE_COMMIT="$resolved"
+    fi
 
     local f
     local -a tracked=() untracked=()
 
     while IFS= read -r -d '' f; do
         [ -n "$f" ] && tracked+=("$f")
-    done < <(git -c core.quotePath=false diff --name-only -z --diff-filter=d \
-        "$DIFF_BASE" -- ${PATHS[@]+"${PATHS[@]}"} 2>/dev/null)
+    done < <(git -C "$REPO_ROOT" -c core.quotePath=false diff --name-only -z --diff-filter=d \
+        "$BASE_COMMIT" -- ${PATHS[@]+"${PATHS[@]}"} 2>/dev/null)
 
     # 未追跡のファイルも対象に含める。規約の適用範囲の筆頭は新しく起草する文書であり、
-    # 追跡される前が最も検査したい時点である。
+    # 追跡される前が最も検査したい時点である。列挙はリポジトリのルートから行う。
+    # 作業ディレクトリから行うと、その配下だけが対象になり追跡分と射程が揃わない。
     while IFS= read -r -d '' f; do
         [ -n "$f" ] && untracked+=("$f")
-    done < <(git -c core.quotePath=false ls-files --others --exclude-standard --full-name -z \
-        -- ${PATHS[@]+"${PATHS[@]}"} 2>/dev/null)
+    done < <(git -C "$REPO_ROOT" -c core.quotePath=false ls-files --others --exclude-standard \
+        --full-name -z -- ${PATHS[@]+"${PATHS[@]}"} 2>/dev/null)
 
     for f in ${tracked[@]+"${tracked[@]}"}; do
         case "$f" in *.md) ;; *) continue ;; esac
-        CHANGED_LINES["$f"]="$(hunk_lines "$f")"
+        local acc
+        acc="$(hunk_lines "$f")"
+        # 追加行がゼロの差分（純削除・改名・属性変更）は、触れた文が無いことを意味する。
+        # ここで全行検査へ落とすと、触れていない文の既存の違反が赤くなる。
+        [ -n "$acc" ] || continue
+        CHANGED_LINES["$f"]="$acc"
     done
-    # 未追跡のファイルは全体が新しいため、行を絞らず全体を検査する。
     for f in ${untracked[@]+"${untracked[@]}"}; do
         case "$f" in *.md) ;; *) continue ;; esac
-        CHANGED_LINES["$f"]=""
+        CHANGED_LINES["$f"]="$SCOPE_ALL"
     done
     return 0
 }
@@ -710,12 +874,21 @@ hunk_lines() {
                 done
                 ;;
         esac
-    done < <(git -C "$REPO_ROOT" diff --unified=0 --no-color "$DIFF_BASE" \
+    done < <(git -C "$REPO_ROOT" diff --unified=0 --no-color "$BASE_COMMIT" \
         -- ":(top,literal)$f" 2>/dev/null)
     printf '%s' "$acc"
 }
 
 # ---- 主処理 ----
+
+# 対象は Markdown に限る。明示的に渡されたファイルが Markdown でなければ、黙って
+# 飛ばさずに止める。飛ばすと、検査していないことが違反なしと区別できない。
+assert_markdown() {
+    case "$1" in
+        *.md) ;;
+        *) die "Markdown ではありません: $1" ;;
+    esac
+}
 
 resolve_max_len
 
@@ -724,18 +897,15 @@ if [ "$SCAN_ALL" -eq 1 ]; then
         die "--all にはパスの指定が必要です。既存文書の一括是正は規約の範囲外であり、対象を明示させます"
     for p in "${PATHS[@]}"; do
         [ -f "$p" ] || die "ファイルが見つかりません: $p"
-        # 対象は Markdown に限る。差分モードと同じ境界を保つ。黙って飛ばすと、
-        # 明示的に渡したファイルが検査されないまま成功を返す。
-        case "$p" in
-            *.md) ;;
-            *) die "Markdown ではありません: $p" ;;
-        esac
-        check_file "$p" "$p" ""
+        assert_markdown "$p"
+        check_file "$p" "$p" "$SCOPE_ALL"
     done
 else
     # 一致するものが無いパスは、検査していないことを違反なしと区別できないため弾く。
     for p in ${PATHS[@]+"${PATHS[@]}"}; do
         [ -e "$p" ] || die "パスが見つかりません: $p"
+        # ディレクトリはパススペックとして扱う。ファイルを名指ししたときだけ拡張子を見る。
+        [ -f "$p" ] && assert_markdown "$p"
     done
     collect_changed_lines
     if [ "${#CHANGED_LINES[@]}" -gt 0 ]; then

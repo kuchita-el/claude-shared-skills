@@ -2,9 +2,14 @@
 # 日本語文書の機械検査（plugins/writing/scripts/lint-ja.sh）のテスト。
 #
 # scripts/fixtures/lint-ja/{valid,invalid,candidate}/*.md を検査し、valid は exit 0 かつ
-# 無出力、invalid は exit 1 と期待メッセージ部分一致、candidate は exit 0 と候補の出力を
-# 検査する。加えて、種別プロファイルの解決・既定の入力単位（差分）・判定の単位（文）・
-# 入力が不正な場合の exit 2 を検査する。
+# 無出力、invalid は exit 1 と期待診断、candidate は exit 0 と候補の出力を検査する。
+# 加えて、種別プロファイルの解決・既定の入力単位（差分）・判定の単位（文）・報告する
+# 行番号・入力が不正な場合の exit 2 を検査する。
+#
+# 診断は**標準出力**に出ることを検査する。bats の `run` は既定で標準エラーを標準出力へ
+# 併合するため、`$output` だけを見ると出力先を標準エラーへ移す退行が検出できない。
+# 検査器の出力を `| grep` や commit 前ゲートへ繋ぐ経路がまとめて壊れるため、
+# `run --separate-stderr` で両者を分けて見る。
 #
 # fixture 名は静的な配列として列挙する。ディレクトリを走査して動的に列挙すると
 # 登録ケース数が入力で変動し、報告総数が固定でなくなる（lint-domain-doc.bats と同じ方針）。
@@ -13,10 +18,10 @@
 # したまま単体のファイルを渡すと、その fixture が差分に現れないため常に緑になり、
 # 判定が素通りする。差分そのものの挙動は一時リポジトリを作る面が検査する。
 #
-# 種別プロファイルはすべての面で明示的に渡す。省略すると解決先が作業ディレクトリに
-# 従属し、本リポジトリの `.claude/writing/type-profiles.md` を読む面と同梱既定を読む面へ
-# 割れる。現在はどちらも100字に収束しているため露見しないが、プロジェクト側の値を
-# 1つ変えるだけで実装を触らずに複数のケースが落ちる。
+# 種別プロファイルは、それ自体を対象とする面を除いて明示的に渡す。省略すると解決先が
+# 作業ディレクトリに従属し、本リポジトリの `.claude/writing/type-profiles.md` を読む面と
+# 同梱既定を読む面へ割れる。ただし省略経路そのものにも面を1つ置く。全面で明示すると、
+# プロジェクト固有プロファイルの解決という実運用の既定経路が一度も走らなくなる。
 
 load 'helpers/common'
 
@@ -24,8 +29,6 @@ SUT="$REPO_ROOT/plugins/writing/scripts/lint-ja.sh"
 LINT_FIXTURES="$REPO_ROOT/scripts/fixtures/lint-ja"
 BUNDLED_PROFILE="$REPO_ROOT/plugins/writing/references/document-type-profiles.md"
 
-# CORPORA は使わない。共通の setup_file はオプション無しで検査器を起動するため、
-# `--all` を伴う本スイートの起動形と合わない。各ケース内で lint を直接呼ぶ。
 CORPORA=()
 PRECONDITION_PATHS=(
     "$LINT_FIXTURES/valid"
@@ -45,30 +48,51 @@ VALID_FIXTURES=(
     "07-indented-code-ignored.md"
     "08-sentence-delimiters.md"
     "09-codespan-symbols-inert.md"
+    "10-exactly-at-limit.md"
+    "11-table-and-quote-ignored.md"
+    "12-front-matter-ignored.md"
+    "13-list-marker-stripped.md"
+    "14-emphasis-not-counted.md"
+    "15-reference-link-not-counted.md"
 )
 
-# <ファイル名>|<出力に含まれることを期待する文字列（コロン区切りで AND 検査）>
+# <ファイル名>|<期待する違反のラベル>
+# 負例は1つの型だけを突く。期待しないラベルの違反が混ざっていれば失敗とする。
 INVALID_FIXTURES=(
     "01-sentence-too-long.md|一文の長さ"
     "02-sentence-across-lines.md|一文の長さ"
     "03-paren-inner-period.md|一文の長さ"
     "04-issue-number-at-line-start.md|一文の長さ"
+    "05-bracket-pairs-inner-period.md|一文の長さ"
+    "06-halfwidth-marks-not-delimiters.md|一文の長さ"
+    "07-line-number.md|一文の長さ"
+    "08-codespan-markup-counted.md|一文の長さ"
 )
 
+# <ファイル名>|<候補の行に含まれることを期待する文字列>
 # 候補は違反ではない。出力は出るが exit 0 で終わる。
 CANDIDATE_FIXTURES=(
-    "01-bare-identifier.md|候補: 不透明な識別子:ADR-202606040737-01"
-    "02-identifier-in-inline-code-bare.md|候補: 不透明な識別子:ADR-202606040737-01"
-    "03-issue-number.md|候補: 不透明な識別子:#684"
+    "01-bare-identifier.md|ADR-202606040737-01"
+    "02-identifier-in-inline-code-bare.md|ADR-202606040737-01"
+    "03-issue-number.md|#684"
+    "04-particle-ga.md|ADR-202606040737-01"
+    "05-particle-wo.md|ADR-202606040737-01"
 )
+
+CANDIDATE_LABEL="[候補: 不透明な識別子]"
 
 setup_file() {
     common_setup_file
 }
 
-# 種別プロファイルを明示して検査器を起動する。
+# 種別プロファイルを明示して検査器を起動する。標準出力と標準エラーを分けて受け取る。
 lint() {
-    run bash "$SUT" --profile "$BUNDLED_PROFILE" "$@" </dev/null
+    run --separate-stderr bash "$SUT" --profile "$BUNDLED_PROFILE" "$@" </dev/null
+}
+
+# 出力から候補の行を除いた残り（＝違反の行）を返す。
+violation_lines() {
+    printf '%s\n' "$1" | grep -v -F "$CANDIDATE_LABEL" | grep -v '^$' || true
 }
 
 # fixture を静的に列挙する以上、ディレクトリへ足しただけのファイルは登録されるまで
@@ -92,22 +116,6 @@ collect_fixture_coverage() {
     return 0
 }
 
-# 期待文字列（コロン区切り）がすべて出力に含まれるかを見る。
-output_has_all() {
-    local patterns="$1" p saved_ifs="$IFS"
-    MISSING_PATTERN=""
-    IFS=':'
-    for p in $patterns; do
-        if [[ "$output" != *"$p"* ]]; then
-            MISSING_PATTERN="$p"
-            IFS="$saved_ifs"
-            return 1
-        fi
-    done
-    IFS="$saved_ifs"
-    return 0
-}
-
 # 一時 git リポジトリを作る。差分を入力単位とする検査は git を要するため、
 # 差分まわりの面はこの上で行う。コミット者情報は環境に依存させない。
 init_temp_repo() {
@@ -116,6 +124,9 @@ init_temp_repo() {
     git -C "$dir" init -q -b main
     git -C "$dir" config user.email "test@example.invalid"
     git -C "$dir" config user.name "lint-ja test"
+    # 署名は利用者の環境設定に依存し、鍵や署名エージェントが無い環境では commit が
+    # 落ちる。検査の対象は差分の解釈であって署名ではないため、一時リポジトリでは切る。
+    git -C "$dir" config commit.gpgsign false
 }
 
 commit_all() {
@@ -138,18 +149,19 @@ run_sut_in() {
     assert_preconditions_met
 }
 
-@test "面①: valid fixture がいずれも exit 0 かつ無出力" {
+@test "面①: valid fixture がいずれも exit 0 かつ標準出力・標準エラーとも空" {
     collect_init
 
     local base label
     for base in "${VALID_FIXTURES[@]}"; do
         label="valid/$base (exit=0, 無出力)"
         lint --all "$LINT_FIXTURES/valid/$base"
-        if [ "$status" -eq 0 ] && [ -z "$output" ]; then
+        if [ "$status" -eq 0 ] && [ -z "$output" ] && [ -z "$stderr" ]; then
             collect_ok "$label"
         else
             # 1件目で打ち切らない。壊れた fixture が複数あれば1回の実行で全件出す。
-            collect_fail "$label" "expected exit=0 and empty output, got=$status / output: $output"
+            collect_fail "$label" \
+                "expected exit=0 with no output, got=$status / stdout: $output / stderr: $stderr"
         fi
     done
 
@@ -158,23 +170,41 @@ run_sut_in() {
     collect_finish
 }
 
-@test "面②: invalid fixture が期待診断つきで exit 1" {
+@test "面②: invalid fixture が期待する型の違反だけを標準出力へ出して exit 1" {
     collect_init
 
-    local entry base patterns label registered=""
+    local entry base want label lines other registered=""
     for entry in "${INVALID_FIXTURES[@]}"; do
         base="${entry%%|*}"
-        patterns="${entry#*|}"
+        want="${entry#*|}"
         registered="$registered $base"
-        label="invalid/$base (exit=1, msg matched)"
 
         lint --all "$LINT_FIXTURES/invalid/$base"
 
-        if [ "$status" -eq 1 ] && output_has_all "$patterns"; then
+        label="invalid/$base (exit=1)"
+        if [ "$status" -eq 1 ]; then
             collect_ok "$label"
         else
-            collect_fail "$label" \
-                "expected exit=1 with \"$patterns\", got exit=$status (missing=\"$MISSING_PATTERN\") / output: $output"
+            collect_fail "$label" "expected exit=1, got=$status / stdout: $output / stderr: $stderr"
+        fi
+
+        # 診断は標準出力へ出る。標準エラーへ移す退行をここで捕まえる。
+        label="invalid/$base (診断が標準出力に出る)"
+        if [[ "$output" == *"[$want]"* ]]; then
+            collect_ok "$label"
+        else
+            collect_fail "$label" "標準出力に [$want] が無い / stdout: $output / stderr: $stderr"
+        fi
+
+        # 負例は1つの型だけを突く。別の型の違反が混ざっていれば、その負例は意図した
+        # 条件で赤くなっているとは限らない。
+        label="invalid/$base (期待しない型の違反が出ていない)"
+        lines="$(violation_lines "$output")"
+        other="$(printf '%s\n' "$lines" | grep -v -F "[$want]" | grep -v '^$' || true)"
+        if [ -z "$other" ]; then
+            collect_ok "$label"
+        else
+            collect_fail "$label" "期待しない違反が出ている: $other"
         fi
     done
 
@@ -183,25 +213,27 @@ run_sut_in() {
     collect_finish
 }
 
-@test "面③: candidate fixture が候補を出しつつ exit 0" {
+@test "面③: candidate fixture が候補を標準出力へ出しつつ exit 0" {
     collect_init
 
-    local entry base patterns label registered=""
+    local entry base want label registered=""
     for entry in "${CANDIDATE_FIXTURES[@]}"; do
         base="${entry%%|*}"
-        patterns="${entry#*|}"
+        want="${entry#*|}"
         registered="$registered $base"
-        label="candidate/$base (exit=0, 候補が出る)"
 
         lint --all "$LINT_FIXTURES/candidate/$base"
 
         # 候補は違反ではない。終了コード1へ寄与させると、確定判断を doc-reviewer が
         # 担う項目のために書き手が commit 前に書き換える側へ倒れる。
-        if [ "$status" -eq 0 ] && output_has_all "$patterns"; then
+        label="candidate/$base (exit=0)"
+        collect_rc 0 "$label"
+
+        label="candidate/$base (候補が標準出力に出る)"
+        if [[ "$output" == *"$CANDIDATE_LABEL"* ]] && [[ "$output" == *"$want"* ]]; then
             collect_ok "$label"
         else
-            collect_fail "$label" \
-                "expected exit=0 with \"$patterns\", got exit=$status (missing=\"$MISSING_PATTERN\") / output: $output"
+            collect_fail "$label" "標準出力に候補が無い / stdout: $output / stderr: $stderr"
         fi
     done
 
@@ -210,29 +242,41 @@ run_sut_in() {
     collect_finish
 }
 
-@test "面④: 種別プロファイルの一文長の上限が共通規約の既定より優先する" {
+@test "面④: 報告する行番号が、段落を連結した後も元の行を指す" {
+    collect_init
+
+    # 07-line-number.md は見出し・箇条書き・短い段落を挟んだうえで、7行目から
+    # 始まる3行の段落に違反を置いてある。段落内オフセットから行番号を逆引きする
+    # 処理を通らないと、この値は出ない。
+    lint --all "$LINT_FIXTURES/invalid/07-line-number.md"
+    collect_rc 1 "行番号の fixture が exit 1"
+    collect_contains "$output" "07-line-number.md:7:" "違反が7行目として報告される"
+    collect_not_contains "$output" "07-line-number.md:1:" "見出しの行番号で報告されない"
+    collect_not_contains "$output" "07-line-number.md:9:" "段落の最終行で報告されない"
+
+    collect_finish
+}
+
+@test "面⑤: 種別プロファイルの一文長の上限が共通規約の既定より優先する" {
     collect_init
 
     local doc="$LINT_FIXTURES/profile/between-60-and-100.md"
     local profile="$LINT_FIXTURES/profile/type-profiles.md"
 
-    # 既定（汎用・上限100字）では通る。
     run bash "$SUT" --all --profile "$profile" "$doc" </dev/null
     collect_rc 0 "汎用プロファイルでは exit 0"
 
-    # 種別「規約」（上限60字）では一文の長さで落ちる。
     run bash "$SUT" --all --profile "$profile" --type 規約 "$doc" </dev/null
     collect_rc 1 "種別 規約 では exit 1"
     collect_contains "$output" "一文の長さ" "種別 規約 で一文の長さが報告される"
 
-    # 未登録の種別は汎用へフォールバックする。黙って落ちない。
     run bash "$SUT" --all --profile "$profile" --type 存在しない種別 "$doc" </dev/null
     collect_rc 0 "未登録の種別は汎用へフォールバックして exit 0"
 
     collect_finish
 }
 
-@test "面⑤: 上限の列を位置ではなくヘッダのセル名で特定する" {
+@test "面⑥: 上限の列を位置ではなくヘッダのセル名で特定する" {
     collect_init
 
     # 表へ「備考」の列を1つ足す。上限を最後の列という位置で拾うと、備考に書いた
@@ -252,7 +296,7 @@ run_sut_in() {
     collect_finish
 }
 
-@test "面⑥: 種別が引けないとき同梱の既定プロファイルへ連鎖する" {
+@test "面⑦: 種別が引けないとき同梱の既定プロファイルへ連鎖する" {
     collect_init
 
     # 同梱既定の値が効いていることを観測するには、既定の汎用と共通規約の補則の
@@ -286,17 +330,45 @@ run_sut_in() {
     collect_finish
 }
 
-@test "面⑦: 既定の入力単位が差分であり、ファイル全体の検査は --all でのみ行われる" {
+@test "面⑧: --profile を省略するとプロジェクト固有のプロファイルを解決する" {
+    collect_init
+
+    # 実運用の既定経路である。全面で --profile を明示すると、この解決が一度も走らない。
+    # 解決の基点は作業ディレクトリではなくリポジトリのルートであることも併せて見る。
+    local repo="$BATS_TEST_TMPDIR/implicit-profile"
+    init_temp_repo "$repo"
+    mkdir -p "$repo/.claude/writing" "$repo/sub"
+    {
+        printf '| 種別 | 節構成 | 読み手の既定 | 一文長の上限 |\n'
+        printf '|---|---|---|---|\n'
+        printf '| 汎用 | 定めない | 一般読者 | 60字 |\n'
+    } >"$repo/.claude/writing/type-profiles.md"
+    printf '%s\n' "$(printf 'あ%.0s' $(seq 61))。" >"$repo/doc.md"
+
+    pushd "$repo" >/dev/null || return 1
+    run env -u CLAUDE_PROJECT_DIR bash "$SUT" --all doc.md </dev/null
+    popd >/dev/null || return 1
+    collect_rc 1 "ルートから: プロジェクト固有の60字が効く"
+    collect_contains "$output" "上限 60字" "ルートから: 解決された上限が60字である"
+
+    pushd "$repo/sub" >/dev/null || return 1
+    run env -u CLAUDE_PROJECT_DIR bash "$SUT" --all ../doc.md </dev/null
+    popd >/dev/null || return 1
+    collect_rc 1 "サブディレクトリから: 同じ上限が効く"
+    collect_contains "$output" "上限 60字" "サブディレクトリから: 解決された上限が60字である"
+
+    collect_finish
+}
+
+@test "面⑨: 既定の入力単位が差分であり、ファイル全体の検査は --all でのみ行われる" {
     collect_init
 
     local repo="$BATS_TEST_TMPDIR/diff-default"
     init_temp_repo "$repo"
 
-    # 既に違反を含む文書をコミットしておく（既存文書に相当する）。
     cp "$LINT_FIXTURES/invalid/01-sentence-too-long.md" "$repo/doc.md"
     commit_all "$repo" "既存の違反を含む文書"
 
-    # 触れたのは違反を含まない段落だけにする。
     printf '\n新しく足した段落はいずれの検出項目にも当たらない。\n' >>"$repo/doc.md"
 
     run_sut_in "$repo" doc.md
@@ -309,13 +381,12 @@ run_sut_in() {
     collect_finish
 }
 
-@test "面⑧: 変更行を含む文をファイル本体から復元してから判定する" {
+@test "面⑩: 変更行を含む文をファイル本体から復元してから判定する" {
     collect_init
 
     local repo="$BATS_TEST_TMPDIR/restore"
     init_temp_repo "$repo"
 
-    # 1つの文を3行へ分けて置く。各行は単独では上限に収まる。
     {
         printf '# 復元の検査\n\n'
         printf '検査の対象となる文書は、書き手が書いた内容をそのまま保つ形で保存されており、\n'
@@ -324,7 +395,6 @@ run_sut_in() {
     } >"$repo/doc.md"
     commit_all "$repo" "複数行にまたがる一文"
 
-    # 差分のハンクに載るのは真ん中の1行だけにする。その行は単独では上限に収まる。
     # 版に依らない形で書き換える（BSD 版の sed は -i に引数を要求する）。
     sed 's/意味を取れるかどうかを/意味を正しく取れるかどうかを/' "$repo/doc.md" >"$repo/doc.md.new"
     mv "$repo/doc.md.new" "$repo/doc.md"
@@ -336,28 +406,36 @@ run_sut_in() {
     collect_finish
 }
 
-@test "面⑨: 判定の単位は文であり、同じ段落の触れていない文は報告しない" {
+@test "面⑪: 判定の単位は文であり、触れていない文は報告しない" {
     collect_init
 
     local repo="$BATS_TEST_TMPDIR/sentence-scope"
     init_temp_repo "$repo"
 
-    # 1つの段落に2つの文を置く。1文目は上限を超え、2文目は収まる。
     local long
     long="既存の長い文であり$(printf 'あ%.0s' $(seq 120))。"
     {
         printf '# 文単位の判定\n\n'
         printf '%s\n' "$long"
         printf '同じ段落の二行目である。\n'
+        printf '\n消される行。\n'
     } >"$repo/doc.md"
     commit_all "$repo" "既存の違反を含む段落"
 
-    # 触れるのは2文目だけにする。段落を単位にすると1文目まで赤くなる。
+    # 同じ段落の別の文だけを触る。段落を単位にすると1文目まで赤くなる。
     sed 's/同じ段落の二行目である。/同じ段落の二行目を短く直した。/' "$repo/doc.md" >"$repo/doc.md.new"
     mv "$repo/doc.md.new" "$repo/doc.md"
 
     run_sut_in "$repo" doc.md
     collect_rc 0 "同じ段落にある触れていない文の既存の違反は報告しない"
+
+    # 追加行がゼロの差分（純削除）。空集合を「絞らない」と取り違えると全行検査へ落ちる。
+    git -C "$repo" checkout -q -- doc.md
+    sed '/^消される行。$/d' "$repo/doc.md" >"$repo/doc.md.new"
+    mv "$repo/doc.md.new" "$repo/doc.md"
+
+    run_sut_in "$repo" doc.md
+    collect_rc 0 "純削除だけの差分では触れていない文を報告しない"
 
     run_sut_in "$repo" --all doc.md
     collect_rc 1 "--all では同じ違反が報告される（違反自体は残っている）"
@@ -365,11 +443,12 @@ run_sut_in() {
     collect_finish
 }
 
-@test "面⑩: 未追跡の新規文書と非 ASCII のファイル名を検査する" {
+@test "面⑫: 未追跡の新規文書と非 ASCII のファイル名を検査する" {
     collect_init
 
     local repo="$BATS_TEST_TMPDIR/untracked"
     init_temp_repo "$repo"
+    mkdir -p "$repo/sub"
     printf 'seed\n' >"$repo/seed.txt"
     commit_all "$repo" "起点"
 
@@ -381,10 +460,14 @@ run_sut_in() {
     collect_rc 1 "未追跡かつ非 ASCII の名前でも検査する"
     collect_contains "$output" "一文の長さ" "未追跡の文書で一文の長さが報告される"
 
-    # 差分の接頭辞を変える設定でも見失わない。
+    # 列挙の射程はリポジトリ全体である。作業ディレクトリ配下に限ると、
+    # サブディレクトリから起動しただけでルートの未追跡文書が落ちる。
+    run_sut_in "$repo/sub"
+    collect_rc 1 "サブディレクトリから起動してもルートの未追跡文書を拾う"
+
     git -C "$repo" add -A
     git -C "$repo" commit -q -m "追加"
-    printf '\n%s\n' "$(cat "$LINT_FIXTURES/invalid/01-sentence-too-long.md" | tail -n 3 | head -n 1)" \
+    printf '\n%s\n' "$(sed -n '3p' "$LINT_FIXTURES/invalid/01-sentence-too-long.md")" \
         >>"$repo/新しい文書.md"
 
     git -C "$repo" config diff.noprefix true
@@ -400,7 +483,37 @@ run_sut_in() {
     collect_finish
 }
 
-@test "面⑪: 入力が不正なときは exit 2 で止まり、成功を返さない" {
+@test "面⑬: --base は分岐点を採り、--two-dot でのみ2点間差分になる" {
+    collect_init
+
+    local repo="$BATS_TEST_TMPDIR/merge-base"
+    init_temp_repo "$repo"
+    # 分岐する前から存在し、違反を含むファイル。作業ブランチはこれに触れない。
+    cp "$LINT_FIXTURES/invalid/01-sentence-too-long.md" "$repo/other.md"
+    commit_all "$repo" "起点"
+
+    git -C "$repo" checkout -q -b topic
+    printf '# 作業\n\n短い文である。\n' >"$repo/topic.md"
+    commit_all "$repo" "作業ブランチの変更"
+
+    # 分岐した後に基点のブランチだけが other.md を書き換える。作業ブランチの木は
+    # 分岐時点のままなので、2点間差分では触れていない行が「追加」として現れる。
+    git -C "$repo" checkout -q main
+    printf '# 短い文書\n\n短い文である。\n' >"$repo/other.md"
+    commit_all "$repo" "基点のブランチが進む"
+    git -C "$repo" checkout -q topic
+
+    run_sut_in "$repo" --base main
+    collect_rc 0 "分岐点を採るため、触れていない other.md は報告しない"
+
+    run_sut_in "$repo" --two-dot --base main
+    collect_rc 1 "--two-dot では2点間差分になり other.md が報告される"
+    collect_contains "$output" "other.md" "2点間差分では other.md が対象になる"
+
+    collect_finish
+}
+
+@test "面⑭: 入力が不正なときは exit 2 で止まり、成功を返さない" {
     collect_init
 
     local doc="$LINT_FIXTURES/valid/01-plain.md"
@@ -439,13 +552,46 @@ run_sut_in() {
     run bash "$SUT" --all --profile "$huge" "$doc" </dev/null
     collect_rc 2 "上限が想定の範囲を外れる"
 
-    # 差分モードでも、一致するものが無いパスは成功を返さない。
-    local repo="$BATS_TEST_TMPDIR/missing-path"
+    # 読めない資源は、最も強い解決の失敗である。既定へ緩めず止める。
+    local unreadable="$BATS_TEST_TMPDIR/unreadable-profile.md"
+    cp "$BUNDLED_PROFILE" "$unreadable"
+    chmod 000 "$unreadable"
+    if [ -r "$unreadable" ]; then
+        # root 実行や権限の効かないファイルシステムでは成立しない。
+        collect_skipped "読めないプロファイル" "chmod が効かない実行環境"
+    else
+        run bash "$SUT" --all --profile "$unreadable" "$doc" </dev/null
+        collect_rc 2 "読めないプロファイル"
+    fi
+    chmod 644 "$unreadable"
+
+    local unreadable_doc="$BATS_TEST_TMPDIR/unreadable.md"
+    cp "$doc" "$unreadable_doc"
+    chmod 000 "$unreadable_doc"
+    if [ -r "$unreadable_doc" ]; then
+        collect_skipped "読めない検査対象" "chmod が効かない実行環境"
+    else
+        run bash "$SUT" --all --profile "$BUNDLED_PROFILE" "$unreadable_doc" </dev/null
+        collect_rc 2 "読めない検査対象"
+    fi
+    chmod 644 "$unreadable_doc"
+
+    # 差分モードでも、一致するものが無いパスと Markdown 以外は成功を返さない。
+    local repo="$BATS_TEST_TMPDIR/bad-input"
     init_temp_repo "$repo"
     printf 'seed\n' >"$repo/seed.txt"
     commit_all "$repo" "起点"
     run_sut_in "$repo" no-such.md
     collect_rc 2 "差分モードに存在しないパス"
+
+    cp "$doc" "$repo/doc.mdx"
+    run_sut_in "$repo" doc.mdx
+    collect_rc 2 "差分モードに Markdown 以外のファイル"
+
+    # commit 以外のオブジェクトを基点に渡すと、後段の git diff が使い方の誤りで落ちる。
+    # その失敗を握り潰すと全件0になる。
+    run_sut_in "$repo" --base "HEAD:seed.txt"
+    collect_rc 2 "commit ではないオブジェクトを基点に指定"
 
     collect_finish
 }

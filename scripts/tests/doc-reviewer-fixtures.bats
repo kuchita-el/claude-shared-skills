@@ -25,9 +25,19 @@ setup_file() {
     common_setup_file
 }
 
+# 「## 対応」節の表の行だけを取り出す。README 全体を照合の対象にすると、実施の記録や
+# 限界の節に同じファイル名が現れるだけで緑になり、対応表の行を丸ごと削っても通ってしまう。
+ledger_table() {
+    awk '
+        /^## 対応[[:space:]]*$/ { in_section = 1; next }
+        /^## / { in_section = 0 }
+        in_section && /^\|/ { print }
+    ' "$LEDGER"
+}
+
 # 対応表に載っていない fixture を検出する。
 collect_ledger_coverage() {
-    local subdir="$1"
+    local subdir="$1" table="$2"
     local prev_nullglob present f base label
     prev_nullglob="$(shopt -p nullglob || true)"
     shopt -s nullglob
@@ -42,20 +52,22 @@ collect_ledger_coverage() {
     for f in ${present[@]+"${present[@]}"}; do
         base="$(basename "$f")"
         label="$subdir fixture が対応表に載っている: $base"
-        if grep -qF "$subdir/$base" "$LEDGER"; then
+        if printf '%s\n' "$table" | grep -qF "$subdir/$base"; then
             collect_ok "$label"
         else
-            collect_fail "$label" "README.md の対応表に無いため、この型は一度も確認されない"
+            collect_fail "$label" "README.md の「## 対応」表に無いため、この型は一度も確認されない"
         fi
     done
     return 0
 }
 
-# 対応表に載っているのに実在しない fixture を検出する。
+# 対応表に載っているのに実在しない fixture を検出する。名前の字種は問わない。
+# 順方向が名前を問わずに照合する以上、逆方向を ASCII 名だけに限ると非対称になり、
+# 非 ASCII 名の宙吊り参照が検出されない。
 collect_ledger_dangling() {
-    local subdir="$1"
+    local subdir="$1" table="$2"
     local referenced base label
-    referenced="$(grep -oE "$subdir/[A-Za-z0-9._-]+\.md" "$LEDGER" | sort -u)"
+    referenced="$(printf '%s\n' "$table" | grep -oE "$subdir/[^ \`|]+\.md" | sort -u)"
 
     if [ -z "$referenced" ]; then
         collect_fail "$subdir が対応表から参照されている" "参照が1件も無い"
@@ -81,10 +93,19 @@ collect_ledger_dangling() {
 @test "対応表が fixture を双方向に覆っている" {
     collect_init
 
-    collect_ledger_coverage negative
-    collect_ledger_coverage positive
-    collect_ledger_dangling negative
-    collect_ledger_dangling positive
+    local table
+    table="$(ledger_table)"
+    if [ -z "$table" ]; then
+        collect_fail "「## 対応」表が存在する" "節が見つからないか、表の行が1件も無い"
+        collect_finish
+        return
+    fi
+    collect_ok "「## 対応」表が存在する"
+
+    collect_ledger_coverage negative "$table"
+    collect_ledger_coverage positive "$table"
+    collect_ledger_dangling negative "$table"
+    collect_ledger_dangling positive "$table"
 
     collect_finish
 }
