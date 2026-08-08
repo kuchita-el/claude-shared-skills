@@ -3,4 +3,4 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-exec claude --plugin-dir ./plugins/dev-workflow --plugin-dir ./plugins/adr
+exec claude --plugin-dir ./plugins/dev-workflow --plugin-dir ./plugins/adr --plugin-dir ./plugins/writing

@@ -15,6 +15,10 @@
     {
       "name": "adr",
       "source": "./plugins/adr"
+    },
+    {
+      "name": "writing",
+      "source": "./plugins/writing"
     }
   ]
 }
