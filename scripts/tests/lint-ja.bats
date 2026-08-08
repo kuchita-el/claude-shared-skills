@@ -34,6 +34,7 @@ VALID_FIXTURES=(
     "04-backticks-not-counted.md"
     "05-kanji-compound-not-checked.md"
     "06-inline-code-not-ungrounded.md"
+    "07-gloss-covers-all-terms.md"
 )
 
 # <ファイル名>|<出力に含まれることを期待する文字列（コロン区切りで AND 検査）>

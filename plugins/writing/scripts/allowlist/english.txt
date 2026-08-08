@@ -11,6 +11,7 @@ Git
 GitHub
 HEAD
 HTML
+Issue
 JSON
 Markdown
 OS
@@ -30,6 +31,7 @@ branch
 commit
 diff
 exit
+fixture
 gh
 glob
 grep

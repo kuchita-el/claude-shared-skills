@@ -508,10 +508,29 @@ is_grounded() {
     prefix="${naked%%"$token"*}"
     pos="${#prefix}"
 
-    if [ "$pos" -gt 0 ]; then
-        before="${naked:$((pos - 1)):1}"
+    # 語が括弧注の内側にあるかを見る。直前の語に続けて開く括弧は言い換えとみなし、
+    # その内側の語をすべて免除する。開き括弧の直後の1語だけを免除すると、
+    # 「強調の記号（アスタリスクとアンダースコア）」のように言い換えが2語以上並ぶ形で
+    # 2語目以降だけが候補になり、同じ括弧注の中で判定が割れる。
+    local depth=0 i ch open_pos=-1
+    for ((i = 0; i < pos; i++)); do
+        ch="${naked:i:1}"
+        case "$ch" in
+            '（' | '(')
+                depth=$((depth + 1))
+                open_pos="$i"
+                ;;
+            '）' | ')')
+                [ "$depth" -le 0 ] || depth=$((depth - 1))
+                ;;
+        esac
+    done
+    if [ "$depth" -gt 0 ] && [ "$open_pos" -ge 1 ]; then
+        before="${naked:$((open_pos - 1)):1}"
+        # 文の切れ目に続く括弧は、直前の語の言い換えではなく独立した挿入である。
         case "$before" in
-            '（' | '(') return 0 ;;
+            '。' | '、' | ' ' | '　') ;;
+            *) return 0 ;;
         esac
     fi
 
