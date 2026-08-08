@@ -80,6 +80,8 @@ EXPECTED_BATS=(
     lint-adr-surface.bats
     lint-adr-xref.bats
     lint-domain-doc.bats
+    lint-ja-mutation.bats
+    lint-ja.bats
     next-adr-id.bats
 )
 
