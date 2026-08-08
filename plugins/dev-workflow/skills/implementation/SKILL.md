@@ -29,6 +29,7 @@ allowed-tools:
   - Bash(gh pr comment *)
   - Bash(gh pr ready *)
   - Bash(gh pr checks *)
+  - Bash(gh api repos/*/pulls/*)
   - Bash(gh run view *)
   # 委譲・対話
   - Skill
@@ -54,8 +55,10 @@ Phase 1: 実装/検証（superpowers委譲: S3実装起動 / S4 TDD / S5検証�
 Phase 2: セルフレビュー（superpowers委譲: S7 requesting-code-review、結果のワークフロー反映は接続契約）
 Phase 3: 判定 → ブロッカーなし→Phase 4 / ブロッカーあり→Phase 1（収束しなければエスカレーション）
 Phase 4: PR作成（Draft）→ CIゲート → Ready化＋レビュー依頼 + 完了報告（S6 finishing-a-development-branch 委譲 ＋ dev-workflow上乗せのCIゲート ＋ セルフレビューサマリ）
+Phase 5: レビュー指摘への対応サイクル（S8 receiving-code-review 委譲: 受理判定 → 深刻度調整 → 修正はPhase 1〜3へ → CIゲート再走行 → スレッド返信）
 
-※ S3〜S7 は委譲先シームの識別子（番号順＝実行順ではない）
+※ S3〜S8 は委譲先シームの識別子（番号順＝実行順ではない）
+※ Phase 5 は Phase 4 の後続ではなく、Phase 0 の種別判定「PRレビュー指摘」から分岐して前半が走り、Phase 1〜3 を挟んで後半が走る（再入構造）
 ※ superpowers 非導入時は各委譲が最小インラインへ縮退（「フォールバック分岐」節）。収束不能時はエスカレーション機構へ
 ```
 
@@ -67,7 +70,7 @@ Phase 4: PR作成（Draft）→ CIゲート → Ready化＋レビュー依頼 + 
 |---|---|---|
 | Issue | `#数字`、Issue URL、数字のみ | `gh issue view` |
 | 計画ファイル | ファイルパス（`.md` 等） | `Read` |
-| PRレビュー指摘 | PR番号/URL or 現在のブランチにPRが存在 | `gh pr view` + 会話コンテキスト |
+| PRレビュー指摘 | PR番号/URL or 現在のブランチにPRが存在 | `gh pr view` + 会話コンテキスト。作業リスト導出の前に **Phase 5**（後述）の受理判定を通す |
 | 会話コンテキスト | 上記いずれにも該当しない | 直前の会話から要件・指摘を抽出 |
 
 読み込んだ内容から以下を順に確認・判定する:
@@ -149,6 +152,21 @@ implementation は自前の周回統治（リトライ回数・振動検知等�
 
 詳細は `${CLAUDE_SKILL_DIR}/references/pr-body-template.md` を参照（PR 本文テンプレート全文、および「深刻度調整セクション」と `review-severity-adjustment.md` ブロック形式との役割分担を含む）。
 
+### Phase 5: レビュー指摘への対応サイクル（受理判定 → 修正 → スレッド返信）
+
+インプット種別が「PRレビュー指摘」のときに走る、指摘の受理から返信までのサイクル。受理判定を **S8** として `superpowers:receiving-code-review` に委譲する（参照機構②）。前半（指摘の取得 → 受理判定 → 深刻度調整 → 作業リスト化）と後半（修正コミット & push → スレッド返信）に分かれる。
+
+**制御フロー（再入構造）**: Phase 5 は Phase 4 の線形な後続ではなく、前半と後半の間に Phase 1〜3 を挟む。
+
+- **入口**: Phase 0 でインプット種別が「PRレビュー指摘」と判定されたら、Phase 1 の作業リスト消化へ直行せず Phase 5 前半へ入る。
+- **前半の出口**: 深刻度調整でブロッカーと確定した指摘のみを作業リストへ載せ Phase 1 へ渡す。ブロッカーが0件の場合（全指摘が改善提案へ格下げ／全件に反論）は Phase 1 を経由せず直接後半へ進む。
+- **後半への復帰**: Phase 3 の「ブロッカーなし」判定は、Phase 5 起点の場合に限り Phase 4 ではなく **Phase 5 後半**へ抜ける。PR は既に存在するため S6（`finishing-a-development-branch` による PR 作成）へは再入しない。Phase 3 節の既存記述（ブロッカーなし → Phase 4）はそのまま有効で、本項はその上に加わる分岐である。
+- **後半の CI ゲート**: 修正コミットを push した後、スレッド返信へ進む前に Phase 4 の CI ゲートを再走行する。分岐先は Phase 4 と同じ（緑→返信／赤→Phase 1〜3 へ差し戻し／収束不能→エスカレーション）。再走行の射程は待機・分岐のみで S6 へは再入しない（手順は `${CLAUDE_SKILL_DIR}/references/phase4-ci-gate.md`）。
+
+接続契約として、**深刻度調整は指摘の出どころによらず一律に適用する**（`${CLAUDE_SKILL_DIR}/references/review-severity-adjustment.md`）。ただし外部指摘を格下げした場合は格下げの理由を当該指摘のスレッドへ返信し、解決とみなすかどうかの判断を投稿者に残す（自分のセルフレビューが生成した指摘には返信義務が無い）。
+
+詳細手順（指摘の取得コマンド・委譲の入出力・4遷移・返信の投稿手段・エスカレーション接続）は `${CLAUDE_SKILL_DIR}/references/phase5-review-cycle.md` を参照。
+
 ## エスカレーション機構
 
 自律的に判断できない場面（仕様の曖昧さ、収束しない反復＝同じ失敗・同じ指摘が解消しない、レビューで判断できない指摘）で、質問を投稿してセッションを終了する仕組み。対話セッション中は `AskUserQuestion` で即時確認し、非対話時（自動実行等）は以下のルールで投稿先を決定する:
@@ -163,12 +181,13 @@ implementation は自前の周回統治（リトライ回数・振動検知等�
 
 ## フォールバック分岐（superpowers 非導入時）
 
-superpowers はソフト依存である（ADR-202606062346-01 方針C）。未導入の環境では各委譲（S3〜S7・worktree）の `Skill` 呼び出しは skip され、**最小インライン**へ縮退する:
+superpowers はソフト依存である（ADR-202606062346-01 方針C）。未導入の環境では各委譲（S3〜S8・worktree）の `Skill` 呼び出しは skip され、**最小インライン**へ縮退する:
 
 - **実装の起動・TDD（S3・S4）**: メインループ自身が基本 TDD（失敗するテストを先に書く→最小実装→リファクタリング）で作業リストを消化する。
 - **検証ゲート（S5）**: 型チェック・lint・テストを実行し、証拠を確認してから完了とする（コマンド未許可ならスキップ）。
 - **セルフレビュー（S7）**: メインループ自身がレビュー契約と差分を突き合わせる（深刻度2段は `agents/code-reviewer.md` に準拠、深刻度調整も同様に適用）。
 - **PR化（S6）**: PR 未作成なら `gh pr create --draft` で Draft 作成 → 猶予付き再ポーリングで checks 有無を判定（不在なら即 `gh pr ready`）→ 存在すれば `gh pr checks <pr> --watch --required` を `run_in_background` で待機し exit 0 なら `gh pr ready`＋レビュー依頼／exit 1 なら修正ループへ差し戻し。既存 PR なら変更を push する。委譲が縮退しても Draft → CIゲート → Ready の骨格は保持する（詳細は `${CLAUDE_SKILL_DIR}/references/phase4-ci-gate.md`）。
+- **受理判定（S8）**: メインループ自身が指摘の技術的妥当性をコード本体で確認し、不明点があれば止める。深刻度調整とスレッド返信は接続契約として保持し、無検証のまま作業リストへ変換しない。
 - **worktree**: Phase 0「ブランチの準備」の通常のブランチ作成手順にフォールバックする。
 
 縮退するのは実装メカニクスの精緻さのみ。接続契約（レビュー契約・Issueエスカレーション・判断依頼）と「収束しないときは人間にエスカレーションする」原則は superpowers の有無に関わらず常に保持する。
@@ -177,4 +196,5 @@ superpowers はソフト依存である（ADR-202606062346-01 方針C）。未�
 
 - **型チェック・テスト・lintコマンドの実行許可**: プロジェクト固有のため `allowed-tools` に含めず、`settings.json` の `allowedTools` で個別許可する（例: `Bash(npx tsc*)`, `Bash(npm test*)`）
 - **複数行コンテンツの受け渡し**: HEREDOC を使わず、Write で一時ファイルに書き出して `--body-file` で渡すか `-m` を複数回指定する
+  - `gh api` は `--body-file` を持たないため `-F body=@{ファイル名}` でファイルから読ませる（`-F` でパラメータを付けるとメソッドは POST へ自動切替されるため `--method POST` は書かない）
 - **pushの失敗**: 権限不足・保護ブランチ等で `git push` 失敗時はユーザーに状況を報告し手動pushを依頼する
