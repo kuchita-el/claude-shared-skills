@@ -26,7 +26,7 @@
 
 ## 読み込み優先順位
 
-1. プロジェクト固有: `${CLAUDE_PROJECT_DIR}/.claude/writing/type-profiles.md`（存在すれば優先）
+1. プロジェクト固有: `{project}/.claude/writing/type-profiles.md`（存在すれば優先）
 2. プラグイン同梱の既定（本ファイル）
 
 該当する種別の行がプロジェクト固有のプロファイルにあれば、その値を採る。無ければ本ファイルの汎用プロファイルを採る。

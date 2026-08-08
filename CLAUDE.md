@@ -9,7 +9,7 @@ Claude Code向けの汎用スキルライブラリ。プロジェクト固有の
 ## Local Development Setup
 
 ```bash
-./setup-local.sh          # dev-workflow と adr のプラグインを --plugin-dir で読み込んで起動
+./setup-local.sh          # dev-workflow・adr・writing のプラグインを --plugin-dir で読み込んで起動
 mise trust && mise install # チェックアウト（worktree 含む）ごとに一度。テストフレームワーク（bats）を版固定で導入する
 bash scripts/run-tests.sh # テストと検査器を一括実行する
 ```
@@ -27,7 +27,7 @@ bash scripts/run-tests.sh # テストと検査器を一括実行する
 - `plugins/dev-workflow/references/` — 複数スキルが共有する参照ファイル（DoRデフォルト定義等。`${CLAUDE_PLUGIN_ROOT}/references/` で参照。詳細は ADR-202606040737-01）
 - `plugins/dev-workflow/agents/{agent-name}.md` — サブエージェント定義（プラグインルートに集約、自動検出される。詳細は ADR-202605250838-01）
 - `plugins/adr/` — ADR 運用機構の配布プラグイン（`scripts/` の drift-lint・index 生成・識別子発番、`hooks/` の commit 前ゲート、`skills/manage-adr/` のライフサイクル操作スキル。#492/#493 で dev-workflow から抽出）
-- `setup-local.sh` — ローカル開発用起動スクリプト（`claude --plugin-dir ./plugins/dev-workflow --plugin-dir ./plugins/adr` のラッパー）
+- `setup-local.sh` — ローカル開発用起動スクリプト（`claude --plugin-dir ./plugins/dev-workflow --plugin-dir ./plugins/adr --plugin-dir ./plugins/writing` のラッパー）
 
 ### Skill Definition Format
 
