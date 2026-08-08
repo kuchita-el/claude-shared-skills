@@ -47,7 +47,8 @@ git rev-parse --path-format=absolute --git-common-dir
 
 - store パス: `~/.claude/projects/<project-id>/growth/captures-YYYY-MM-DD.md`（日付バケット。`YYYY-MM-DD` は見出しキー timestamp の UTC 日付部分。バケット名生成規約は「置き場」冒頭を参照）
 
-> capture（Capture）は同一の `<project-id>` から jsonl パス `~/.claude/projects/<project-id>/<session-UUID>.jsonl` も組み立てるが、session UUID 解決と jsonl 読取は Capture 固有の手順であり本仕様の対象外（capture SKILL.md が定義する）。
+> 本仕様が定める `<project-id>`（store project-id）は **store パスの解決にのみ用いる**。capture（Capture）が session jsonl の所在を解決する手順はこの値に依存せず、capture SKILL.md が単一出典として定義する（本仕様＝store project-id と store パス、capture SKILL.md＝session UUID と jsonl、という分担）。
+> jsonl が実際に置かれるディレクトリの名前はセッション開始時の作業ディレクトリ由来であり（worktree ごとに別ディレクトリへ分離される）、本仕様の `<project-id>` とは別の識別子である。両者を同じ語で呼ばない。
 
 ## 観測エントリの形式
 

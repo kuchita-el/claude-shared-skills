@@ -1,6 +1,30 @@
 # capture 判定基準の詳細
 
-capture SKILL.md の Step 2（シグナル検知）・Step 3（生観察の生成）・Step 4（store 書き込み）から参照される判定基準・規約の単一出典。記述例は `${CLAUDE_SKILL_DIR}/references/capture-examples.md` を参照する。
+capture SKILL.md の Step 1（session jsonl の所在解決）・Step 2（シグナル検知）・Step 3（生観察の生成）・Step 4（store 書き込み）から参照される判定基準・規約・採用理由の単一出典。記述例は `${CLAUDE_SKILL_DIR}/references/capture-examples.md` を参照する。
+
+## session jsonl の所在解決（Step 1）
+
+**本節の位置づけ**: 所在解決の規則（探索式）と縮退の規約（session UUID 取得不可／一致0件／一致2件以上／解決した jsonl の読み取り失敗）の正準定義は capture SKILL.md の Step 1・Step 2 にある。本節はその**採用理由・却下理由・既知の限界**を保持する位置づけであり、規則そのものを再掲・言い換えしない。
+
+**採用理由（なぜ session UUID を探索キーにするか）**:
+
+capture が扱う識別子は導出の異なる2つがあり、値が一致する保証はない。
+
+- **store project-id**: 共通 `.git` の絶対パス由来（personal-store-spec.md「project-id とパスの解決手順」）。worktree でも通常チェックアウトでも同じ値になる（worktree 非依存）。capture と distill が同一 store を指す前提を保つため、この非依存性は維持する必要がある。
+- **session ディレクトリ名**: `~/.claude/projects/` 配下で session jsonl が実際に置かれるディレクトリの名前。セッション開始時の作業ディレクトリ（cwd）の絶対パス由来であり、worktree・サブディレクトリごとに別ディレクトリへ分離される。
+
+両者は綴りが似ていても別物であり、worktree では現に一致しない。したがって jsonl の所在を store project-id から組み立てる設計は worktree セッションで必ず外れる。session UUID はセッションと1対1に対応し、ディレクトリの命名規約に依存しないため、これを探索キーとする。
+
+**却下理由**:
+
+- **worktree の絶対パスから session ディレクトリ名を組み立てる案**: cwd がリポジトリルートと一致する前提に依存するため、サブディレクトリで開始したセッションで崩れる。命名規約への依存も残る。
+- **store project-id 由来のパスを主とし、外れたら探索へ落とす2段案**: worktree では主経路が必ず外れるため、確認先が二重化して縮退の判定が複雑になるだけで得るものが無い。
+
+**既知の限界**:
+
+- session jsonl の保存場所は Claude Code の内部仕様に依存し、版で変わりうる。
+- **同一の session UUID を持つ jsonl が置かれるディレクトリは、同一セッションの途中でも移りうる**（Issue #687 の観測では起票時と検証時で別のディレクトリ配下にあった）。ディレクトリ名を組み立てる方式はある時点で正しくても別の時点で外れる。この点は探索方式を採る理由を補強する。
+- Phase 3（hook 自発化）で SessionEnd hook が `transcript_path` を直接渡せるようになれば、本手順自体が不要になりうる。
 
 ## シグナル検知の判定基準（Step 2）
 
