@@ -1,0 +1,20 @@
+{
+  "name": "writing",
+  "version": "0.1.0",
+  "description": "日本語文書の品質基準を提供するCodexプラグイン。",
+  "author": {
+    "name": "Kuchita El"
+  },
+  "repository": "https://github.com/kuchita-el/claude-shared-skills",
+  "interface": {
+    "displayName": "Writing",
+    "shortDescription": "日本語文書の品質基準を提供します。",
+    "longDescription": "語の接地、参照の自己完結、文書の自立、判断材料、根拠の同居を軸に、日本語文書の品質を整えます。",
+    "developerName": "Kuchita El",
+    "category": "Productivity",
+    "capabilities": [
+      "Write"
+    ],
+    "defaultPrompt": "日本語文書をガードレールに沿ってレビューしてください。"
+  }
+}

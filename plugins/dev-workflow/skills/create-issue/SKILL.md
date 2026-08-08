@@ -1,4 +1,5 @@
 ---
+name: create-issue
 description: 粗いアイデアからDoR（Definition of Ready）を満たしたIssueを対話生成し起票する。Issueを新規作成したい・アイデアをIssue化したい・タスクを起票したいときに使用。作成段階でDoRを前倒し充足させ、refine-issueが後で指摘する欠落系・品質系の不足をshift-leftで潰す。「Issueにして」「Issue立てて」「起票して」「これIssueにしといて」等の依頼に必ず使うこと
 allowed-tools:
   - Read

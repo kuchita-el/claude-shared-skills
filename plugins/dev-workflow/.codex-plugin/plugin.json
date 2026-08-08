@@ -1,0 +1,22 @@
+{
+  "name": "dev-workflow",
+  "version": "0.7.0",
+  "description": "Issue管理、設計、実装を支援する汎用開発ワークフローのCodexプラグイン。",
+  "author": {
+    "name": "Kuchita El"
+  },
+  "repository": "https://github.com/kuchita-el/claude-shared-skills",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Dev Workflow",
+    "shortDescription": "Issueから実装までの開発フローを支援します。",
+    "longDescription": "Issueの作成と精査、実装計画、ドメイン設計、依存関係調査、実装までの開発ワークフローを提供します。",
+    "developerName": "Kuchita El",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "defaultPrompt": "この開発タスクを適切なワークフローで進めてください。"
+  }
+}

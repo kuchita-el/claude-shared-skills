@@ -1,4 +1,5 @@
 ---
+name: promote
 description: promote は distill が candidates.md に永続化した仮説を検証し、通過仮説のみ gh で Issue へ自動起票して既存ワークフロー（refine/DoR/PR）へ疎結合に渡す。起票成功後に候補の candidate-status を pending→promoted へ前進させる（captures.md は触らない）。learnings.md へは書かない。候補を共有経路へ昇格させたいとき明示起動する（Phase 1）。
 allowed-tools:
   - Read

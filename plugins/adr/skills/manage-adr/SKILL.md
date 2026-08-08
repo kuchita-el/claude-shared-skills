@@ -1,4 +1,5 @@
 ---
+name: manage-adr
 description: ADR のライフサイクル操作（起票・承認・上書き・廃止・却下の5遷移）と多決定 ADR の分割（1→N の部分上書き）を実行し、front-matter（`status`/`validity`/`superseded-by`）と相互参照をスキーマに従い書き込む。既存 ADR の編集は core／非core／些末で変更種別を確定し、core は新規起票＋旧 ADR 上書き、非core／些末は直接編集へ導く。ADR 化要否も判定し、各操作後は lint-adr で自己検証する。ADR 化を迷う・新規に起こす・承認や上書きで状態を変える・分割する・既存 ADR を編集したいときに使用。
 allowed-tools:
   - Read

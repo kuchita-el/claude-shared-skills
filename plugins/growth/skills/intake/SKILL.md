@@ -1,4 +1,5 @@
 ---
+name: intake
 description: intake は複数の growth:promote 仮説 Issue を1つの取り込み Issue へ束ね、人間が career を裁定する集約点を運用するスキル。仮説の内容重複から既存の取り込み先を検出し（無ければ新規作成）、裁定対象と career 提案のサマリを提示して承認を得てから正式起票する。承認後、各仮説を not planned ＋ リンクコメントで取り込み時クローズし inbox から外す。career 裁定・仮説の取り込み・集約点運用に明示起動する（ADR-202606282107-01 / Phase 2）。
 allowed-tools:
   - Read
