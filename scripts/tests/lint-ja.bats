@@ -54,19 +54,37 @@ VALID_FIXTURES=(
     "13-list-marker-stripped.md"
     "14-emphasis-not-counted.md"
     "15-reference-link-not-counted.md"
+    "16-strikethrough-not-counted.md"
+    "17-tab-indented-code-ignored.md"
+    "18-nested-fence-ignored.md"
+    "19-html-comment-ignored.md"
+    "20-numbered-list-marker-stripped.md"
+    "21-setext-heading-ignored.md"
+    "22-borderless-table-ignored.md"
+    "23-long-heading-ignored.md"
 )
 
-# <ファイル名>|<期待する違反のラベル>
+# <ファイル名>|<期待する違反のラベル>|<候補を伴うか（yes/no）>
 # 負例は1つの型だけを突く。期待しないラベルの違反が混ざっていれば失敗とする。
+# 候補の有無も固定する。負例へ候補が生えても違反ではないため終了コードは動かず、
+# 検出語彙を広げて誤検出が増えたことに気づけない。
 INVALID_FIXTURES=(
-    "01-sentence-too-long.md|一文の長さ"
-    "02-sentence-across-lines.md|一文の長さ"
-    "03-paren-inner-period.md|一文の長さ"
-    "04-issue-number-at-line-start.md|一文の長さ"
-    "05-bracket-pairs-inner-period.md|一文の長さ"
-    "06-halfwidth-marks-not-delimiters.md|一文の長さ"
-    "07-line-number.md|一文の長さ"
-    "08-codespan-markup-counted.md|一文の長さ"
+    "01-sentence-too-long.md|一文の長さ|no"
+    "02-sentence-across-lines.md|一文の長さ|no"
+    "03-paren-inner-period.md|一文の長さ|no"
+    "04-issue-number-at-line-start.md|一文の長さ|yes"
+    "05a-bracket-kagi.md|一文の長さ|no"
+    "05b-bracket-double-kagi.md|一文の長さ|no"
+    "05c-bracket-sumi.md|一文の長さ|no"
+    "05d-bracket-fullwidth-square.md|一文の長さ|no"
+    "05e-bracket-ascii-paren.md|一文の長さ|no"
+    "05f-bracket-ascii-square.md|一文の長さ|no"
+    "06-halfwidth-marks-not-delimiters.md|一文の長さ|no"
+    "07-line-number.md|一文の長さ|no"
+    "08-codespan-markup-counted.md|一文の長さ|no"
+    "09-unclosed-fence.md|一文の長さ|no"
+    "10-unclosed-front-matter.md|一文の長さ|no"
+    "11-comment-on-same-line.md|一文の長さ|no"
 )
 
 # <ファイル名>|<候補の行に含まれることを期待する文字列>
@@ -173,10 +191,12 @@ run_sut_in() {
 @test "面②: invalid fixture が期待する型の違反だけを標準出力へ出して exit 1" {
     collect_init
 
-    local entry base want label lines other registered=""
+    local entry base want cand label lines other registered=""
     for entry in "${INVALID_FIXTURES[@]}"; do
         base="${entry%%|*}"
+        cand="${entry##*|}"
         want="${entry#*|}"
+        want="${want%%|*}"
         registered="$registered $base"
 
         lint --all "$LINT_FIXTURES/invalid/$base"
@@ -205,6 +225,15 @@ run_sut_in() {
             collect_ok "$label"
         else
             collect_fail "$label" "期待しない違反が出ている: $other"
+        fi
+
+        label="invalid/$base (候補の有無が $cand)"
+        if [[ "$output" == *"$CANDIDATE_LABEL"* ]]; then
+            [ "$cand" = "yes" ] && collect_ok "$label" ||
+                collect_fail "$label" "候補を伴わない負例に候補が生えている / stdout: $output"
+        else
+            [ "$cand" = "no" ] && collect_ok "$label" ||
+                collect_fail "$label" "候補を伴うはずの負例に候補が無い / stdout: $output"
         fi
     done
 
@@ -257,7 +286,34 @@ run_sut_in() {
     collect_finish
 }
 
-@test "面⑤: 種別プロファイルの一文長の上限が共通規約の既定より優先する" {
+@test "面⑤: 注釈は行ではなく文字の範囲で落とす" {
+    collect_init
+
+    # 行単位で落とすと、注釈と同じ行に置いた地の文が黙って未検査になり、行の途中で
+    # 閉じた注釈より後ろが過大に数えられる。両方向を見る。変異では両者を1つの置換で
+    # 分けられないため、振る舞いを直接おさえる。
+    local dir="$BATS_TEST_TMPDIR/comment-range"
+    mkdir -p "$dir"
+    local long
+    long="$(printf 'あ%.0s' $(seq 130))。"
+
+    printf '<!-- 注釈 -->%s\n' "$long" >"$dir/after.md"
+    lint --all "$dir/after.md"
+    collect_rc 1 "注釈と同じ行に置いた地の文を検査する"
+    collect_contains "$output" "一文の長さ" "地の文の長さが報告される"
+
+    printf '%s<!-- 行の途中に置いた注釈 -->。\n' "$(printf 'あ%.0s' $(seq 95))" >"$dir/inline.md"
+    lint --all "$dir/inline.md"
+    collect_rc 0 "行の途中の注釈は字数に数えない"
+
+    printf '<!-- 閉じない注釈\n%s\n' "$long" >"$dir/unclosed.md"
+    lint --all "$dir/unclosed.md"
+    collect_rc 1 "閉じない注釈は範囲を作らない"
+
+    collect_finish
+}
+
+@test "面⑥: 種別プロファイルの一文長の上限が共通規約の既定より優先する" {
     collect_init
 
     local doc="$LINT_FIXTURES/profile/between-60-and-100.md"
@@ -276,7 +332,7 @@ run_sut_in() {
     collect_finish
 }
 
-@test "面⑥: 上限の列を位置ではなくヘッダのセル名で特定する" {
+@test "面⑦: 上限の列を位置ではなくヘッダのセル名で特定する" {
     collect_init
 
     # 表へ「備考」の列を1つ足す。上限を最後の列という位置で拾うと、備考に書いた
@@ -296,7 +352,7 @@ run_sut_in() {
     collect_finish
 }
 
-@test "面⑦: 種別が引けないとき同梱の既定プロファイルへ連鎖する" {
+@test "面⑧: 種別が引けないとき同梱の既定プロファイルへ連鎖する" {
     collect_init
 
     # 同梱既定の値が効いていることを観測するには、既定の汎用と共通規約の補則の
@@ -330,7 +386,7 @@ run_sut_in() {
     collect_finish
 }
 
-@test "面⑧: --profile を省略するとプロジェクト固有のプロファイルを解決する" {
+@test "面⑨: --profile を省略するとプロジェクト固有のプロファイルを解決する" {
     collect_init
 
     # 実運用の既定経路である。全面で --profile を明示すると、この解決が一度も走らない。
@@ -360,7 +416,7 @@ run_sut_in() {
     collect_finish
 }
 
-@test "面⑨: 既定の入力単位が差分であり、ファイル全体の検査は --all でのみ行われる" {
+@test "面⑩: 既定の入力単位が差分であり、ファイル全体の検査は --all でのみ行われる" {
     collect_init
 
     local repo="$BATS_TEST_TMPDIR/diff-default"
@@ -378,10 +434,16 @@ run_sut_in() {
     collect_rc 1 "--all: ファイル全体の既存の違反を報告する"
     collect_contains "$output" "一文の長さ" "--all で一文の長さが報告される"
 
+    # 対照。同じ差分モードで、触れた行に違反があれば報告される。これが無いと、
+    # 列挙が丸ごと死んでいても上の「報告しない」が緑のまま通る。
+    printf '\n%s\n' "$(sed -n '3p' "$LINT_FIXTURES/invalid/01-sentence-too-long.md")" >>"$repo/doc.md"
+    run_sut_in "$repo" doc.md
+    collect_rc 1 "対照: 触れた行に違反があれば差分モードでも報告する"
+
     collect_finish
 }
 
-@test "面⑩: 変更行を含む文をファイル本体から復元してから判定する" {
+@test "面⑪: 変更行を含む文をファイル本体から復元してから判定する" {
     collect_init
 
     local repo="$BATS_TEST_TMPDIR/restore"
@@ -406,7 +468,7 @@ run_sut_in() {
     collect_finish
 }
 
-@test "面⑪: 判定の単位は文であり、触れていない文は報告しない" {
+@test "面⑫: 判定の単位は文であり、触れていない文は報告しない" {
     collect_init
 
     local repo="$BATS_TEST_TMPDIR/sentence-scope"
@@ -440,10 +502,15 @@ run_sut_in() {
     run_sut_in "$repo" --all doc.md
     collect_rc 1 "--all では同じ違反が報告される（違反自体は残っている）"
 
+    # 対照。純削除の差分へ1行足せば報告される。列挙が死んでいないことを示す。
+    printf '\n%s\n' "$long" >>"$repo/doc.md"
+    run_sut_in "$repo" doc.md
+    collect_rc 1 "対照: 削除に加えて違反を1行足せば報告する"
+
     collect_finish
 }
 
-@test "面⑫: 未追跡の新規文書と非 ASCII のファイル名を検査する" {
+@test "面⑬: 未追跡の新規文書と非 ASCII のファイル名を検査する" {
     collect_init
 
     local repo="$BATS_TEST_TMPDIR/untracked"
@@ -483,7 +550,7 @@ run_sut_in() {
     collect_finish
 }
 
-@test "面⑬: --base は分岐点を採り、--two-dot でのみ2点間差分になる" {
+@test "面⑭: --base は分岐点を採り、--two-dot でのみ2点間差分になる" {
     collect_init
 
     local repo="$BATS_TEST_TMPDIR/merge-base"
@@ -510,10 +577,15 @@ run_sut_in() {
     collect_rc 1 "--two-dot では2点間差分になり other.md が報告される"
     collect_contains "$output" "other.md" "2点間差分では other.md が対象になる"
 
+    # 対照。この作業ブランチが実際に触れた違反は、分岐点を採っても報告される。
+    cp "$LINT_FIXTURES/invalid/01-sentence-too-long.md" "$repo/topic.md"
+    run_sut_in "$repo" --base main
+    collect_rc 1 "対照: 作業ブランチが触れた違反は分岐点を採っても報告する"
+
     collect_finish
 }
 
-@test "面⑭: 入力が不正なときは exit 2 で止まり、成功を返さない" {
+@test "面⑮: 入力が不正なときは exit 2 で止まり、成功を返さない" {
     collect_init
 
     local doc="$LINT_FIXTURES/valid/01-plain.md"
@@ -550,7 +622,26 @@ run_sut_in() {
         printf '| 汎用 | 定めない | 一般読者 | 99999字 |\n'
     } >"$huge"
     run bash "$SUT" --all --profile "$huge" "$doc" </dev/null
-    collect_rc 2 "上限が想定の範囲を外れる"
+    collect_rc 2 "上限が想定の範囲を外れる（上振れ）"
+
+    local tiny="$BATS_TEST_TMPDIR/tiny-profile.md"
+    {
+        printf '| 種別 | 節構成 | 読み手の既定 | 一文長の上限 |\n'
+        printf '|---|---|---|---|\n'
+        printf '| 汎用 | 定めない | 一般読者 | 5字 |\n'
+    } >"$tiny"
+    run bash "$SUT" --all --profile "$tiny" "$doc" </dev/null
+    collect_rc 2 "上限が想定の範囲を外れる（下振れ）"
+
+    # 列名がずれると指定が黙って捨てられ、既定へ緩む。名前の一致まで見る。
+    local renamed="$BATS_TEST_TMPDIR/renamed-column.md"
+    {
+        printf '| 種別 | 節構成 | 読み手の既定 | 一文の長さの上限 |\n'
+        printf '|---|---|---|---|\n'
+        printf '| 汎用 | 定めない | 一般読者 | 60字 |\n'
+    } >"$renamed"
+    run bash "$SUT" --all --profile "$renamed" "$doc" </dev/null
+    collect_rc 2 "上限の列名がずれている"
 
     # 読めない資源は、最も強い解決の失敗である。既定へ緩めず止める。
     local unreadable="$BATS_TEST_TMPDIR/unreadable-profile.md"

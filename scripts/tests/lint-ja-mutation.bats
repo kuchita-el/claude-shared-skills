@@ -42,10 +42,18 @@ NEGATIVES=(
     "02-sentence-across-lines.md"
     "03-paren-inner-period.md"
     "04-issue-number-at-line-start.md"
-    "05-bracket-pairs-inner-period.md"
+    "05a-bracket-kagi.md"
+    "05b-bracket-double-kagi.md"
+    "05c-bracket-sumi.md"
+    "05d-bracket-fullwidth-square.md"
+    "05e-bracket-ascii-paren.md"
+    "05f-bracket-ascii-square.md"
     "06-halfwidth-marks-not-delimiters.md"
     "07-line-number.md"
     "08-codespan-markup-counted.md"
+    "09-unclosed-fence.md"
+    "10-unclosed-front-matter.md"
+    "11-comment-on-same-line.md"
 )
 
 POSITIVES=(
@@ -64,6 +72,14 @@ POSITIVES=(
     "13-list-marker-stripped.md"
     "14-emphasis-not-counted.md"
     "15-reference-link-not-counted.md"
+    "16-strikethrough-not-counted.md"
+    "17-tab-indented-code-ignored.md"
+    "18-nested-fence-ignored.md"
+    "19-html-comment-ignored.md"
+    "20-numbered-list-marker-stripped.md"
+    "21-setext-heading-ignored.md"
+    "22-borderless-table-ignored.md"
+    "23-long-heading-ignored.md"
 )
 
 CANDIDATES=(
@@ -80,13 +96,20 @@ CANDIDATES=(
 
 # 検出条件を無効化する。対応する負例だけが exit 1 から exit 0 へ転じる。
 MUTATIONS_DETECT=(
-    'length-off::一文の長さの判定を無効化する::s/^check_length() {$/check_length() {\n    return 0/::01 02 03 04 05 06 07 08'
+    'length-off::一文の長さの判定を無効化する::s/^check_length() {$/check_length() {\n    return 0/::01 02 03 04 05a 05b 05c 05d 05e 05f 06 07 08 09 10 11'
     "heading-loose::見出しの判定を記号だけに戻す::s@^HEADING_RE=.*@HEADING_RE='^#'@::04"
-    'paren-depth-off::括弧の対応の数え上げを無効化する::s@^        depth=\$((depth.*@        depth=0@::03 05'
+    'paren-depth-off::括弧の対応の数え上げを無効化する::s@^        depth=\$((depth.*@        depth=0@::03 05a 05b 05c 05d 05e 05f'
     'line-join-off::段落の行の連結を無効化する::s@^        buf_last="\$lineno"@        buf_last="\$lineno"\n        flush@::02 07'
-    "bracket-pairs-narrow::括弧の対を丸括弧だけに削る::s@^OPEN_BRACKETS=.*@OPEN_BRACKETS=('（')@; s@^CLOSE_BRACKETS=.*@CLOSE_BRACKETS=('）')@::05"
+    "bracket-drop-kagi::括弧の対から「」を落とす::s@^OPEN_BRACKETS=.*@OPEN_BRACKETS=('（' '『' '【' '［' '(' '[')@; s@^CLOSE_BRACKETS=.*@CLOSE_BRACKETS=('）' '』' '】' '］' ')' ']')@::05a"
+    "bracket-drop-double-kagi::括弧の対から『』を落とす::s@^OPEN_BRACKETS=.*@OPEN_BRACKETS=('（' '「' '【' '［' '(' '[')@; s@^CLOSE_BRACKETS=.*@CLOSE_BRACKETS=('）' '」' '】' '］' ')' ']')@::05b"
+    "bracket-drop-sumi::括弧の対から【】を落とす::s@^OPEN_BRACKETS=.*@OPEN_BRACKETS=('（' '「' '『' '［' '(' '[')@; s@^CLOSE_BRACKETS=.*@CLOSE_BRACKETS=('）' '」' '』' '］' ')' ']')@::05c"
+    "bracket-drop-fullwidth-square::括弧の対から［］を落とす::s@^OPEN_BRACKETS=.*@OPEN_BRACKETS=('（' '「' '『' '【' '(' '[')@; s@^CLOSE_BRACKETS=.*@CLOSE_BRACKETS=('）' '」' '』' '】' ')' ']')@::05d"
+    "bracket-drop-ascii-paren::括弧の対から()を落とす::s@^OPEN_BRACKETS=.*@OPEN_BRACKETS=('（' '「' '『' '【' '［' '[')@; s@^CLOSE_BRACKETS=.*@CLOSE_BRACKETS=('）' '」' '』' '】' '］' ']')@::05e"
+    "bracket-drop-ascii-square::括弧の対から[]を落とす::s@^OPEN_BRACKETS=.*@OPEN_BRACKETS=('（' '「' '『' '【' '［' '(')@; s@^CLOSE_BRACKETS=.*@CLOSE_BRACKETS=('）' '」' '』' '】' '］' ')')@::05f"
     "halfwidth-delims::半角の疑問符と感嘆符を区切りに加える::s@^SENT_DELIMS=.*@SENT_DELIMS=('。' '？' '！' '?' '!')@::06"
     'codespan-markup-strip::インラインコードの内側からも記法の記号を落とす::s/^display_text() {$/display_text() {\n    strip_markup "\$1"\n    DISPLAY="\$STRIPPED"\n    return 0/::08'
+    'fence-unclosed-toggle::閉じない囲みでも範囲を作る::s@^            if \[ "\$close" -ge 0 \]; then@            [ "\$close" -ge 0 ] || close=\$((n - 1))\n            if [ "\$close" -ge 0 ]; then@::09'
+    'front-matter-unclosed-toggle::閉じない区切り線でも範囲を作る::s@^            if \[ "\$TRIMMED" = "\$FRONT_MATTER_MARK" \]; then@            if [ "\$TRIMMED" = "\$FRONT_MATTER_MARK" ] || [ "\$j" -eq \$((n - 1)) ]; then@::10'
 )
 
 # 免除・除外の条件を無効化する。対応する正例だけが exit 0 から exit 1 へ転じる。
@@ -94,15 +117,25 @@ MUTATIONS_EXEMPT=(
     "link-strip-off::リンク記法の除去を無効化する::s@^LINK_RE=.*@LINK_RE='NEVER_MATCH_SENTINEL'@::05"
     "reflink-strip-off::参照形式リンクの除去を無効化する::s@^REFLINK_RE=.*@REFLINK_RE='NEVER_MATCH_SENTINEL'@::15"
     "delim-only-period::文の区切りから疑問符と感嘆符を落とす::s@^SENT_DELIMS=.*@SENT_DELIMS=('。')@::08"
+    "delim-drop-question::文の区切りから疑問符だけを落とす::s@^SENT_DELIMS=.*@SENT_DELIMS=('。' '！')@::08"
+    "delim-drop-exclamation::文の区切りから感嘆符だけを落とす::s@^SENT_DELIMS=.*@SENT_DELIMS=('。' '？')@::08"
     'codespan-mask-off::インラインコードの伏せ字を無効化する::s/^mask_codespans() {$/mask_codespans() {\n    MASKED="\$1"\n    return 0/::09'
-    "indent-code-off::字下げのコードブロックの除外を無効化する::s@== '    '\\*@== 'NEVER_MATCH_SENTINEL'*@::07"
+    "indent-code-off::半角4字の字下げの除外を無効化する::s@== '    '\\*@== 'NEVER_MATCH_SENTINEL'*@::07"
+    "tab-indent-off::タブ1字の字下げの除外を無効化する::s@== \\\$'\\\\t'@== 'NEVER_MATCH_SENTINEL'@::17"
     "tilde-fence-off::チルダのフェンスの認識を落とす::s@'~~~'@'NEVER_MATCH_SENTINEL'@::06"
     "backtick-fence-off::バッククォートのフェンスの認識を落とす::s@'\`\`\`'@'NEVER_MATCH_SENTINEL'@::02"
-    "table-row-off::表の行の除外を無効化する::s@^TABLE_ROW_RE=.*@TABLE_ROW_RE='NEVER_MATCH_SENTINEL'@::11"
+    "fence-type-mismatch::囲みを別の種類の記号で閉じられるようにする::s@marker='~~~'@marker='\`\`\`'@::06 18"
+    "comment-off::注釈の除外を無効化する::s@'<!--'\\*'-->'\\*@'NEVER_MATCH_SENTINEL'*@::19"
+    "table-row-off::縦棒で始まる表の行の除外を無効化する::s@^TABLE_ROW_RE=.*@TABLE_ROW_RE='NEVER_MATCH_SENTINEL'@::11"
+    "borderless-table-off::縦棒で始まらない表の除外を無効化する::s@^    local gfm_sep=.*@    local gfm_sep='NEVER_MATCH_SENTINEL'@::22"
     "quote-row-off::引用の行の除外を無効化する::s@^QUOTE_ROW_RE=.*@QUOTE_ROW_RE='NEVER_MATCH_SENTINEL'@::11"
+    "heading-off::見出しの行の除外を無効化する::s@^HEADING_RE=.*@HEADING_RE='NEVER_MATCH_SENTINEL'@::23"
+    "setext-off::下線形式の見出しの除外を無効化する::s@^SETEXT_RE=.*@SETEXT_RE='NEVER_MATCH_SENTINEL'@::21"
     "front-matter-off::冒頭のメタデータの除外を無効化する::s@^FRONT_MATTER_MARK=.*@FRONT_MATTER_MARK='NEVER_MATCH_SENTINEL'@::12"
-    "list-marker-off::箇条書きのマーカー除去を無効化する::s@^LIST_RE=.*@LIST_RE='NEVER_MATCH_SENTINEL'@::13"
-    "emphasis-strip-off::強調の記号の除去を無効化する::s@^EMPHASIS_MARKS=.*@EMPHASIS_MARKS=('NEVER_MATCH_SENTINEL')@::14"
+    "list-marker-off::箇条書きのマーカー除去を無効化する::s@^LIST_RE=.*@LIST_RE='NEVER_MATCH_SENTINEL'@::13 20"
+    "numbered-paren-off::番号付き項目の丸括弧の形を落とす::s@^LIST_RE=.*@LIST_RE='^([-*+][[:space:]]+|[0-9]+[.][[:space:]]+)'@::20"
+    "emphasis-strip-off::強調の記号の除去を無効化する::s@^EMPHASIS_MARKS=.*@EMPHASIS_MARKS=('NEVER_MATCH_SENTINEL')@::14 16"
+    "strikethrough-off::二つ続いたチルダの除去だけを落とす::s@^EMPHASIS_MARKS=.*@EMPHASIS_MARKS=('**' '__')@::16"
 )
 
 # 候補の検出条件を無効化する。対応する候補 fixture だけが候補を出さなくなる。
@@ -119,10 +152,22 @@ setup_file() {
 }
 
 # 変異体を作る。置換が空振りした場合は呼び出し側が検出できるよう、元との差を返す。
+# sed の終了コードも見る。置換プログラムが壊れていると sed は部分的な出力を残して
+# 失敗し、その変異体は全ての fixture で緑になる。差だけを見ると「変異が効いた」と
+# 読めてしまい、検査していないことと違反が無いことが区別できなくなる。
 build_mutant() {
-    local program="$1" out="$2"
-    sed "$program" "$SUT" >"$out"
-    ! cmp -s "$SUT" "$out"
+    local program="$1" out="$2" rc
+    sed "$program" "$SUT" >"$out" 2>"$out.err"
+    rc="$?"
+    if [ "$rc" -ne 0 ]; then
+        MUTANT_ERROR="sed が失敗しました（exit $rc）: $(cat "$out.err")"
+        return 1
+    fi
+    if cmp -s "$SUT" "$out"; then
+        MUTANT_ERROR="sed が原本を書き換えていない。変異の対象が改名または移動した可能性がある"
+        return 1
+    fi
+    return 0
 }
 
 # 変異体（または原本）へ fixture を1件食わせる。種別プロファイルは明示的に渡す。
@@ -156,8 +201,7 @@ run_mutation_table() {
         else
             # 置換が空振りしていれば以降の判定は無意味になる。ここで止めずに記録し、
             # 全ての変異について空振りの有無を1回の実行で出す。
-            collect_fail "変異 $key が適用された（$desc）" \
-                "sed が原本を書き換えていない。変異の対象が改名または移動した可能性がある"
+            collect_fail "変異 $key が適用された（$desc）" "$MUTANT_ERROR"
             continue
         fi
 

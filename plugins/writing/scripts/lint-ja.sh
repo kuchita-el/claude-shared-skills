@@ -90,7 +90,8 @@ LINK_RE='\[([^]]*)\]\([^)]*\)'
 REFLINK_RE='\[([^]]*)\]\[[^]]*\]'
 TABLE_SEP_RE='^\|[-:|[:space:]]*$'
 HEADING_RE='^#{1,6}([[:space:]]|$)'
-LIST_RE='^([-*+][[:space:]]+|[0-9]+\.[[:space:]]+)'
+LIST_RE='^([-*+][[:space:]]+|[0-9]+[.)][[:space:]]+)'
+SETEXT_RE='^(=+|-+)$'
 TABLE_ROW_RE='^\|'
 QUOTE_ROW_RE='^>'
 ID_RE='(ADR-[0-9]{8,12}-[0-9]+|#[0-9]+)'
@@ -189,14 +190,49 @@ done
 # 検査した結果が場所によって変わる。
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || REPO_ROOT=""
 
+GIT_PATHS=()
+
+# 作業ディレクトリ相対のパスを、リポジトリのルート相対へ直す。
+REPO_RELATIVE=""
+to_repo_relative() {
+    local p="$1" dir base abs
+    if [ -d "$p" ]; then
+        abs="$(cd -- "$p" 2>/dev/null && pwd)" || die "パスを解決できません: $p"
+    else
+        dir="$(dirname -- "$p")"
+        base="$(basename -- "$p")"
+        abs="$(cd -- "$dir" 2>/dev/null && pwd)" || die "パスを解決できません: $p"
+        abs="$abs/$base"
+    fi
+    case "$abs" in
+        "$REPO_ROOT") REPO_RELATIVE="." ;;
+        "$REPO_ROOT"/*) REPO_RELATIVE="${abs#"$REPO_ROOT"/}" ;;
+        *) die "リポジトリの外を指しています: $p" ;;
+    esac
+}
+
 project_base() {
     if [ -n "${CLAUDE_PROJECT_DIR:-}" ]; then
         printf '%s' "$CLAUDE_PROJECT_DIR"
-    elif [ -n "$REPO_ROOT" ]; then
-        printf '%s' "$REPO_ROOT"
-    else
-        printf '%s' "."
+        return 0
     fi
+    if [ -n "$REPO_ROOT" ]; then
+        printf '%s' "$REPO_ROOT"
+        return 0
+    fi
+    # git リポジトリの外では、作業ディレクトリから親をたどって設定の置き場所を探す。
+    # 作業ディレクトリをそのまま基点にすると、同じファイルを同じ指定で検査した結果が
+    # 起動した場所の深さで変わる。
+    local d
+    d="$(pwd)"
+    while [ -n "$d" ] && [ "$d" != "/" ]; do
+        if [ -d "$d/.claude" ]; then
+            printf '%s' "$d"
+            return 0
+        fi
+        d="$(dirname -- "$d")"
+    done
+    printf '%s' "."
 }
 
 # ---- 文字列の操作 ----
@@ -236,7 +272,15 @@ resolve_max_len() {
         chain+=("$DEFAULT_PROFILE")
     fi
 
-    local path want
+    # 上限の列を持たないプロファイルは、指定が黙って捨てられる。列名の表記ゆれや
+    # 区切り行の欠落で明示した指定が効かないまま既定へ緩むのを避け、止める。
+    local path
+    for path in ${chain[@]+"${chain[@]}"}; do
+        profile_has_column "$path" ||
+            die "文書種別プロファイルに「一文長の上限」の列がありません: $path"
+    done
+
+    local want
     for want in "$DOC_TYPE" "汎用"; do
         for path in ${chain[@]+"${chain[@]}"}; do
             profile_lookup "$path" "$want"
@@ -273,6 +317,38 @@ split_row() {
         trim "$cell"
         ROW_CELLS+=("$TRIMMED")
     done
+}
+
+# 「一文長の上限」の列を持つ表がファイルの中に1つでもあるかを見る。列の位置は区切り行の
+# 直前の行で決まるため、区切り行が無い表は列を持たないものとして扱う。
+profile_has_column() {
+    local path="$1" line idx pending=0
+    local -a header=()
+    [ -r "$path" ] || die "文書種別プロファイルを読めません: $path"
+    while IFS= read -r line; do
+        trim "$line"
+        line="$TRIMMED"
+        case "$line" in
+            \|*) ;;
+            *)
+                pending=0
+                continue
+                ;;
+        esac
+        if [[ "$line" =~ $TABLE_SEP_RE ]]; then
+            if [ "$pending" -eq 1 ]; then
+                for idx in "${!header[@]}"; do
+                    [ "${header[idx]}" = "一文長の上限" ] && return 0
+                done
+            fi
+            pending=0
+            continue
+        fi
+        split_row "$line"
+        header=(${ROW_CELLS[@]+"${ROW_CELLS[@]}"})
+        pending=1
+    done <"$path"
+    return 1
 }
 
 # 表から種別の行を引き、「一文長の上限」の列の値を返す。列の位置はヘッダ行のセル名で
@@ -384,20 +460,44 @@ strip_markup() {
     STRIPPED="$s"
 }
 
+# コードスパンを畳むための記号。記法のいずれの記号とも重ならない1字を使う。
+CODESPAN_TOKEN=$'\x01'
+
 DISPLAY=""
 display_text() {
-    local s="$1" out="" pre rest body
+    local s="$1" folded="" pre rest body
+    local -a bodies=()
+
+    # まずコードスパンを1字の記号へ畳む。畳んでから記法を解釈しないと、リンクの表示
+    # テキストがインラインコードである形（角括弧の内側にコードスパンがある形）で、
+    # リンク記法が断片へ割れて一致せず、アドレス全体が字数へ入る。
     while [[ "$s" == *'`'*'`'* ]]; do
         pre="${s%%\`*}"
         rest="${s#*\`}"
         body="${rest%%\`*}"
         s="${rest#*\`}"
-        strip_markup "$pre"
-        # 囲みの2字だけを除き、中身はそのまま数える。
-        out="$out$STRIPPED$body"
+        bodies+=("$body")
+        folded="$folded$pre$CODESPAN_TOKEN"
     done
-    strip_markup "$s"
-    DISPLAY="$out$STRIPPED"
+    folded="$folded$s"
+
+    strip_markup "$folded"
+    folded="$STRIPPED"
+
+    # 畳んだ順に中身を戻す。囲みの2字だけを除き、中身はそのまま数える。
+    local i result="" head
+    for ((i = 0; i < ${#bodies[@]}; i++)); do
+        case "$folded" in
+            *"$CODESPAN_TOKEN"*) ;;
+            # 残りの記号が尽きた場合、以降のコードスパンは記法の内側にあって表示へ
+            # 現れない。中身も数えない。
+            *) break ;;
+        esac
+        head="${folded%%"$CODESPAN_TOKEN"*}"
+        result="$result$head${bodies[i]}"
+        folded="${folded#*"$CODESPAN_TOKEN"}"
+    done
+    DISPLAY="$result$folded"
 }
 
 # ---- 段落の抽出 ----
@@ -482,30 +582,58 @@ collect_paragraphs() {
         i=$((i + 1))
     done
 
-    # 読み手の画面に現れない注釈。閉じるときだけ範囲を成す。
-    i=0
-    while [ "$i" -lt "$n" ]; do
-        if [ "${skip[i]}" -eq 1 ]; then
-            i=$((i + 1))
-            continue
-        fi
+    # 縦棒で始まらない表も対象から外す。区切り行を見つけ、その直前の見出し行と、直後の
+    # 連続する行のうち縦棒を含むものを表の行として扱う。縦棒で始まる表は行ごとの判定
+    # （TABLE_ROW_RE）が拾うため、ここでは扱わない。
+    local gfm_sep='^[[:space:]]*:?-{2,}:?[[:space:]]*(\|[[:space:]]*:?-{2,}:?[[:space:]]*)+$'
+    for ((i = 0; i < n; i++)); do
+        [ "${skip[i]}" -eq 1 ] && continue
         trim "${lines[i]}"
-        if [[ "$TRIMMED" == '<!--'* ]]; then
-            close=-1
-            for ((j = i; j < n; j++)); do
-                if [[ "${lines[j]}" == *'-->'* ]]; then
-                    close="$j"
-                    break
-                fi
-            done
-            if [ "$close" -ge 0 ]; then
-                for ((k = i; k <= close; k++)); do skip[k]=1; done
-                i=$((close + 1))
-                continue
-            fi
+        [[ "$TRIMMED" == '|'* ]] && continue
+        [[ "$TRIMMED" =~ $gfm_sep ]] || continue
+        skip[i]=1
+        if [ "$i" -gt 0 ] && [ "${skip[i - 1]}" -eq 0 ]; then
+            trim "${lines[i - 1]}"
+            [[ "$TRIMMED" == *"|"* ]] && skip[$((i - 1))]=1
         fi
-        i=$((i + 1))
+        for ((j = i + 1; j < n; j++)); do
+            [ "${skip[j]}" -eq 1 ] && break
+            trim "${lines[j]}"
+            [[ "$TRIMMED" == *"|"* ]] || break
+            skip[j]=1
+        done
     done
+
+    # 除外の決まった行を空行へ落とし、以降は1つの文字列として扱う。段落の切れ目は
+    # 空行が作るため、除外した行は切れ目として働く。
+    local blob=""
+    for ((i = 0; i < n; i++)); do
+        if [ "${skip[i]}" -eq 1 ]; then
+            blob="$blob"$'\n'
+        else
+            blob="$blob${lines[i]}"$'\n'
+        fi
+    done
+
+    # 読み手の画面に現れない注釈を、行ではなく文字の範囲で落とす。行単位で落とすと、
+    # 注釈と同じ行に置いた地の文が黙って未検査になり、行の途中で閉じた注釈より後ろが
+    # 過大に数えられる。閉じない注釈は範囲を成さないため、そのまま残す。
+    local out="" rest="$blob" pre body nl
+    while [[ "$rest" == *'<!--'*'-->'* ]]; do
+        pre="${rest%%<!--*}"
+        rest="${rest#*<!--}"
+        body="${rest%%-->*}"
+        rest="${rest#*-->}"
+        # 落とした範囲に含まれる改行だけを残し、行番号を保つ。
+        nl="${body//[!$'\n']/}"
+        out="$out$pre$nl"
+    done
+    blob="$out$rest"
+
+    lines=()
+    while IFS= read -r line; do
+        lines+=("$line")
+    done <<<"${blob%$'\n'}"
 
     local buf="" buf_first=0 buf_last=0 buf_offsets="" s lineno
     flush() {
@@ -523,10 +651,6 @@ collect_paragraphs() {
 
     for ((i = 0; i < n; i++)); do
         lineno=$((i + 1))
-        if [ "${skip[i]}" -eq 1 ]; then
-            flush
-            continue
-        fi
         line="${lines[i]}"
         trim "$line"
         s="$TRIMMED"
@@ -548,6 +672,15 @@ collect_paragraphs() {
             flush
             continue
         fi
+        # 下線形式の見出し。直前の段落の全体が見出しの内容になるため、溜めた分を捨てる。
+        if [ -n "$buf" ] && [[ "$s" =~ $SETEXT_RE ]]; then
+            buf=""
+            buf_first=0
+            buf_last=0
+            buf_offsets=""
+            continue
+        fi
+
         if [[ "$s" =~ $TABLE_ROW_RE ]] || [[ "$s" =~ $QUOTE_ROW_RE ]]; then
             flush
             continue
@@ -797,6 +930,7 @@ check_file() {
 # 既定の入力単位が差分なのは、規約の適用範囲が新規起草物と編集で触れた箇所に限られる
 # ためである。ファイル全体を既定にすると、既存文書を1行直しただけで既存の違反が赤になる。
 declare -A CHANGED_LINES=()
+declare -A RENAME_SRC=()
 BASE_COMMIT=""
 
 # ファイルの列挙とハンクの取得を分ける。差分本文の `+++` 行からファイル名を読むと、
@@ -817,17 +951,37 @@ collect_changed_lines() {
     else
         # 分岐点を採る。2点間差分にすると、基点のブランチが進んだ時点で、このブランチが
         # 触れていないファイルまで報告される。規約の適用範囲は編集で触れた箇所である。
-        BASE_COMMIT="$(git merge-base "$resolved" HEAD 2>/dev/null)" || BASE_COMMIT="$resolved"
-        [ -n "$BASE_COMMIT" ] || BASE_COMMIT="$resolved"
+        # 分岐点が求まらない場合（履歴を共有しない基点・浅いクローン）は黙って2点間へ
+        # 落とさず止める。落とすと、触れていないファイルが警告なしに報告される。
+        BASE_COMMIT="$(git merge-base "$resolved" HEAD 2>/dev/null)" ||
+            die "分岐点を解決できません: $DIFF_BASE（履歴を共有しないか、浅いクローンです。2点間差分を採るなら --two-dot を指定してください）"
+        [ -n "$BASE_COMMIT" ] ||
+            die "分岐点を解決できません: $DIFF_BASE（履歴を共有しないか、浅いクローンです。2点間差分を採るなら --two-dot を指定してください）"
     fi
 
-    local f
+    local f st old_path
     local -a tracked=() untracked=()
 
-    while IFS= read -r -d '' f; do
+    # 改名は、変更前後の両方をパススペックへ渡さないと git が改名の対として扱えず、
+    # 全行が追加行に見える。名前の対をここで captured しておき、ハンクの取得へ渡す。
+    while IFS= read -r -d '' st; do
+        case "$st" in
+            R* | C*)
+                IFS= read -r -d '' old_path || break
+                IFS= read -r -d '' f || break
+                RENAME_SRC["$f"]="$old_path"
+                ;;
+            D*)
+                IFS= read -r -d '' f || break
+                continue
+                ;;
+            *)
+                IFS= read -r -d '' f || break
+                ;;
+        esac
         [ -n "$f" ] && tracked+=("$f")
-    done < <(git -C "$REPO_ROOT" -c core.quotePath=false diff --name-only -z --diff-filter=d \
-        "$BASE_COMMIT" -- ${PATHS[@]+"${PATHS[@]}"} 2>/dev/null)
+    done < <(git -C "$REPO_ROOT" -c core.quotePath=false diff --name-status -z -M \
+        "$BASE_COMMIT" -- ${GIT_PATHS[@]+"${GIT_PATHS[@]}"} 2>/dev/null)
 
     # 未追跡のファイルも対象に含める。規約の適用範囲の筆頭は新しく起草する文書であり、
     # 追跡される前が最も検査したい時点である。列挙はリポジトリのルートから行う。
@@ -835,16 +989,21 @@ collect_changed_lines() {
     while IFS= read -r -d '' f; do
         [ -n "$f" ] && untracked+=("$f")
     done < <(git -C "$REPO_ROOT" -c core.quotePath=false ls-files --others --exclude-standard \
-        --full-name -z -- ${PATHS[@]+"${PATHS[@]}"} 2>/dev/null)
+        --full-name -z -- ${GIT_PATHS[@]+"${GIT_PATHS[@]}"} 2>/dev/null)
 
     for f in ${tracked[@]+"${tracked[@]}"}; do
         case "$f" in *.md) ;; *) continue ;; esac
-        local acc
-        acc="$(hunk_lines "$f")"
+        hunk_lines "$f"
+        case "$?" in
+            0) ;;
+            1) die "差分を取得できません: $f" ;;
+            2) die "差分をテキストとして取得できません: $f（-diff 属性が設定されている可能性があります）" ;;
+        esac
         # 追加行がゼロの差分（純削除・改名・属性変更）は、触れた文が無いことを意味する。
-        # ここで全行検査へ落とすと、触れていない文の既存の違反が赤くなる。
-        [ -n "$acc" ] || continue
-        CHANGED_LINES["$f"]="$acc"
+        # ここで全行検査へ落とすと、触れていない文の既存の違反が赤くなる。取得の失敗と
+        # 区別するため、失敗は上の分岐で止めてある。
+        [ -n "$HUNK_ACC" ] || continue
+        CHANGED_LINES["$f"]="$HUNK_ACC"
     done
     for f in ${untracked[@]+"${untracked[@]}"}; do
         case "$f" in *.md) ;; *) continue ;; esac
@@ -853,9 +1012,26 @@ collect_changed_lines() {
     return 0
 }
 
-# 1ファイル分のハンクから、変更後の行番号を取り出す。
+# 1ファイル分のハンクから、変更後の行番号を取り出す。結果は HUNK_ACC へ書く。
+# 戻り値は 0（取得できた）／1（git が失敗した）／2（テキストとして取得できない）。
+# 取得の失敗を「追加行がゼロ」と同じ扱いにすると、検査していないことが違反なしと
+# 区別できなくなる。
+HUNK_ACC=""
 hunk_lines() {
-    local f="$1" line spec start count k acc=""
+    local f="$1" out rc line spec start count k acc=""
+    local -a pathspec=(":(top,literal)$f")
+    # 改名は変更前後の両方を渡さないと対として扱われず、全行が追加行に見える。
+    [ -n "${RENAME_SRC[$f]:-}" ] && pathspec+=(":(top,literal)${RENAME_SRC[$f]}")
+
+    HUNK_ACC=""
+    out="$(git -C "$REPO_ROOT" diff --unified=0 --no-color -M "$BASE_COMMIT" \
+        -- "${pathspec[@]}" 2>/dev/null)"
+    rc="$?"
+    [ "$rc" -eq 0 ] || return 1
+    case "$out" in
+        *"Binary files "*) return 2 ;;
+    esac
+
     while IFS= read -r line; do
         case "$line" in
             '@@'*)
@@ -874,9 +1050,9 @@ hunk_lines() {
                 done
                 ;;
         esac
-    done < <(git -C "$REPO_ROOT" diff --unified=0 --no-color "$BASE_COMMIT" \
-        -- ":(top,literal)$f" 2>/dev/null)
-    printf '%s' "$acc"
+    done <<<"$out"
+    HUNK_ACC="$acc"
+    return 0
 }
 
 # ---- 主処理 ----
@@ -902,10 +1078,16 @@ if [ "$SCAN_ALL" -eq 1 ]; then
     done
 else
     # 一致するものが無いパスは、検査していないことを違反なしと区別できないため弾く。
+    # あわせて、git へ渡すパススペックをリポジトリのルート相対へ揃える。存在確認だけを
+    # 作業ディレクトリ相対で行うと、同じ相対パスが2つの意味を持ち、サブディレクトリから
+    # 名指ししたファイルが黙って未検査になったり、同名の別ファイルが検査されたりする。
+    GIT_PATHS=()
     for p in ${PATHS[@]+"${PATHS[@]}"}; do
         [ -e "$p" ] || die "パスが見つかりません: $p"
         # ディレクトリはパススペックとして扱う。ファイルを名指ししたときだけ拡張子を見る。
         [ -f "$p" ] && assert_markdown "$p"
+        to_repo_relative "$p"
+        GIT_PATHS+=(":(top,literal)$REPO_RELATIVE")
     done
     collect_changed_lines
     if [ "${#CHANGED_LINES[@]}" -gt 0 ]; then
