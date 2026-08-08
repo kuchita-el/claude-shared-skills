@@ -8,6 +8,7 @@ allowed-tools:
   - Bash(printenv *)
   - Bash(git rev-parse *)
   - Bash(grep *)
+  - Bash(find ~/.claude/projects *)
 ---
 
 # capture
@@ -29,9 +30,9 @@ allowed-tools:
 
 以下を順に取得する。
 
-**リポジトリルートと project-id**:
+**リポジトリルートと store project-id**:
 
-`<project-id>` の解決手順（`git rev-parse --path-format=absolute --git-common-dir` を用いる）は、個人ローカル store 仕様の「project-id とパスの解決手順」を単一出典とする（`${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md`）。同手順に従い `<project-id>` を解決する（capture・distill 双方が同一手順で同一 project-id を得る）。
+store project-id（同仕様の `<project-id>`）の解決手順（`git rev-parse --path-format=absolute --git-common-dir` を用いる）は、個人ローカル store 仕様の「project-id とパスの解決手順」を単一出典とする（`${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md`）。同手順に従い `<project-id>` を解決する（capture・distill 双方が同一手順で同一 project-id を得る）。
 
 **session UUID**:
 
@@ -55,16 +56,49 @@ date -u +"%Y-%m-%dT%H:%M:%SZ"
 
 **パスの組み立て**:
 
-- store バケットパス: `~/.claude/projects/<project-id>/growth/captures-YYYY-MM-DD.md`
-- jsonl パス: `~/.claude/projects/<project-id>/<session-UUID>.jsonl`
+store パスと jsonl パスは別々の入力から解決する。**store project-id は store パスにのみ使い、jsonl の所在解決には使わない**。
 
-> jsonl の保存場所は Claude Code の内部仕様に依存する。不明な場合は `~/.claude/projects/<project-id>/` 配下を確認すること。
+- store バケットパス: `~/.claude/projects/<store project-id>/growth/captures-YYYY-MM-DD.md`
+- jsonl パス: session UUID を探索キーとして解決する（ディレクトリ名を組み立てない）。
+
+```bash
+find ~/.claude/projects -maxdepth 2 -name "<session-UUID>.jsonl"
+```
+
+一致した jsonl の絶対パスを1行ずつ返す。**一致0件でも終了コードは 0 になるため、分岐は終了コードではなく出力行数（0行／1行／2行以上）で行う**（Step 2）。
+
+入出力例: 入力 session UUID `<session-UUID>` → 出力は `~/.claude/projects/<session ディレクトリ名>/<session-UUID>.jsonl` の形の絶対パス1件。`<session ディレクトリ名>` はセッション開始時の作業ディレクトリ由来であり、worktree で開始したセッションでは store project-id と一致しない。探索キーが session UUID のみであるため、この不一致に関わらず所在が解決される。
+
+> 採用理由・却下代替・既知の限界は `${CLAUDE_SKILL_DIR}/references/capture-procedure.md`「session jsonl の所在解決（Step 1）」を参照する。
 
 ### Step 2: jsonl 読取とシグナル検知
 
-**ファイル存在確認**:
+**探索結果による分岐**:
 
-Read ツールで jsonl パスを読み取る。ファイルが存在しない・読み取れない場合は「セッションログが見つかりません（確認パス: ...）」と報告して終了する。ファイルが存在しない場合でもエントリを store に書かない。
+Step 1 の探索の**出力行数**で分岐する（終了コードでは判定しない）。
+
+- **1行**: その絶対パスを Read ツールで読み取り、シグナル走査へ進む。
+- **0行**: 下記の文言で報告して終了する。
+- **2行以上**: 候補パスを全件列挙し、所在を一意に定められない旨を報告して終了する。
+
+session UUID が取得できない（`printenv CLAUDE_CODE_SESSION_ID` が空）場合は、探索を実行せず「session UUID を取得できませんでした（確認: `printenv CLAUDE_CODE_SESSION_ID`）」と報告して終了する。
+
+**この3種の縮退（session UUID 取得不可／一致0件／一致2件以上）はいずれも store へエントリを書かず、報告に解決済みの store パスを併記する**（store パスは jsonl の解決とは独立に決まるため、縮退時も提示できる）。
+
+0行の場合の報告（文言を言い換えない）:
+
+```
+セッションログが見つかりません。
+
+  探索パターン: ~/.claude/projects/*/<UUID>.jsonl
+  展開先: ~/.claude/projects/ 配下の全ディレクトリ
+  一致: 0 件
+
+store へは何も書き込みません。
+store: ~/.claude/projects/<store project-id>/growth/captures-YYYY-MM-DD.md
+```
+
+> 報告中の「探索パターン」は探索範囲を人間可読に示す表記であり、実行するコマンドではない。実行するのは Step 1 の `find` の1式のみである。
 
 **シグナル走査（2群）**:
 
@@ -74,7 +108,7 @@ jsonl の内容（JSON Lines 形式）から、摩擦知（A）と判断知（B�
 
 ```bash
 grep -i "denied\|permission\|拒否\|訂正\|違う\|ではなく\|error\|再試行\|したい\|方針\|却下\|べき" \
-  ~/.claude/projects/<project-id>/<session-UUID>.jsonl
+  <Step 1 で解決した jsonl の絶対パス>
 ```
 
 走査対象は2群:
@@ -84,7 +118,7 @@ grep -i "denied\|permission\|拒否\|訂正\|違う\|ではなく\|error\|再試
 
 各シグナルの識別の手掛かり、判断知の origin・`expected` / `actual` の扱い、`客観痕跡` の Phase 1 非投入、およびハーネス強制摩擦の既定除外（直交2ゲート・D3。機械判別可能な telemetry に限定し、対話的なツール拒否は除外しない）は `${CLAUDE_SKILL_DIR}/references/capture-procedure.md` を参照する。
 
-**0件の場合**: 観測ゼロを報告して終了する（空エントリを store に書かない）。
+**0件の場合**: 観測ゼロを store パスとともに報告して終了する（空エントリを store に書かない）。
 
 ### Step 3: 生観察の生成
 
@@ -113,18 +147,21 @@ mkdir -p ~/.claude/projects/<project-id>/growth/
 
 ## 完了報告
 
-書き込んだエントリ数・各シグナル種別・store パスを報告する。ハーネス強制摩擦として既定除外した観察があれば、その件数も併記する（D3 の除外が効いたことを可視化するため）。
+書き込んだエントリ数・各シグナル種別・store パス・Step 1 で解決した jsonl の絶対パスを報告する。ハーネス強制摩擦として既定除外した観察があれば、その件数も併記する（D3 の除外が効いたことを可視化するため）。
 
 ```
 3件の観察を記録しました。
 - 訂正 × 1
 - ツール拒否 × 2
 store: ~/.claude/projects/-home-user-myproject/growth/captures-2026-06-26.md
+jsonl: ~/.claude/projects/<session ディレクトリ名>/<session-UUID>.jsonl
 ```
+
+store へ書かずに終了する経路（Step 2 の3種の縮退・シグナル0件）でも store パスを報告に含める。
 
 ## 関連
 
-- `${CLAUDE_SKILL_DIR}/references/capture-procedure.md` — 判定基準の詳細（シグナル検知の2群・ハーネス強制摩擦の既定除外・痕跡種別の判定・expected / actual の抽出・エントリ形式と書き込み方式）の単一出典
+- `${CLAUDE_SKILL_DIR}/references/capture-procedure.md` — 判定基準の詳細（session jsonl の所在解決の採用理由・却下代替・既知の限界、シグナル検知の2群・ハーネス強制摩擦の既定除外・痕跡種別の判定・expected / actual の抽出・エントリ形式と書き込み方式）の単一出典
 - `${CLAUDE_SKILL_DIR}/references/capture-examples.md` — 記述例（observation 本文・tool-result 由来のエントリ・判断知のエントリ）
 - `${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` — 出力先 store の形式・シグナル種別／痕跡種別の値域・project-id とパスの解決手順・バケット名生成規約・パース規約
 - `${CLAUDE_PLUGIN_ROOT}/references/capture-signal-spec.md` — 痕跡ソース session jsonl からの `origin`（痕跡種別）/ `expected` / `actual` の抽出元
