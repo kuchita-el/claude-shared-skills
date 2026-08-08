@@ -61,6 +61,8 @@ store パスと jsonl パスは別々の入力から解決する。**store proje
 - store バケットパス: `~/.claude/projects/<store project-id>/growth/captures-YYYY-MM-DD.md`
 - jsonl パス: session UUID を探索キーとして解決する（ディレクトリ名を組み立てない）。
 
+**探索の前提**: session UUID が空（`printenv CLAUDE_CODE_SESSION_ID` が値を返さない）の場合は、**探索を実行せず**「session UUID を取得できませんでした（確認: `printenv CLAUDE_CODE_SESSION_ID`）」と store バケットパスを報告して終了する（store へ書かない）。空の探索キーで探索して、一致0件と取り違えない。
+
 ```bash
 find ~/.claude/projects -maxdepth 2 -name "<session-UUID>.jsonl"
 ```
@@ -81,9 +83,7 @@ Step 1 の探索の**出力行数**で分岐する（終了コードでは判定
 - **0行**: 下記の文言で報告して終了する。
 - **2行以上**: 候補パスを全件列挙し、所在を一意に定められない旨を報告して終了する。
 
-session UUID が取得できない（`printenv CLAUDE_CODE_SESSION_ID` が空）場合は、探索を実行せず「session UUID を取得できませんでした（確認: `printenv CLAUDE_CODE_SESSION_ID`）」と報告して終了する。
-
-**この3種の縮退（session UUID 取得不可／一致0件／一致2件以上）はいずれも store へエントリを書かず、報告に解決済みの store パスを併記する**（store パスは jsonl の解決とは独立に決まるため、縮退時も提示できる）。
+**3種の縮退（Step 1 の session UUID 取得不可／一致0件／一致2件以上）はいずれも store へエントリを書かず、報告に解決済みの store パスを併記する**（store パスは jsonl の解決とは独立に決まるため、縮退時も提示できる）。
 
 0行の場合の報告（文言を言い換えない）:
 
@@ -154,8 +154,10 @@ mkdir -p ~/.claude/projects/<project-id>/growth/
 - 訂正 × 1
 - ツール拒否 × 2
 store: ~/.claude/projects/-home-user-myproject/growth/captures-2026-06-26.md
-jsonl: ~/.claude/projects/<session ディレクトリ名>/<session-UUID>.jsonl
+jsonl: ~/.claude/projects/-home-user-myproject--claude-worktrees-feature-x/<session-UUID>.jsonl
 ```
+
+jsonl 行には Step 1 の探索が**返した**絶対パスをそのまま書く（store パスから組み立てない）。上の例は store 側と別ディレクトリに解決された場合を示す。
 
 store へ書かずに終了する経路（Step 2 の3種の縮退・シグナル0件）でも store パスを報告に含める。
 
