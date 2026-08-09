@@ -625,16 +625,20 @@ run_sut_in() {
 
     # 同名のファイルをルートとサブディレクトリへ置く。パスの解釈が2つに割れると、
     # 指していない方が検査され、報告名では取り違えに気づけない。
+    # 配下を短い文書にすると「配下を検査して違反が無かった」と「一つも検査しなかった」が
+    # 同じ exit 0 になり区別できない。双方に違反を置き、報告されたパスで判別する。
     cp "$LINT_FIXTURES/invalid/01-sentence-too-long.md" "$repo/doc.md"
-    printf '# 短い文書\n\n短い文である。\n' >"$repo/sub/doc.md"
+    cp "$LINT_FIXTURES/invalid/02-sentence-across-lines.md" "$repo/sub/doc.md"
 
     pushd "$repo/sub" >/dev/null || return 1
     run bash "$SUT" --profile "$BUNDLED_PROFILE" doc.md </dev/null
     popd >/dev/null || return 1
-    collect_rc 0 "サブディレクトリからの名指しは、その配下のファイルを指す"
+    collect_rc 1 "サブディレクトリからの名指しは、その配下のファイルを指す"
+    collect_contains "$output" "sub/doc.md:" "配下にある違反が報告される"
 
     run_sut_in "$repo" doc.md
     collect_rc 1 "ルートからの名指しは、ルートのファイルを指す"
+    collect_not_contains "$output" "sub/doc.md:" "ルートからの名指しで配下のファイルを報告しない"
 
     # 現在地そのものを指す形も、配下の全体を指す。
     run_sut_in "$repo" .
@@ -649,6 +653,18 @@ run_sut_in() {
     collect_rc 0 "改名だけならパスを名指ししても報告しない"
     run_sut_in "$repo"
     collect_rc 0 "改名だけなら引数なしでも報告しない"
+
+    # ただし射程の境界をまたぐ改名は別である。Markdown でない名前から Markdown への
+    # 改名は、その内容が初めて規約の対象になる時点であり、追加行が無いことを理由に
+    # 飛ばすと、この文書が検査される時点がどのコミットにも存在しない。
+    cp "$LINT_FIXTURES/invalid/01-sentence-too-long.md" "$repo/note.txt"
+    git -C "$repo" add -A
+    git -C "$repo" commit -q -m "Markdown でない名前で置く"
+    git -C "$repo" mv note.txt note.md
+    run_sut_in "$repo" note.md
+    collect_rc 1 "Markdown でない名前からの改名は全行を検査する"
+    run_sut_in "$repo"
+    collect_rc 1 "同じ改名を引数なしでも検査する"
 
     collect_finish
 }
@@ -689,6 +705,19 @@ run_sut_in() {
     run_sut_in "$repo" --two-dot --base unrelated
     collect_rc 1 "--two-dot なら2点間差分として解決する"
 
+    # 列挙の段で git が落ちる場合も止める。列挙は基点の解決を通った後に走るため、
+    # 終了コードを見ないと全件が無検査のまま成功を返す。基点の tree を欠落させると、
+    # 基点の解決だけは通り、列挙だけが落ちる状態になる。
+    local broken="$BATS_TEST_TMPDIR/broken-objects"
+    init_temp_repo "$broken"
+    cp "$LINT_FIXTURES/invalid/01-sentence-too-long.md" "$broken/doc.md"
+    commit_all "$broken" "起点"
+    local tree
+    tree="$(git -C "$broken" rev-parse 'HEAD^{tree}')"
+    rm -f "$broken/.git/objects/${tree:0:2}/${tree:2}"
+    run_sut_in "$broken"
+    collect_rc 2 "列挙の段で git が落ちるときは止める"
+
     collect_finish
 }
 
@@ -714,6 +743,19 @@ run_sut_in() {
     popd >/dev/null || return 1
     collect_rc 1 "深い階層から: 同じ上限が効く"
     collect_contains "$output" "上限 60字" "深い階層でも解決された上限が60字である"
+
+    # symlink 経由で入った作業ディレクトリも同じ結果になる。論理パスのまま親をたどると
+    # 実体と並びが食い違ってプロファイルに届かず、上限が既定へ黙って緩む。
+    local alias_dir="$BATS_TEST_TMPDIR/alias-deep"
+    if ln -s "$root/docs/deep" "$alias_dir" 2>/dev/null && [ -L "$alias_dir" ]; then
+        pushd "$alias_dir" >/dev/null || return 1
+        run env -u CLAUDE_PROJECT_DIR bash "$SUT" --all "$root/doc.md" </dev/null
+        popd >/dev/null || return 1
+        collect_rc 1 "symlink 経由の作業ディレクトリでも同じ上限が効く"
+        collect_contains "$output" "上限 60字" "symlink 経由でも解決された上限が60字である"
+    else
+        collect_skipped "symlink 経由の作業ディレクトリ" "symlink を作れない実行環境"
+    fi
 
     collect_finish
 }

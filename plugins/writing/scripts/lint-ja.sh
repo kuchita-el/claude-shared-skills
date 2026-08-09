@@ -123,6 +123,14 @@ exit code:
 USAGE
 }
 
+# 列挙の途中経過を受ける一時ファイル。die で抜ける経路でも残さないよう trap で消す。
+LIST_FILE=""
+cleanup() {
+    [ -n "$LIST_FILE" ] && rm -f "$LIST_FILE"
+    return 0
+}
+trap cleanup EXIT
+
 die() {
     echo "lint-ja: $1" >&2
     exit "${2:-2}"
@@ -239,8 +247,10 @@ project_base() {
     # git リポジトリの外では、作業ディレクトリから親をたどって設定の置き場所を探す。
     # 作業ディレクトリをそのまま基点にすると、同じファイルを同じ指定で検査した結果が
     # 起動した場所の深さで変わる。
+    # ここも実体パスで辿る。論理パスのままだと、symlink 経由で入った作業ディレクトリでは
+    # 親の並びが実体と食い違い、置いてあるプロファイルに届かないまま既定へ黙って緩む。
     local d
-    d="$(pwd)"
+    d="$(pwd -P)"
     while [ -n "$d" ] && [ "$d" != "/" ]; do
         if [ -d "$d/.claude" ]; then
             printf '%s' "$d"
@@ -1086,6 +1096,25 @@ declare -A CHANGED_LINES=()
 declare -A RENAME_SRC=()
 BASE_COMMIT=""
 
+# git の NUL 区切りの列挙を1箇所で受ける。プロセス置換で読むと git の終了コードが
+# 取れず、`set -o pipefail` も効かない。列挙の段で git が落ちると、全件が無検査のまま
+# exit 0 になる。入口を2つに分けると、片方だけを単独で赤くする題材が作れず、守る面を
+# 置けないまま残る。結果は GIT_LIST へ書いて返す。
+GIT_LIST=()
+git_list_z() {
+    local what="$1"
+    shift
+    GIT_LIST=()
+    [ -n "$LIST_FILE" ] || LIST_FILE="$(mktemp)" || die "一時ファイルを作れません"
+    git -C "$REPO_ROOT" -c core.quotePath=false "$@" >"$LIST_FILE" 2>/dev/null ||
+        die "${what}を列挙できません: $DIFF_BASE"
+    local item
+    while IFS= read -r -d '' item; do
+        [ -n "$item" ] && GIT_LIST+=("$item")
+    done <"$LIST_FILE"
+    return 0
+}
+
 # ファイルの列挙とハンクの取得を分ける。差分本文の `+++` 行からファイル名を読むと、
 # diff.noprefix ・ diff.mnemonicPrefix の設定下で接頭辞が変わり、非 ASCII のファイル名は
 # core.quotePath により引用されるため、いずれの場合も対象を見失ったまま成功を返す。
@@ -1112,44 +1141,63 @@ collect_changed_lines() {
             die "分岐点を解決できません: $DIFF_BASE（履歴を共有しないか、浅いクローンです。2点間差分を採るなら --two-dot を指定してください）"
     fi
 
-    local f st old_path
+    local f st old_path k total
     local -a tracked=() untracked=()
 
     # 改名は、変更前後の両方をパススペックへ渡さないと git が改名の対として扱えず、
     # 全行が追加行に見える。名前の対をここで captured しておき、ハンクの取得へ渡す。
-    while IFS= read -r -d '' st; do
-        case "$st" in
-            R* | C*)
-                IFS= read -r -d '' old_path || break
-                IFS= read -r -d '' f || break
-                RENAME_SRC["$f"]="$old_path"
-                ;;
-            D*)
-                IFS= read -r -d '' f || break
-                continue
-                ;;
-            *)
-                IFS= read -r -d '' f || break
-                ;;
-        esac
-        [ -n "$f" ] && tracked+=("$f")
     # 列挙はパススペックで絞らない。git はパススペックで差分を絞ってから改名を検出する
     # ため、新しい名前だけを渡すと改名の対を作れず、全行が追加行に見える。絞り込みは
     # 列挙した結果に対して行う。
-    done < <(git -C "$REPO_ROOT" -c core.quotePath=false diff --name-status -z -M \
-        "$BASE_COMMIT" 2>/dev/null)
+    git_list_z "変更のあったファイル" diff --name-status -z -M "$BASE_COMMIT"
+    k=0
+    total="${#GIT_LIST[@]}"
+    while [ "$k" -lt "$total" ]; do
+        st="${GIT_LIST[k]}"
+        k=$((k + 1))
+        [ "$k" -lt "$total" ] || break
+        case "$st" in
+            R* | C*)
+                old_path="${GIT_LIST[k]}"
+                k=$((k + 1))
+                [ "$k" -lt "$total" ] || break
+                f="${GIT_LIST[k]}"
+                k=$((k + 1))
+                RENAME_SRC["$f"]="$old_path"
+                ;;
+            D*)
+                k=$((k + 1))
+                continue
+                ;;
+            *)
+                f="${GIT_LIST[k]}"
+                k=$((k + 1))
+                ;;
+        esac
+        [ -n "$f" ] && tracked+=("$f")
+    done
 
     # 未追跡のファイルも対象に含める。規約の適用範囲の筆頭は新しく起草する文書であり、
     # 追跡される前が最も検査したい時点である。列挙はリポジトリのルートから行う。
     # 作業ディレクトリから行うと、その配下だけが対象になり追跡分と射程が揃わない。
-    while IFS= read -r -d '' f; do
-        [ -n "$f" ] && untracked+=("$f")
-    done < <(git -C "$REPO_ROOT" -c core.quotePath=false ls-files --others --exclude-standard \
-        --full-name -z 2>/dev/null)
+    git_list_z "未追跡のファイル" ls-files --others --exclude-standard --full-name -z
+    untracked=(${GIT_LIST[@]+"${GIT_LIST[@]}"})
 
     for f in ${tracked[@]+"${tracked[@]}"}; do
         case "$f" in *.md) ;; *) continue ;; esac
         path_wanted "$f" || continue
+        # 射程の境界をまたぐ改名（Markdown でない名前から Markdown への改名）は、その
+        # 内容が初めて規約の対象になる時点である。改名の差分に追加行は現れないため、
+        # 触れた行だけを見ると、この文書が検査される時点がどのコミットにも存在しない。
+        if [ -n "${RENAME_SRC[$f]:-}" ]; then
+            case "${RENAME_SRC[$f]}" in
+                *.md) ;;
+                *)
+                    CHANGED_LINES["$f"]="$SCOPE_ALL"
+                    continue
+                    ;;
+            esac
+        fi
         hunk_lines "$f"
         case "$?" in
             0) ;;
