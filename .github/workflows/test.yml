@@ -1,0 +1,32 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up mise
+        uses: jdx/mise-action@v4
+        with:
+          install: false
+
+      - name: Trust repository configuration
+        run: mise trust
+
+      - name: Install test tools
+        run: mise install
+
+      - name: Run test suite
+        run: bash scripts/run-tests.sh
