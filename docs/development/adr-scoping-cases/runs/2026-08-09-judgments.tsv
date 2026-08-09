@@ -1,0 +1,16 @@
+# 対象文書: plugins/adr/skills/manage-adr/references/adr-scoping.md。実行日: 2026-08-09。
+# 担い手: 題材1件につき1つの汎用サブエージェント。試行ごとに新規コンテキスト。
+# 本走は部分再実行（CASE-09・CASE-11・CASE-30・CASE-32の4題材、各2試行）。既存24題材は2026-07-29-judgments.tsvにある。
+# reportはCASE-25〜29未実測でカバレッジ未充足のため通さない。集計は次の対象文書改訂担い手へ申し送る。
+# 対象文書commit・題材集合commitは各行の14列目・15列目に実値を入れる。破棄試行はraw-returns.mdに理由付きで残す。
+# CASE-11・CASE-32の旧本文での各1試行は、必要条件修正前のため破棄。以下は修正後の独立trial 1・2。
+# 行き先はexpectations.tsvの4値へ写像し、3分岐を特定できない場合はADR化しない/分岐未特定と記す。
+題材ID	試行番号	項目1	項目2	項目3	項目4	合計	行き先	根拠_項目1	根拠_項目2	根拠_項目3	根拠_項目4	参照ファイル一覧	対象文書commit	題材集合commit
+CASE-09	1	0	1	0	1	2	ADR化しない（2点以下）の行き先 — 共有規約文書	反転対象は共有規約ファイル1つで非本数条件も該当しない。	影響は複数箇所だが、j-1は資産1個なので補助情報に留まり項目2の入力ではない。	値域判定で共有規約への採用理由が本文にあり、値域Bとして0点。	機械的検出・拒否が無く1点。	/tmp/adr-scoping-case-prompt.ThRytJ.md; plugins/adr/skills/manage-adr/references/adr-scoping.md	852196d	881826e
+CASE-09	2	0	1	0	1	2	ADR化しない（2点以下）の行き先 — 共有規約文書	反転対象は直す必要のあるファイル0本で、非本数条件も該当しない。	影響先は2つのスキル定義で2単位。作業者数は入力にしない。	値域外で段2。採用理由と却下理由が同一、犠牲なし、資産1つで条件1〜3不成立。	検査が無く、まとめても作業が止まらないため1点。	/tmp/adr-scoping-case-prompt.wyV53T.md; plugins/adr/skills/manage-adr/references/adr-scoping.md	852196d	881826e
+CASE-11	1	0	1	0	1	2	ADR化しない（2点以下）の行き先 — 共有規約文書	反転対象は直す必要のあるファイル0本で、非本数条件も該当しない。	影響先は2つのスキル定義で2単位。作業者数は入力にしない。	値域外で段2。採用理由が確かめられず条件1/2は不成立、資産1つで条件3も不成立。	検査が無く、まとめても作業が止まらないため1点。	/tmp/adr-scoping-case-prompt.1uo4bk.md; plugins/adr/skills/manage-adr/references/adr-scoping.md	852196d	881826e
+CASE-11	2	0	1	0	1	2	ADR化しない（2点以下）の行き先 — 共有規約文書	反転対象は直す必要のあるファイル0本で、非本数条件も該当しない。	影響先は2つのスキル定義で2単位。作業者数は入力にしない。	値域外で段2。採用理由が確かめられず条件1/2は不成立、資産1つで条件3も不成立。	検査が無く、まとめても作業が止まらないため1点。	/tmp/adr-scoping-case-prompt.RD96nS.md; plugins/adr/skills/manage-adr/references/adr-scoping.md	852196d	881826e
+CASE-30	1	0	0	0	1	1	ADR化しない（2点以下）の行き先 — 共有規約文書	反転対象は共有規約ファイル1つで非本数条件も該当しない。	影響単位は1つで、作業者数は入力にしない。	共有規約への採用理由が本文にあり、値域Bとして0点。	機械的検出・拒否が無く1点。	/tmp/adr-scoping-case-prompt.yxwgTJ.md; plugins/adr/skills/manage-adr/references/adr-scoping.md	852196d	881826e
+CASE-30	2	0	0	0	1	1	ADR化しない（2点以下）の行き先 — 共有規約文書	反転対象は共有規約ファイル1つで非本数条件も該当しない。	影響単位は1つで、作業者数は入力にしない。	共有規約への採用理由が本文にあり、値域Bとして0点。	機械的検出・拒否が無く1点。	/tmp/adr-scoping-case-prompt.QVN5qY.md; plugins/adr/skills/manage-adr/references/adr-scoping.md	852196d	881826e
+CASE-32	1	0	0	0	0	0	ADR化しない（2点以下）の行き先 — 実装・テスト資産・操作手順	反転対象は検査スクリプト1本で非本数条件も該当しない。	影響先は検査スクリプト1単位で、作業者数は入力にしない。	規範を強制する実装本体が保持先なので値域Aで0点。	違反を検出しコミットを阻止するため0点。	/tmp/adr-scoping-case-prompt.VkCdar.md; plugins/adr/skills/manage-adr/references/adr-scoping.md	852196d	881826e
+CASE-32	2	0	0	0	0	0	ADR化しない（2点以下）の行き先 — 実装・テスト資産・操作手順	反転対象は検査スクリプト1本で非本数条件も該当しない。	影響先は検査スクリプト1単位で、作業者数は入力にしない。	規範を強制する実装本体が保持先なので値域Aで0点。	違反を検出しコミットを阻止するため0点。	/tmp/adr-scoping-case-prompt.fCQace.md; plugins/adr/skills/manage-adr/references/adr-scoping.md	852196d	881826e
