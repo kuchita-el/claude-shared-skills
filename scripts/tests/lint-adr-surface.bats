@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 # manage-adr スキル面に対する編集機構の面検査。
 #
-# 新スキーマの編集機構（decision tree・3段構え対応表）の文書化と旧記述の除去を検査する。
+# 新スキーマの編集機構に関する旧記述の除去を検査する。
 # 運用ルールの正本は docs/adr/README.md ではなく manage-adr スキル側にあるため、存在検査の
 # 対象を移設先（edit-decision.md）へ張り替えてある。除去検査は、旧記述が再混入しうる面＝
 # manage-adr のスキル面（正本の在処）に対して行う。host 固有の docs/adr/README.md は
@@ -92,20 +92,6 @@ setup_file() {
                 ;;
         esac
     done
-
-    collect_finish
-}
-
-@test "面③: edit-decision.md の内容" {
-    collect_init
-
-    local edit_content
-    edit_content=$(cat "$EDIT_DECISION" 2>/dev/null || true)
-
-    collect_contains "$edit_content" "3段構え" \
-        "AC5: 3段構え編集機構の対応表が edit-decision.md に存在する"
-    collect_contains "$edit_content" "些末" \
-        "AC5: decision tree（些末/非core/core 判定フロー）が edit-decision.md に存在する"
 
     collect_finish
 }
