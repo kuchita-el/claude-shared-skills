@@ -33,8 +33,9 @@
 # 期待値として保持・比較しない。
 #
 # 判定記録TSV の列（タブ区切り。`#` 始まりの行は注記として読み飛ばす）:
-#   1 題材ID / 2 試行番号 / 3-6 項目1〜4 / 7 合計 / 8 行き先
-#   9-12 根拠_項目1〜4 / 13 参照ファイル一覧 / 14 対象文書commit / 15 題材集合commit
+#   1 題材ID / 2 試行番号 / 3-6 項目1〜4 / 7 行き先
+#   8-11 根拠_項目1〜4 / 12 参照ファイル一覧 / 13 対象文書commit / 14 題材集合commit
+# 合計は項目1〜4から導出するため、判定記録には保持しない。
 #
 # 使い方:
 #   bash adr-scoping-cases.sh prompt   <対象文書パス> <題材ID> <題材集合ディレクトリ>
@@ -597,19 +598,19 @@ cmd_report() {
             covered[id] = 1
             trials[trial] = 1
             for (i = 1; i <= 4; i++) { item[id, trial, i] = $(i + 2); if ($(i + 2) == "1") ones[trial, i]++ ; cnt[trial, i]++ }
-            total[id, trial] = $7; dest[id, trial] = $8
+            total[id, trial] = $3 + $4 + $5 + $6; dest[id, trial] = $7
             # commit 列は持つ場合のみ検査する（列を持たない記録も受け付ける）。
             # 埋め忘れ・プレースホルダのまま提出された記録を素通りさせないための検査であり、
             # 短縮ハッシュの形をしていない値は名指しで報告する。
             # 出力は集計レポートへ貼り込むため、連想配列の走査順（awk の実装依存）に
             # 委ねず、記録の出現順で並ぶよう添字つきの配列へ積む。
+            if (NF >= 13 && $13 !~ /^[0-9a-f]{7,40}$/) {
+                nbad++; bad_id[nbad] = id; bad_trial[nbad] = trial
+                bad_col[nbad] = "対象文書commit"; bad_val[nbad] = $13
+            }
             if (NF >= 14 && $14 !~ /^[0-9a-f]{7,40}$/) {
                 nbad++; bad_id[nbad] = id; bad_trial[nbad] = trial
-                bad_col[nbad] = "対象文書commit"; bad_val[nbad] = $14
-            }
-            if (NF >= 15 && $15 !~ /^[0-9a-f]{7,40}$/) {
-                nbad++; bad_id[nbad] = id; bad_trial[nbad] = trial
-                bad_col[nbad] = "題材集合commit"; bad_val[nbad] = $15
+                bad_col[nbad] = "題材集合commit"; bad_val[nbad] = $14
             }
         }
         END {

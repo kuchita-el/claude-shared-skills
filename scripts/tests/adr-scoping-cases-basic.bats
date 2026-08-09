@@ -615,6 +615,29 @@ check_unreadable_case_dir() {
     collect_finish
 }
 
+@test "面⑪a: report の合計一致は項目1〜4から導出する" {
+    collect_init
+
+    local judgments="$BATS_TEST_TMPDIR/derived-total-judgments.tsv"
+    awk -F '\t' -v OFS='\t' '
+        /^#/ { print; next }
+        $1 == "題材ID" { for (i = 1; i <= NF; i++) if (i != 7) printf "%s%s", $i, (i == NF ? ORS : OFS); next }
+        {
+            for (i = 1; i <= NF; i++) if (i != 7) {
+                value = $i
+                if ($1 == "CASE-A2" && $2 == "2" && i == 3) value = 0
+                printf "%s%s", value, (i == NF ? ORS : OFS)
+            }
+        }
+    ' "$JUDGMENTS_DIR/valid-judgments.tsv" > "$judgments"
+
+    sc report "$judgments" "$CASES_DIR/valid"
+    collect_run 0 "22d. report（合計列を除き項目値を変更）→ 項目1〜4の和から合計一致を算出する" \
+        "合計: 一致 1 / 2 (50.0%)"
+
+    collect_finish
+}
+
 @test "面⑫: report 記録の異常" {
     collect_init
 
@@ -628,9 +651,9 @@ check_unreadable_case_dir() {
     collect_run 1 "36. report duplicate-judgments.tsv → exit 1、CASE-A1 の重複した行を告げる" "重複" "CASE-A1"
 
     # commit 列にプレースホルダが残ったまま提出された記録を素通りさせない。
-    # 列を持たない記録（他の judgments fixture は14列）は検査対象外であることも同時に押さえる。
+    # 題材集合commit列を持たない記録（他の judgments fixture は13列）は検査対象外であることも同時に押さえる。
     sc report "$JUDGMENTS_DIR/unresolved-commit-judgments.tsv" "$CASES_DIR/valid"
-    collect_run 1 "36a. report（commit 列にプレースホルダが残る記録）→ exit 1、14列目・15列目それぞれを題材・試行・列名で名指しする" \
+    collect_run 1 "36a. report（commit 列にプレースホルダが残る記録）→ exit 1、13列目・14列目それぞれを題材・試行・列名で名指しする" \
         "CASE-A1 試行1 題材集合commit が短縮ハッシュでない: 未コミット" \
         "CASE-A2 試行1 対象文書commit が短縮ハッシュでない: 未コミット" \
         "未確定 2 件"
