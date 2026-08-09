@@ -9,7 +9,8 @@ Claude Code向けの汎用スキルライブラリ。プロジェクト固有の
 ## Local Development Setup
 
 ```bash
-./setup-local.sh          # dev-workflow・adr・writing のプラグインを --plugin-dir で読み込んで起動
+./run-claude-local.sh --model opus # dev-workflow・adr・writing を読み込んで起動
+./run-codex-local.sh --model gpt-5.6 # Codex用プラグインと必須のSuperpowersを導入して起動
 mise trust && mise install # チェックアウト（worktree 含む）ごとに一度。テストフレームワーク（bats）を版固定で導入する
 bash scripts/run-tests.sh # テストと検査器を一括実行する
 ```
@@ -27,7 +28,8 @@ bash scripts/run-tests.sh # テストと検査器を一括実行する
 - `plugins/dev-workflow/references/` — 複数スキルが共有する参照ファイル（DoRデフォルト定義等。`${CLAUDE_PLUGIN_ROOT}/references/` で参照。詳細は ADR-202606040737-01）
 - `plugins/dev-workflow/agents/{agent-name}.md` — サブエージェント定義（プラグインルートに集約、自動検出される。詳細は ADR-202605250838-01）
 - `plugins/adr/` — ADR 運用機構の配布プラグイン（`scripts/` の drift-lint・index 生成・識別子発番、`hooks/` の commit 前ゲート、`skills/manage-adr/` のライフサイクル操作スキル。#492/#493 で dev-workflow から抽出）
-- `setup-local.sh` — ローカル開発用起動スクリプト（`claude --plugin-dir ./plugins/dev-workflow --plugin-dir ./plugins/adr --plugin-dir ./plugins/writing` のラッパー）
+- `run-claude-local.sh` — ローカル開発用起動スクリプト（Claude の引数を透過するラッパー）
+- `run-codex-local.sh` — Codex用 marketplace と自前プラグイン、必須の公式Superpowersを登録して起動するラッパー
 
 ### Skill Definition Format
 
@@ -111,4 +113,4 @@ Issueサイズ（Small/Medium/Large）に応じてチェック項目が段階的
 ## Adding a New Skill
 
 1. `plugins/dev-workflow/skills/{skill-name}/SKILL.md` を作成（YAMLフロントマター + 実装仕様）
-2. `./setup-local.sh` で起動して動作確認（`/dev-workflow:{skill-name}` でスコープ付き呼び出し）
+2. `./run-claude-local.sh --model opus` で起動して動作確認（`/dev-workflow:{skill-name}` でスコープ付き呼び出し）

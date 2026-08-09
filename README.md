@@ -1,8 +1,26 @@
 # claude-shared-skills
 
-Claude Code向けの汎用スキル集です。プロジェクト固有の依存を排除し、どのプロジェクトでも利用できるようにしています。
+Claude Code / Codex 向けの汎用スキル集です。プロジェクト固有の依存を排除し、どのプロジェクトでも利用できるようにしています。
 
 ## 導入方法
+
+### Codex
+
+Codex 用 marketplace の登録と、このリポジトリが提供する4つのプラグインのインストールを一度に行えます:
+
+```bash
+./run-codex-local.sh --model gpt-5.6
+```
+
+Claude Code 側で `superpowers@claude-plugins-official` を利用している場合は、Codex 公式 marketplace の対応版も併せて導入できます:
+
+```bash
+./run-codex-local.sh --model gpt-5.6
+```
+
+Claude Code と Codex はプラグインのインストール状態を別々に管理するため、Claude Code のキャッシュは直接共有しません。`superpowers` は必須で導入されます。
+
+### Claude Code
 
 ### 方法1: プラグインとしてインストール（推奨）
 
@@ -98,10 +116,12 @@ cp plugins/dev-workflow/skills/refine-issue/references/dor-default.md /path/to/y
 このリポジトリ内で開発中のスキルを試すには、セットアップスクリプトを実行してください:
 
 ```bash
-./setup-local.sh
+./run-claude-local.sh --model opus
 ```
 
 `claude --plugin-dir ./plugins/dev-workflow --plugin-dir ./plugins/adr --plugin-dir ./plugins/writing` で3つのプラグインを読み込んだClaude Codeが起動します。各スキルは `/dev-workflow:{skill-name}`・`/adr:{skill-name}` のスコープ付き呼び出しで利用できます。
+
+Codex では `./run-codex-local.sh --model gpt-5.6` を実行し、新しいセッションを開いてください。Superpowers は必須で導入されます。
 
 テストと検査器は `bash scripts/run-tests.sh` で一括実行します（`mise trust && mise install` がチェックアウトごとに一度必要です。worktree も別のチェックアウトとして扱われます）。実行経路の詳細は [docs/development/test-execution.md](docs/development/test-execution.md) を参照してください。
 
