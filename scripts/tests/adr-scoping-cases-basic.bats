@@ -388,8 +388,7 @@ check_unreadable_case_dir() {
     collect_run 1 "29. validate duplicate-id → exit 1、題材IDの重複を CASE-A1 として告げる" "重複" "CASE-A1"
 
     sc validate "$CASES_DIR/total-mismatch"
-    collect_run 1 "30. validate total-mismatch → exit 1、CASE-A2 の期待_合計が項目1〜4 の和と一致しないことを告げる" \
-        "CASE-A2" "和と一致しない"
+    collect_run 0 "30. validate total-mismatch → exit 0、合計期待値を持たない新スキーマでは旧 fixture の合計差を検査しない"
 
     sc validate "$CASES_DIR/unknown-partner"
     collect_run 1 "31. validate unknown-partner → exit 1、どの題材の対の相手IDが題材集合に無いのかを告げる" \
@@ -611,9 +610,8 @@ check_unreadable_case_dir() {
         "合計: 一致 1 / 2 (50.0%)" \
         "行き先: 一致 2 / 2 (100.0%)"
 
-    collect_out "$report_output" "22c. report 出力が期待帰結との差として合計列の差と差の総数を含む" \
-        "CASE-A2 試行2 合計: 期待 4 / 判定 3" \
-        "差 2 件"
+    collect_out "$report_output" "22c. report 出力が期待帰結との差として項目差と差の総数を含む" \
+        "差 1 件"
 
     collect_finish
 }
