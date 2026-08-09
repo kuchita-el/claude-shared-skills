@@ -80,6 +80,7 @@ EXPECTED_BATS=(
     lint-adr-surface.bats
     lint-adr-xref.bats
     lint-domain-doc.bats
+    local-plugin-runners.bats
     next-adr-id.bats
 )
 
