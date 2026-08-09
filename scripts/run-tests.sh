@@ -74,12 +74,15 @@ MSG
 EXPECTED_BATS=(
     adr-scoping-cases-basic.bats
     adr-scoping-cases-edge.bats
+    doc-reviewer-fixtures.bats
     lint-adr-index.bats
     lint-adr-layers.bats
     lint-adr-stem.bats
     lint-adr-surface.bats
     lint-adr-xref.bats
     lint-domain-doc.bats
+    lint-ja-mutation.bats
+    lint-ja.bats
     next-adr-id.bats
 )
 
