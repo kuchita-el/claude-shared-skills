@@ -189,19 +189,35 @@ done
 # プロジェクト固有のプロファイルが見つからなくなると、同じファイルを同じオプションで
 # 検査した結果が場所によって変わる。
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || REPO_ROOT=""
+# 実体パスへ揃える。git が返すのは実体パスであり、作業ディレクトリが symlink 経由だと
+# 論理パスと食い違って、リポジトリの中にいるのに外だと判定される。
+[ -n "$REPO_ROOT" ] && REPO_ROOT="$(cd -P -- "$REPO_ROOT" 2>/dev/null && pwd -P)"
 
-GIT_PATHS=()
+# 検査対象として指定されたパス（リポジトリのルート相対）。空なら全体を対象とする。
+WANT_PATHS=()
+
+# 列挙結果が、指定されたパスのいずれかに含まれるかを見る。
+path_wanted() {
+    local f="$1" w
+    [ "${#WANT_PATHS[@]}" -eq 0 ] && return 0
+    for w in "${WANT_PATHS[@]}"; do
+        [ "$w" = "." ] && return 0
+        [ "$f" = "$w" ] && return 0
+        case "$f" in "$w"/*) return 0 ;; esac
+    done
+    return 1
+}
 
 # 作業ディレクトリ相対のパスを、リポジトリのルート相対へ直す。
 REPO_RELATIVE=""
 to_repo_relative() {
     local p="$1" dir base abs
     if [ -d "$p" ]; then
-        abs="$(cd -- "$p" 2>/dev/null && pwd)" || die "パスを解決できません: $p"
+        abs="$(cd -P -- "$p" 2>/dev/null && pwd -P)" || die "パスを解決できません: $p"
     else
         dir="$(dirname -- "$p")"
         base="$(basename -- "$p")"
-        abs="$(cd -- "$dir" 2>/dev/null && pwd)" || die "パスを解決できません: $p"
+        abs="$(cd -P -- "$dir" 2>/dev/null && pwd -P)" || die "パスを解決できません: $p"
         abs="$abs/$base"
     fi
     case "$abs" in
@@ -276,8 +292,7 @@ resolve_max_len() {
     # 区切り行の欠落で明示した指定が効かないまま既定へ緩むのを避け、止める。
     local path
     for path in ${chain[@]+"${chain[@]}"}; do
-        profile_has_column "$path" ||
-            die "文書種別プロファイルに「一文長の上限」の列がありません: $path"
+        profile_validate "$path"
     done
 
     local want
@@ -319,13 +334,14 @@ split_row() {
     done
 }
 
-# 「一文長の上限」の列を持つ表がファイルの中に1つでもあるかを見る。列の位置は区切り行の
-# 直前の行で決まるため、区切り行が無い表は列を持たないものとして扱う。
-profile_has_column() {
-    local path="$1" line idx pending=0
+# 種別を左端の列に取る表が、「一文長の上限」の列を持つことを表ごとに確かめる。
+# ファイル単位で1つでもあれば通す形にすると、表を複数持つプロファイルで、列名が
+# ずれた表に置かれた種別の登録が黙って捨てられる。
+profile_validate() {
+    local path="$1" line idx pending=0 found=0 seen=0
     local -a header=()
     [ -r "$path" ] || die "文書種別プロファイルを読めません: $path"
-    while IFS= read -r line; do
+    while IFS= read -r line || [ -n "$line" ]; do
         trim "$line"
         line="$TRIMMED"
         case "$line" in
@@ -336,10 +352,14 @@ profile_has_column() {
                 ;;
         esac
         if [[ "$line" =~ $TABLE_SEP_RE ]]; then
-            if [ "$pending" -eq 1 ]; then
+            if [ "$pending" -eq 1 ] && [ "${#header[@]}" -gt 0 ] && [ "${header[0]}" = "種別" ]; then
+                found=0
                 for idx in "${!header[@]}"; do
-                    [ "${header[idx]}" = "一文長の上限" ] && return 0
+                    [ "${header[idx]}" = "一文長の上限" ] && found=1 && break
                 done
+                [ "$found" -eq 1 ] ||
+                    die "文書種別プロファイルの表に「一文長の上限」の列がありません: $path"
+                seen=1
             fi
             pending=0
             continue
@@ -348,7 +368,9 @@ profile_has_column() {
         header=(${ROW_CELLS[@]+"${ROW_CELLS[@]}"})
         pending=1
     done <"$path"
-    return 1
+    [ "$seen" -eq 1 ] ||
+        die "文書種別プロファイルに種別の表がありません: $path"
+    return 0
 }
 
 # 表から種別の行を引き、「一文長の上限」の列の値を返す。列の位置はヘッダ行のセル名で
@@ -363,7 +385,7 @@ profile_lookup() {
 
     local line col=-1 idx digits value pending=0
     local -a header=()
-    while IFS= read -r line; do
+    while IFS= read -r line || [ -n "$line" ]; do
         trim "$line"
         line="$TRIMMED"
 
@@ -407,9 +429,16 @@ profile_lookup() {
             die "文書種別プロファイルの行に「一文長の上限」の列がありません: $path（種別 $want）"
 
         value="${ROW_CELLS[col]}"
-        digits="${value//[^0-9]/}"
+        # 先頭の連続する数字だけを採る。非数字を落として連結すると、脚注のような記号が
+        # 付いた値で桁が変わり（100[^1] が 1001 になる）、検査が黙って10倍に緩む。
+        digits="${value%%[!0-9]*}"
         [ -n "$digits" ] ||
             die "文書種別プロファイルの一文長の上限に数値がありません: $path（種別 $want、値「$value」）"
+        case "${value#"$digits"}" in
+            *[0-9]*)
+                die "文書種別プロファイルの一文長の上限に数値が2つ以上あります: $path（種別 $want、値「$value」）"
+                ;;
+        esac
         digits="$((10#$digits))"
         if [ "$digits" -lt "$MIN_ACCEPTED_LEN" ] || [ "$digits" -gt "$MAX_ACCEPTED_LEN" ]; then
             die "文書種別プロファイルの一文長の上限が想定の範囲を外れています: $path（種別 $want、値 $digits）"
@@ -618,12 +647,27 @@ collect_paragraphs() {
     # 読み手の画面に現れない注釈を、行ではなく文字の範囲で落とす。行単位で落とすと、
     # 注釈と同じ行に置いた地の文が黙って未検査になり、行の途中で閉じた注釈より後ろが
     # 過大に数えられる。閉じない注釈は範囲を成さないため、そのまま残す。
-    local out="" rest="$blob" pre body nl
-    while [[ "$rest" == *'<!--'*'-->'* ]]; do
-        pre="${rest%%<!--*}"
-        rest="${rest#*<!--}"
-        body="${rest%%-->*}"
-        rest="${rest#*-->}"
+    # 範囲は、行ごとにコードスパンを伏せた写しの上で決める。生の文字列で探すと、
+    # インラインコードで注釈の記号に言及しただけで範囲が開き、次の `-->` までの地の文が
+    # 丸ごと落ちる。伏せ字は長さを保つため、写しの位置はそのまま元の位置に対応する。
+    local masked_blob="" ml
+    while IFS= read -r ml; do
+        mask_codespans "$ml"
+        masked_blob="$masked_blob$MASKED"$'\n'
+    done <<<"${blob%$'\n'}"
+
+    local out="" rest="$blob" mrest="$masked_blob" pre body nl pre_m body_m i j
+    while [[ "$mrest" == *'<!--'*'-->'* ]]; do
+        pre_m="${mrest%%<!--*}"
+        i="${#pre_m}"
+        mrest="${mrest:i+4}"
+        body_m="${mrest%%-->*}"
+        j="${#body_m}"
+        mrest="${mrest:j+3}"
+
+        pre="${rest:0:i}"
+        body="${rest:i+4:j}"
+        rest="${rest:i+4+j+3}"
         # 落とした範囲に含まれる改行だけを残し、行番号を保つ。
         nl="${body//[!$'\n']/}"
         out="$out$pre$nl"
@@ -635,7 +679,7 @@ collect_paragraphs() {
         lines+=("$line")
     done <<<"${blob%$'\n'}"
 
-    local buf="" buf_first=0 buf_last=0 buf_offsets="" s lineno
+    local buf="" buf_first=0 buf_last=0 buf_offsets="" buf_is_list=0 s lineno
     flush() {
         if [ -n "$buf" ]; then
             PARA_TEXT+=("$buf")
@@ -647,6 +691,7 @@ collect_paragraphs() {
         buf_first=0
         buf_last=0
         buf_offsets=""
+        buf_is_list=0
     }
 
     for ((i = 0; i < n; i++)); do
@@ -673,7 +718,9 @@ collect_paragraphs() {
             continue
         fi
         # 下線形式の見出し。直前の段落の全体が見出しの内容になるため、溜めた分を捨てる。
-        if [ -n "$buf" ] && [[ "$s" =~ $SETEXT_RE ]]; then
+        # 直前が箇条書きの項目である場合は適用しない。その位置の区切り線は箇条書きを
+        # 閉じるものであって、項目の内容を見出しへ変えない。
+        if [ -n "$buf" ] && [ "$buf_is_list" -eq 0 ] && [[ "$s" =~ $SETEXT_RE ]]; then
             buf=""
             buf_first=0
             buf_last=0
@@ -687,13 +734,16 @@ collect_paragraphs() {
         fi
 
         # 箇条書きと番号付きの項目は、先頭のマーカーを除いた残りを1つの段落として扱う。
+        local is_list=0
         if [[ "$s" =~ $LIST_RE ]]; then
             flush
             s="${s#"${BASH_REMATCH[0]}"}"
             [ -n "$s" ] || continue
+            is_list=1
         fi
 
         if [ -z "$buf" ]; then
+            buf_is_list="$is_list"
             buf_first="$lineno"
             buf_offsets="0:$lineno"
             buf="$s"
@@ -980,8 +1030,11 @@ collect_changed_lines() {
                 ;;
         esac
         [ -n "$f" ] && tracked+=("$f")
+    # 列挙はパススペックで絞らない。git はパススペックで差分を絞ってから改名を検出する
+    # ため、新しい名前だけを渡すと改名の対を作れず、全行が追加行に見える。絞り込みは
+    # 列挙した結果に対して行う。
     done < <(git -C "$REPO_ROOT" -c core.quotePath=false diff --name-status -z -M \
-        "$BASE_COMMIT" -- ${GIT_PATHS[@]+"${GIT_PATHS[@]}"} 2>/dev/null)
+        "$BASE_COMMIT" 2>/dev/null)
 
     # 未追跡のファイルも対象に含める。規約の適用範囲の筆頭は新しく起草する文書であり、
     # 追跡される前が最も検査したい時点である。列挙はリポジトリのルートから行う。
@@ -989,10 +1042,11 @@ collect_changed_lines() {
     while IFS= read -r -d '' f; do
         [ -n "$f" ] && untracked+=("$f")
     done < <(git -C "$REPO_ROOT" -c core.quotePath=false ls-files --others --exclude-standard \
-        --full-name -z -- ${GIT_PATHS[@]+"${GIT_PATHS[@]}"} 2>/dev/null)
+        --full-name -z 2>/dev/null)
 
     for f in ${tracked[@]+"${tracked[@]}"}; do
         case "$f" in *.md) ;; *) continue ;; esac
+        path_wanted "$f" || continue
         hunk_lines "$f"
         case "$?" in
             0) ;;
@@ -1007,6 +1061,7 @@ collect_changed_lines() {
     done
     for f in ${untracked[@]+"${untracked[@]}"}; do
         case "$f" in *.md) ;; *) continue ;; esac
+        path_wanted "$f" || continue
         CHANGED_LINES["$f"]="$SCOPE_ALL"
     done
     return 0
@@ -1024,13 +1079,19 @@ hunk_lines() {
     [ -n "${RENAME_SRC[$f]:-}" ] && pathspec+=(":(top,literal)${RENAME_SRC[$f]}")
 
     HUNK_ACC=""
+    # テキストとして差分を取れるかは numstat で見る。差分の本文に「Binary files 」と
+    # いう語が現れるだけで止めると、その語を含む文書が偽の原因で弾かれる。
+    local ns
+    ns="$(git -C "$REPO_ROOT" diff --numstat -M "$BASE_COMMIT" -- "${pathspec[@]}" 2>/dev/null)" ||
+        return 1
+    case "$ns" in
+        "-"$'\t'"-"*) return 2 ;;
+    esac
+
     out="$(git -C "$REPO_ROOT" diff --unified=0 --no-color -M "$BASE_COMMIT" \
         -- "${pathspec[@]}" 2>/dev/null)"
     rc="$?"
     [ "$rc" -eq 0 ] || return 1
-    case "$out" in
-        *"Binary files "*) return 2 ;;
-    esac
 
     while IFS= read -r line; do
         case "$line" in
@@ -1081,13 +1142,13 @@ else
     # あわせて、git へ渡すパススペックをリポジトリのルート相対へ揃える。存在確認だけを
     # 作業ディレクトリ相対で行うと、同じ相対パスが2つの意味を持ち、サブディレクトリから
     # 名指ししたファイルが黙って未検査になったり、同名の別ファイルが検査されたりする。
-    GIT_PATHS=()
+    WANT_PATHS=()
     for p in ${PATHS[@]+"${PATHS[@]}"}; do
         [ -e "$p" ] || die "パスが見つかりません: $p"
-        # ディレクトリはパススペックとして扱う。ファイルを名指ししたときだけ拡張子を見る。
+        # ディレクトリは配下の全体を指す。ファイルを名指ししたときだけ拡張子を見る。
         [ -f "$p" ] && assert_markdown "$p"
         to_repo_relative "$p"
-        GIT_PATHS+=(":(top,literal)$REPO_RELATIVE")
+        WANT_PATHS+=("$REPO_RELATIVE")
     done
     collect_changed_lines
     if [ "${#CHANGED_LINES[@]}" -gt 0 ]; then

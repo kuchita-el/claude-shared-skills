@@ -85,6 +85,7 @@ INVALID_FIXTURES=(
     "09-unclosed-fence.md|一文の長さ|no"
     "10-unclosed-front-matter.md|一文の長さ|no"
     "11-comment-on-same-line.md|一文の長さ|no"
+    "12-list-before-thematic-break.md|一文の長さ|no"
 )
 
 # <ファイル名>|<候補の行に含まれることを期待する文字列>
@@ -309,6 +310,26 @@ run_sut_in() {
     printf '<!-- 閉じない注釈\n%s\n' "$long" >"$dir/unclosed.md"
     lint --all "$dir/unclosed.md"
     collect_rc 1 "閉じない注釈は範囲を作らない"
+
+    # 複数行の注釈を落としても、後続の行番号がずれない。
+    {
+        printf '# 見出し\n\n<!--\n注釈の1行目\n注釈の2行目\n-->\n\n'
+        printf '%s\n' "$long"
+    } >"$dir/multiline.md"
+    lint --all "$dir/multiline.md"
+    collect_rc 1 "複数行の注釈の後ろを検査する"
+    collect_contains "$output" "multiline.md:8:" "注釈で落とした行数の分だけ行番号を保つ"
+
+    # インラインコードで記号に言及しただけでは範囲を作らない。範囲を生の文字列から
+    # 取ると、次の閉じ記号までの地の文が丸ごと落ちる。
+    {
+        printf '注釈は `<!--` で始まる。\n\n'
+        printf '%s\n\n' "$long"
+        printf '注釈は `-->` で終わる。\n'
+    } >"$dir/codespan.md"
+    lint --all "$dir/codespan.md"
+    collect_rc 1 "インラインコードで記号に言及しても範囲を作らない"
+    collect_contains "$output" "codespan.md:3:" "記号の言及に挟まれた地の文を検査する"
 
     collect_finish
 }
@@ -585,7 +606,111 @@ run_sut_in() {
     collect_finish
 }
 
-@test "面⑮: 入力が不正なときは exit 2 で止まり、成功を返さない" {
+@test "面⑮: パスを名指しする経路が、起動した場所と改名に依らず同じ対象を指す" {
+    collect_init
+
+    local repo="$BATS_TEST_TMPDIR/named-paths"
+    init_temp_repo "$repo"
+    mkdir -p "$repo/sub"
+    printf 'seed\n' >"$repo/seed.txt"
+    commit_all "$repo" "起点"
+
+    # 同名のファイルをルートとサブディレクトリへ置く。パスの解釈が2つに割れると、
+    # 指していない方が検査され、報告名では取り違えに気づけない。
+    cp "$LINT_FIXTURES/invalid/01-sentence-too-long.md" "$repo/doc.md"
+    printf '# 短い文書\n\n短い文である。\n' >"$repo/sub/doc.md"
+
+    pushd "$repo/sub" >/dev/null || return 1
+    run bash "$SUT" --profile "$BUNDLED_PROFILE" doc.md </dev/null
+    popd >/dev/null || return 1
+    collect_rc 0 "サブディレクトリからの名指しは、その配下のファイルを指す"
+
+    run_sut_in "$repo" doc.md
+    collect_rc 1 "ルートからの名指しは、ルートのファイルを指す"
+
+    # 現在地そのものを指す形も、配下の全体を指す。
+    run_sut_in "$repo" .
+    collect_rc 1 "現在地を指す形でも配下を検査する"
+
+    # 改名は、パスを名指ししても触れた文が無いことを保てる。列挙をパススペックで
+    # 絞ると git が改名の対を作れず、全行が追加行に見える。
+    git -C "$repo" add -A
+    git -C "$repo" commit -q -m "文書を追加"
+    git -C "$repo" mv doc.md renamed.md
+    run_sut_in "$repo" renamed.md
+    collect_rc 0 "改名だけならパスを名指ししても報告しない"
+    run_sut_in "$repo"
+    collect_rc 0 "改名だけなら引数なしでも報告しない"
+
+    collect_finish
+}
+
+@test "面⑯: 資源と基点を解決できないときは、検査せずに成功を返さない" {
+    collect_init
+
+    local repo="$BATS_TEST_TMPDIR/unresolvable"
+    init_temp_repo "$repo"
+    cp "$LINT_FIXTURES/invalid/01-sentence-too-long.md" "$repo/doc.md"
+    commit_all "$repo" "起点"
+    printf '\n%s\n' "$(sed -n '3p' "$LINT_FIXTURES/invalid/01-sentence-too-long.md")" >>"$repo/doc.md"
+
+    # 対照。この状態では違反が報告される。
+    run_sut_in "$repo" doc.md
+    collect_rc 1 "対照: 触れた行の違反は報告される"
+
+    # 差分を取得できない場合は止める。取得の失敗を「追加行がゼロ」と同じ扱いにすると、
+    # 検査していないことが違反なしと区別できない。
+    chmod 000 "$repo/doc.md"
+    if [ -r "$repo/doc.md" ]; then
+        collect_skipped "差分を取得できない" "chmod が効かない実行環境"
+    else
+        run_sut_in "$repo" doc.md
+        collect_rc 2 "差分を取得できない"
+    fi
+    chmod 644 "$repo/doc.md"
+
+    # 分岐点が求まらない基点は止める。黙って2点間差分へ落とすと、触れていない
+    # ファイルが警告なしに報告される。
+    git -C "$repo" checkout -q --orphan unrelated
+    git -C "$repo" rm -q -rf . 2>/dev/null || true
+    printf 'other\n' >"$repo/other.txt"
+    commit_all "$repo" "履歴を共有しない枝"
+    git -C "$repo" checkout -q main
+    run_sut_in "$repo" --base unrelated
+    collect_rc 2 "分岐点を解決できない基点"
+    run_sut_in "$repo" --two-dot --base unrelated
+    collect_rc 1 "--two-dot なら2点間差分として解決する"
+
+    collect_finish
+}
+
+@test "面⑰: リポジトリの外でも上限の解決先が起動した場所に従属しない" {
+    collect_init
+
+    local root="$BATS_TEST_TMPDIR/outside-repo"
+    mkdir -p "$root/.claude/writing" "$root/docs/deep"
+    {
+        printf '| 種別 | 節構成 | 読み手の既定 | 一文長の上限 |\n'
+        printf '|---|---|---|---|\n'
+        printf '| 汎用 | 定めない | 一般読者 | 60字 |\n'
+    } >"$root/.claude/writing/type-profiles.md"
+    printf '%s\n' "$(printf 'あ%.0s' $(seq 80))。" >"$root/doc.md"
+
+    pushd "$root" >/dev/null || return 1
+    run env -u CLAUDE_PROJECT_DIR bash "$SUT" --all doc.md </dev/null
+    popd >/dev/null || return 1
+    collect_rc 1 "ルートから: プロジェクト固有の60字が効く"
+
+    pushd "$root/docs/deep" >/dev/null || return 1
+    run env -u CLAUDE_PROJECT_DIR bash "$SUT" --all ../../doc.md </dev/null
+    popd >/dev/null || return 1
+    collect_rc 1 "深い階層から: 同じ上限が効く"
+    collect_contains "$output" "上限 60字" "深い階層でも解決された上限が60字である"
+
+    collect_finish
+}
+
+@test "面⑱: 入力が不正なときは exit 2 で止まり、成功を返さない" {
     collect_init
 
     local doc="$LINT_FIXTURES/valid/01-plain.md"
