@@ -344,11 +344,32 @@ split_row() {
     done
 }
 
-# 種別を左端の列に取る表が、「一文長の上限」の列を持つことを表ごとに確かめる。
-# ファイル単位で1つでもあれば通す形にすると、表を複数持つプロファイルで、列名が
-# ずれた表に置かれた種別の登録が黙って捨てられる。
+# 値の表を同定する。左端の列に種別を取り、かつ「一文長の上限」の列を持つ表がそれである。
+# 種別を左端に取るだけの表を値の表とみなすと、節構成の説明のような表まで上限の列を
+# 要求され、そこへ表を1つ足すだけで検査器の全経路が止まる。逆に上限の列があるだけの
+# 表を値の表とみなすと、ガードと解決が別々の集合を見ることになる。
+IS_VALUE_TABLE=0
+VALUE_COL=-1
+classify_header() {
+    local idx
+    IS_VALUE_TABLE=0
+    VALUE_COL=-1
+    [ "${#ROW_CELLS[@]}" -gt 0 ] || return 0
+    [ "${ROW_CELLS[0]}" = "種別" ] || return 0
+    for idx in "${!ROW_CELLS[@]}"; do
+        if [ "${ROW_CELLS[idx]}" = "一文長の上限" ]; then
+            VALUE_COL="$idx"
+            IS_VALUE_TABLE=1
+            return 0
+        fi
+    done
+    return 0
+}
+
+# 値の表が少なくとも1つあることを確かめる。1つも無ければ、列名がずれているか表が
+# 無いかのいずれかであり、いずれも上限が黙って既定へ緩む。
 profile_validate() {
-    local path="$1" line idx pending=0 found=0 seen=0
+    local path="$1" line pending=0 seen=0
     local -a header=()
     [ -r "$path" ] || die "文書種別プロファイルを読めません: $path"
     while IFS= read -r line || [ -n "$line" ]; do
@@ -362,14 +383,10 @@ profile_validate() {
                 ;;
         esac
         if [[ "$line" =~ $TABLE_SEP_RE ]]; then
-            if [ "$pending" -eq 1 ] && [ "${#header[@]}" -gt 0 ] && [ "${header[0]}" = "種別" ]; then
-                found=0
-                for idx in "${!header[@]}"; do
-                    [ "${header[idx]}" = "一文長の上限" ] && found=1 && break
-                done
-                [ "$found" -eq 1 ] ||
-                    die "文書種別プロファイルの表に「一文長の上限」の列がありません: $path"
-                seen=1
+            if [ "$pending" -eq 1 ]; then
+                ROW_CELLS=(${header[@]+"${header[@]}"})
+                classify_header
+                [ "$IS_VALUE_TABLE" -eq 1 ] && seen=1
             fi
             pending=0
             continue
@@ -379,7 +396,7 @@ profile_validate() {
         pending=1
     done <"$path"
     [ "$seen" -eq 1 ] ||
-        die "文書種別プロファイルに種別の表がありません: $path"
+        die "文書種別プロファイルに、種別と「一文長の上限」の両方を見出しに持つ表がありません: $path"
     return 0
 }
 
@@ -393,7 +410,7 @@ profile_lookup() {
 
     [ -r "$path" ] || die "文書種別プロファイルを読めません: $path"
 
-    local line col=-1 idx digits value pending=0
+    local line col=-1 digits value pending=0
     local -a header=()
     while IFS= read -r line || [ -n "$line" ]; do
         trim "$line"
@@ -413,13 +430,9 @@ profile_lookup() {
             # 区切り行の直前の行が見出し行である。見出しの内容だけで表を特定すると、
             # 「一文長の上限」を左端のセルに持つ別の表のデータ行を見出しと取り違える。
             if [ "$pending" -eq 1 ]; then
-                col=-1
-                for idx in "${!header[@]}"; do
-                    if [ "${header[idx]}" = "一文長の上限" ]; then
-                        col="$idx"
-                        break
-                    fi
-                done
+                ROW_CELLS=(${header[@]+"${header[@]}"})
+                classify_header
+                col="$VALUE_COL"
             fi
             pending=0
             continue
@@ -428,6 +441,7 @@ profile_lookup() {
         split_row "$line"
 
         if [ "$col" -lt 0 ]; then
+            # 値の表ではない。次の区切り行が来るまで、この行は見出しの候補として扱う。
             header=(${ROW_CELLS[@]+"${ROW_CELLS[@]}"})
             pending=1
             continue
@@ -439,16 +453,12 @@ profile_lookup() {
             die "文書種別プロファイルの行に「一文長の上限」の列がありません: $path（種別 $want）"
 
         value="${ROW_CELLS[col]}"
-        # 先頭の連続する数字だけを採る。非数字を落として連結すると、脚注のような記号が
-        # 付いた値で桁が変わり（100[^1] が 1001 になる）、検査が黙って10倍に緩む。
+        # セルは上限の数値で始める。先頭の連続する数字だけを採り、続く文字は注記として
+        # 読み飛ばす。非数字を落として連結すると、脚注のような記号が付いた値で桁が変わり
+        # （100[^1] が 1001 になる）、検査が黙って10倍に緩む。
         digits="${value%%[!0-9]*}"
         [ -n "$digits" ] ||
-            die "文書種別プロファイルの一文長の上限に数値がありません: $path（種別 $want、値「$value」）"
-        case "${value#"$digits"}" in
-            *[0-9]*)
-                die "文書種別プロファイルの一文長の上限に数値が2つ以上あります: $path（種別 $want、値「$value」）"
-                ;;
-        esac
+            die "文書種別プロファイルの一文長の上限が数値で始まっていません: $path（種別 $want、値「$value」）"
         digits="$((10#$digits))"
         if [ "$digits" -lt "$MIN_ACCEPTED_LEN" ] || [ "$digits" -gt "$MAX_ACCEPTED_LEN" ]; then
             die "文書種別プロファイルの一文長の上限が想定の範囲を外れています: $path（種別 $want、値 $digits）"

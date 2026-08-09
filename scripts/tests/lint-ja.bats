@@ -381,6 +381,103 @@ run_sut_in() {
     collect_finish
 }
 
+@test "面⑦の2: 値の表の同定と、上限のセルの受理形式" {
+    collect_init
+
+    local doc="$LINT_FIXTURES/profile/between-60-and-100.md"
+    local profile="$BATS_TEST_TMPDIR/value-table.md"
+
+    # 値の表は「種別を左端に取り、かつ一文長の上限の列を持つ表」である。節構成の説明の
+    # ような表が同居していても、検査器は止まらない。
+    {
+        printf '| 種別 | 一文長の上限 |\n'
+        printf '|---|---|\n'
+        printf '| 規約 | 60字 |\n'
+        printf '\n'
+        printf '| 種別 | 必須節 |\n'
+        printf '|---|---|\n'
+        printf '| 規約 | 決定・根拠 |\n'
+    } >"$profile"
+    run bash "$SUT" --all --profile "$profile" --type 規約 "$doc" </dev/null
+    collect_rc 1 "説明の表が同居していても値の表から上限を採る"
+    collect_contains "$output" "上限 60字" "解決された上限が60字である"
+
+    # 左端が種別でない表は値の表ではない。見出しを見ずに列名だけで拾うと、先に置いた
+    # 別の表の値が採られ、値の表の登録が黙って覆る。
+    {
+        printf '| 参考 | 一文長の上限 |\n'
+        printf '|---|---|\n'
+        printf '| 規約 | 200字 |\n'
+        printf '\n'
+        printf '| 種別 | 一文長の上限 |\n'
+        printf '|---|---|\n'
+        printf '| 規約 | 60字 |\n'
+    } >"$profile"
+    run bash "$SUT" --all --profile "$profile" --type 規約 "$doc" </dev/null
+    collect_rc 1 "左端が種別でない表の値に覆われない"
+    collect_contains "$output" "上限 60字" "採られたのは値の表の60字である"
+
+    # 値の表が1つも無い場合は止める。列名がずれても表が無くても、既定へ落とすと
+    # 上限が黙って緩む。求める種別がどこにも登場しない形で見る。種別の名前が登場する
+    # 形にすると、別の停止条件が先に働いてこの停止を単独で観測できない。
+    {
+        printf '| 種別 | 必須節 |\n'
+        printf '|---|---|\n'
+        printf '| 汎用 | 決定・根拠 |\n'
+    } >"$profile"
+    run bash "$SUT" --all --profile "$profile" --type 規約 "$doc" </dev/null
+    collect_rc 2 "値の表を1つも持たないプロファイル"
+
+    # 説明の表にだけ名前がある種別は、値を持たない。止めずに連鎖して汎用を採る。
+    # ここで止める形にすると、節構成だけを別表で定義した種別が検査を通せなくなる。
+    {
+        printf '| 種別 | 一文長の上限 |\n'
+        printf '|---|---|\n'
+        printf '| 汎用 | 60字 |\n'
+        printf '\n'
+        printf '| 種別 | 必須節 |\n'
+        printf '|---|---|\n'
+        printf '| 規約 | 決定・根拠 |\n'
+    } >"$profile"
+    run bash "$SUT" --all --profile "$profile" --type 規約 "$doc" </dev/null
+    collect_rc 1 "説明の表にだけ名前がある種別は汎用の値へ連鎖する"
+    collect_contains "$output" "上限 60字" "連鎖して採られたのは汎用の60字である"
+
+    # セルは数値で始めれば足りる。続く文字は注記として読み飛ばす。桁が変わらないことを
+    # 併せて見る。脚注の記号を数字として拾うと、上限が10倍に緩む。
+    local cell
+    for cell in '60字' '60[^1]' '60字（共通規約の第5条の補則より短い）'; do
+        {
+            printf '| 種別 | 一文長の上限 |\n'
+            printf '|---|---|\n'
+            printf '| 規約 | %s |\n' "$cell"
+        } >"$profile"
+        run bash "$SUT" --all --profile "$profile" --type 規約 "$doc" </dev/null
+        collect_rc 1 "注記つきのセル「$cell」でも上限を読める"
+        collect_contains "$output" "上限 60字" "セル「$cell」から解決された上限が60字である"
+    done
+
+    # 数値で始まらないセルと、想定の範囲を外れる値は止める。
+    for cell in '約60字' '1字' '99999字'; do
+        {
+            printf '| 種別 | 一文長の上限 |\n'
+            printf '|---|---|\n'
+            printf '| 規約 | %s |\n' "$cell"
+        } >"$profile"
+        run bash "$SUT" --all --profile "$profile" --type 規約 "$doc" </dev/null
+        collect_rc 2 "受け付けないセル「$cell」では止める"
+    done
+
+    # 末尾に改行が無いプロファイルも読み切る。最終行を落とすと、そこにある種別の
+    # 登録が黙って捨てられる。
+    printf '| 種別 | 一文長の上限 |\n|---|---|\n| 規約 | 60字 |' >"$profile"
+    run bash "$SUT" --all --profile "$profile" --type 規約 "$doc" </dev/null
+    collect_rc 1 "末尾に改行が無くても最終行の登録が効く"
+    collect_contains "$output" "上限 60字" "末尾に改行が無くても上限が60字である"
+
+    collect_finish
+}
+
 @test "面⑧: 種別が引けないとき同梱の既定プロファイルへ連鎖する" {
     collect_init
 
