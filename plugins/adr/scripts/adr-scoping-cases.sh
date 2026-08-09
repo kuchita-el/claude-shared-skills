@@ -27,8 +27,10 @@
 #   ---
 #
 # expectations.tsv の列（タブ区切り。`#` 始まりの行は注記として読み飛ばす）:
-#   1 題材ID / 2 導出すべきもの / 3-6 期待_項目1〜4 / 7 期待_合計 / 8 期待_行き先
-#   9 由来 / 10 対の相手ID / 11 出所 / 12 備考
+#   1 題材ID / 2 導出すべきもの / 3-6 期待_項目1〜4 / 7 期待_行き先
+#   8 由来 / 9 対の相手ID / 10 出所 / 11 備考
+# 期待_項目1〜4 は数値が測定対象、`-` が不問を表す。合計は項目から導出できるため、
+# 期待値として保持・比較しない。
 #
 # 判定記録TSV の列（タブ区切り。`#` 始まりの行は注記として読み飛ばす）:
 #   1 題材ID / 2 試行番号 / 3-6 項目1〜4 / 7 合計 / 8 行き先
@@ -458,24 +460,19 @@ cmd_validate() {
     local tsv_issues
     tsv_issues="$(awk -F'\t' '
         /^#/ { next }
-        $1 == "題材ID" { header=1; if (NF != 12) printf "ヘッダの列数が12でない (%d列)\n", NF; next }
+        $1 == "題材ID" { header=1; if (NF != 11) printf "ヘッダの列数が11でない (%d列)\n", NF; next }
         NF == 0 { next }
         {
             id = $1
-            if (NF != 12) { printf "%s: 列数が12でない (%d列)\n", id, NF; next }
+            if (NF != 11) { printf "%s: 列数が11でない (%d列)\n", id, NF; next }
             if ($2 == "" || $2 == "-") printf "%s: 3層のうち「導出すべきもの」が欠けている\n", id
-            for (i = 3; i <= 6; i++) if ($i == "" || $i == "-") printf "%s: 3層のうち期待帰結（期待_項目%d）が欠けている\n", id, i - 2
-            if ($7 == "" || $7 == "-") printf "%s: 3層のうち期待帰結（期待_合計）が欠けている\n", id
-            if ($8 == "" || $8 == "-") printf "%s: 3層のうち期待帰結（期待_行き先）が欠けている\n", id
-            if ($9 == "" || $9 == "-") printf "%s: 由来が未記入\n", id
-            else if ($9 != "改訂前から在る" && $9 != "改訂の結果として追加") printf "%s: 由来が語彙外 (%s)\n", id, $9
-            if ($10 == "" || $10 == "-") printf "%s: 対の相手ID が未記入（相手が居ない場合は NONE を置く）\n", id
-            if ($11 == "" || $11 == "-") printf "%s: 出所が未記入\n", id
-            # 期待_合計が期待_項目1〜4 の和であること（4項目すべてが数値のときのみ検査する）
-            n = 0
-            for (i = 3; i <= 6; i++) if ($i ~ /^[0-9]+$/) n++
-            if (n == 4 && $7 ~ /^[0-9]+$/ && $7 != $3 + $4 + $5 + $6)
-                printf "%s: 期待_合計が期待_項目1〜4 の和と一致しない (%s != %d)\n", id, $7, $3 + $4 + $5 + $6
+            for (i = 3; i <= 6; i++) if ($i == "") printf "%s: 3層のうち期待帰結（期待_項目%d）が欠けている\n", id, i - 2
+            for (i = 3; i <= 6; i++) if ($i != "-" && $i !~ /^[0-9]+$/) printf "%s: 期待_項目%d が数値または - でない (%s)\n", id, i - 2, $i
+            if ($7 == "" || $7 == "-") printf "%s: 3層のうち期待帰結（期待_行き先）が欠けている\n", id
+            if ($8 == "" || $8 == "-") printf "%s: 由来が未記入\n", id
+            else if ($8 != "改訂前から在る" && $8 != "改訂の結果として追加") printf "%s: 由来が語彙外 (%s)\n", id, $8
+            if ($9 == "" || $9 == "-") printf "%s: 対の相手ID が未記入（相手が居ない場合は NONE を置く）\n", id
+            if ($10 == "" || $10 == "-") printf "%s: 出所が未記入\n", id
         }
         END { if (!header) print "にヘッダ行（先頭列 題材ID）が無い" }
     ' "$dir/expectations.tsv")"
@@ -489,7 +486,7 @@ cmd_validate() {
         /^#/ { next }
         $1 == "題材ID" { next }
         # 違反の並びが awk の実装依存にならないよう、初出時の出現順を添字つきで積む。
-        NF >= 10 { if (!($1 in seen)) order[++n] = $1; partner[$1] = $10; seen[$1] = 1 }
+        NF >= 9 { if (!($1 in seen)) order[++n] = $1; partner[$1] = $9; seen[$1] = 1 }
         END {
             for (k = 1; k <= n; k++) {
                 id = order[k]
@@ -548,9 +545,9 @@ cmd_report() {
             close(idsfile)
             FS = "\t"
             while ((getline < expfile) > 0) {
-                if ($0 ~ /^#/ || $1 == "題材ID" || NF < 8) continue
+                if ($0 ~ /^#/ || $1 == "題材ID" || NF < 7) continue
                 for (i = 1; i <= 4; i++) exp_item[$1, i] = $(i + 2)
-                exp_total[$1] = $7; exp_dest[$1] = $8
+                exp_dest[$1] = $7
                 nread++
             }
             close(expfile)
@@ -695,9 +692,6 @@ cmd_report() {
                         if (exp_item[id, i] != "" && exp_item[id, i] != "-" && item[id, t, i] != exp_item[id, i]) {
                             printf "  %s 試行%s 項目%d: 期待 %s / 判定 %s\n", id, t, i, exp_item[id, i], item[id, t, i]; ndiff++
                         }
-                    }
-                    if ((id, t) in total && exp_total[id] != "" && exp_total[id] != "-" && total[id, t] != exp_total[id]) {
-                        printf "  %s 試行%s 合計: 期待 %s / 判定 %s\n", id, t, exp_total[id], total[id, t]; ndiff++
                     }
                     if ((id, t) in dest && exp_dest[id] != "" && exp_dest[id] != "-" && dest[id, t] != exp_dest[id]) {
                         printf "  %s 試行%s 行き先: 期待 %s / 判定 %s\n", id, t, exp_dest[id], dest[id, t]; ndiff++
