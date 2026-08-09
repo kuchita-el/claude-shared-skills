@@ -449,23 +449,80 @@ profile_lookup() {
     return 0
 }
 
+# インラインコードの範囲を1箇所で決める。バッククォートの連なりは、同じ長さの連なりで
+# 閉じたときにだけ範囲を成す。1つずつ対にすると、二重バッククォートで囲んだ記法
+# （``<!--`` のような形）が対の内側から外れ、囲みの中の記号が生きたまま残る。
+#
+# 結果は3つの配列で返す。CODESPAN_PRE[k] は k 番目の範囲の直前にある地の文、
+# CODESPAN_BODY[k] はその中身、CODESPAN_MARK[k] は囲みの記号（片側）である。
+# CODESPAN_TAIL は最後の範囲より後ろの地の文で、範囲が1つも無ければ全体が入る。
+CODESPAN_PRE=()
+CODESPAN_BODY=()
+CODESPAN_MARK=()
+CODESPAN_TAIL=""
+split_codespans() {
+    local t="$1" pre rest open close body chunk found
+    CODESPAN_PRE=()
+    CODESPAN_BODY=()
+    CODESPAN_MARK=()
+    CODESPAN_TAIL=""
+    while [[ "$t" == *'`'* ]]; do
+        pre="${t%%\`*}"
+        rest="${t:${#pre}}"
+        open=""
+        while [[ "$rest" == '`'* ]]; do
+            open="$open"'`'
+            rest="${rest:1}"
+        done
+        body=""
+        found=0
+        while [[ "$rest" == *'`'* ]]; do
+            chunk="${rest%%\`*}"
+            body="$body$chunk"
+            rest="${rest:${#chunk}}"
+            close=""
+            while [[ "$rest" == '`'* ]]; do
+                close="$close"'`'
+                rest="${rest:1}"
+            done
+            if [ "${#close}" -eq "${#open}" ]; then
+                found=1
+                break
+            fi
+            # 長さの違う連なりは閉じにならない。中身の一部として数える。
+            body="$body$close"
+        done
+        if [ "$found" -eq 1 ]; then
+            CODESPAN_PRE+=("$pre")
+            CODESPAN_BODY+=("$body")
+            CODESPAN_MARK+=("$open")
+            t="$rest"
+        else
+            # 閉じない連なりは範囲を成さない。以降に範囲は現れないため、走査せずに
+            # 残り全体を地の文として返す。rest には内側の走査が読み切らなかった分が
+            # 残っている。落とすと、対を成さないバッククォートより後ろの字数が消える。
+            CODESPAN_TAIL="$pre$open$body$rest"
+            return 0
+        fi
+    done
+    CODESPAN_TAIL="$t"
+    return 0
+}
+
 # インラインコードを、同じ長さの記号を含まない文字列へ置き換える。文の区切りと括弧の
 # 対応はこの結果に対して数える。長さを保つのは、元の文字列との位置の対応を崩さない
 # ためである。囲みを外してから数えると、句点を含むコードスパンで囲みの片側だけが
 # 断片に入り、除去が働かない。
 MASKED=""
 mask_codespans() {
-    local t="$1" out="" pre rest body filler n
-    while [[ "$t" == *'`'*'`'* ]]; do
-        pre="${t%%\`*}"
-        rest="${t#*\`}"
-        body="${rest%%\`*}"
-        t="${rest#*\`}"
-        n=$((${#body} + 2))
+    split_codespans "$1"
+    local out="" i n filler
+    for ((i = 0; i < ${#CODESPAN_PRE[@]}; i++)); do
+        n=$((${#CODESPAN_MARK[i]} * 2 + ${#CODESPAN_BODY[i]}))
         printf -v filler '%*s' "$n" ''
-        out="$out$pre${filler// /x}"
+        out="$out${CODESPAN_PRE[i]}${filler// /x}"
     done
-    MASKED="$out$t"
+    MASKED="$out$CODESPAN_TAIL"
 }
 
 # 表示に現れない記法の記号を落とす。インラインコードの内側は対象にしない。コードと
@@ -494,27 +551,26 @@ CODESPAN_TOKEN=$'\x01'
 
 DISPLAY=""
 display_text() {
-    local s="$1" folded="" pre rest body
+    local folded="" i
     local -a bodies=()
 
     # まずコードスパンを1字の記号へ畳む。畳んでから記法を解釈しないと、リンクの表示
     # テキストがインラインコードである形（角括弧の内側にコードスパンがある形）で、
-    # リンク記法が断片へ割れて一致せず、アドレス全体が字数へ入る。
-    while [[ "$s" == *'`'*'`'* ]]; do
-        pre="${s%%\`*}"
-        rest="${s#*\`}"
-        body="${rest%%\`*}"
-        s="${rest#*\`}"
-        bodies+=("$body")
-        folded="$folded$pre$CODESPAN_TOKEN"
+    # リンク記法が断片へ割れて一致せず、アドレス全体が字数へ入る。範囲の決め方は
+    # split_codespans が単一の出典である。ここで別の対の取り方をすると、文の切り方と
+    # 字数の数え方が食い違う。
+    split_codespans "$1"
+    for ((i = 0; i < ${#CODESPAN_PRE[@]}; i++)); do
+        bodies+=("${CODESPAN_BODY[i]}")
+        folded="$folded${CODESPAN_PRE[i]}$CODESPAN_TOKEN"
     done
-    folded="$folded$s"
+    folded="$folded$CODESPAN_TAIL"
 
     strip_markup "$folded"
     folded="$STRIPPED"
 
-    # 畳んだ順に中身を戻す。囲みの2字だけを除き、中身はそのまま数える。
-    local i result="" head
+    # 畳んだ順に中身を戻す。囲みの記号だけを除き、中身はそのまま数える。
+    local result="" head
     for ((i = 0; i < ${#bodies[@]}; i++)); do
         case "$folded" in
             *"$CODESPAN_TOKEN"*) ;;
@@ -633,6 +689,42 @@ collect_paragraphs() {
         done
     done
 
+    # 行の内容だけで決まる除外の文脈も、注釈の走査より前にここで潰す。見出し・縦棒で
+    # 始まる表の行・引用の行がこれに当たる。段落の切り出しの側で除外しても、その行に
+    # ある注釈の開始記号は先に範囲を開いてしまい、後続の地の文が黙って未検査になる。
+    # 除外済みの文脈を先に潰してから範囲を取ることで、入口を1箇所に保つ。
+    for ((i = 0; i < n; i++)); do
+        [ "${skip[i]}" -eq 1 ] && continue
+        trim "${lines[i]}"
+        if [[ "$TRIMMED" =~ $HEADING_RE ]] ||
+            [[ "$TRIMMED" =~ $TABLE_ROW_RE ]] ||
+            [[ "$TRIMMED" =~ $QUOTE_ROW_RE ]]; then
+            skip[i]=1
+        fi
+    done
+
+    # 字下げのコードブロックも同じ理由でここで潰す。段落の途中の行は継続行であって
+    # コードではないため、直前が段落の切れ目である場合に限る。切れ目は空行と除外済みの
+    # 行が作る。字下げは半角4字またはタブ1字とする。
+    local at_break=1
+    for ((i = 0; i < n; i++)); do
+        if [ "${skip[i]}" -eq 1 ]; then
+            at_break=1
+            continue
+        fi
+        if [ "$at_break" -eq 1 ] &&
+            { [[ "${lines[i]}" == '    '* ]] || [[ "${lines[i]}" == $'\t'* ]]; }; then
+            skip[i]=1
+            continue
+        fi
+        trim "${lines[i]}"
+        if [ -z "$TRIMMED" ]; then
+            at_break=1
+        else
+            at_break=0
+        fi
+    done
+
     # 除外の決まった行を空行へ落とし、以降は1つの文字列として扱う。段落の切れ目は
     # 空行が作るため、除外した行は切れ目として働く。
     local blob=""
@@ -656,18 +748,27 @@ collect_paragraphs() {
         masked_blob="$masked_blob$MASKED"$'\n'
     done <<<"${blob%$'\n'}"
 
-    local out="" rest="$blob" mrest="$masked_blob" pre body nl pre_m body_m i j
-    while [[ "$mrest" == *'<!--'*'-->'* ]]; do
+    local out="" rest="$blob" mrest="$masked_blob" pre body nl pre_m tail i j
+    while [[ "$mrest" == *'<!--'* ]]; do
         pre_m="${mrest%%<!--*}"
         i="${#pre_m}"
-        mrest="${mrest:i+4}"
-        body_m="${mrest%%-->*}"
-        j="${#body_m}"
-        mrest="${mrest:j+3}"
+
+        # 終了は生の文字列で探す。注釈の内側は生の HTML であり、そこでバッククォートは
+        # 意味を持たない。伏せた写しで探すと、注釈の中に `-->` と書いた時点で実際の
+        # 閉じ位置が見えなくなり、注釈の外の地の文が丸ごと落ちる。逆に、閉じ記号が
+        # インラインコードの中にしかない注釈は、その位置で閉じるのが描画どおりである。
+        tail="${rest:i+4}"
+        case "$tail" in
+            *'-->'*) ;;
+            # 閉じない注釈は範囲を成さない。以降に範囲は現れない。
+            *) break ;;
+        esac
+        body="${tail%%-->*}"
+        j="${#body}"
 
         pre="${rest:0:i}"
-        body="${rest:i+4:j}"
         rest="${rest:i+4+j+3}"
+        mrest="${mrest:i+4+j+3}"
         # 落とした範囲に含まれる改行だけを残し、行番号を保つ。
         nl="${body//[!$'\n']/}"
         out="$out$pre$nl"
@@ -711,15 +812,11 @@ collect_paragraphs() {
             continue
         fi
 
-        # 見出しは記号の後に空白が続く場合に限る。記号だけで判定すると、行頭に置いた
-        # 課題番号（#684 のような形）が行ごと検査対象から外れる。
-        if [[ "$s" =~ $HEADING_RE ]]; then
-            flush
-            continue
-        fi
-        # 下線形式の見出し。直前の段落の全体が見出しの内容になるため、溜めた分を捨てる。
-        # 直前が箇条書きの項目である場合は適用しない。その位置の区切り線は箇条書きを
-        # 閉じるものであって、項目の内容を見出しへ変えない。
+        # 見出し・縦棒で始まる表の行・引用の行は、注釈の走査より前に空行へ落としてある
+        # （上の除外の走査）。ここでは扱わない。
+        #
+        # 下線形式の見出しと区切り線は同じ記号で書かれる。直前が段落であれば見出しの
+        # 下線であり、その段落の全体が見出しの内容になるため溜めた分を捨てる。
         if [ -n "$buf" ] && [ "$buf_is_list" -eq 0 ] && [[ "$s" =~ $SETEXT_RE ]]; then
             buf=""
             buf_first=0
@@ -727,9 +824,15 @@ collect_paragraphs() {
             buf_offsets=""
             continue
         fi
-
-        if [[ "$s" =~ $TABLE_ROW_RE ]] || [[ "$s" =~ $QUOTE_ROW_RE ]]; then
+        # 直前が箇条書きの項目であれば区切り線であり、箇条書きを閉じる。項目の内容を
+        # 見出しへ変えないだけでは足りず、記号の行を項目へ連結してもいけない。連結すると
+        # 記号の字数が項目へ入り、さらに後続の段落まで1つの文へつながる。
+        if [ "$buf_is_list" -eq 1 ] && [[ "$s" =~ $SETEXT_RE ]]; then
             flush
+            continue
+        fi
+        # 段落の外に置かれた区切り線も本文ではない。字数へ入れず、後続とも連結しない。
+        if [ -z "$buf" ] && [[ "$s" =~ $SETEXT_RE ]]; then
             continue
         fi
 

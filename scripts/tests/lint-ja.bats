@@ -62,6 +62,8 @@ VALID_FIXTURES=(
     "21-setext-heading-ignored.md"
     "22-borderless-table-ignored.md"
     "23-long-heading-ignored.md"
+    "24-comment-closed-by-codespan-mark.md"
+    "25-list-then-thematic-break.md"
 )
 
 # <ファイル名>|<期待する違反のラベル>|<候補を伴うか（yes/no）>
@@ -86,6 +88,12 @@ INVALID_FIXTURES=(
     "10-unclosed-front-matter.md|一文の長さ|no"
     "11-comment-on-same-line.md|一文の長さ|no"
     "12-list-before-thematic-break.md|一文の長さ|no"
+    "13-comment-close-in-codespan.md|一文の長さ|no"
+    "14-comment-open-in-table-cell.md|一文の長さ|no"
+    "15-comment-open-in-quote.md|一文の長さ|no"
+    "16-comment-open-in-heading.md|一文の長さ|no"
+    "17-comment-open-in-indented-code.md|一文の長さ|no"
+    "18-comment-open-in-double-backticks.md|一文の長さ|no"
 )
 
 # <ファイル名>|<候補の行に含まれることを期待する文字列>

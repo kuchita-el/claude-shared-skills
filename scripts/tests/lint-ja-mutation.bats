@@ -55,6 +55,12 @@ NEGATIVES=(
     "10-unclosed-front-matter.md"
     "11-comment-on-same-line.md"
     "12-list-before-thematic-break.md"
+    "13-comment-close-in-codespan.md"
+    "14-comment-open-in-table-cell.md"
+    "15-comment-open-in-quote.md"
+    "16-comment-open-in-heading.md"
+    "17-comment-open-in-indented-code.md"
+    "18-comment-open-in-double-backticks.md"
 )
 
 POSITIVES=(
@@ -81,6 +87,8 @@ POSITIVES=(
     "21-setext-heading-ignored.md"
     "22-borderless-table-ignored.md"
     "23-long-heading-ignored.md"
+    "24-comment-closed-by-codespan-mark.md"
+    "25-list-then-thematic-break.md"
 )
 
 CANDIDATES=(
@@ -97,7 +105,7 @@ CANDIDATES=(
 
 # 検出条件を無効化する。対応する負例だけが exit 1 から exit 0 へ転じる。
 MUTATIONS_DETECT=(
-    'length-off::一文の長さの判定を無効化する::s/^check_length() {$/check_length() {\n    return 0/::invalid:01 invalid:02 invalid:03 invalid:04 invalid:05a invalid:05b invalid:05c invalid:05d invalid:05e invalid:05f invalid:06 invalid:07 invalid:08 invalid:09 invalid:10 invalid:11 invalid:12'
+    'length-off::一文の長さの判定を無効化する::s/^check_length() {$/check_length() {\n    return 0/::invalid:01 invalid:02 invalid:03 invalid:04 invalid:05a invalid:05b invalid:05c invalid:05d invalid:05e invalid:05f invalid:06 invalid:07 invalid:08 invalid:09 invalid:10 invalid:11 invalid:12 invalid:13 invalid:14 invalid:15 invalid:16 invalid:17 invalid:18'
     "heading-loose::見出しの判定を記号だけに戻す::s@^HEADING_RE=.*@HEADING_RE='^#'@::invalid:04"
     'paren-depth-off::括弧の対応の数え上げを無効化する::s@^        depth=\$((depth.*@        depth=0@::invalid:03 invalid:05a invalid:05b invalid:05c invalid:05d invalid:05e invalid:05f'
     'line-join-off::段落の行の連結を無効化する::s@^        buf_last="\$lineno"@        buf_last="\$lineno"\n        flush@::invalid:02 invalid:07 valid:21'
@@ -112,6 +120,8 @@ MUTATIONS_DETECT=(
     'fence-unclosed-toggle::閉じない囲みでも範囲を作る::s@^            if \[ "\$close" -ge 0 \]; then@            [ "\$close" -ge 0 ] || close=\$((n - 1))\n            if [ "\$close" -ge 0 ]; then@::invalid:09'
     'setext-swallows-list::箇条書きの項目も下線形式の見出しの対象にする::s@\[ "\$buf_is_list" -eq 0 \] && @@::invalid:12'
     'front-matter-unclosed-toggle::閉じない区切り線でも範囲を作る::s@^            if \[ "\$TRIMMED" = "\$FRONT_MATTER_MARK" \]; then@            if [ "\$TRIMMED" = "\$FRONT_MATTER_MARK" ] || [ "\$j" -eq \$((n - 1)) ]; then@::invalid:10'
+    'comment-end-masked::注釈の終了を伏せた写しで探す::s@^        tail="\${rest:i+4}"@        tail="\${mrest:i+4}"@::invalid:13 valid:24'
+    'codespan-run-pairing-off::コードスパンの囲みの長さの一致を1字に固定する::s@-eq "${#open}"@-eq 1@::invalid:18'
 )
 
 # 免除・除外の条件を無効化する。対応する正例だけが exit 0 から exit 1 へ転じる。
@@ -121,23 +131,24 @@ MUTATIONS_EXEMPT=(
     "delim-only-period::文の区切りから疑問符と感嘆符を落とす::s@^SENT_DELIMS=.*@SENT_DELIMS=('。')@::valid:08"
     "delim-drop-question::文の区切りから疑問符だけを落とす::s@^SENT_DELIMS=.*@SENT_DELIMS=('。' '！')@::valid:08"
     "delim-drop-exclamation::文の区切りから感嘆符だけを落とす::s@^SENT_DELIMS=.*@SENT_DELIMS=('。' '？')@::valid:08"
-    'codespan-mask-off::インラインコードの伏せ字を無効化する::s/^mask_codespans() {$/mask_codespans() {\n    MASKED="\$1"\n    return 0/::valid:09'
-    "indent-code-off::半角4字の字下げの除外を無効化する::s@== '    '\\*@== 'NEVER_MATCH_SENTINEL'*@::valid:07"
+    'codespan-mask-off::インラインコードの伏せ字を無効化する::s/^mask_codespans() {$/mask_codespans() {\n    MASKED="\$1"\n    return 0/::valid:09 invalid:18'
+    "indent-code-off::半角4字の字下げの除外を無効化する::s@== '    '\\*@== 'NEVER_MATCH_SENTINEL'*@::valid:07 invalid:17"
     "tab-indent-off::タブ1字の字下げの除外を無効化する::s@== \\\$'\\\\t'@== 'NEVER_MATCH_SENTINEL'@::valid:17"
     "tilde-fence-off::チルダのフェンスの認識を落とす::s@'~~~'@'NEVER_MATCH_SENTINEL'@::valid:06"
     "backtick-fence-off::バッククォートのフェンスの認識を落とす::s@'\`\`\`'@'NEVER_MATCH_SENTINEL'@::valid:02"
     "fence-type-mismatch::囲みを別の種類の記号で閉じられるようにする::s@marker='~~~'@marker='\`\`\`'@::valid:06 valid:18"
-    "comment-off::注釈の除外を無効化する::s@'<!--'\\*'-->'\\*@'NEVER_MATCH_SENTINEL'*@::valid:19"
-    "table-row-off::縦棒で始まる表の行の除外を無効化する::s@^TABLE_ROW_RE=.*@TABLE_ROW_RE='NEVER_MATCH_SENTINEL'@::valid:11"
+    "comment-off::注釈の除外を無効化する::s@\\*'<!--'\\*@*'NEVER_MATCH_SENTINEL'*@::valid:19 valid:24"
+    "table-row-off::縦棒で始まる表の行の除外を無効化する::s@^TABLE_ROW_RE=.*@TABLE_ROW_RE='NEVER_MATCH_SENTINEL'@::valid:11 invalid:14"
     "borderless-table-off::縦棒で始まらない表の除外を無効化する::s@^    local gfm_sep=.*@    local gfm_sep='NEVER_MATCH_SENTINEL'@::valid:22"
-    "quote-row-off::引用の行の除外を無効化する::s@^QUOTE_ROW_RE=.*@QUOTE_ROW_RE='NEVER_MATCH_SENTINEL'@::valid:11"
-    "heading-off::見出しの行の除外を無効化する::s@^HEADING_RE=.*@HEADING_RE='NEVER_MATCH_SENTINEL'@::valid:23"
-    "setext-off::下線形式の見出しの除外を無効化する::s@^SETEXT_RE=.*@SETEXT_RE='NEVER_MATCH_SENTINEL'@::valid:21"
+    "quote-row-off::引用の行の除外を無効化する::s@^QUOTE_ROW_RE=.*@QUOTE_ROW_RE='NEVER_MATCH_SENTINEL'@::valid:11 invalid:15"
+    "heading-off::見出しの行の除外を無効化する::s@^HEADING_RE=.*@HEADING_RE='NEVER_MATCH_SENTINEL'@::valid:23 invalid:16"
+    "setext-off::下線形式の見出しの除外を無効化する::s@^SETEXT_RE=.*@SETEXT_RE='NEVER_MATCH_SENTINEL'@::valid:21 valid:25"
     "front-matter-off::冒頭のメタデータの除外を無効化する::s@^FRONT_MATTER_MARK=.*@FRONT_MATTER_MARK='NEVER_MATCH_SENTINEL'@::valid:12"
     "list-marker-off::箇条書きのマーカー除去を無効化する::s@^LIST_RE=.*@LIST_RE='NEVER_MATCH_SENTINEL'@::valid:13 valid:20 invalid:12"
     "numbered-paren-off::番号付き項目の丸括弧の形を落とす::s@^LIST_RE=.*@LIST_RE='^([-*+][[:space:]]+|[0-9]+[.][[:space:]]+)'@::valid:20"
     "emphasis-strip-off::強調の記号の除去を無効化する::s@^EMPHASIS_MARKS=.*@EMPHASIS_MARKS=('NEVER_MATCH_SENTINEL')@::valid:14 valid:16"
     "strikethrough-off::二つ続いたチルダの除去だけを落とす::s@^EMPHASIS_MARKS=.*@EMPHASIS_MARKS=('**' '__')@::valid:16"
+    'thematic-break-join::箇条書きの直後の区切り線を項目へ折り込む::s@^        if \[ "\$buf_is_list" -eq 1 \] && \[\[ "\$s" =~ \$SETEXT_RE \]\]; then@        if false; then@::valid:25'
 )
 
 # 候補の検出条件を無効化する。対応する候補 fixture だけが候補を出さなくなる。
