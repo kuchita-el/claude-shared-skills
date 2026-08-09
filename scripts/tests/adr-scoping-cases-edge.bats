@@ -29,7 +29,7 @@ SCAN_ORDER_IDS="CASE-A1 CASE-ZZ CASE-M3 CASE-B2 CASE-Q9 CASE-D4"
 # ヒアドキュメントで逐語のまま持つ。
 LABEL_40A=$(
     cat <<'EOF'
-40a. prompt/validate/report（$TMPDIR に it's を含む）→ exit 0、trap が壊れず題材文・期待帰結も読める
+40a. prompt/validate/report（$TMPDIR に it's を含む）→ 通常環境と report 経路（期待帰結読込を含む）が一致する
 EOF
 )
 
@@ -175,16 +175,23 @@ make_awk_shim() {
     # 一時ファイルと awk を使うサブコマンドすべてに現れうるため、片方だけ試すと取りこぼす。
     check_weird_tmpdir "it's" "$LABEL_40A"
     check_weird_tmpdir 'back\slash' \
-        '40b. prompt/validate/report（$TMPDIR に back\slash を含む）→ exit 0、trap が壊れず題材文・期待帰結も読める'
+        '40b. prompt/validate/report（$TMPDIR に back\slash を含む）→ 通常環境と report 経路（期待帰結読込を含む）が一致する'
 
     # 題材集合ディレクトリのパスそのものに `&` と `\` が含まれる場合。
     # awk -v のエスケープ解釈で期待帰結ファイルを読めないと、report は無言で
     # 「差は無い」へ倒れる（診断ゼロで結論だけが反転する経路）。
     local weird_dir="$BATS_TEST_TMPDIR/weird/di&r\\x"
     copy_valid_case_dir "$weird_dir"
+    sc report "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid"
+    local baseline_report_status="$status" baseline_report_output="$output"
     sc report "$JUDGMENTS_DIR/valid-judgments.tsv" "$weird_dir"
-    collect_run 0 '40c. report（題材集合ディレクトリのパスに & と \ を含む）→ 期待帰結を読み、差2件をそのまま出す' \
-        "CASE-A2 試行2 項目3: 期待 1 / 判定 0" "差 2 件"
+    local report_ok=1 report_detail=""
+    [ "$baseline_report_status" -eq 0 ] || report_ok=0 report_detail="通常環境 report: rc=$baseline_report_status"
+    [ "$status" -eq 0 ] || report_ok=0 report_detail="${report_detail}${report_detail:+ / }特殊文字パス report: rc=$status"
+    [ "$output" = "$baseline_report_output" ] || report_ok=0 report_detail="${report_detail}${report_detail:+ / }通常環境と特殊文字パスの report 出力が一致しない"
+    [ "$report_ok" -eq 1 ] \
+        && collect_ok '40c. report（題材集合ディレクトリのパスに & と \ を含む）→ 通常環境と report 経路（期待帰結読込を含む）が一致する' \
+        || collect_fail '40c. report（題材集合ディレクトリのパスに & と \ を含む）→ 通常環境と report 経路（期待帰結読込を含む）が一致する' "$report_detail"
     sc validate "$weird_dir"
     collect_run 0 '40d. validate（題材集合ディレクトリのパスに & と \ を含む）→ exit 0' \
         "題材集合の検査に通った"
@@ -216,17 +223,17 @@ check_weird_tmpdir() {
         rm -f "$path"
     fi
 
-    # validate と report も同じ $TMPDIR で通す。report は期待帰結との差まで出ること
-    # （一時ファイルを読めていれば差2件が出る）を見て、無言の結論反転を捕まえる。
+    # validate と report も同じ $TMPDIR で通す。report は通常環境の出力を baseline として
+    # 比較し、期待帰結の読込を含む経路の無言の結論反転を捕まえる。
     run env TMPDIR="$tmp" bash "$SUT" validate "$CASES_DIR/valid" </dev/null
     [ "$status" -eq 0 ] || ok=0 detail="${detail}${detail:+ / }validate: rc=$status / $output"
 
+    run bash "$SUT" report "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid" </dev/null
+    local baseline_report_status="$status" baseline_report_output="$output"
     run env TMPDIR="$tmp" bash "$SUT" report "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid" </dev/null
-    [ "$status" -eq 0 ] || ok=0 detail="${detail}${detail:+ / }report: rc=$status / $output"
-    case "$output" in
-        *"差 2 件"*) ;;
-        *) ok=0 detail="${detail}${detail:+ / }report: 期待帰結との差が出ていない（結論が無言で反転している）" ;;
-    esac
+    [ "$baseline_report_status" -eq 0 ] || ok=0 detail="${detail}${detail:+ / }通常環境 report: rc=$baseline_report_status"
+    [ "$status" -eq 0 ] || ok=0 detail="${detail}${detail:+ / }特殊文字 TMPDIR report: rc=$status / $output"
+    [ "$output" = "$baseline_report_output" ] || ok=0 detail="${detail}${detail:+ / }通常環境と特殊文字 TMPDIR の report 出力が一致しない"
 
     [ "$ok" -eq 1 ] && collect_ok "$label" || collect_fail "$label" "$detail"
     return 0

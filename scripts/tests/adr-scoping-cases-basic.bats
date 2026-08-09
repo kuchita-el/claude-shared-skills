@@ -242,15 +242,14 @@ copy_valid_case_dir() {
     local eq_ok=1 eq_detail=""
     copy_valid_case_dir "$eq_parent/a=b"
     cp "$JUDGMENTS_DIR/valid-judgments.tsv" "$eq_parent/j=1.tsv"
+    sc report "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid"
+    local baseline="$output"
+    [ "$status" -eq 0 ] || { eq_ok=0 eq_detail="baseline report: rc=$status / $output"; }
     sc_in "$eq_parent" validate 'a=b'
     [ "$status" -eq 0 ] || { eq_ok=0 eq_detail="validate: rc=$status / $output"; }
     sc_in "$eq_parent" report 'j=1.tsv' 'a=b'
     [ "$status" -eq 0 ] || { eq_ok=0 eq_detail="${eq_detail}${eq_detail:+ / }report: rc=$status"; }
-    # 判定記録TSV を読めていないと、期待帰結を読めていても差が消えて「差は無い」へ倒れる。
-    case "$output" in
-        *"差 2 件"*) ;;
-        *) eq_ok=0 eq_detail="${eq_detail}${eq_detail:+ / }report: 期待帰結との差が出ていない" ;;
-    esac
+    [ "$output" = "$baseline" ] || eq_ok=0 eq_detail="${eq_detail}${eq_detail:+ / }report: baseline と出力が一致しない"
     sc_stdout_in "$eq_parent" prompt "$DOC" CASE-A1 'a=b'
     if [ "$status" -ne 0 ] || [ ! -f "$output" ]; then
         eq_ok=0
