@@ -815,6 +815,32 @@ run_sut_in() {
     run_sut_in "$broken"
     collect_rc 2 "列挙の段で git が落ちるときは止める"
 
+    # テキストとして差分を取れない .md も止める。判定は numstat で行う。差分の本文に
+    # 「Binary files 」という語が現れるかで判定すると、その語を含む文書が偽の原因で
+    # 弾かれ、逆に属性で差分を抑止した文書は素通りする。
+    local attr="$BATS_TEST_TMPDIR/attr"
+    init_temp_repo "$attr"
+    printf 'seed\n' >"$attr/seed.txt"
+    commit_all "$attr" "起点"
+
+    # 対照。本文に当該の語を含むだけの文書は、普通に検査されて違反が報告される。
+    {
+        printf '# 差分の本文に現れる語を含む文書\n\n'
+        printf 'Binary files a/x.md and b/x.md differ という行を引用する。'
+        printf 'あ%.0s' $(seq 120)
+        printf '。\n'
+    } >"$attr/mention.md"
+    run_sut_in "$attr" mention.md
+    collect_rc 1 "対照: 本文に「Binary files 」を含む文書は普通に検査される"
+
+    printf '*.md -diff\n' >"$attr/.gitattributes"
+    cp "$LINT_FIXTURES/invalid/01-sentence-too-long.md" "$attr/nodiff.md"
+    git -C "$attr" add -A
+    git -C "$attr" commit -q -m "属性を置く"
+    printf '\n追記の文である。\n' >>"$attr/nodiff.md"
+    run_sut_in "$attr" nodiff.md
+    collect_rc 2 "テキストとして差分を取れない .md は止める"
+
     collect_finish
 }
 
@@ -852,6 +878,24 @@ run_sut_in() {
         collect_contains "$output" "上限 60字" "symlink 経由でも解決された上限が60字である"
     else
         collect_skipped "symlink 経由の作業ディレクトリ" "symlink を作れない実行環境"
+    fi
+
+    # git リポジトリの側も同じである。git が返すのは実体パスであり、作業ディレクトリを
+    # 論理パスのまま突き合わせると、リポジトリの中にいるのに外だと判定される。
+    local repo="$BATS_TEST_TMPDIR/symlinked-repo"
+    init_temp_repo "$repo"
+    printf 'seed\n' >"$repo/seed.txt"
+    commit_all "$repo" "起点"
+    cp "$LINT_FIXTURES/invalid/01-sentence-too-long.md" "$repo/doc.md"
+
+    local repo_alias="$BATS_TEST_TMPDIR/alias-repo"
+    if ln -s "$repo" "$repo_alias" 2>/dev/null && [ -L "$repo_alias" ]; then
+        pushd "$repo_alias" >/dev/null || return 1
+        run bash "$SUT" --profile "$BUNDLED_PROFILE" doc.md </dev/null
+        popd >/dev/null || return 1
+        collect_rc 1 "symlink 経由で入ったリポジトリでも差分モードが働く"
+    else
+        collect_skipped "symlink 経由のリポジトリ" "symlink を作れない実行環境"
     fi
 
     collect_finish

@@ -14,8 +14,17 @@
 # 検出殺しだけを置くと、免除と除外の分岐は無検査のまま残る。到達しない死に分岐や、
 # 条文が認める形を通していない免除が、正例を緑にしたまま潜り込む。
 #
-# 候補（第2条）は終了コードに寄与しないため、判定は出力に候補が現れるかで行う。
-# 終了コードで判定すると、候補の検出を丸ごと落としても全件緑のまま通る。
+# 候補（第2条）は終了コードに寄与しないため、判定は出力に候補が現れるかでも行う。
+# 終了コードだけで判定すると、候補の検出を丸ごと落としても全件緑のまま通る。判定は
+# 群を問わず2つの軸（終了コードと候補の有無）の両方で行う。群ごとに片方の軸しか見ないと、
+# 終了コードを動かさずに候補だけを消す変異が素通りする。
+#
+# 変異前の値は宣言せず、原本を走らせて測る。宣言で持つと、宣言と実測がずれても
+# 気づけない。
+#
+# 変異表そのものの縮退も検査する。表が空でも、行が減っても、群や軸が減っても、判定が
+# 減るだけで全件緑のまま通るためである。表の項目の有無・判定数の積・文書側の表との
+# 1対1をそれぞれ検査項目として持つ。
 #
 # 変異が実際に適用されたこと（置換の空振りでないこと）も併せて検査する。
 # 変異体は一時ディレクトリへ複製したうえで書き換える。被テスト検査器そのものへ無効化の
@@ -26,9 +35,11 @@ load 'helpers/common'
 SUT="$REPO_ROOT/plugins/writing/scripts/lint-ja.sh"
 LINT_FIXTURES="$REPO_ROOT/scripts/fixtures/lint-ja"
 BUNDLED_PROFILE="$REPO_ROOT/plugins/writing/references/document-type-profiles.md"
+MUTATION_DOC="$REPO_ROOT/docs/development/test-execution.md"
 
 CORPORA=()
 PRECONDITION_PATHS=(
+    "$MUTATION_DOC"
     "$SUT"
     "$LINT_FIXTURES/valid"
     "$LINT_FIXTURES/invalid"
@@ -106,7 +117,7 @@ CANDIDATES=(
 # 検出条件を無効化する。対応する負例だけが exit 1 から exit 0 へ転じる。
 MUTATIONS_DETECT=(
     'length-off::一文の長さの判定を無効化する::s/^check_length() {$/check_length() {\n    return 0/::invalid:01 invalid:02 invalid:03 invalid:04 invalid:05a invalid:05b invalid:05c invalid:05d invalid:05e invalid:05f invalid:06 invalid:07 invalid:08 invalid:09 invalid:10 invalid:11 invalid:12 invalid:13 invalid:14 invalid:15 invalid:16 invalid:17 invalid:18'
-    "heading-loose::見出しの判定を記号だけに戻す::s@^HEADING_RE=.*@HEADING_RE='^#'@::invalid:04"
+    "heading-loose::見出しの判定を記号だけに戻す::s@^HEADING_RE=.*@HEADING_RE='^#'@::invalid:04 invalid:04:候補"
     'paren-depth-off::括弧の対応の数え上げを無効化する::s@^        depth=\$((depth.*@        depth=0@::invalid:03 invalid:05a invalid:05b invalid:05c invalid:05d invalid:05e invalid:05f'
     'line-join-off::段落の行の連結を無効化する::s@^        buf_last="\$lineno"@        buf_last="\$lineno"\n        flush@::invalid:02 invalid:07 valid:21'
     "bracket-drop-kagi::括弧の対から「」を落とす::s@^OPEN_BRACKETS=.*@OPEN_BRACKETS=('（' '『' '【' '［' '(' '[')@; s@^CLOSE_BRACKETS=.*@CLOSE_BRACKETS=('）' '』' '】' '］' ')' ']')@::invalid:05a"
@@ -153,10 +164,10 @@ MUTATIONS_EXEMPT=(
 
 # 候補の検出条件を無効化する。対応する候補 fixture だけが候補を出さなくなる。
 MUTATIONS_CANDIDATE=(
-    'identifier-off::不透明な識別子の判定を無効化する::s/^check_identifiers() {$/check_identifiers() {\n    return 0/::candidate:01 candidate:02 candidate:03 candidate:04 candidate:05'
-    "identifier-drop-issue::識別子の形から課題番号を落とす::s@^ID_RE=.*@ID_RE='(ADR-[0-9]{8,12}-[0-9]+)'@::candidate:03"
+    'identifier-off::不透明な識別子の判定を無効化する::s/^check_identifiers() {$/check_identifiers() {\n    return 0/::candidate:01 candidate:02 candidate:03 candidate:04 candidate:05 invalid:04:候補'
+    "identifier-drop-issue::識別子の形から課題番号を落とす::s@^ID_RE=.*@ID_RE='(ADR-[0-9]{8,12}-[0-9]+)'@::candidate:03 invalid:04:候補"
     'identifier-keep-backticks::識別子の判定でインラインコードの囲みを外さない::s@^    naked=.*@    naked="\$sentence"@::candidate:02'
-    "drop-particle-ga::骨格位置の助詞から「が」を落とす::s@^SKELETON_PARTICLES=.*@SKELETON_PARTICLES=('は' 'を')@::candidate:04"
+    "drop-particle-ga::骨格位置の助詞から「が」を落とす::s@^SKELETON_PARTICLES=.*@SKELETON_PARTICLES=('は' 'を')@::candidate:04 invalid:04:候補"
     "drop-particle-wo::骨格位置の助詞から「を」を落とす::s@^SKELETON_PARTICLES=.*@SKELETON_PARTICLES=('は' 'が')@::candidate:05"
 )
 
@@ -192,12 +203,17 @@ run_lint() {
         "$LINT_FIXTURES/$subdir/$fixture" </dev/null
 }
 
-# 群ごとの判定の向き。<群>:<判定方法>:<変異前の値>:<転じた先の値> を持つ。
-GROUP_RULES=(
-    "invalid:rc:1:0"
-    "valid:rc:0:1"
-    "candidate:candidate:あり:なし"
-)
+MUTATION_GROUPS=(invalid valid candidate)
+
+# 群ごとの既定の軸。期待は <群>:<接頭辞> で既定の軸を指し、既定でない軸は
+# <群>:<接頭辞>:<軸> と書く。片方の軸しか見ないと、終了コードを動かさずに候補だけを
+# 消す変異が素通りする。
+axis_default() {
+    case "$1" in
+        candidate) printf '候補' ;;
+        *) printf 'rc' ;;
+    esac
+}
 
 group_fixtures() {
     case "$1" in
@@ -207,13 +223,56 @@ group_fixtures() {
     esac
 }
 
-# 1つの変異表を回す。各変異を3つの群すべてへ当てる。1つの群にしか当てないと、
-# 変異が別の群まで巻き込んでいることを検出できない。期待は <群>:<接頭辞> の形で書く。
+# 変異前の値は宣言で持たず、原本を走らせて測る。宣言で持つと、宣言と実測がずれても
+# 気づけない。軸は2つとも測る。
+declare -gA BASELINE_RC=()
+declare -gA BASELINE_CAND=()
+
+observe() {
+    OBS_RC="$status"
+    if [[ "$output" == *"[候補: "* ]]; then OBS_CAND="あり"; else OBS_CAND="なし"; fi
+}
+
+measure_baselines() {
+    local group fixture
+    for group in "${MUTATION_GROUPS[@]}"; do
+        while IFS= read -r fixture; do
+            [ -n "$fixture" ] || continue
+            run_lint "$SUT" "$group" "$fixture"
+            observe
+            BASELINE_RC["$group/$fixture"]="$OBS_RC"
+            BASELINE_CAND["$group/$fixture"]="$OBS_CAND"
+        done < <(group_fixtures "$group")
+    done
+    return 0
+}
+
+# 軸ごとの「転じた先」。いずれも2値である。
+flip_of() {
+    local axis="$1" v="$2"
+    if [ "$axis" = "rc" ]; then
+        if [ "$v" = "0" ]; then printf '1'; else printf '0'; fi
+    else
+        if [ "$v" = "あり" ]; then printf 'なし'; else printf 'あり'; fi
+    fi
+}
+
+# 1つの変異表を回す。各変異を3つの群すべてへ、2つの軸すべてで当てる。1つの群・1つの軸に
+# しか当てないと、変異が別の群や別の軸まで巻き込んでいることを検出できない。
 run_mutation_table() {
     local -n table="$1"
 
-    local entry key desc program expected mutant rule group judge baseline mutated
-    local fixture prefix want actual
+    # 表が空でも失敗バッファは空のままとなり、検査項目0件のケースが ok で通る。
+    # 表そのものの縮退をここで検出する。
+    if [ "${#table[@]}" -eq 0 ]; then
+        collect_fail "変異表 $1 に項目がある" "表が空のため、この向きの検査が1件も走らない"
+        return 0
+    fi
+    collect_ok "変異表 $1 に項目がある"
+
+    local entry key desc program expected mutant group axis
+    local fixture prefix want actual base declared
+    local judged=0 built=0
     for entry in "${table[@]}"; do
         key="${entry%%::*}"
         entry="${entry#*::}"
@@ -225,6 +284,7 @@ run_mutation_table() {
         mutant="$BATS_TEST_TMPDIR/lint-ja-$key.sh"
         if build_mutant "$program" "$mutant"; then
             collect_ok "変異 $key が適用された（$desc）"
+            built=$((built + 1))
         else
             # 置換が空振りしていれば以降の判定は無意味になる。ここで止めずに記録し、
             # 全ての変異について空振りの有無を1回の実行で出す。
@@ -232,43 +292,56 @@ run_mutation_table() {
             continue
         fi
 
-        for rule in "${GROUP_RULES[@]}"; do
-            group="${rule%%:*}"
-            rule="${rule#*:}"
-            judge="${rule%%:*}"
-            rule="${rule#*:}"
-            baseline="${rule%%:*}"
-            mutated="${rule##*:}"
-
+        for group in "${MUTATION_GROUPS[@]}"; do
             while IFS= read -r fixture; do
                 [ -n "$fixture" ] || continue
                 prefix="${fixture%%-*}"
-                want="$baseline"
-                case " $expected " in
-                    *" $group:$prefix "*) want="$mutated" ;;
-                esac
 
                 run_lint "$mutant" "$group" "$fixture"
-                if [ "$judge" = "rc" ]; then
-                    actual="$status"
-                elif [[ "$output" == *"[候補: "* ]]; then
-                    actual="あり"
-                else
-                    actual="なし"
-                fi
+                observe
 
-                if [ "$actual" = "$want" ]; then
-                    collect_ok "変異 $key: $group/$fixture が $want"
-                elif [ "$want" = "$mutated" ]; then
-                    collect_fail "変異 $key: $group/$fixture が $want" \
-                        "条件を無効化しても転じない。この fixture は当該の条件で判定されていない / output: $output"
-                else
-                    collect_fail "変異 $key: $group/$fixture が $want" \
-                        "無関係なはずの fixture まで転じた。変異の射程が広すぎる / output: $output"
-                fi
+                for axis in rc 候補; do
+                    if [ "$axis" = "rc" ]; then
+                        base="${BASELINE_RC[$group/$fixture]}"
+                        actual="$OBS_RC"
+                    else
+                        base="${BASELINE_CAND[$group/$fixture]}"
+                        actual="$OBS_CAND"
+                    fi
+
+                    declared=0
+                    if [ "$axis" = "$(axis_default "$group")" ]; then
+                        case " $expected " in
+                            *" $group:$prefix "*) declared=1 ;;
+                        esac
+                    fi
+                    case " $expected " in
+                        *" $group:$prefix:$axis "*) declared=1 ;;
+                    esac
+
+                    want="$base"
+                    [ "$declared" -eq 1 ] && want="$(flip_of "$axis" "$base")"
+
+                    judged=$((judged + 1))
+                    if [ "$actual" = "$want" ]; then
+                        collect_ok "変異 $key: $group/$fixture の $axis が $want"
+                    elif [ "$declared" -eq 1 ]; then
+                        collect_fail "変異 $key: $group/$fixture の $axis が $want" \
+                            "条件を無効化しても転じない。この fixture は当該の条件で判定されていない / output: $output"
+                    else
+                        collect_fail "変異 $key: $group/$fixture の $axis が $want" \
+                            "宣言していない fixture まで転じた。変異の射程が広すぎるか、宣言が実測に追いついていない / output: $output"
+                    fi
+                done
             done < <(group_fixtures "$group")
         done
     done
+
+    # 判定の総数が、変異×fixture×軸の積と一致することを見る。群や軸を1つ落としても
+    # 判定が減るだけで全緑のまま通るため、器そのものの縮退はここでしか出ない。
+    collect_equals "$judged" \
+        "$((built * (${#NEGATIVES[@]} + ${#POSITIVES[@]} + ${#CANDIDATES[@]}) * 2))" \
+        "変異表 $1 の判定数が、変異×fixture×軸の積と一致する"
     return 0
 }
 
@@ -289,6 +362,105 @@ collect_mutation_coverage() {
         case " $registered " in
             *" $base "*) collect_ok "$label" ;;
             *) collect_fail "$label" "未登録のため、どの変異の判定対象にもならない" ;;
+        esac
+    done
+    return 0
+}
+
+TRIMMED_CELL=""
+trim_cell() {
+    local s="$1"
+    s="${s#"${s%%[![:space:]]*}"}"
+    TRIMMED_CELL="${s%"${s##*[![:space:]]}"}"
+}
+
+# 期待の宣言を、文書側の表が使う書き方へ直す。既定でない軸は接尾に括弧で添える。
+RENDERED=""
+render_expected() {
+    local tok group prefix axis label inv="" val="" cand=""
+    for tok in $1; do
+        group="${tok%%:*}"
+        tok="${tok#*:}"
+        prefix="${tok%%:*}"
+        if [ "$prefix" = "$tok" ]; then axis=""; else axis="${tok#*:}"; fi
+        label="$prefix"
+        if [ -n "$axis" ] && [ "$axis" != "$(axis_default "$group")" ]; then
+            label="$prefix（$axis）"
+        fi
+        case "$group" in
+            invalid) inv="${inv:+$inv・}$label" ;;
+            valid) val="${val:+$val・}$label" ;;
+            candidate) cand="${cand:+$cand・}$label" ;;
+        esac
+    done
+    RENDERED=""
+    [ -n "$inv" ] && RENDERED="負例 $inv"
+    [ -n "$val" ] && RENDERED="${RENDERED:+$RENDERED / }正例 $val"
+    [ -n "$cand" ] && RENDERED="${RENDERED:+$RENDERED / }候補 $cand"
+    return 0
+}
+
+# 変異表と、文書側（test-execution.md）の変異表が1対1であることを見る。配列から行を
+# 削っても判定対象が減るだけで全緑のまま通り、文書側だけが古くなっても誰も落ちない。
+# 説明と期待の両方を突き合わせ、件数と集合の一致を見る。
+collect_table_parity() {
+    local heading="$1"
+    local -n parity_table="$2"
+
+    local -a documented=()
+    local line in_table=0 rest cell1 cell2
+    while IFS= read -r line; do
+        case "$line" in
+            "$heading"*)
+                in_table=1
+                continue
+                ;;
+        esac
+        [ "$in_table" -eq 1 ] || continue
+        case "$line" in
+            '|'*) ;;
+            '') continue ;;
+            *)
+                in_table=0
+                continue
+                ;;
+        esac
+        rest="${line#|}"
+        cell1="${rest%%|*}"
+        rest="${rest#*|}"
+        cell2="${rest%%|*}"
+        trim_cell "$cell1"
+        cell1="$TRIMMED_CELL"
+        trim_cell "$cell2"
+        cell2="$TRIMMED_CELL"
+        case "$cell1" in
+            '変異' | '' | -*) continue ;;
+        esac
+        documented+=("$cell1｜$cell2")
+    done <"$MUTATION_DOC"
+
+    local entry desc row
+    local -a declared=()
+    for entry in ${parity_table[@]+"${parity_table[@]}"}; do
+        entry="${entry#*::}"
+        desc="${entry%%::*}"
+        render_expected "${entry##*::}"
+        declared+=("$desc｜$RENDERED")
+    done
+
+    collect_equals "${#documented[@]}" "${#declared[@]}" \
+        "$heading の件数が文書側と一致する"
+
+    for row in ${declared[@]+"${declared[@]}"}; do
+        case "${documented[*]}" in
+            *"$row"*) collect_ok "$heading の行が文書側にもある: $row" ;;
+            *) collect_fail "$heading の行が文書側にもある: $row" "文書側の表に同じ行が無い" ;;
+        esac
+    done
+    for row in ${documented[@]+"${documented[@]}"}; do
+        case "${declared[*]}" in
+            *"$row"*) collect_ok "$heading の文書側の行が変異表にもある: $row" ;;
+            *) collect_fail "$heading の文書側の行が変異表にもある: $row" "変異表に同じ行が無い" ;;
         esac
     done
     return 0
@@ -325,18 +497,29 @@ collect_mutation_coverage() {
 
 @test "変異: 検出条件を無効化すると、対応する負例だけが緑へ転じる" {
     collect_init
+    measure_baselines
     run_mutation_table MUTATIONS_DETECT
     collect_finish
 }
 
 @test "変異: 免除と除外を無効化すると、対応する正例だけが赤へ転じる" {
     collect_init
+    measure_baselines
     run_mutation_table MUTATIONS_EXEMPT
     collect_finish
 }
 
 @test "変異: 候補の検出条件を無効化すると、対応する候補だけが出なくなる" {
     collect_init
+    measure_baselines
     run_mutation_table MUTATIONS_CANDIDATE
+    collect_finish
+}
+
+@test "変異表が、文書側の変異表と1対1である" {
+    collect_init
+    collect_table_parity "**検出条件の無効化**" MUTATIONS_DETECT
+    collect_table_parity "**免除と除外の無効化**" MUTATIONS_EXEMPT
+    collect_table_parity "**候補の検出条件の無効化**" MUTATIONS_CANDIDATE
     collect_finish
 }
