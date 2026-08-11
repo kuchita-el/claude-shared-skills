@@ -846,7 +846,7 @@ check_unreadable_case_dir() {
 @test "面㉑: prompt 出力が契約の判定器フィールドと返却雛形を含む" {
     local contract="$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-judgment-contract.md"
     local cases="$REPO_ROOT/docs/development/adr-scoping-cases"
-    local prompt_path="" prompt_body="" prompt_rc fence_count
+    local prompt_path="" prompt_body="" return_body="" prompt_rc fence_count
     local -a fields=() keys=()
 
     collect_init
@@ -878,19 +878,34 @@ check_unreadable_case_dir() {
             "exit=$prompt_rc / path=$prompt_path"
     fi
 
+    # 返却形式の見出し直後にあるフェンス区間だけを切り出す。prompt 全体を対象にすると、
+    # 題材文や別のコードブロックにキーが現れたとき、返却雛形の欠落を見逃すためである。
+    return_body="$(printf '%s\n' "$prompt_body" | awk '
+        /^## 返却形式（厳守）$/ { in_return=1; next }
+        in_return && /^```/ {
+            if (!opened) { opened=1; next }
+            exit
+        }
+        in_return && opened { print }
+    ' )"
+
     # 素の部分一致では短いフィールド名が長いフィールド名の接頭辞に隠れるため、
-    # JSON キー形（"名前":）で全件を一括照合する。
+    # JSON キー形（"名前":）で返却雛形の区間内にある全件を一括照合する。
     local field
     for field in "${fields[@]}"; do
         keys+=("\"${field}\":")
     done
-    collect_out "$prompt_body" \
+    collect_out "$return_body" \
         "49. prompt 出力に契約の判定器記入フィールド27件がJSONキー形で全て現れる" \
         "${keys[@]}"
 
     # 実データ雛形の返却形式は言語タグ無しの素の ``` で囲まれる。```json に固定しない。
-    fence_count="$(printf '%s\n' "$prompt_body" | awk 'index($0, "```") { count++ } END { print count + 0 }')"
-    if [ "$fence_count" -ge 2 ]; then
+    fence_count="$(printf '%s\n' "$prompt_body" | awk '
+        /^## 返却形式（厳守）$/ { in_return=1; next }
+        in_return && /^```/ { count++ }
+        END { print count + 0 }
+    ' )"
+    if [ "$fence_count" -eq 2 ] && [ -n "$return_body" ]; then
         collect_ok "50. prompt 出力に返却直列化形式を囲むフェンスが対で現れる"
     else
         collect_fail "50. prompt 出力に返却直列化形式を囲むフェンスが対で現れる" \
