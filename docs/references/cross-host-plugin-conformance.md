@@ -2,6 +2,8 @@
 
 Wave 0以降のplugin適合性を、Claude CodeとCodexのhost差分を隠さず検査するための契約。
 
+実体は `docs/references/cross-host-compatibility.json` と `docs/references/cross-host-permission-ledger.json` に置く。fixtureはschema負例と検査器のテスト専用であり、実repo検査の入力へfallbackしない。
+
 ## Compatibility matrix
 
 matrixはJSON配列として保持し、各行は次の字段を必須とする。

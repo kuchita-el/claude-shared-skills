@@ -43,7 +43,7 @@ allowed-tools:
 Issue・計画ファイル・PRレビュー指摘・会話コンテキストを起点に、実装→セルフレビュー→修正→PR作成までを一貫して実行する。
 
 **出力と範囲の規律**: 出力・成果物の分量と作業範囲は `${CLAUDE_PLUGIN_ROOT}/references/behavior-invariants.md` の不変条件に従う。
-計画ファイルの解決規約は `plugins/dev-workflow/references/plan-location-resolution.md` を直接参照する。
+計画ファイルの解決規約は `${CLAUDE_PLUGIN_ROOT}/references/plan-location-resolution.md` を直接参照する。
 
 ## 引数
 

@@ -16,3 +16,8 @@ load 'helpers/common'
   [ "$status" -eq 1 ]
   [[ "$output" == *"stale-ledger: scripts/removed.sh:4:plugins/writing"* ]]
 }
+@test "marketplaceにないplugin名も実ディレクトリから検出する" {
+  run bash "$REPO_ROOT/scripts/validate-plugin-path-references.sh" "$FIXTURES_DIR/plugin-path-references/dynamic/repo" "$FIXTURES_DIR/plugin-path-references/dynamic/docs/development/plugin-path-reference-ledger.md"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"unregistered: scripts/example.sh:1:plugins/newplugin"* ]]
+}

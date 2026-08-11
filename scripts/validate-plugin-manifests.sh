@@ -43,11 +43,20 @@ for name in "${claude_names[@]}"; do
   fi
   [ -f "$claude_path/README.md" ] || fail "READMEが無い: $name"
   mapfile -t skills < <(find "$claude_path/skills" -mindepth 2 -maxdepth 2 -name SKILL.md -print 2>/dev/null | sort)
+  collect_skill_names() {
+    local plugin_path="$1" file relative
+    while IFS= read -r file; do
+      relative="${file#"$plugin_path/skills/"}"
+      printf '%s\n' "${relative%/SKILL.md}"
+    done < <(find "$plugin_path/skills" -mindepth 2 -maxdepth 2 -name SKILL.md -print 2>/dev/null | sort)
+  }
+  mapfile -t codex_skill_names < <(collect_skill_names "$codex_path")
+  mapfile -t claude_skill_names < <(collect_skill_names "$claude_path")
   if [ "$(jq -r '.skills // empty' "$codex_manifest" 2>/dev/null)" = "./skills/" ]; then
     [ "${#skills[@]}" -gt 0 ] || fail "検査対象skillが0件: $name"
   fi
-  if [ -f "$codex_manifest" ] && [ "$(jq -r '.skills // empty' "$codex_manifest" 2>/dev/null)" = "./skills/" ]; then
-    [ "$(jq -r '.skills // empty' "$codex_manifest")" = "./skills/" ] || fail "skills参照不一致: $name"
+  if [ "$(printf '%s\n' "${claude_skill_names[@]}")" != "$(printf '%s\n' "${codex_skill_names[@]}")" ]; then
+    fail "skill集合不一致: $name"
   fi
 done
 

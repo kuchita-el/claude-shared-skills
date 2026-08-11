@@ -15,6 +15,11 @@ load 'helpers/common'
   [ "$status" -eq 1 ]
   [[ "$output" == *"permission-ledger: missing narrowerAlternative"* ]]
 }
+@test "compatibility matrixのschema違反をexit 1にする" {
+  run bash "$REPO_ROOT/scripts/validate-plugin-portability.sh" "$FIXTURES_DIR/skill-portability/invalid-compatibility"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"compatibility: missing codexLevel"* ]]
+}
 @test "SKILLからの2段参照を報告する" {
   run bash "$REPO_ROOT/scripts/validate-plugin-portability.sh" "$FIXTURES_DIR/skill-portability/two-hop-reference"
   [ "$status" -eq 1 ]

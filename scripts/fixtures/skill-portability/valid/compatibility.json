@@ -1,9 +1,1 @@
-[
-  {
-    "feature": "plugin root resolution",
-    "claudeLevel": "portable",
-    "codexLevel": "adapted",
-    "fixtures": ["read-plugin-reference"],
-    "residualRisk": "Codexはmarketplace source.path adapterを使用する"
-  }
-]
+[{"feature":"read","claudeLevel":"portable","codexLevel":"adapted","fixtures":["read"],"residualRisk":"none"}]

@@ -28,6 +28,22 @@
 | docs/development/test-execution.md | 138 | plugins/adr | adr | test setup | wave-0 | current |
 | docs/development/test-execution.md | 155 | plugins/adr | adr | test setup | wave-0 | current |
 | docs/development/test-execution.md | 159 | plugins/adr | adr | test setup | wave-0 | current |
+| .agents/plugins/marketplace.json | 11 | plugins/dev-workflow | dev-workflow | marketplace source | wave-0 | current |
+| .agents/plugins/marketplace.json | 23 | plugins/growth | growth | marketplace source | wave-0 | current |
+| .agents/plugins/marketplace.json | 35 | plugins/adr | adr | marketplace source | wave-0 | current |
+| .agents/plugins/marketplace.json | 47 | plugins/writing | writing | marketplace source | wave-0 | current |
+| .claude-plugin/marketplace.json | 9 | plugins/dev-workflow | dev-workflow | marketplace source | wave-0 | current |
+| .claude-plugin/marketplace.json | 13 | plugins/growth | growth | marketplace source | wave-0 | current |
+| .claude-plugin/marketplace.json | 17 | plugins/adr | adr | marketplace source | wave-0 | current |
+| .claude-plugin/marketplace.json | 21 | plugins/writing | writing | marketplace source | wave-0 | current |
+| CLAUDE.md | 24 | plugins/dev-workflow | dev-workflow | repository structure | wave-0 | current |
+| README.md | 122 | plugins/dev-workflow | dev-workflow | usage | wave-0 | current |
+| scripts/tests/adr-scoping-cases-edge.bats | 452 | plugins/adr | adr | fixture | wave-0 | current |
+| scripts/tests/helpers/common.bash | 32 | plugins/adr | adr | fixture | wave-0 | current |
+| scripts/tests/local-plugin-runners.bats | 51 | plugins/dev-workflow | dev-workflow | runner test | wave-0 | current |
+| scripts/tests/plugin-path-references.bats | 12 | plugins/adr | adr | checker test | wave-0 | current |
+| scripts/tests/plugin-path-references.bats | 17 | plugins/writing | writing | checker test | wave-0 | current |
+| scripts/validate-plugin-portability.sh | 35 | plugins/growth | growth | excluded plugin note | wave-0 | current |
 | scripts/lint-domain-doc.sh | 9 | plugins/dev-workflow | dev-workflow | shared reference | wave-0 | current |
 | scripts/tests/adr-scoping-cases-basic.bats | 2 | plugins/adr | adr | fixture | wave-0 | current |
 | scripts/tests/adr-scoping-cases-basic.bats | 717 | plugins/adr | adr | fixture | wave-0 | current |

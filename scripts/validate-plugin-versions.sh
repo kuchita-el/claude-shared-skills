@@ -4,7 +4,16 @@ set -euo pipefail
 
 base_ref="${1:?usage: validate-plugin-versions.sh <base-ref> [changed-paths-file]}"
 root="${PLUGIN_REPO_ROOT:-.}"
-if [ -n "${2:-}" ]; then mapfile -t changed <"$2"; else mapfile -t changed < <(git diff --name-only "$base_ref" -- 'plugins/*'); fi
+if [ -n "${2:-}" ]; then
+  mapfile -t changed <"$2"
+else
+  if ! git rev-parse --verify "$base_ref^{commit}" >/dev/null 2>&1; then
+    echo "base refを解決できません: $base_ref"
+    exit 1
+  fi
+  changed_output="$(git diff --name-only "$base_ref" -- 'plugins/*')"
+  mapfile -t changed <<<"$changed_output"
+fi
 declare -A touched=()
 for path in "${changed[@]}"; do [[ "$path" == plugins/* ]] && touched["${path#plugins/}"]="${path#plugins/}"; done
 errors=0

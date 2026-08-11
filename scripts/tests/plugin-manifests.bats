@@ -28,3 +28,13 @@ setup() { SUT="$REPO_ROOT/scripts/validate-plugin-manifests.sh"; }
   [ "$status" -eq 1 ]
   [[ "$output" == *"version据え置き: example"* ]]
 }
+@test "base refを解決できない場合は成功にしない" {
+  run bash "$REPO_ROOT/scripts/validate-plugin-versions.sh" origin/does-not-exist
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"base refを解決できません"* ]]
+}
+@test "Claude/Codexのskill集合差分を報告する" {
+  run bash "$REPO_ROOT/scripts/validate-plugin-manifests.sh" "$FIXTURES_DIR/plugin-manifests/skill-mismatch"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"skill集合不一致: example"* ]]
+}

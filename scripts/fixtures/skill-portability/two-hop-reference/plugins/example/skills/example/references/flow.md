@@ -1,3 +1,3 @@
 # Flow
 
-Use `references/template.md`.
+Use `${CLAUDE_SKILL_DIR}/references/template.md`.

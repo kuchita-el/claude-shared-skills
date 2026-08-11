@@ -5,18 +5,25 @@ root="${1:?usage: validate-plugin-portability.sh <repo-root>}"
 errors=0
 fail() { printf '%s\n' "$1"; errors=$((errors + 1)); }
 
-compat="$root/scripts/fixtures/skill-portability/valid/compatibility.json"
-ledger="$root/scripts/fixtures/skill-portability/valid/permission-ledger.json"
+compat="$root/docs/references/cross-host-compatibility.json"
+ledger="$root/docs/references/cross-host-permission-ledger.json"
 if [ -f "$root/compatibility.json" ]; then compat="$root/compatibility.json"; fi
 if [ -f "$root/permission-ledger.json" ]; then ledger="$root/permission-ledger.json"; fi
 for file in "$compat" "$ledger"; do [ -f "$file" ] || { fail "schemaが無い: ${file#$root/}"; continue; }; jq empty "$file" >/dev/null 2>&1 || fail "JSON不正: ${file#$root/}"; done
 
-if [ -f "$compat" ]; then
-  jq -c '.[]' "$compat" 2>/dev/null | while IFS= read -r row; do
-    for key in feature claudeLevel codexLevel fixtures residualRisk; do jq -e --arg k "$key" '.[$k] != null' <<<"$row" >/dev/null || printf 'compatibility: missing %s\n' "$key"; done
-    while IFS= read -r level; do case "$level" in portable|adapted|degraded|surface-specific) ;; *) printf 'compatibility: invalid level %s\n' "$level";; esac; done < <(jq -r '.claudeLevel,.codexLevel' <<<"$row")
+compat_rows=()
+if [ -f "$compat" ]; then mapfile -t compat_rows < <(jq -c '.[]?' "$compat" 2>/dev/null || true); fi
+[ "${#compat_rows[@]}" -gt 0 ] || fail "compatibility matrixが0件"
+for row in "${compat_rows[@]}"; do
+  for key in feature claudeLevel codexLevel fixtures residualRisk; do
+    if ! jq -e --arg k "$key" 'has($k) and (.[$k]|type == "string" or type == "array") and ((.[$k]|length)>0)' <<<"$row" >/dev/null; then
+      fail "compatibility: missing $key"
+    fi
   done
-fi
+  while IFS= read -r level; do
+    case "$level" in portable|adapted|degraded|surface-specific) ;; *) fail "compatibility: invalid level $level";; esac
+  done < <(jq -r '.claudeLevel,.codexLevel' <<<"$row")
+done
 if [ -f "$ledger" ]; then
   while IFS= read -r row; do
     for key in permission requiredOperation witness narrowerAlternative verdict; do jq -e --arg k "$key" '.[$k] != null and (.[$k]|strings|length)>0' <<<"$row" >/dev/null || fail "permission-ledger: missing $key"; done
@@ -25,7 +32,7 @@ if [ -f "$ledger" ]; then
 fi
 
 skills=()
-while IFS= read -r -d '' file; do skills+=("$file"); done < <(find "$root/plugins" -path '*/skills/*/SKILL.md' -print0 2>/dev/null)
+while IFS= read -r -d '' file; do skills+=("$file"); done < <(find "$root/plugins" -path "$root/plugins/growth" -prune -o -path '*/skills/*/SKILL.md' -print0 2>/dev/null)
 [ "${#skills[@]}" -gt 0 ] || fail "検査対象skillが0件"
 for skill in "${skills[@]}"; do
   body=$(sed '1,/^---$/d' "$skill")
@@ -36,8 +43,11 @@ for skill in "${skills[@]}"; do
     target="$(dirname "$skill")/$ref"
     [ -e "$target" ] || target="$skill_plugin_root/$ref"
     [ -e "$target" ] || fail "壊れた参照: ${skill#$root/} -> $ref"
-    if [ -f "$target" ] && grep -Eq '(^|[[:space:]`(])references/[A-Za-z0-9_./-]+' "$target"; then
-      fail "2段参照: ${skill#$root/} -> $ref"
+    if [ -f "$target" ]; then
+      while IFS= read -r nested; do
+        nested_base="$(basename "$nested")"
+        grep -Fq "$nested_base" <<<"$body" || fail "2段参照: ${skill#$root/} -> $ref -> $nested"
+      done < <(grep -Eo 'references/[A-Za-z0-9_./-]+' "$target" | sort -u || true)
     fi
   done < <(printf '%s\n' "$body" | grep -Eo 'references/[A-Za-z0-9_./-]+' | sort -u || true)
   # plugin rootから配布元側へ戻る相対参照を拒否する。
