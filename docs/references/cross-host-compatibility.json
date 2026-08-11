@@ -12,5 +12,18 @@
     "codexLevel": "surface-specific",
     "fixtures": ["growth-codex-surface"],
     "residualRisk": "growthはClaudeのsession jsonl/local store依存のため、Codex適合を行わない"
+  },
+  {
+    "feature": "ADR explicit validation contract",
+    "claudeLevel": "portable",
+    "codexLevel": "portable",
+    "fixtures": ["adr-wave1"]
+  },
+  {
+    "feature": "ADR commit hook enforcement",
+    "claudeLevel": "portable",
+    "codexLevel": "degraded",
+    "fixtures": ["adr-wave1"],
+    "residualRisk": "Codexには現時点でClaude CodeのPreToolUse相当のplugin単位commit hookがなく、明示lint外のcommitはdriftを防げない"
   }
 ]

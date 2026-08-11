@@ -4,6 +4,26 @@
     "requiredOperation": "配布物内の参照を読む",
     "witness": "read-plugin-reference",
     "narrowerAlternative": "なし。個別ファイルは入力で変動する",
-    "verdict": "necessary"
+    "verdict": "necessary",
+    "plugin": "adr",
+    "host": "claude"
+  },
+  {
+    "permission": "PreToolUse hook: Bash(git commit:*)",
+    "requiredOperation": "git commit前にADR drift-lintを実行して違反時にcommitをブロックする",
+    "witness": "adr-wave1 / Claude Code hook",
+    "narrowerAlternative": "なし。git commitコマンドだけを対象にする現行条件が最小",
+    "verdict": "necessary",
+    "plugin": "adr",
+    "host": "claude"
+  },
+  {
+    "permission": "Codex sandbox/approval policy",
+    "requiredOperation": "ADR操作でファイルを書き込み、同梱lint/index/idスクリプトを実行する",
+    "witness": "adr-wave1 / explicit ADR validation",
+    "narrowerAlternative": "plugin単位のhook制約は現行Codexにないため代替不可",
+    "verdict": "degraded",
+    "plugin": "adr",
+    "host": "codex"
   }
 ]

@@ -1,6 +1,6 @@
 # adr プラグイン
 
-ADR（アーキテクチャ決定記録）の運用機構を配布する Claude Code プラグイン。どの GitHub リポジトリにも導入でき、ADR の drift-lint・有効性 index 生成・ライフサイクル操作を提供する。
+ADR（アーキテクチャ決定記録）の運用機構を配布する Claude Code / Codex プラグイン。どの GitHub リポジトリにも導入でき、ADR の drift-lint・有効性 index 生成・ライフサイクル操作を提供する。
 
 ## 提供物
 
@@ -10,6 +10,16 @@ ADR（アーキテクチャ決定記録）の運用機構を配布する Claude 
 - **固定題材集合の実行支援（`scripts/adr-scoping-cases.sh`）**: 判定手続きを定めた文書を被テスト対象とし、固定した題材を通して帰結の差を見るための検査器。`prompt` / `validate` / `report` に加え、保存済みJSONの実測事実から `derive` が点数を算出し、`crosscheck` が台帳の点数列と一致検査する。題材集合ディレクトリと対象文書パスは引数で受け、既定値を持たない（理由はスクリプト冒頭のコメントに置く）。**本スクリプトは manage-adr スキルからも commit ゲートからも呼ばれず、判定手続き文書を改訂する担い手が手で起動する。** 題材集合そのものは各リポジトリが自前で用意する。
 - **commit 前ゲート（`hooks/`）**: `git commit` 時に PreToolUse フックとして drift-lint を実行し、違反があれば commit をブロックする（exit 2）。対象リポジトリに ADR ディレクトリが存在しない場合は何もしない（no-op）。
 - **manage-adr スキル（`skills/manage-adr/`）**: ADR の起票・承認・上書き・廃止・却下・編集・分割を対話的に行うライフサイクル操作スキル。
+
+## ホスト差分
+
+両ホストの成果契約は、明示的に `lint-adr.sh`、`gen-adr-index.sh`、
+`next-adr-id.sh` を実行して結果を確認することです。Claude Codeでは追加で
+PreToolUseのcommitゲートを利用できます。Codexには現時点で同等のplugin単位
+commit hookがないため、明示lintを必須とする `degraded` 互換です。
+
+Codexがplugin単位のhook/policy callbackとブロック結果を提供した時点を、
+host adapterへ移行するトリガーとします。移行まではホスト別のworkflowを複製しません。
 
 同梱スクリプトのテストランナーと fixture は本配布物に含めない。配布物が持つのは検査器のみであり、検査用データの同梱と、スクリプトが自環境で動くことの確認は本配布物の責務ではない。
 

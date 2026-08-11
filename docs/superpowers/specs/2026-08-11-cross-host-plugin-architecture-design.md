@@ -311,6 +311,8 @@ Issueの作成、準備判定、計画、実装、PRまでを一つの開発ラ�
 
 このWaveでCodex hookの有無と保証範囲を調査する。hookを使えない場合は、明示lintを必須契約とする `degraded` としてfixture、代替検証、残余リスクを記録する。
 
+Wave 1は案A（共通のADR成果契約と既存スクリプトを維持）で実装し、案Bのhost adapterは将来の移行先として残す。Codexがplugin単位のhook/policy callbackと、lintの非0結果をcommitへ返してブロックできる保証を提供した時点を移行トリガーとする。それまではホスト別本文やスクリプトを複製せず、`adr-wave1` fixture、compatibility matrix、permission ledger、ADR READMEにこの判断と残余リスクを記録する。
+
 ### Wave 2: Writing
 
 既存のwriting設計とIssue #683、#684、#685を入力に、`write-doc`、`doc-writer`、`doc-reviewer` を両ホストへ適合させる。新しい基盤スキル名や別レビュー構造を導入しない。
