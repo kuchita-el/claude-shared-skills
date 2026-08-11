@@ -78,6 +78,7 @@ MSG
 EXPECTED_BATS=(
     adr-scoping-cases-basic.bats
     adr-scoping-cases-edge.bats
+    adr-portability.bats
     lint-adr-index.bats
     lint-adr-layers.bats
     lint-adr-stem.bats

@@ -60,3 +60,6 @@
 | scripts/tests/lint-adr-stem.bats | 2 | plugins/adr | adr | fixture | wave-0 | current |
 | scripts/tests/lint-adr-xref.bats | 2 | plugins/adr | adr | fixture | wave-0 | current |
 | scripts/tests/next-adr-id.bats | 2 | plugins/adr | adr | fixture | wave-0 | current |
+| scripts/tests/adr-portability.bats | 18 | plugins/adr | adr | fixture | wave-1 | current |
+| scripts/tests/adr-portability.bats | 22 | plugins/adr | adr | fixture | wave-1 | current |
+| scripts/tests/adr-portability.bats | 27 | plugins/adr | adr | fixture | wave-1 | current |

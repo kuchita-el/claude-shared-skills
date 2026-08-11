@@ -1,6 +1,6 @@
 {
   "name": "adr",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "ADRのライフサイクル管理と検証を支援するCodexプラグイン。",
   "author": {
     "name": "Kuchita El"
