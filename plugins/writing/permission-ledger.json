@@ -1,0 +1,37 @@
+[
+  {
+    "permission": "read-input-and-rules",
+    "requiredOperation": "文書、profile、japanese-writing.mdを読む",
+    "witness": "Readで対象pathだけを渡す",
+    "narrowerAlternative": "対象文書とplugin内referenceだけを個別指定する",
+    "verdict": "necessary"
+  },
+  {
+    "permission": "write-draft",
+    "requiredOperation": "指定されたoutputPathへ起草結果を書く",
+    "witness": "WriteをoutputPathへ限定する",
+    "narrowerAlternative": "outputPathを一時pathへ限定し、利用者承認後に移す",
+    "verdict": "necessary"
+  },
+  {
+    "permission": "edit-draft",
+    "requiredOperation": "reviewer指摘に対応して対象文書を修正する",
+    "witness": "Editを対象文書へ限定する",
+    "narrowerAlternative": "修正案を返し、人が適用するdegraded手動検査",
+    "verdict": "necessary"
+  },
+  {
+    "permission": "run-ja-lint",
+    "requiredOperation": "lint-ja.shを対象pathへ実行する",
+    "witness": "Bash(bash *scripts/lint-ja.sh*)",
+    "narrowerAlternative": "--fileまたは--diffと対象pathを明示する",
+    "verdict": "necessary"
+  },
+  {
+    "permission": "invoke-reviewer",
+    "requiredOperation": "独立reviewerを起動する",
+    "witness": "Agentでdoc-reviewerを起動する",
+    "narrowerAlternative": "Codexでは同じ入力を使う手動degraded検査",
+    "verdict": "degraded"
+  }
+]

@@ -15,6 +15,8 @@ compat_rows=()
 if [ -f "$compat" ]; then mapfile -t compat_rows < <(jq -c '.[]?' "$compat" 2>/dev/null || true); fi
 [ "${#compat_rows[@]}" -gt 0 ] || fail "compatibility matrixが0件"
 fixture_root="$root/scripts/fixtures/skill-portability"
+[ "$compat" != "$root/docs/references/cross-host-compatibility.json" ] &&
+  [ -d "$root/scripts/fixtures/writing" ] && fixture_root="$root/scripts/fixtures"
 for row in "${compat_rows[@]}"; do
   jq -e '(.feature|type == "string" and length > 0)' <<<"$row" >/dev/null || fail "compatibility: missing feature"
   for key in claudeLevel codexLevel; do
