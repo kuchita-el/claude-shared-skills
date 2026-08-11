@@ -839,3 +839,79 @@ check_unreadable_case_dir() {
     run grep -F "adr-scoring-thresholds.json" "$skill"
     [ "$status" -eq 0 ]
 }
+
+# fixture の prompt-template.md は契約フィールドを JSON キー形で持たないため、ここでは
+# 配布・運用される実データを対象にする。実データを通る常設テストが対象を取り違えないよう、
+# 契約文書と題材集合のパスを変数にしている。変異確認ではこの2変数を複製先へ差し替える。
+@test "面㉑: prompt 出力が契約の判定器フィールドと返却雛形を含む" {
+    local contract="$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-judgment-contract.md"
+    local cases="$REPO_ROOT/docs/development/adr-scoping-cases"
+    local prompt_path="" prompt_body="" return_body="" prompt_rc fence_count
+    local -a fields=() keys=()
+
+    collect_init
+
+    # 現行契約で判定器が記入するフィールド数は27件。契約表の形式が変わって抽出が
+    # 空振りした場合に、照合ゼロのまま緑へ縮退させないため下限を先に検査する。
+    mapfile -t fields < <(awk -F'|' '
+        /^[|].*[|]$/ && $2 !~ /フィールド名/ && $5 ~ /判定器/ {
+            field=$2
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", field)
+            print field
+        }
+    ' "$contract")
+    if [ "${#fields[@]}" -ge 27 ]; then
+        collect_ok "47. 契約仕様から判定器記入フィールドを27件以上抽出する"
+    else
+        collect_fail "47. 契約仕様から判定器記入フィールドを27件以上抽出する" \
+            "抽出件数が不足: ${#fields[@]}"
+    fi
+
+    sc_stdout prompt "$DOC" CASE-01 "$cases"
+    prompt_path="$output"
+    prompt_rc="$status"
+    if [ "$prompt_rc" -eq 0 ] && [ -f "$prompt_path" ]; then
+        collect_ok "48. 実データ CASE-01 の prompt が一時ファイルを返す"
+        prompt_body="$(cat "$prompt_path")"
+    else
+        collect_fail "48. 実データ CASE-01 の prompt が一時ファイルを返す" \
+            "exit=$prompt_rc / path=$prompt_path"
+    fi
+
+    # 返却形式の見出し直後にあるフェンス区間だけを切り出す。prompt 全体を対象にすると、
+    # 題材文や別のコードブロックにキーが現れたとき、返却雛形の欠落を見逃すためである。
+    return_body="$(printf '%s\n' "$prompt_body" | awk '
+        /^## 返却形式（厳守）$/ { in_return=1; next }
+        in_return && /^```/ {
+            if (!opened) { opened=1; next }
+            exit
+        }
+        in_return && opened { print }
+    ' )"
+
+    # 素の部分一致では短いフィールド名が長いフィールド名の接頭辞に隠れるため、
+    # JSON キー形（"名前":）で返却雛形の区間内にある全件を一括照合する。
+    local field
+    for field in "${fields[@]}"; do
+        keys+=("\"${field}\":")
+    done
+    collect_out "$return_body" \
+        "49. prompt 出力に契約の判定器記入フィールド27件がJSONキー形で全て現れる" \
+        "${keys[@]}"
+
+    # 実データ雛形の返却形式は言語タグ無しの素の ``` で囲まれる。```json に固定しない。
+    fence_count="$(printf '%s\n' "$prompt_body" | awk '
+        /^## 返却形式（厳守）$/ { in_return=1; next }
+        in_return && /^```/ { count++ }
+        END { print count + 0 }
+    ' )"
+    if [ "$fence_count" -eq 2 ] && [ -n "$return_body" ]; then
+        collect_ok "50. prompt 出力に返却直列化形式を囲むフェンスが対で現れる"
+    else
+        collect_fail "50. prompt 出力に返却直列化形式を囲むフェンスが対で現れる" \
+            "フェンス行数が不足: $fence_count"
+    fi
+
+    [ -n "$prompt_path" ] && [ -f "$prompt_path" ] && rm -f "$prompt_path"
+    collect_finish
+}
