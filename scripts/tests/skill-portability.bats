@@ -40,6 +40,15 @@ load 'helpers/common'
   [ "$status" -eq 1 ]
   [[ "$output" == *"2段参照"* ]]
 }
+
+@test "dev-workflowの中央matrixとwitnessが解決する" {
+  run jq -e 'map(select(.feature | startswith("dev-workflow"))) | length >= 2' "$REPO_ROOT/docs/references/cross-host-compatibility.json"
+  [ "$status" -eq 0 ]
+  run bash "$REPO_ROOT/scripts/validate-plugin-portability.sh" "$REPO_ROOT"
+  [ "$status" -eq 0 ]
+  [ -f "$REPO_ROOT/scripts/fixtures/skill-portability/dev-workflow-agent-adapter/compatibility-witness.json" ]
+  [ -f "$REPO_ROOT/scripts/fixtures/skill-portability/dev-workflow-permissions/permission-witness.json" ]
+}
 @test "growthも参照整合性検査の対象にする" {
   run bash "$REPO_ROOT/scripts/validate-plugin-portability.sh" "$FIXTURES_DIR/skill-portability/growth-broken-reference"
   [ "$status" -eq 1 ]

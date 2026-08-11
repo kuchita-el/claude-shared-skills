@@ -38,3 +38,6 @@ permission ledgerはJSON配列として保持し、各行は次の5字段を必�
 4. `verdict`がhost差分と残余リスクを隠していない。
 
 Claudeの`allowed-tools`集合、Codexのsandbox/approval/tool制約集合は、ledgerの宣言集合と双方向に一致させる。Codex側で同一粒度を表現できない場合は、集合を黙って同一視せず`degraded`とする。
+## dev-workflow portability
+
+中央compatibility matrixの `dev-workflow-*` 行は、`scripts/fixtures/skill-portability/` のwitness JSONと、成果状態を固定する `scripts/fixtures/dev-workflow/` を分離して参照する。validatorは両fixtureを発見し、host、execution mode、期待判定が空でないことを検査する。Codexのagent定義全文readはClaude native起動には要求せず、per-agent read-only非強制は成果契約ではなくpermission ledgerの `degraded` として扱う。

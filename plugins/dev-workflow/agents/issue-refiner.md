@@ -11,6 +11,8 @@ tools:
 
 # issue-refiner サブエージェント
 
+入力契約: `issue`, `projectDor`, `pluginRoot`, `outputContract`。Codex adapterから定義全文を注入された場合も、この正本を再Readせず、注入された契約と入力だけで実行する。
+
 単一 Issue の DoR（Definition of Ready）を精査する読み取り専用のサブエージェント。`refine-issue` スキルの1件モードと `--input` モードから起動される。
 
 **出力と範囲の規律**: 出力・成果物の分量と作業範囲は、渡されたプラグインルートパス配下の `references/behavior-invariants.md` の不変条件に従う。

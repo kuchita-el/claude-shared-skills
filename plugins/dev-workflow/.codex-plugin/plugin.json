@@ -1,6 +1,6 @@
 {
   "name": "dev-workflow",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Issue管理、設計、実装を支援する汎用開発ワークフローのCodexプラグイン。",
   "author": {
     "name": "Kuchita El"

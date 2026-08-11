@@ -1,0 +1,1 @@
+{"plugin":"dev-workflow","hosts":["claude","codex"],"explicit":true,"implicit":true,"permission":true,"ci":true,"version":"0.9.0"}

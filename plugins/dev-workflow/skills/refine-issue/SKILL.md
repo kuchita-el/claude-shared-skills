@@ -1,6 +1,6 @@
 ---
 name: refine-issue
-description: 既存IssueのDoR（準備状態）を精査し、不足項目・確認事項・分割提案をレポートする。着手前の品質チェック、全オープンIssueの一括棚卸しに使用。「このIssue着手していい？」「DoR満たしてる？」「Issue棚卸しして」「これ分割した方がいい？」等の依頼に使う。新規起票はcreate-issue、実装はimplementation、計画作成はplan-issue（本スキルは既存Issueの診断・レポートに限定）
+description: 既存IssueのDoRを精査する。着手前精査時に使用し、不足項目とReady境界を報告する。
 allowed-tools:
   - Bash(gh issue view*)
   - Bash(bash *skills/refine-issue/scripts/prepare-issues.sh*)
@@ -71,6 +71,10 @@ bash ${CLAUDE_SKILL_DIR}/scripts/prepare-issues.sh [--repo <owner/repo>] [--labe
 出力ディレクトリには `issue-{number}.json` が Issue 件数分配置される。各ファイルには `number,title,body,labels,updatedAt,comments` が含まれる。
 
 ### 3. サブエージェントによる精査
+
+#### Host adapter と完了境界
+
+DoRチェックは定義ファイルの全項目を1件ずつ列挙し、1件でも未充足なら `Not Ready` とする。Claude Codeは `dev-workflow:issue-refiner` をnative起動する。Codexは呼び出し側が `plugins/dev-workflow/agents/issue-refiner.md` の全文を読み、`issue,projectDor,pluginRoot,outputContract` とともに独立汎用sub-agentへ注入する。汎用sub-agentを使えない場合はメインループが同じ入力と出力契約で精査するが、全項目評価とNot Ready境界は変えない。起動方式は通常成果へ追加しない。
 
 **1件モード・`--input` モード:**
 

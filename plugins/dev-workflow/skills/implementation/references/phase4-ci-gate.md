@@ -4,6 +4,8 @@ Phase 4（S6）で PR を作成する際の CI ゲート手順の正本。SKILL.
 
 ## Draft/Ready の位置づけ（feedback 整合）
 
+CI状態は `resolved`（required checks green）、`unresolved`（required check red）、`unknown`（認証・ネットワーク等で判定不能）を区別する。`unresolved` または `unknown` のままReady化しない。
+
 PR は既定で **Draft** として作成し、CI が緑になってから **Ready** 化する。この Draft 既定は一律ルールではなく、**コンテンツ状態に基づく判断**である:
 
 - **Draft** ＝ CI 未検証で、まだレビュー可能とは言えないコンテンツ状態。

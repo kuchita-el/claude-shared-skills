@@ -1,6 +1,6 @@
 ---
 name: implementation
-description: "コード変更を伴うあらゆる作業依頼に必ず使用する実装スキル。Issue対応（番号・URL）、計画ファイルからの実装、PRレビュー指摘修正、バグ修正、機能追加、リファクタリングのいずれも対象。「実装して」「対応して」「やって」「直して」「修正して」「追加して」「作って」等の依頼やIssue番号のみの入力にも必ず使い、単純に見える変更でもスキップしない。使用しないケース: コードの説明・調査のみ、PRレビュー実施（実装を伴わない）、設計議論・技術比較検討、ドキュメントのみの変更"
+description: "Issue/planをTDD実装しレビュー・CI・PRを結審する。コード変更を伴う実装時に使用し、未解決項目を残して完了報告しない。"
 allowed-tools:
   # コード読解・編集
   - Read
@@ -39,6 +39,8 @@ allowed-tools:
 ---
 
 # 汎用実装
+
+完了契約はAC、review、CI、PRの全項目を `resolved|unresolved|blocked|unknown` で列挙し、1件でも `unresolved`、`blocked`、`unknown` があれば完了報告しない。superpowersやwritingが利用できないhostでは、既存本文の最小inline手順へ縮退するが、agent起動fallbackとは区別して記録する。
 
 Issue・計画ファイル・PRレビュー指摘・会話コンテキストを起点に、実装→セルフレビュー→修正→PR作成までを一貫して実行する。
 

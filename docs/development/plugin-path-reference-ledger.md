@@ -88,3 +88,12 @@
 | scripts/tests/adr-portability.bats | 18 | plugins/adr | adr | fixture | wave-1 | current |
 | scripts/tests/adr-portability.bats | 22 | plugins/adr | adr | fixture | wave-1 | current |
 | scripts/tests/adr-portability.bats | 27 | plugins/adr | adr | fixture | wave-1 | current |
+| scripts/tests/dev-workflow-create-contract.bats | 6 | plugins/dev-workflow | dev-workflow | contract test | wave-3 | current |
+| scripts/tests/dev-workflow-refine-contract.bats | 6 | plugins/dev-workflow | dev-workflow | contract test | wave-3 | current |
+| scripts/tests/dev-workflow-plan-contract.bats | 4 | plugins/dev-workflow | dev-workflow | contract test | wave-3 | current |
+| scripts/tests/dev-workflow-implementation-contract.bats | 6 | plugins/dev-workflow | dev-workflow | contract test | wave-3 | current |
+| scripts/tests/dev-workflow-create-contract.bats | 16 | plugins/dev-workflow | dev-workflow | contract test | wave-3 | current |
+| scripts/tests/dev-workflow-create-contract.bats | 25 | plugins/dev-workflow | dev-workflow | contract test | wave-3 | current |
+| scripts/tests/dev-workflow-refine-contract.bats | 10 | plugins/dev-workflow | dev-workflow | contract test | wave-3 | current |
+| scripts/tests/dev-workflow-refine-contract.bats | 22 | plugins/dev-workflow | dev-workflow | contract test | wave-3 | current |
+| scripts/tests/dev-workflow-plan-contract.bats | 8 | plugins/dev-workflow | dev-workflow | contract test | wave-3 | current |
