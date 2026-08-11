@@ -104,11 +104,11 @@ parse_options() {
     done
     [ -n "$_thresholds" ] || die_usage "--thresholds が必要"
     [ -n "$_doc_commit" ] || die_usage "--doc-commit が必要"
-    [ -f "$_thresholds" ] || { printf 'エラー: 閾値設定ファイルが存在しない: %s\n' "$_thresholds" >&2; exit 1; }
-    [ -r "$_thresholds" ] || { printf 'エラー: 閾値設定ファイルを読めない: %s\n' "$_thresholds" >&2; exit 1; }
+    [ -f "$_thresholds" ] || die_usage "閾値設定ファイルが存在しない: $_thresholds"
+    [ -r "$_thresholds" ] || die_usage "閾値設定ファイルを読めない: $_thresholds"
     require_jq
     for key in item1_file_count item2_unit_count adr_score_boundary; do
-        jq -e --arg k "$key" '.[$k] | numbers' "$_thresholds" >/dev/null || { printf 'エラー: 閾値設定のキーが無いか数値でない: %s\n' "$key" >&2; exit 1; }
+        jq -e --arg k "$key" '.[$k] | numbers and floor == .' "$_thresholds" >/dev/null || { printf 'エラー: 閾値設定のキーが無いか正の整数でない: %s\n' "$key" >&2; exit 1; }
     done
 }
 
@@ -126,6 +126,16 @@ validate_return_json() {
     for field in "${json_required_fields[@]}"; do
         jq -e --arg k "$field" 'has($k)' "$json" >/dev/null || { printf 'エラー: 必須フィールドが無い: %s (%s)\n' "$field" "$json" >&2; return 1; }
     done
+    jq -e '
+      (.["必要条件_成立"] | type == "boolean" or . == "当時未施行" or . == "原文に記述なし") and
+      (. as $root | (["項目1_追跡下ファイル","項目2_最小単位","推定で補った事実","参照ファイル"] | all(.[]; . as $k | $root[$k] | type == "array" and all(.[]; type == "string")))) and
+      (."項目1_追跡下ファイル数" | type == "number" and floor == . and . >= 0) and
+      (."項目2_最小単位数" | type == "number" and floor == . and . >= 0) and
+      (."項目1_追跡下ファイル" | length) == .["項目1_追跡下ファイル数"] and
+      (."項目2_最小単位" | length) == .["項目2_最小単位数"] and
+      (. as $root | (["発見型_短絡","項目1_構造変更","項目1_スキーマ変更","項目1_配布済み成果物への利用者影響","項目1_蓄積済みデータ移行","複数作業者","複数箇所"] | all(.[]; . as $k | $root[$k] | type == "boolean"))) and
+      (. as $root | (["項目3_値域A","項目3_値域B","項目3_採用理由確認可能","項目3_条件1","項目3_条件2","項目3_条件3"] | all(.[]; . as $k | $root[$k] | (type == "boolean" or (. == "当時未施行" or . == "原文に記述なし")))))
+    ' "$json" >/dev/null || { printf 'エラー: JSON の型または件数が契約違反: %s\n' "$json" >&2; return 1; }
     for field in 根拠_項目1 根拠_項目2 根拠_項目3 根拠_項目4; do
         jq -e --arg k "$field" '(.[$k] | type == "string" and length > 0)' "$json" >/dev/null || { printf 'エラー: 根拠が空である: %s (%s)\n' "$field" "$json" >&2; return 1; }
     done
@@ -138,18 +148,28 @@ cmd_derive() {
     [ $# -ge 1 ] || die_usage "derive は返却JSONを取る"
     local json="$1"; shift
     parse_options "$@"
-    [ -f "$json" ] || { printf 'エラー: 返却JSONが存在しない: %s\n' "$json" >&2; exit 1; }
+    [ -f "$json" ] || die_usage "返却JSONが存在しない: $json"
     validate_return_json "$json" || exit 1
     local actual; actual="$(jq -r '.["対象文書commit"]' "$json")"
     [ "$actual" = "$_doc_commit" ] || { printf 'エラー: 版ずれ: JSON=%s / 現行=%s (%s)\n' "$actual" "$_doc_commit" "$json" >&2; exit 1; }
-    if jq -e '[.. | scalars] | any(. == "当時未施行" or . == "原文に記述なし")' "$json" >/dev/null; then
-        printf 'エラー: 明示欠測値を含むため算出できない: %s\n' "$json" >&2; exit 1
+    if jq -e '.["必要条件_成立"] == false' "$json" >/dev/null; then
+        printf '必要条件: 不成立\n行き先: ADR化しない\n'
+        return 0
+    fi
+    if jq -e '
+      [.["項目1_構造変更"], .["項目1_スキーマ変更"], .["項目1_配布済み成果物への利用者影響"], .["項目1_蓄積済みデータ移行"],
+       .["項目2_最小単位数"], .["項目3_値域A"], .["項目3_値域B"], .["項目3_採用理由確認可能"],
+       .["項目3_条件1"], .["項目3_条件2"], .["項目3_条件3"]]
+      | any(.[]; . == "当時未施行" or . == "原文に記述なし")
+    ' "$json" >/dev/null; then
+        printf 'エラー: 項目スコア入力が欠損しているため算出不能: %s\n' "$json" >&2
+        exit 1
     fi
     local i1 i2 i3 i4 total dest
     i1="$(jq --argjson t "$(jq -r '.item1_file_count' "$_thresholds")" 'if (.["項目1_追跡下ファイル数"] >= $t or .["項目1_構造変更"] == true or .["項目1_スキーマ変更"] == true or .["項目1_配布済み成果物への利用者影響"] == true or .["項目1_蓄積済みデータ移行"] == true) then 1 else 0 end' "$json")"
     i2="$(jq --argjson t "$(jq -r '.item2_unit_count' "$_thresholds")" 'if .["項目2_最小単位数"] >= $t then 1 else 0 end' "$json")"
-    i3="$(jq 'if .["項目3_値域A"] == true or .["項目3_値域B"] == true or .["項目3_採用理由確認可能"] == true then 0 elif .["項目3_条件1"] == true or .["項目3_条件2"] == true or .["項目3_条件3"] == true then 1 else 0 end' "$json")"
-    i4="$(jq 'if .["項目4_阻止状態"] == "検査なし" then 1 else 0 end' "$json")"
+    i3="$(jq 'if .["項目3_値域A"] == true then 0 elif .["項目3_値域B"] == true and .["項目3_採用理由確認可能"] == true then 0 elif ((.["項目3_採用理由確認可能"] == true and (.["項目3_条件1"] == true or .["項目3_条件2"] == true)) or .["項目3_条件3"] == true) then 1 else 0 end' "$json")"
+    i4="$(jq 'if .["項目4_阻止状態"] == "検査なし" or .["項目4_阻止状態"] == "警告どまり" then 1 else 0 end' "$json")"
     total=$((i1 + i2 + i3 + i4))
     if [ "$total" -ge "$(jq -r '.adr_score_boundary' "$_thresholds")" ]; then dest="ADR化する"; else
         dest="PR説明"
@@ -163,20 +183,25 @@ cmd_crosscheck() {
     [ $# -ge 2 ] || die_usage "crosscheck は判定記録TSVと返却ディレクトリを取る"
     local tsv="$1" returns="$2"; shift 2
     parse_options "$@"
-    [ -f "$tsv" ] || { printf 'エラー: 判定記録TSVが存在しない: %s\n' "$tsv" >&2; exit 1; }
-    [ -d "$returns" ] || { printf 'エラー: 返却ディレクトリが存在しない: %s\n' "$returns" >&2; exit 1; }
+    [ -f "$tsv" ] || die_usage "判定記録TSVが存在しない: $tsv"
+    [ -d "$returns" ] || die_usage "返却ディレクトリが存在しない: $returns"
     local missing=0 orphan=0 mismatch=0 skipped=0 checked=0 file key allowed
     declare -A seen
-    while IFS=$'\t' read -r id trial a b c d dest r1 r2 r3 r4 refs commit collection; do
+    while IFS=$'\t' read -r id trial a b c d dest r1 r2 r3 r4 refs commit collection || [ -n "$id" ]; do
         [[ "$id" == \#* || "$id" == "題材ID" || -z "$id" ]] && continue
         key="$id:$trial"; seen["$key"]=1
-        if [ "$commit" != "$_doc_commit" ]; then skipped=$((skipped + 1)); continue; fi
         file="$returns/$id-$trial.json"
         allowed=0; for x in "${_allow_missing[@]}"; do [ "$x" = "$key" ] && allowed=1; done
+        if [ "$commit" != "$_doc_commit" ]; then
+            if [ ! -f "$file" ] && [ "$allowed" -eq 0 ]; then printf '版ずれかつ返却欠落: %s\n' "$key"; missing=$((missing + 1)); fi
+            skipped=$((skipped + 1)); continue
+        fi
         if [ ! -f "$file" ]; then if [ "$allowed" -eq 0 ]; then printf '欠落: %s\n' "$key"; missing=$((missing + 1)); fi; continue; fi
         validate_return_json "$file" || { mismatch=$((mismatch + 1)); continue; }
         local output; output="$(cmd_derive "$file" --thresholds "$_thresholds" --doc-commit "$_doc_commit")" || { mismatch=$((mismatch + 1)); continue; }
         local got; got="$(printf '%s\n' "$output" | sed -n '1,4p' | cut -d' ' -f2 | paste -sd' ' -)"
+        # 行き先は既存台帳の自由記述をそのまま保存した値であり、導出側の
+        # ADR 分岐未特定などと一対一に正規化できないため、AC8 では点数4列だけを比較する。
         local expected="$a $b $c $d"
         if [ "$got" != "$expected" ]; then printf '不一致: %s 台帳=[%s] 算出=[%s]\n' "$key" "$expected" "$got"; mismatch=$((mismatch + 1)); fi
         checked=$((checked + 1))
@@ -187,7 +212,7 @@ cmd_crosscheck() {
         [ "${seen[$key]+yes}" = yes ] || { printf '孤立: %s\n' "$key"; orphan=$((orphan + 1)); }
     done
     printf '照合件数: %s\nスキップ件数: %s\n' "$checked" "$skipped"
-    [ "$missing" -eq 0 ] && [ "$orphan" -eq 0 ] && [ "$mismatch" -eq 0 ]
+    [ "$checked" -gt 0 ] && [ "$missing" -eq 0 ] && [ "$orphan" -eq 0 ] && [ "$mismatch" -eq 0 ]
 }
 
 die_usage() {

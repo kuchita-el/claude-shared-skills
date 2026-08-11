@@ -163,13 +163,15 @@ bash plugins/adr/scripts/adr-scoping-cases.sh crosscheck \
   docs/development/adr-scoping-cases/runs/2026-07-29-judgments.tsv \
   docs/development/adr-scoping-cases/runs/2026-07-29-returns \
   --thresholds plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json \
-  --doc-commit "$(git log -1 --format=%h -- plugins/adr/skills/manage-adr/references/adr-scoping.md)" \
+  --doc-commit "$(awk -F '\t' '!/^#/ && $1 != \"題材ID\" { print $13; exit }' docs/development/adr-scoping-cases/runs/2026-07-29-judgments.tsv)" \
   --allow-missing CASE-01:1 --allow-missing CASE-01:2 \
   --allow-missing CASE-02:1 --allow-missing CASE-02:2 \
   --allow-missing CASE-17:1 --allow-missing CASE-17:2
 ```
 
 返却全文が残らない6組（CASE-01:1、CASE-01:2、CASE-02:1、CASE-02:2、CASE-17:1、CASE-17:2）は旧形式のまま据え置く。免除は欠落を隠すものではなく、この6組に限って明示するための運用である。
+
+この保存済み記録を検査するときは、台帳13列目に記録された対象文書 commit を `--doc-commit` へ渡す。現行対象文書の commit を渡す場合、歴史的記録は版ずれとして全件スキップされ、照合件数が0になるため常設ゲートには使わない。常設ゲートは照合件数42・スキップ件数0を要求する。
 
 ## 4. 実行主体
 

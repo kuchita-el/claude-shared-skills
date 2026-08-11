@@ -707,7 +707,10 @@ check_unreadable_case_dir() {
 # 据え置き6組の免除記録だけを検査する。
 @test "面⑯: 実データの crosscheck 常設ゲート" {
     local doc_commit
-    doc_commit="$(git log -1 --format=%h -- plugins/adr/skills/manage-adr/references/adr-scoping.md)"
+    # 台帳が記録している対象文書の版を使う。現行版を渡すと歴史的42件を
+    # 全てスキップし、常設ゲートが何も照合しないためである。
+    doc_commit="$(awk -F '\t' '!/^#/ && $1 != "題材ID" { print $13; exit }' \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-07-29-judgments.tsv")"
     run bash "$SUT" crosscheck \
         "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-07-29-judgments.tsv" \
         "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-07-29-returns" \
@@ -717,8 +720,110 @@ check_unreadable_case_dir() {
         --allow-missing CASE-02:1 --allow-missing CASE-02:2 \
         --allow-missing CASE-17:1 --allow-missing CASE-17:2
     [ "$status" -eq 0 ]
-    [[ "$output" == *"照合件数: 0"* ]]
-    [[ "$output" == *"スキップ件数: 48"* ]]
+    [[ "$output" == *"照合件数: 42"* ]]
+    [[ "$output" == *"スキップ件数: 0"* ]]
     run grep -F "CASE-01:1" "$REPO_ROOT/docs/development/adr-scoping-cases/README.md"
+    [ "$status" -eq 0 ]
+
+    run bash "$SUT" crosscheck \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-07-29-judgments.tsv" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-07-29-returns" \
+        --thresholds "$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json" \
+        --doc-commit deadbee
+    [ "$status" -ne 0 ]
+}
+
+@test "面⑰: derive は実測事実と閾値設定から算出する" {
+    local json="$REPO_ROOT/scripts/fixtures/adr-scoping-cases/returns/CASE-A1-1.json"
+    local thresholds="$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json"
+    run bash "$SUT" derive "$json" --thresholds "$thresholds" --doc-commit 0000000
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"項目1: 1"* ]]
+    [[ "$output" == *"合計: 2"* ]]
+
+    local altered="$BATS_TEST_TMPDIR/altered-thresholds.json"
+    sed 's/"item1_file_count": 3/"item1_file_count": 4/' "$thresholds" > "$altered"
+    run bash "$SUT" derive "$json" --thresholds "$altered" --doc-commit 0000000
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"項目1: 0"* ]]
+
+    local altered_json="$BATS_TEST_TMPDIR/altered-return.json"
+    jq '."項目1_追跡下ファイル" = ["a", "b"] | ."項目1_追跡下ファイル数" = 2' "$json" > "$altered_json"
+    run bash "$SUT" derive "$altered_json" --thresholds "$thresholds" --doc-commit 0000000
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"項目1: 0"* ]]
+
+    local warning="$BATS_TEST_TMPDIR/warning-return.json"
+    jq '."項目4_阻止状態" = "警告どまり"' "$json" > "$warning"
+    run bash "$SUT" derive "$warning" --thresholds "$thresholds" --doc-commit 0000000
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"項目4: 1"* ]]
+
+    local condition1="$BATS_TEST_TMPDIR/condition1-return.json"
+    jq '."項目3_採用理由確認可能" = true | ."項目3_条件1" = true' "$json" > "$condition1"
+    run bash "$SUT" derive "$condition1" --thresholds "$thresholds" --doc-commit 0000000
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"項目3: 1"* ]]
+
+    local no_alternative="$BATS_TEST_TMPDIR/no-alternative-return.json"
+    jq '."必要条件_成立" = false' "$json" > "$no_alternative"
+    run bash "$SUT" derive "$no_alternative" --thresholds "$thresholds" --doc-commit 0000000
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"必要条件: 不成立"* ]]
+}
+
+@test "面⑱: derive は型違反と閾値欠落を fail-closed で拒否する" {
+    local json="$REPO_ROOT/scripts/fixtures/adr-scoping-cases/returns/CASE-A1-1.json"
+    local thresholds="$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json"
+    local invalid="$BATS_TEST_TMPDIR/invalid-return.json"
+    jq '."項目1_追跡下ファイル数" = "3"' "$json" > "$invalid"
+    run bash "$SUT" derive "$invalid" --thresholds "$thresholds" --doc-commit 0000000
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"型または件数"* ]]
+
+    run bash "$SUT" derive "$json" --doc-commit 0000000
+    [ "$status" -eq 2 ]
+
+    local decimal="$BATS_TEST_TMPDIR/decimal-thresholds.json"
+    sed 's/"adr_score_boundary": 3/"adr_score_boundary": 2.5/' "$thresholds" > "$decimal"
+    run bash "$SUT" derive "$json" --thresholds "$decimal" --doc-commit 0000000
+    [ "$status" -ne 0 ]
+}
+
+@test "面⑲: crosscheck は台帳とJSONの改変を検出する" {
+    local tsv="$BATS_TEST_TMPDIR/one-judgment.tsv"
+    awk -F '\t' 'BEGIN { OFS="\t" } /^#/ || $1 == "題材ID" { print; next } $1 == "CASE-A1" { $3=1; $6=1; print }' \
+        "$REPO_ROOT/scripts/fixtures/adr-scoping-cases/judgments/valid-judgments.tsv" > "$tsv"
+    local thresholds="$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json"
+    local returns="$REPO_ROOT/scripts/fixtures/adr-scoping-cases/returns"
+    run bash "$SUT" crosscheck "$tsv" "$returns" --thresholds "$thresholds" --doc-commit 0000000 --allow-missing CASE-A1:2
+    [ "$status" -eq 0 ]
+
+    local changed="$BATS_TEST_TMPDIR/changed-judgment.tsv"
+    awk -F '\t' 'BEGIN { OFS="\t" } { if ($1 == "CASE-A1" && $2 == "1") $3=0; print }' "$tsv" > "$changed"
+    run bash "$SUT" crosscheck "$changed" "$returns" --thresholds "$thresholds" --doc-commit 0000000 --allow-missing CASE-A1:2
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"不一致"* ]]
+}
+
+@test "面⑳: 契約と閾値の所在宣言が文書化されている" {
+    local contract="$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-judgment-contract.md"
+    local scoping="$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoping.md"
+    local skill="$REPO_ROOT/plugins/adr/skills/manage-adr/SKILL.md"
+    run grep -F "adr-scoring-thresholds.json" "$contract"
+    [ "$status" -eq 0 ]
+    run grep -F "adr-scoring-thresholds.json" "$scoping"
+    [ "$status" -eq 0 ]
+    run grep -F "adr-judgment-contract.md" "$scoping"
+    [ "$status" -eq 0 ]
+    run grep -F "## 直列化形式" "$contract"
+    [ "$status" -eq 0 ]
+    run grep -F "## 判定ごとの必須ルール" "$contract"
+    [ "$status" -eq 0 ]
+    run grep -F "3点以上" "$scoping"
+    [ "$status" -ne 0 ]
+    run grep -F "2点以下" "$scoping"
+    [ "$status" -ne 0 ]
+    run grep -F "adr-scoring-thresholds.json" "$skill"
     [ "$status" -eq 0 ]
 }
