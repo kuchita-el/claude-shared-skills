@@ -5,5 +5,12 @@
     "codexLevel": "adapted",
     "fixtures": ["read-plugin-reference"],
     "residualRisk": "Codexはmarketplace source.path adapterを使用する"
+  },
+  {
+    "feature": "growth plugin portability",
+    "claudeLevel": "portable",
+    "codexLevel": "surface-specific",
+    "fixtures": ["growth-codex-surface"],
+    "residualRisk": "growthはClaudeのsession jsonl/local store依存のため、Codex適合を行わない"
   }
 ]

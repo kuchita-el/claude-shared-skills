@@ -1,0 +1,9 @@
+[
+  {
+    "permission": "Read",
+    "requiredOperation": "fixture",
+    "witness": "fixture",
+    "narrowerAlternative": "なし",
+    "verdict": "necessary"
+  }
+]

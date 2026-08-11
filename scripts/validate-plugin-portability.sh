@@ -32,7 +32,7 @@ if [ -f "$ledger" ]; then
 fi
 
 skills=()
-while IFS= read -r -d '' file; do skills+=("$file"); done < <(find "$root/plugins" -path "$root/plugins/growth" -prune -o -path '*/skills/*/SKILL.md' -print0 2>/dev/null)
+while IFS= read -r -d '' file; do skills+=("$file"); done < <(find "$root/plugins" -path '*/skills/*/SKILL.md' -print0 2>/dev/null)
 [ "${#skills[@]}" -gt 0 ] || fail "検査対象skillが0件"
 for skill in "${skills[@]}"; do
   body=$(sed '1,/^---$/d' "$skill")
@@ -47,9 +47,9 @@ for skill in "${skills[@]}"; do
       while IFS= read -r nested; do
         nested_base="$(basename "$nested")"
         grep -Fq "$nested_base" <<<"$body" || fail "2段参照: ${skill#$root/} -> $ref -> $nested"
-      done < <(grep -Eo 'references/[A-Za-z0-9_./-]+' "$target" | sort -u || true)
+      done < <(grep -Eo '(skills/[A-Za-z0-9_./-]+/)?references/[A-Za-z0-9_./-]+' "$target" | sort -u || true)
     fi
-  done < <(printf '%s\n' "$body" | grep -Eo 'references/[A-Za-z0-9_./-]+' | sort -u || true)
+  done < <(printf '%s\n' "$body" | grep -Eo '(skills/[A-Za-z0-9_./-]+/)?references/[A-Za-z0-9_./-]+' | sort -u || true)
   # plugin rootから配布元側へ戻る相対参照を拒否する。
   printf '%s\n' "$body" | grep -Eq '(^|[[:space:]`(])\.\./(\.\./)*packages/|(^|[[:space:]`(])\.\./(\.\./)*dist/' && fail "配布元への逆参照: ${skill#$root/}" || true
 done

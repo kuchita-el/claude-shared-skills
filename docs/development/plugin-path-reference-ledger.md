@@ -1,6 +1,6 @@
 # plugin path reference ledger
 
-`growth` は既存runner導入対象として保持するが、Wave 0の適合判定対象外である。
+`growth` は既存runner導入対象として保持するが、Claudeのsession jsonl/local store依存のため、Codexでは恒久的に `surface-specific` として扱う。Codex adapterを追加する場合のみcompatibility matrixと本台帳を更新し、適合判定対象へ戻す。
 
 | path | line | pluginPath | owner | purpose | migrationWave | expected |
 |---|---:|---|---|---|---|---|

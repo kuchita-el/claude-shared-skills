@@ -55,6 +55,7 @@ for name in "${claude_names[@]}"; do
   if [ "$(jq -r '.skills // empty' "$codex_manifest" 2>/dev/null)" = "./skills/" ]; then
     [ "${#skills[@]}" -gt 0 ] || fail "検査対象skillが0件: $name"
   fi
+  # Claude/Codex source pathが現状同じでも、marketplaceがhost別に分岐した時点で両集合のdriftを検出する。
   if [ "$(printf '%s\n' "${claude_skill_names[@]}")" != "$(printf '%s\n' "${codex_skill_names[@]}")" ]; then
     fail "skill集合不一致: $name"
   fi

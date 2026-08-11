@@ -7,7 +7,7 @@ load 'helpers/common'
   [[ "$output" == *"検査対象skillが0件"* ]]
 }
 @test "正常なcompatibilityとpermission fixtureを受け入れる" {
-  run env PORTABILITY_REPO_ROOT="$FIXTURES_DIR/skill-portability/valid" bash "$REPO_ROOT/scripts/validate-plugin-portability.sh" "$FIXTURES_DIR/skill-portability/valid"
+  run bash "$REPO_ROOT/scripts/validate-plugin-portability.sh" "$FIXTURES_DIR/skill-portability/valid"
   [ "$status" -eq 0 ]
 }
 @test "permission ledgerの不足字段を報告する" {
@@ -24,4 +24,9 @@ load 'helpers/common'
   run bash "$REPO_ROOT/scripts/validate-plugin-portability.sh" "$FIXTURES_DIR/skill-portability/two-hop-reference"
   [ "$status" -eq 1 ]
   [[ "$output" == *"2段参照"* ]]
+}
+@test "growthも参照整合性検査の対象にする" {
+  run bash "$REPO_ROOT/scripts/validate-plugin-portability.sh" "$FIXTURES_DIR/skill-portability/growth-broken-reference"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"壊れた参照"* ]]
 }

@@ -1,0 +1,9 @@
+[
+  {
+    "feature": "fixture",
+    "claudeLevel": "portable",
+    "codexLevel": "adapted",
+    "fixtures": ["fixture"],
+    "residualRisk": "none"
+  }
+]
