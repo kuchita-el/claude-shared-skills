@@ -176,6 +176,24 @@ Wave 0はClaude CodeのSKILL.md Read経路における `${CLAUDE_PLUGIN_ROOT}` �
 
 `dev-workflow` のplugin名を維持するため、既存の `agents/` 配置と `dev-workflow:<name>` 名前空間は変更しない。`domain-design` と `dependency-insight` へ移すスキルが既存agentsを実行時に必要としないことを移設前の参照検査で確認する。参照が見つかった場合は分割を完了扱いにせず、境界を再検討する。
 
+`dev-workflow` のagent定義は `plugins/dev-workflow/agents/{name}.md` を単一の正本とする。起動方式は弱い共通分母へ統一せず、ホスト別adapterで次のように実現する。
+
+- Claude Codeは既存の登録agentを `dev-workflow:{name}` として起動し、front-matterのmodel、effort、tool制約を適用する。
+- Codexは同じagent定義の全文を呼び出し側で読み、実行入力とともに独立した汎用sub-agentへ注入する。agent側へ定義ファイルの再Readを委ねない。
+- 通常のagent出力は既存の成果形式を維持する。起動方式、独立文脈、残余リスク等のadapter metadataを利用者向け成果へ混ぜず、compatibility matrix、permission ledger、契約fixtureで検証・記録する。
+- 成果契約と権限契約を分けて判定する。Codexで同等のsub-agent単位tool制約を機械強制できない場合、成果契約を維持したまま権限契約を `degraded` とする。
+
+汎用sub-agentを利用できない場合のfallbackは、独立文脈が成果契約の一部かどうかで分ける。
+
+| agent | Codex fallback | 理由 |
+|---|---|---|
+| `plan` | メインループで生成・編集を続行する | plan作成者には独立文脈を要求しない |
+| `plan-reviewer` | 停止する。メインループによる代行を禁止する | 初見・独立レビューが成果契約である |
+| `issue-refiner` | メインループで全DoR項目を精査する | 独立文脈は成果契約ではなく、全項目評価とReady境界を維持できる |
+| `issue-refiner-batch` | メインループで逐次精査・集約する | 並列性だけを縮退し、全件集約とNot Ready境界を維持できる |
+
+`plan-reviewer` の定義を完全に注入できない、独立した汎用sub-agentを起動できない、または独立文脈を保証できない場合は、レビューを成功へ畳まず停止する。他の3 agentがメインループへfallbackする場合も、各agentの入力・判断規則・出力契約を変更しない。`issue-refiner-batch` の逐次化は `degraded-sequential` として記録する。
+
 ### 7.4 権限契約
 
 `allowed-tools` はClaude Codeで権限と疎結合を静的に執行しているため、一律に削除しない。
@@ -328,6 +346,8 @@ Wave 1は案A（共通のADR成果契約と既存スクリプトを維持）で�
 5. `implementation`
 
 単件の対話・DoR・成果契約を固めてから、agents、他スキル委譲、CI、PRを含む経路へ進む。
+
+agent適合は§7.3のhost adapterとfallback表に従う。特に `plan-reviewer` はCodexで登録agentを解決できない場合も、正本の定義を注入した独立汎用sub-agentで実行し、メインループのセルフレビューへfallbackしない。
 
 ### Wave 4: 独立能力の分離判定
 
