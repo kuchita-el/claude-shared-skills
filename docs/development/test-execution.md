@@ -4,12 +4,16 @@
 
 ## 1. 何が走るか
 
-実行経路は `scripts/run-tests.sh`（以下 runner）の1本である。runner は次の2スイートを順に実行する。
+実行経路は `scripts/run-tests.sh`（以下 runner）の1本である。runner はBatsと5つのfail-closed検査スイートを順に実行する。
 
 | スイート | 実体 | 内容 |
 |---|---|---|
 | `bats` | `scripts/tests/*.bats` | adr プラグイン同梱の検査器4本（`lint-adr.sh` / `gen-adr-index.sh` / `next-adr-id.sh` / `adr-scoping-cases.sh`）と、配布物外の `scripts/lint-domain-doc.sh` のテスト |
 | `validate-skills` | `scripts/validate-skills.sh` | スキル定義の `allowed-tools` 検査 |
+| `validate-plugin-manifests` | `scripts/validate-plugin-manifests.sh .` | marketplace、manifest、README、skill集合の双方向一致 |
+| `validate-plugin-versions` | `scripts/validate-plugin-versions.sh origin/main` | plugin配下差分時のversion bump |
+| `validate-plugin-portability` | `scripts/validate-plugin-portability.sh .` | matrix、permission ledger、参照境界 |
+| `validate-plugin-path-references` | `scripts/validate-plugin-path-references.sh . docs/development/plugin-path-reference-ledger.md` | plugin path参照台帳の双方向一致 |
 
 runner はいずれかが失敗しても残りを最後まで実行してから非0で終わる。失敗を1回の実行で出揃わせるためである。成功したスイートの出力は畳み、失敗したスイートの出力だけを展開する（bats については通過ケースの `ok ` 行も畳む）。
 
@@ -53,6 +57,10 @@ bash scripts/run-tests.sh
 # スイートを1本に絞る（開発時の反復用）
 bash scripts/run-tests.sh bats
 bash scripts/run-tests.sh validate-skills
+bash scripts/run-tests.sh validate-plugin-manifests
+bash scripts/run-tests.sh validate-plugin-versions
+bash scripts/run-tests.sh validate-plugin-portability
+bash scripts/run-tests.sh validate-plugin-path-references
 
 # スイート名の一覧
 bash scripts/run-tests.sh --list
@@ -63,6 +71,8 @@ mise exec -- bats scripts/tests/lint-adr-stem.bats
 # ケース数だけを数える
 mise exec -- bats --count scripts/tests/*.bats
 ```
+
+各検査器は対象集合0件、JSON不正、期待集合と実集合の不一致を非0にする。host smokeは固定promptを各3回実行し、skill-load観測APIが無い場合は自動合格にせず、`docs/development/cross-host-plugin-inquiry-ledger.md` の `degraded` 手動検査として証拠を保存する。
 
 ## 4. セットアップ
 

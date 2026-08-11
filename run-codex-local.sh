@@ -12,7 +12,9 @@ fi
 
 installed_plugins="$(codex plugin list --json)"
 
-for plugin in dev-workflow growth adr writing; do
+mapfile -t plugins < <(jq -r '.plugins[]?.name // empty' .agents/plugins/marketplace.json)
+[ "${#plugins[@]}" -gt 0 ] || { echo "Codex marketplaceの対象pluginが0件" >&2; exit 1; }
+for plugin in "${plugins[@]}"; do
   plugin_id="${plugin}@${marketplace_name}"
   if ! grep -Fq "\"pluginId\": \"${plugin_id}\"" <<<"$installed_plugins"; then
     codex plugin add "$plugin_id"

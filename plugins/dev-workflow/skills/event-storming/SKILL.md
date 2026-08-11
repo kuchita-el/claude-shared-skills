@@ -16,6 +16,7 @@ allowed-tools:
 Big Picture（システム全体俯瞰）とDesign Level（単一ドメイン深掘り）の2つのフェーズに対応する。
 
 **出力と範囲の規律**: 出力・成果物の分量と作業範囲は `${CLAUDE_PLUGIN_ROOT}/references/behavior-invariants.md` の不変条件に従う。
+成果物のテンプレートは `${CLAUDE_SKILL_DIR}/references/big-picture-template.md` と `${CLAUDE_SKILL_DIR}/references/event-storming-template.md` を直接参照する。
 
 ## 引数
 

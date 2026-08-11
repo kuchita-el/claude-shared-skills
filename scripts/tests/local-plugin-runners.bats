@@ -48,7 +48,7 @@ setup() {
 @test "Claude runnerはローカルplugin-dirと全引数を渡す" {
     run env PATH="$FAKE_BIN:$PATH" "$REPO_ROOT/run-claude-local.sh" --model opus --resume "session name"
     [ "$status" -eq 0 ]
-    grep -Fx -- 'claude|--plugin-dir|./plugins/dev-workflow|--plugin-dir|./plugins/adr|--plugin-dir|./plugins/writing|--model|opus|--resume|session name' "$CALLS"
+    grep -Fx -- 'claude|--plugin-dir|./plugins/dev-workflow|--plugin-dir|./plugins/growth|--plugin-dir|./plugins/adr|--plugin-dir|./plugins/writing|--model|opus|--resume|session name' "$CALLS"
 }
 
 @test "Codex runnerは未導入のmarketplaceと全pluginを導入して全引数を渡す" {

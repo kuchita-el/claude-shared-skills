@@ -3,10 +3,14 @@
 # - AskUserQuestionがallowed-toolsにあるのに本文に対話パスがないケースを検出
 set -euo pipefail
 
+set -u
+root="${1:-.}"
 errors=0
+skill_count=0
 
-for skill_file in plugins/dev-workflow/skills/*/SKILL.md; do
+while IFS= read -r -d '' skill_file; do
   [ -f "$skill_file" ] || continue
+  skill_count=$((skill_count + 1))
   skill_name=$(basename "$(dirname "$skill_file")")
 
   # フロントマターにAskUserQuestionがあるか
@@ -18,7 +22,12 @@ for skill_file in plugins/dev-workflow/skills/*/SKILL.md; do
       errors=$((errors + 1))
     fi
   fi
-done
+done < <(find "$root/plugins" -path '*/skills/*/SKILL.md' -print0 2>/dev/null)
+
+if [ "$skill_count" -eq 0 ]; then
+  echo "検査対象skillが0件"
+  errors=$((errors + 1))
+fi
 
 if [ "$errors" -gt 0 ]; then
   echo ""

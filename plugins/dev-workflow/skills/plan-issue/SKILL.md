@@ -22,6 +22,7 @@ plan サブエージェント（計画骨格を superpowers `writing-plans` へ�
 Issue番号を起点とする**通常モード**のほか、Issueを立てずにフリーテキストの補足指示だけでプランを作成する**Issueなしモード**を備える。
 
 **出力と範囲の規律**: 出力・成果物の分量と作業範囲は `${CLAUDE_PLUGIN_ROOT}/references/behavior-invariants.md` の不変条件に従う。
+計画出力とサブエージェント用promptの必須資産は `${CLAUDE_SKILL_DIR}/references/plan-output-format.md`、`${CLAUDE_SKILL_DIR}/references/plan-prompt.md` を直接参照する。
 
 ## 引数
 

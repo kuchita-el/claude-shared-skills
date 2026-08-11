@@ -1,0 +1,8 @@
+[
+  {
+    "feature": "fixture",
+    "claudeLevel": "portable",
+    "codexLevel": "adapted",
+    "fixtures": ["missing-fixture"]
+  }
+]

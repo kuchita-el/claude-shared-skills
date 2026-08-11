@@ -21,6 +21,10 @@ cd "$REPO_ROOT" || exit 1
 SUITES=(
     "bats|test"
     "validate-skills|check"
+    "validate-plugin-manifests|check"
+    "validate-plugin-versions|check"
+    "validate-plugin-portability|check"
+    "validate-plugin-path-references|check"
 )
 
 TESTS_DIR="$REPO_ROOT/scripts/tests"
@@ -82,6 +86,9 @@ EXPECTED_BATS=(
     lint-domain-doc.bats
     local-plugin-runners.bats
     next-adr-id.bats
+    plugin-manifests.bats
+    plugin-path-references.bats
+    skill-portability.bats
 )
 
 BATS_FILES=()
@@ -124,6 +131,10 @@ run_one() {
     case "$1" in
         bats) "${BATS_CMD[@]}" --print-output-on-failure "${BATS_FILES[@]}" ;;
         validate-skills) bash scripts/validate-skills.sh ;;
+        validate-plugin-manifests) bash scripts/validate-plugin-manifests.sh . ;;
+        validate-plugin-versions) bash scripts/validate-plugin-versions.sh "${BASE_REF:-${GITHUB_BASE_REF:-origin/main}}" ;;
+        validate-plugin-portability) bash scripts/validate-plugin-portability.sh . ;;
+        validate-plugin-path-references) bash scripts/validate-plugin-path-references.sh . docs/development/plugin-path-reference-ledger.md ;;
         *)
             echo "run-tests: 実体が未定義のスイートです: $1" >&2
             return 1
