@@ -34,6 +34,13 @@ for row in "${compat_rows[@]}"; do
   if [ -d "$fixture_root" ]; then
     while IFS= read -r fixture; do
       [ -d "$fixture_root/$fixture" ] || fail "compatibility: fixtureが無い $fixture"
+      if [[ "$fixture" == dev-workflow-* ]]; then
+        witness_count=$(find "$fixture_root/$fixture" -maxdepth 1 -type f -name '*witness.json' | wc -l)
+        [ "$witness_count" -gt 0 ] || fail "compatibility: dev-workflow witnessが無い $fixture"
+        while IFS= read -r witness; do
+          jq -e 'type == "object" and (.plugin == "dev-workflow")' "$witness" >/dev/null 2>&1 || fail "compatibility: witness不正 ${witness#$root/}"
+        done < <(find "$fixture_root/$fixture" -maxdepth 1 -type f -name '*witness.json')
+      fi
     done < <(jq -r '.fixtures[]' <<<"$row")
   fi
 done

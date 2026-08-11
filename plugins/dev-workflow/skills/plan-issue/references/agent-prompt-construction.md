@@ -77,3 +77,6 @@ SKILL.md ステップ7c の FAIL 時、メインは生成インスタンスを�
 ```
 
 起動は Agent tool（`subagent_type: dev-workflow:plan`）で行う。Agent tool が使えない場合や起動に失敗した場合のフォールバックは生成モードと同様（定義内容を埋め込んでインライン実行）。
+# Host adapter
+
+Claudeは登録agent、Codexは正本全文注入の独立汎用sub-agentを使う。定義全文、独立文脈、起動成功を確認できないreviewは成功へ畳まず停止する。

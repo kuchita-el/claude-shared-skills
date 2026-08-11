@@ -25,5 +25,23 @@
     "verdict": "degraded",
     "plugin": "adr",
     "host": "codex"
+  },
+  {
+    "permission": "Read plugins/dev-workflow/agents/{name}.md",
+    "requiredOperation": "agent定義全文を起動promptへ注入するために読む",
+    "witness": "dev-workflow-permissions / codex-agent-definition-read",
+    "narrowerAlternative": "対象をplugins/dev-workflow/agents/*.mdに限定",
+    "verdict": "necessary",
+    "plugin": "dev-workflow",
+    "host": "codex"
+  },
+  {
+    "permission": "per-agent read-only enforcement",
+    "requiredOperation": "Codex汎用sub-agent単位のRead-onlyを機械強制する",
+    "witness": "dev-workflow-permissions / codex-read-only",
+    "narrowerAlternative": "成果fixtureとledgerの手動検査",
+    "verdict": "degraded",
+    "plugin": "dev-workflow",
+    "host": "codex"
   }
 ]

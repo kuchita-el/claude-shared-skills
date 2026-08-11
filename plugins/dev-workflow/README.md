@@ -41,3 +41,8 @@ Issue の起票から計画・実装・レビューまでを支援するスキ�
 いずれも全サブエージェントに一律で効くため、役割ごとに個別の値を与えることはできない。
 
 Fable 5 のような、より能力の高いモデルで動かしたい場合は `CLAUDE_CODE_SUBAGENT_MODEL=fable` を設定する。本プラグインは既定では Fable 5 を採用していない。単発の生成・検証という各役割の性質に対して価格が見合わないためであり、必要とする利用者が明示的に選ぶ形としている。
+# Cross-host adapter
+
+Claude Codeは `dev-workflow:{name}` の登録agentをnative起動し、Codexは `agents/{name}.md` の正本全文を読み込んで独立汎用sub-agentへ注入する。Codexでplan生成・単件refineはメインfallback、batch refineは `degraded-sequential` として全件集約する。`plan-reviewer` は定義全文・独立sub-agent・独立文脈のいずれかを満たせない場合に停止する。
+
+Codexではagent定義readが必要で、per-agent read-onlyは機械強制できないため権限だけ `degraded` として中央ledgerへ記録する。通常成果には起動metadataを混入しない。

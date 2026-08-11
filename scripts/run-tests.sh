@@ -90,6 +90,10 @@ EXPECTED_BATS=(
     plugin-manifests.bats
     plugin-path-references.bats
     skill-portability.bats
+    dev-workflow-create-contract.bats
+    dev-workflow-refine-contract.bats
+    dev-workflow-plan-contract.bats
+    dev-workflow-implementation-contract.bats
     writing-lint.bats
     writing-contract.bats
 )

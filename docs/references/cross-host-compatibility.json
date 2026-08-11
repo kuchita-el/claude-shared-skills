@@ -25,5 +25,19 @@
     "codexLevel": "degraded",
     "fixtures": ["adr-wave1"],
     "residualRisk": "Codexには現時点でClaude CodeのPreToolUse相当のplugin単位commit hookがなく、明示lint外のcommitはdriftを防げない"
+  },
+  {
+    "feature": "dev-workflow agent adapters and completion contracts",
+    "claudeLevel": "portable",
+    "codexLevel": "adapted",
+    "fixtures": ["dev-workflow-agent-adapter", "dev-workflow-permissions"],
+    "residualRisk": "Codexの汎用sub-agent単位read-only制約は機械強制できず、reviewerは独立性を満たせない場合に停止する"
+  },
+  {
+    "feature": "dev-workflow release evidence",
+    "claudeLevel": "portable",
+    "codexLevel": "adapted",
+    "fixtures": ["dev-workflow-release"],
+    "residualRisk": "CodexのapprovalとsandboxはClaudeの登録agent権限と完全同値ではない"
   }
 ]
