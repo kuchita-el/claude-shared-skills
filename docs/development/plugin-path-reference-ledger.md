@@ -24,10 +24,10 @@
 | README.md | 60 | plugins/dev-workflow | dev-workflow | usage | wave-0 | current |
 | README.md | 64 | plugins/dev-workflow | dev-workflow | usage | wave-0 | current |
 | README.md | 110 | plugins/dev-workflow | dev-workflow | usage | wave-0 | current |
-| docs/development/test-execution.md | 45 | plugins/adr | adr | test setup | wave-0 | current |
-| docs/development/test-execution.md | 128 | plugins/adr | adr | test setup | wave-0 | current |
-| docs/development/test-execution.md | 145 | plugins/adr | adr | test setup | wave-0 | current |
-| docs/development/test-execution.md | 149 | plugins/adr | adr | test setup | wave-0 | current |
+| docs/development/test-execution.md | 49 | plugins/adr | adr | test setup | wave-0 | current |
+| docs/development/test-execution.md | 138 | plugins/adr | adr | test setup | wave-0 | current |
+| docs/development/test-execution.md | 155 | plugins/adr | adr | test setup | wave-0 | current |
+| docs/development/test-execution.md | 159 | plugins/adr | adr | test setup | wave-0 | current |
 | scripts/lint-domain-doc.sh | 9 | plugins/dev-workflow | dev-workflow | shared reference | wave-0 | current |
 | scripts/tests/adr-scoping-cases-basic.bats | 2 | plugins/adr | adr | fixture | wave-0 | current |
 | scripts/tests/adr-scoping-cases-basic.bats | 717 | plugins/adr | adr | fixture | wave-0 | current |

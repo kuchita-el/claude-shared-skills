@@ -16,9 +16,13 @@ for name in $(printf '%s\n' "${!touched[@]}" | cut -d/ -f1 | sort -u); do
   current_version=$(jq -r .version "$current")
   codex_version=$(jq -r .version "$codex")
   [ "$current_version" = "$codex_version" ] || { echo "version不一致: $name"; errors=$((errors+1)); }
-  baseline=""
-  if git rev-parse --verify "$base_ref:$current" >/dev/null 2>&1; then baseline=$(git show "$base_ref:$current" | jq -r .version); fi
-  if [ -z "$baseline" ] && [ -f "$root/.baseline-versions.json" ]; then baseline=$(jq -r --arg n "$name" '.[$n] // empty' "$root/.baseline-versions.json"); fi
-  if [ -n "$baseline" ] && [ "$baseline" = "$current_version" ]; then echo "version据え置き: $name ($current_version)"; errors=$((errors+1)); fi
+  baseline_claude=""; baseline_codex=""
+  if git rev-parse --verify "$base_ref:$current" >/dev/null 2>&1; then baseline_claude=$(git show "$base_ref:$current" | jq -r .version); fi
+  if git rev-parse --verify "$base_ref:$codex" >/dev/null 2>&1; then baseline_codex=$(git show "$base_ref:$codex" | jq -r .version); fi
+  if [ -f "$root/.baseline-versions.json" ]; then
+    baseline_claude=$(jq -r --arg n "$name" '.[$n] // empty' "$root/.baseline-versions.json")
+    baseline_codex="$baseline_claude"
+  fi
+  if [ -n "$baseline_claude" ] && [ "$baseline_claude" = "$current_version" ] && [ "$baseline_codex" = "$codex_version" ]; then echo "version据え置き: $name ($current_version)"; errors=$((errors+1)); fi
 done
 [ "$errors" -eq 0 ]
