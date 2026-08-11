@@ -1,1 +1,4 @@
-[{"feature":"read","claudeLevel":"portable","fixtures":[],"residualRisk":""}]
+[
+  {"feature":"read","claudeLevel":"portable","fixtures":[],"residualRisk":""},
+  {"feature":"surface","claudeLevel":"portable","codexLevel":"surface-specific","fixtures":["surface"]}
+]

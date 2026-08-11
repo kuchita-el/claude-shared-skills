@@ -14,15 +14,26 @@ for file in "$compat" "$ledger"; do [ -f "$file" ] || { fail "schemaが無い: $
 compat_rows=()
 if [ -f "$compat" ]; then mapfile -t compat_rows < <(jq -c '.[]?' "$compat" 2>/dev/null || true); fi
 [ "${#compat_rows[@]}" -gt 0 ] || fail "compatibility matrixが0件"
+fixture_root="$root/scripts/fixtures/skill-portability"
 for row in "${compat_rows[@]}"; do
-  for key in feature claudeLevel codexLevel fixtures residualRisk; do
-    if ! jq -e --arg k "$key" 'has($k) and (.[$k]|type == "string" or type == "array") and ((.[$k]|length)>0)' <<<"$row" >/dev/null; then
-      fail "compatibility: missing $key"
-    fi
+  jq -e '(.feature|type == "string" and length > 0)' <<<"$row" >/dev/null || fail "compatibility: missing feature"
+  for key in claudeLevel codexLevel; do
+    jq -e --arg k "$key" '(.[$k]|type == "string" and length > 0)' <<<"$row" >/dev/null || fail "compatibility: missing $key"
   done
+  jq -e '(.fixtures|type == "array" and length > 0 and all(.[]; type == "string" and length > 0))' <<<"$row" >/dev/null || fail "compatibility: missing fixtures"
   while IFS= read -r level; do
     case "$level" in portable|adapted|degraded|surface-specific) ;; *) fail "compatibility: invalid level $level";; esac
   done < <(jq -r '.claudeLevel,.codexLevel' <<<"$row")
+  if jq -e '.claudeLevel == "degraded" or .claudeLevel == "surface-specific" or .codexLevel == "degraded" or .codexLevel == "surface-specific"' <<<"$row" >/dev/null; then
+    jq -e '(.residualRisk|type == "string" and length > 0)' <<<"$row" >/dev/null || fail "compatibility: missing residualRisk"
+  elif jq -e 'has("residualRisk")' <<<"$row" >/dev/null; then
+    jq -e '(.residualRisk|type == "string")' <<<"$row" >/dev/null || fail "compatibility: invalid residualRisk"
+  fi
+  if [ -d "$fixture_root" ]; then
+    while IFS= read -r fixture; do
+      [ -d "$fixture_root/$fixture" ] || fail "compatibility: fixtureが無い $fixture"
+    done < <(jq -r '.fixtures[]' <<<"$row")
+  fi
 done
 if [ -f "$ledger" ]; then
   while IFS= read -r row; do

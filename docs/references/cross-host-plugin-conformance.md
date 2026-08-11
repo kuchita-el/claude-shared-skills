@@ -2,11 +2,11 @@
 
 Wave 0以降のplugin適合性を、Claude CodeとCodexのhost差分を隠さず検査するための契約。
 
-実体は `docs/references/cross-host-compatibility.json` と `docs/references/cross-host-permission-ledger.json` に置く。fixtureはschema負例と検査器のテスト専用であり、実repo検査の入力へfallbackしない。
+実体は `docs/references/cross-host-compatibility.json` と `docs/references/cross-host-permission-ledger.json` に置く。matrixの `fixtures` は `scripts/fixtures/skill-portability/<name>/` の再現fixtureを指し、実体が無ければ検査を失敗させる。schema負例と検査器のテスト専用fixtureは実repo検査の入力へfallbackしない。
 
 ## Compatibility matrix
 
-matrixはJSON配列として保持し、各行は次の字段を必須とする。
+matrixはJSON配列として保持し、各行は次の字段を持つ。`residualRisk` は `degraded` または `surface-specific` を宣言する行で必須とする。
 
 | 字段 | 型 | 値域・意味 |
 |---|---|---|
@@ -14,7 +14,7 @@ matrixはJSON配列として保持し、各行は次の字段を必須とする�
 | `claudeLevel` | enum | `portable` / `adapted` / `degraded` / `surface-specific` |
 | `codexLevel` | enum | 同上 |
 | `fixtures` | array[string] | 少なくとも1件の再現fixture |
-| `residualRisk` | string | `degraded` または `surface-specific` の場合は必須。空文字不可 |
+| `residualRisk` | string | `degraded` または `surface-specific` の場合は必須。それ以外では省略可。存在時は空文字不可 |
 
 `portable` は同じ契約で利用できること、`adapted` はhost adapterを介して同じ成果を得ること、`degraded` は自動保証を縮退させ残余リスクを明記すること、`surface-specific` は片host固有であることを示す。
 

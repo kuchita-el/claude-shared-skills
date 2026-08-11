@@ -20,6 +20,21 @@ load 'helpers/common'
   [ "$status" -eq 1 ]
   [[ "$output" == *"compatibility: missing codexLevel"* ]]
 }
+@test "surface-specific行はresidualRiskを要求する" {
+  run bash "$REPO_ROOT/scripts/validate-plugin-portability.sh" "$FIXTURES_DIR/skill-portability/invalid-compatibility"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"compatibility: missing residualRisk"* ]]
+}
+@test "canonical matrixのfixture名は実体へ解決する" {
+  run bash "$REPO_ROOT/scripts/validate-plugin-portability.sh" "$REPO_ROOT"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"errors=0"* ]]
+}
+@test "matrixが参照するfixtureの欠落を報告する" {
+  run bash "$REPO_ROOT/scripts/validate-plugin-portability.sh" "$FIXTURES_DIR/skill-portability/invalid-fixture-reference"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"fixtureが無い missing-fixture"* ]]
+}
 @test "SKILLからの2段参照を報告する" {
   run bash "$REPO_ROOT/scripts/validate-plugin-portability.sh" "$FIXTURES_DIR/skill-portability/two-hop-reference"
   [ "$status" -eq 1 ]
