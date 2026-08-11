@@ -765,6 +765,12 @@ check_unreadable_case_dir() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"項目3: 1"* ]]
 
+    local unconfirmed="$BATS_TEST_TMPDIR/unconfirmed-condition1-return.json"
+    jq '."項目3_採用理由確認可能" = false | ."項目3_条件1" = true | ."項目3_条件3" = false' "$json" > "$unconfirmed"
+    run bash "$SUT" derive "$unconfirmed" --thresholds "$thresholds" --doc-commit 0000000
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"項目3: 0"* ]]
+
     local no_alternative="$BATS_TEST_TMPDIR/no-alternative-return.json"
     jq '."必要条件_成立" = false' "$json" > "$no_alternative"
     run bash "$SUT" derive "$no_alternative" --thresholds "$thresholds" --doc-commit 0000000
@@ -780,6 +786,12 @@ check_unreadable_case_dir() {
     run bash "$SUT" derive "$invalid" --thresholds "$thresholds" --doc-commit 0000000
     [ "$status" -ne 0 ]
     [[ "$output" == *"型または件数"* ]]
+
+    local missing_boolean="$BATS_TEST_TMPDIR/missing-boolean-return.json"
+    jq '."項目1_構造変更" = "原文に記述なし"' "$json" > "$missing_boolean"
+    run bash "$SUT" derive "$missing_boolean" --thresholds "$thresholds" --doc-commit 0000000
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"スコア入力が欠損"* ]]
 
     run bash "$SUT" derive "$json" --doc-commit 0000000
     [ "$status" -eq 2 ]
