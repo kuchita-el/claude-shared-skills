@@ -4,7 +4,7 @@
 # 判定手続きを定めた文書（以下「対象文書」）を被テスト対象とし、固定した題材を
 # 通して帰結の差を見るための検査器である。判定そのものは LLM が担い、本スクリプトは
 # 入力の組み立て（prompt）・題材集合の内部整合の検査（validate）・判定記録の集計
-# （report）の3つだけを担う。判定の真偽をシェルで決めることはしない。
+# （report）・実測事実からの導出（derive）・台帳との一致検査（crosscheck）を担う。
 #
 # 本スクリプトは特定のリポジトリのディレクトリ構成・対象文書名を前提にしない。
 # 題材集合ディレクトリと対象文書パスはすべて引数で受け、既定値を持たない。
@@ -41,6 +41,8 @@
 #   bash adr-scoping-cases.sh prompt   <対象文書パス> <題材ID> <題材集合ディレクトリ>
 #   bash adr-scoping-cases.sh validate <題材集合ディレクトリ>
 #   bash adr-scoping-cases.sh report   <判定記録TSV> <題材集合ディレクトリ>
+#   bash adr-scoping-cases.sh derive   <返却JSON> --thresholds <JSON> --doc-commit <hash>
+#   bash adr-scoping-cases.sh crosscheck <判定記録TSV> <返却ディレクトリ> --thresholds <JSON> --doc-commit <hash> [--allow-missing ID:試行]
 #
 # prompt は組み立てたプロンプトを一時ファイルへ書き出し、そのパスだけを標準出力へ返す。
 # プロンプト本文を標準出力へ流さないのは、呼び出し側の文脈へ題材本文を載せないためである。
@@ -75,11 +77,117 @@ usage() {
   adr-scoping-cases.sh prompt   <対象文書パス> <題材ID> <題材集合ディレクトリ>
   adr-scoping-cases.sh validate <題材集合ディレクトリ>
   adr-scoping-cases.sh report   <判定記録TSV> <題材集合ディレクトリ>
+  adr-scoping-cases.sh derive   <返却JSON> --thresholds <設定JSON> --doc-commit <短縮ハッシュ>
+  adr-scoping-cases.sh crosscheck <判定記録TSV> <返却ディレクトリ> --thresholds <設定JSON> --doc-commit <短縮ハッシュ> [--allow-missing ID:試行]
 
 題材集合ディレクトリは全サブコマンドで必須であり、既定値を持たない。
 題材集合ディレクトリは cases.md と expectations.tsv を持つこと
 （prompt はさらに prompt-template.md を要する）。
 USAGE
+}
+
+# ---------------------------------------------------------------- derive / crosscheck
+
+require_jq() {
+    command -v jq >/dev/null 2>&1 || { printf 'エラー: jq を解決できないため JSON を検査できない\n' >&2; exit 1; }
+}
+
+parse_options() {
+    _thresholds=""; _doc_commit=""; _allow_missing=()
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --thresholds) [ $# -ge 2 ] || die_usage "--thresholds の値が無い"; _thresholds="$2"; shift 2 ;;
+            --doc-commit) [ $# -ge 2 ] || die_usage "--doc-commit の値が無い"; _doc_commit="$2"; shift 2 ;;
+            --allow-missing) [ $# -ge 2 ] || die_usage "--allow-missing の値が無い"; _allow_missing+=("$2"); shift 2 ;;
+            *) die_usage "未知のオプション: $1" ;;
+        esac
+    done
+    [ -n "$_thresholds" ] || die_usage "--thresholds が必要"
+    [ -n "$_doc_commit" ] || die_usage "--doc-commit が必要"
+    [ -f "$_thresholds" ] || { printf 'エラー: 閾値設定ファイルが存在しない: %s\n' "$_thresholds" >&2; exit 1; }
+    [ -r "$_thresholds" ] || { printf 'エラー: 閾値設定ファイルを読めない: %s\n' "$_thresholds" >&2; exit 1; }
+    require_jq
+    for key in item1_file_count item2_unit_count adr_score_boundary; do
+        jq -e --arg k "$key" '.[$k] | numbers' "$_thresholds" >/dev/null || { printf 'エラー: 閾値設定のキーが無いか数値でない: %s\n' "$key" >&2; exit 1; }
+    done
+}
+
+json_required_fields=(
+  必要条件_成立 必要条件_補足 発見型_短絡 発見型_理由
+  項目1_追跡下ファイル 項目1_追跡下ファイル数 項目1_構造変更 項目1_スキーマ変更 項目1_配布済み成果物への利用者影響 項目1_蓄積済みデータ移行
+  項目2_最小単位 項目2_最小単位数 項目3_値域A 項目3_値域B 項目3_採用理由確認可能 項目3_条件1 項目3_条件2 項目3_条件3
+  項目4_阻止状態 複数作業者 複数箇所 根拠_項目1 根拠_項目2 根拠_項目3 根拠_項目4 推定で補った事実 参照ファイル 対象文書commit
+)
+
+validate_return_json() {
+    local json="$1"
+    jq -e 'type == "object"' "$json" >/dev/null || { printf 'エラー: JSON オブジェクトでない: %s\n' "$json" >&2; return 1; }
+    local field
+    for field in "${json_required_fields[@]}"; do
+        jq -e --arg k "$field" 'has($k)' "$json" >/dev/null || { printf 'エラー: 必須フィールドが無い: %s (%s)\n' "$field" "$json" >&2; return 1; }
+    done
+    for field in 根拠_項目1 根拠_項目2 根拠_項目3 根拠_項目4; do
+        jq -e --arg k "$field" '(.[$k] | type == "string" and length > 0)' "$json" >/dev/null || { printf 'エラー: 根拠が空である: %s (%s)\n' "$field" "$json" >&2; return 1; }
+    done
+    jq -e '.["項目4_阻止状態"] == "現に阻止" or .["項目4_阻止状態"] == "警告どまり" or .["項目4_阻止状態"] == "検査なし"' "$json" >/dev/null || { printf 'エラー: 項目4_阻止状態が値域外: %s\n' "$json" >&2; return 1; }
+    jq -e '.["対象文書commit"] | type == "string" and test("^[0-9a-f]{7,40}$")' "$json" >/dev/null || { printf 'エラー: 対象文書commitが不正: %s\n' "$json" >&2; return 1; }
+    return 0
+}
+
+cmd_derive() {
+    [ $# -ge 1 ] || die_usage "derive は返却JSONを取る"
+    local json="$1"; shift
+    parse_options "$@"
+    [ -f "$json" ] || { printf 'エラー: 返却JSONが存在しない: %s\n' "$json" >&2; exit 1; }
+    validate_return_json "$json" || exit 1
+    local actual; actual="$(jq -r '.["対象文書commit"]' "$json")"
+    [ "$actual" = "$_doc_commit" ] || { printf 'エラー: 版ずれ: JSON=%s / 現行=%s (%s)\n' "$actual" "$_doc_commit" "$json" >&2; exit 1; }
+    if jq -e '[.. | scalars] | any(. == "当時未施行" or . == "原文に記述なし")' "$json" >/dev/null; then
+        printf 'エラー: 明示欠測値を含むため算出できない: %s\n' "$json" >&2; exit 1
+    fi
+    local i1 i2 i3 i4 total dest
+    i1="$(jq --argjson t "$(jq -r '.item1_file_count' "$_thresholds")" 'if (.["項目1_追跡下ファイル数"] >= $t or .["項目1_構造変更"] == true or .["項目1_スキーマ変更"] == true or .["項目1_配布済み成果物への利用者影響"] == true or .["項目1_蓄積済みデータ移行"] == true) then 1 else 0 end' "$json")"
+    i2="$(jq --argjson t "$(jq -r '.item2_unit_count' "$_thresholds")" 'if .["項目2_最小単位数"] >= $t then 1 else 0 end' "$json")"
+    i3="$(jq 'if .["項目3_値域A"] == true or .["項目3_値域B"] == true or .["項目3_採用理由確認可能"] == true then 0 elif .["項目3_条件1"] == true or .["項目3_条件2"] == true or .["項目3_条件3"] == true then 1 else 0 end' "$json")"
+    i4="$(jq 'if .["項目4_阻止状態"] == "検査なし" then 1 else 0 end' "$json")"
+    total=$((i1 + i2 + i3 + i4))
+    if [ "$total" -ge "$(jq -r '.adr_score_boundary' "$_thresholds")" ]; then dest="ADR化する"; else
+        dest="PR説明"
+        if jq -e '.["項目4_阻止状態"] == "現に阻止" or .["項目4_阻止状態"] == "警告どまり"' "$json" >/dev/null; then dest="実装・テスト資産・操作手順"
+        elif jq -e '.["複数作業者"] == true or .["複数箇所"] == true' "$json" >/dev/null; then dest="共有規約文書"; fi
+    fi
+    printf '項目1: %s\n項目2: %s\n項目3: %s\n項目4: %s\n合計: %s\n行き先: %s\n' "$i1" "$i2" "$i3" "$i4" "$total" "$dest"
+}
+
+cmd_crosscheck() {
+    [ $# -ge 2 ] || die_usage "crosscheck は判定記録TSVと返却ディレクトリを取る"
+    local tsv="$1" returns="$2"; shift 2
+    parse_options "$@"
+    [ -f "$tsv" ] || { printf 'エラー: 判定記録TSVが存在しない: %s\n' "$tsv" >&2; exit 1; }
+    [ -d "$returns" ] || { printf 'エラー: 返却ディレクトリが存在しない: %s\n' "$returns" >&2; exit 1; }
+    local missing=0 orphan=0 mismatch=0 skipped=0 checked=0 file key allowed
+    declare -A seen
+    while IFS=$'\t' read -r id trial a b c d dest r1 r2 r3 r4 refs commit collection; do
+        [[ "$id" == \#* || "$id" == "題材ID" || -z "$id" ]] && continue
+        key="$id:$trial"; seen["$key"]=1
+        if [ "$commit" != "$_doc_commit" ]; then skipped=$((skipped + 1)); continue; fi
+        file="$returns/$id-$trial.json"
+        allowed=0; for x in "${_allow_missing[@]}"; do [ "$x" = "$key" ] && allowed=1; done
+        if [ ! -f "$file" ]; then if [ "$allowed" -eq 0 ]; then printf '欠落: %s\n' "$key"; missing=$((missing + 1)); fi; continue; fi
+        validate_return_json "$file" || { mismatch=$((mismatch + 1)); continue; }
+        local output; output="$(cmd_derive "$file" --thresholds "$_thresholds" --doc-commit "$_doc_commit")" || { mismatch=$((mismatch + 1)); continue; }
+        local got; got="$(printf '%s\n' "$output" | sed -n '1,4p' | cut -d' ' -f2 | paste -sd' ' -)"
+        local expected="$a $b $c $d"
+        if [ "$got" != "$expected" ]; then printf '不一致: %s 台帳=[%s] 算出=[%s]\n' "$key" "$expected" "$got"; mismatch=$((mismatch + 1)); fi
+        checked=$((checked + 1))
+    done < "$tsv"
+    for file in "$returns"/*.json; do
+        [ -f "$file" ] || continue
+        key="$(basename "$file" .json | sed -E 's/^(.*)-([0-9]+)$/\1:\2/')"
+        [ "${seen[$key]+yes}" = yes ] || { printf '孤立: %s\n' "$key"; orphan=$((orphan + 1)); }
+    done
+    printf '照合件数: %s\nスキップ件数: %s\n' "$checked" "$skipped"
+    [ "$missing" -eq 0 ] && [ "$orphan" -eq 0 ] && [ "$mismatch" -eq 0 ]
 }
 
 die_usage() {
@@ -753,6 +861,8 @@ case "$subcommand" in
     prompt)   cmd_prompt "$@" ;;
     validate) cmd_validate "$@" ;;
     report)   cmd_report "$@" ;;
+    derive)   cmd_derive "$@" ;;
+    crosscheck) cmd_crosscheck "$@" ;;
     -h|--help|help) usage; exit 0 ;;
     *) die_usage "サブコマンドが不明: $subcommand" ;;
 esac

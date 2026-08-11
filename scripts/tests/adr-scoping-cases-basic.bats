@@ -702,3 +702,23 @@ check_unreadable_case_dir() {
 
     collect_finish
 }
+
+# 実データを通る唯一の常設一致ゲート。題材本文は読まず、版ずれの門番と
+# 据え置き6組の免除記録だけを検査する。
+@test "面⑯: 実データの crosscheck 常設ゲート" {
+    local doc_commit
+    doc_commit="$(git log -1 --format=%h -- plugins/adr/skills/manage-adr/references/adr-scoping.md)"
+    run bash "$SUT" crosscheck \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-07-29-judgments.tsv" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-07-29-returns" \
+        --thresholds "$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json" \
+        --doc-commit "$doc_commit" \
+        --allow-missing CASE-01:1 --allow-missing CASE-01:2 \
+        --allow-missing CASE-02:1 --allow-missing CASE-02:2 \
+        --allow-missing CASE-17:1 --allow-missing CASE-17:2
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"照合件数: 0"* ]]
+    [[ "$output" == *"スキップ件数: 48"* ]]
+    run grep -F "CASE-01:1" "$REPO_ROOT/docs/development/adr-scoping-cases/README.md"
+    [ "$status" -eq 0 ]
+}

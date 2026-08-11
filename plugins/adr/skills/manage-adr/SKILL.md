@@ -65,7 +65,7 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 
 ### ADR 化要否の判定（起票の前段）
 
-ある決定を ADR にすべきか、いつ起票するか、命名規約を ADR の対象に含めるかは、却下代替の必要条件と粒度判定基準で判定する。まず当該決定が採らなかった選択肢とその却下理由を持つかを確認し、持たなければ点数を数えず ADR 化しない。持つ場合に粒度判定基準のチェックリストで採点し、判定境界では「書かない」を優先する。必要条件・判定項目・スコア境界・昇格のタイミング・判定結果の行き先・新規 ADR の束ねの制約・命名規約の振り分けは `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` を参照し、スキル独自の基準を導入しない。
+ある決定を ADR にすべきか、いつ起票するか、命名規約を ADR の対象に含めるかは、却下代替の必要条件と粒度判定基準で判定する。まず当該決定が採らなかった選択肢とその却下理由を持つかを確認し、持たなければ点数を数えず ADR 化しない。持つ場合に粒度判定基準のチェックリストで採点し、判定境界では「書かない」を優先する。4項目の名称・同点処理・行き先などは `${CLAUDE_SKILL_DIR}/references/adr-scoping.md`、実測事実の値域・返却形式・必須ルールは `${CLAUDE_SKILL_DIR}/references/adr-judgment-contract.md`、閾値とスコア境界は `${CLAUDE_SKILL_DIR}/references/adr-scoring-thresholds.json` を参照し、スキル独自の基準を導入しない。
 
 要否の判定は起票操作の前段であり、ADR 化すると判断した場合のみ起票（5遷移）へ進む。ただしその行き先は新規 ADR とは限らず、既存 ADR への非core 改訂の側もある（分類の確定は粒度判定ではなく前掲の編集判定フローに従う）。ADR 化しないと判断した対象にも置き場所の一般則がある。いずれの振り分けも前掲の `adr-scoping.md`「判定結果の行き先」節に従う。
 
@@ -78,7 +78,9 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 ## 手順の参照（各 references を直接参照）
 
 - `${CLAUDE_SKILL_DIR}/references/adr-model.md` — 状態の2軸の値域・遷移ごとの front-matter 必須ルール表・配置・採番方式（full slug の定義）
-- `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` — ADR 化要否の必要条件（却下代替）・粒度判定基準・起票のタイミング・判定結果の行き先・新規 ADR の束ねの制約・命名規約の ADR 化基準
+- `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` — ADR 化要否の必要条件・4項目の名称・同点処理・起票のタイミング・判定結果の行き先・束ね・命名規約
+- `${CLAUDE_SKILL_DIR}/references/adr-judgment-contract.md` — 判定器が返す実測事実の値域・直列化形式・判定ごとの必須ルール
+- `${CLAUDE_SKILL_DIR}/references/adr-scoring-thresholds.json` — 項目ごとの閾値・スコア境界の唯一の実体
 - `${CLAUDE_SKILL_DIR}/references/adr-demotion.md` — 既存 ADR の格下げ（退役）判定の条件・判定形式・安全側の向き・格下げ固有の入力の採否
 - `${CLAUDE_SKILL_DIR}/references/template.md` — 新規 ADR の雛形（front-matter＋見出し骨格。起票時にこの構成へ準拠する）と、`## 変更履歴` 節の配置規約（節を持たない ADR で新設するときに従う単一出典）
 - `${CLAUDE_SKILL_DIR}/references/transitions.md` — 5遷移と分割の実行手順・採番規則・双方向相互参照の書き込み・index の再生成

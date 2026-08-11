@@ -23,8 +23,10 @@
 | `docs/development/adr-scoping-cases/runs/<実行日>-judgments.tsv` | 判定記録。題材 × 試行 × 項目の粒度で判定を残す | 配布物外 |
 | `docs/development/adr-scoping-cases/runs/<実行日>-report.md` | 集計レポート。試行間一致・期待帰結との差・差の帰属を残す | 配布物外 |
 | `docs/development/adr-scoping-cases/runs/<実行日>-raw-returns.md` | 判定側の返却全文。`judgments.tsv` の根拠列・行き先列はこれを人手で符号化した派生物であり、符号化の妥当性を後から確かめるための原文 | 配布物外 |
+| `docs/development/adr-scoping-cases/runs/<実行日>-returns/` | 判定器が返した実測事実の JSON。点数・合計・行き先は持たず、台帳の導出結果と一致検査する | 配布物外 |
+| `plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json` | 項目閾値とスコア境界の唯一の実体 | **配布物内** |
 | `docs/development/adr-scoping-cases/<実行日>-<主題>.md` | 判別記録。対象文書の特定の規定について、判定を分けているかを判別した単発の調査の結論と根拠。`runs/` 配下（題材 × 試行の判定記録）とは別系統であり、独立2試行の手順に乗らない調査を置く | 配布物外 |
-| `plugins/adr/scripts/adr-scoping-cases.sh` | 実行支援スクリプト。`prompt` / `validate` / `report` の3サブコマンドを持つ | **配布物内** |
+| `plugins/adr/scripts/adr-scoping-cases.sh` | 実行支援スクリプト。`prompt` / `validate` / `report` / `derive` / `crosscheck` を持つ | **配布物内** |
 | `scripts/tests/adr-scoping-cases-basic.bats` | 上記スクリプトのテスト（基本系。サブコマンドと fixture の組み合わせ） | 配布物外 |
 | `scripts/tests/adr-scoping-cases-edge.bats` | 上記スクリプトのテスト（特殊系。環境操作を伴うもの） | 配布物外 |
 | `scripts/fixtures/adr-scoping-cases/` | 上記テストが使う fixture（正常系・異常系の最小の題材集合。本リポジトリのデータを含まない当て馬） | 配布物外 |
@@ -125,7 +127,7 @@ bash plugins/adr/scripts/adr-scoping-cases.sh prompt \
 
 ### 手順4: 判定サブエージェントを起動する
 
-手順3 が返したパスを渡し、そのファイルを読んで判定するよう指示する。返却は雛形が定める構造化サマリ（項目1〜4 の点数・行き先・各項目の根拠1行・参照ファイル一覧）のみを受け取る。合計は項目1〜4から検査器が導出する。
+手順3 が返したパスを渡し、そのファイルを読んで判定するよう指示する。返却は契約仕様が定める実測事実 JSON のみを受け取る。点数・合計・行き先は判定器に申告させず、`derive` が閾値設定から導出する。
 
 ### 手順5: 事後検査を行い、通った返却だけを記録へ書く
 
@@ -145,6 +147,30 @@ bash plugins/adr/scripts/adr-scoping-cases.sh report \
 
 出力は4区画（カバレッジ／試行間一致／各項目の1点率／期待帰結との差）である。カバレッジ検査に落ちる（未カバーの題材・題材集合に無い題材ID・重複行のいずれかがある）と非0で終わる。exit 0 を確認したうえで、出力を集計レポート `runs/<実行日>-report.md` へ貼り、§9 に従って読む。
 
+実測事実から点数を得るには、配布物内の設定を明示して `derive` を実行する。設定値を手で写さない。
+
+```bash
+bash plugins/adr/scripts/adr-scoping-cases.sh derive \
+  docs/development/adr-scoping-cases/runs/<実行日>-returns/<題材ID>-<試行番号>.json \
+  --thresholds plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json \
+  --doc-commit "$(git log -1 --format=%h -- plugins/adr/skills/manage-adr/references/adr-scoping.md)"
+```
+
+全件の JSON が揃ったら、台帳と導出値を一致検査する。`--allow-missing` は返却全文が存在しない据え置き6組だけに指定する。
+
+```bash
+bash plugins/adr/scripts/adr-scoping-cases.sh crosscheck \
+  docs/development/adr-scoping-cases/runs/2026-07-29-judgments.tsv \
+  docs/development/adr-scoping-cases/runs/2026-07-29-returns \
+  --thresholds plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json \
+  --doc-commit "$(git log -1 --format=%h -- plugins/adr/skills/manage-adr/references/adr-scoping.md)" \
+  --allow-missing CASE-01:1 --allow-missing CASE-01:2 \
+  --allow-missing CASE-02:1 --allow-missing CASE-02:2 \
+  --allow-missing CASE-17:1 --allow-missing CASE-17:2
+```
+
+返却全文が残らない6組（CASE-01:1、CASE-01:2、CASE-02:1、CASE-02:2、CASE-17:1、CASE-17:2）は旧形式のまま据え置く。免除は欠落を隠すものではなく、この6組に限って明示するための運用である。
+
 ## 4. 実行主体
 
 起動するのは人間である。判定は、題材1件につき1つの**汎用サブエージェント**が行う。本題材集合のために新規のサブエージェント定義は作らない。判定の内容は対象文書の現行本文とプロンプト雛形だけで決まるべきものであり、エージェント定義側に判定の作法を持たせると、対象文書を改訂しても帰結が動かない余地が生まれるためである。
@@ -153,10 +179,11 @@ bash plugins/adr/scripts/adr-scoping-cases.sh report \
 
 ## 5. 入力の限定と参照禁止対象
 
-判定側が読んでよいのは次の2つだけである。
+判定側が読んでよいのは次の3つだけである。
 
 1. 組み立て済みのプロンプトファイル（題材文1件分と対象文書パスを含む）
 2. 対象文書
+3. 対象文書が名指しする `adr-judgment-contract.md`
 
 **判定の入力は、題材文に書かれた事実と対象文書の現行本文に限る。改訂の経緯・レビュー履歴は入力に含めない。** これらを読めば、判定者は対象文書の現行本文が導く帰結ではなく、過去にそう判定された結果を再生できてしまい、対象文書を改訂しても帰結が動かなくなる。
 
@@ -166,7 +193,7 @@ bash plugins/adr/scripts/adr-scoping-cases.sh report \
 - Pull Request や Issue の本文・コメント・レビュー記録
 - 過去の判定記録、集計レポート、期待帰結を記した資料（`expectations.tsv` を含む）
 - プロンプトファイルが置かれているディレクトリの他のファイル
-- リポジトリ内の他の文書（対象文書が明示的に参照するファイルを除く）
+- リポジトリ内の他の文書（契約仕様文書を除く）
 
 題材文に必要な事実が書かれていないと判定側が感じた場合も、事実を推測で補わせない。対象文書が定める同点処理に従わせ、補えなかった事実を根拠欄へ書かせる。
 
@@ -199,7 +226,7 @@ bash plugins/adr/scripts/adr-scoping-cases.sh report \
 
 ### 7.2 返却全文の保全
 
-事後検査に用いた**返却の全文**を `runs/<実行日>-raw-returns.md` へそのまま残す。`judgments.tsv` の根拠列・行き先列は全文を人手で符号化した派生物であり、原文が無いと符号化の妥当性を後から独立に確かめられない。符号化する者は試行1 の値と期待値を見た状態で試行2 を符号化しうるため、この経路は原文が残っていない限り閉じない。
+事後検査に用いた**返却の全文**を `runs/<実行日>-raw-returns.md` へそのまま残す。構造化 JSON は要約ではなく判定器が返した実測事実そのものである。`judgments.tsv` の点数列は導出値を保持し、一致検査で二重保持の差を検出する。
 
 ## 8. メイン context へ題材集合本文を載せない運用
 
