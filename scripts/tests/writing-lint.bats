@@ -39,3 +39,49 @@ load 'helpers/common'
   run bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --diff HEAD -- scripts/fixtures/writing/lint/retired-adr.diff
   [ "$status" -eq 0 ]
 }
+
+@test "プロジェクトprofileの一文長上限を使う" {
+  mkdir -p "$BATS_TEST_TMPDIR/project/.claude/writing"
+  printf '%s\n' '# profile' '| 種別 | 節構成 | 読み手 | 一文長の上限 |' '|---|---|---|---|' '| 汎用 | 定めない | 一般読者 | 50 |' > "$BATS_TEST_TMPDIR/project/.claude/writing/type-profiles.md"
+  printf '%s\n' 'あいうえおあいうえおあいうえおあいうえおあいうえおあいうえおあいうえおあいうえおあいうえおあいうえおあいうえお。' > "$BATS_TEST_TMPDIR/profile.md"
+  run env CLAUDE_PROJECT_DIR="$BATS_TEST_TMPDIR/project" bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --file "$BATS_TEST_TMPDIR/profile.md"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"上限50"* ]]
+}
+
+@test "diffモードは既存の未編集違反を検査しない" {
+  repo="$BATS_TEST_TMPDIR/repo"
+  mkdir -p "$repo"
+  git -C "$repo" init -q
+  git -C "$repo" config user.email test@example.invalid
+  git -C "$repo" config user.name test
+  printf '%s\n%s\n' 'あいうえおあいうえおあいうえおあいうえおあいうえおあいうえおあいうえおあいうえおあいうえおあいうえお。' '変更前。' > "$repo/doc.md"
+  git -C "$repo" add doc.md && git -C "$repo" -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -qm base
+  sed -i 's/変更前。/変更後。/' "$repo/doc.md"
+  run bash -c 'cd "$1" && bash "$2" --diff HEAD -- doc.md' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh"
+  [ "$status" -eq 0 ]
+}
+
+@test "diffモードは未追跡の新規文書を検査する" {
+  repo="$BATS_TEST_TMPDIR/untracked-repo"
+  mkdir -p "$repo"
+  git -C "$repo" init -q
+  git -C "$repo" config user.email test@example.invalid
+  git -C "$repo" config user.name test
+  touch "$repo/.keep"
+  git -C "$repo" add .keep && git -C "$repo" -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -qm base
+  printf '%s。\n' "$(printf 'あ%.0s' {1..120})" > "$repo/new.md"
+  run bash -c 'cd "$1" && bash "$2" --diff HEAD -- new.md' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh"
+  [ "$status" -eq 1 ]
+}
+
+@test "lintは文単位で数え、改行をまたぐ一文も検出する" {
+  first=$(printf 'あ%.0s' {1..60})
+  second=$(printf 'い%.0s' {1..60})
+  printf '%s。%s。\n' "$first" "$second" > "$BATS_TEST_TMPDIR/two-sentences.md"
+  run bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --file "$BATS_TEST_TMPDIR/two-sentences.md"
+  [ "$status" -eq 0 ]
+  printf '%s\n%s。\n' "$(printf 'あ%.0s' {1..80})" "$(printf 'い%.0s' {1..40})" > "$BATS_TEST_TMPDIR/wrapped-sentence.md"
+  run bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --file "$BATS_TEST_TMPDIR/wrapped-sentence.md"
+  [ "$status" -eq 1 ]
+}
