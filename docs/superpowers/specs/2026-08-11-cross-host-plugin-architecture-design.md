@@ -140,6 +140,18 @@ Claude用とCodex用のmanifestは各ホストに自然な形式で直接編集�
 
 一方のmarketplaceにだけあるplugin、一方のmanifestだけversionが異なるplugin、検査対象が0件になった場合は非0で終了する。
 
+### 6.4 version更新
+
+marketplaceは `plugins/<name>/` を直接配布するため、配布物の変更とversionを乖離させない。各pluginは独立したversionを持ち、次の暫定規則を両manifestへ同時に適用する。
+
+- `plugins/<name>/` 配下の利用者へ届く変更には、当該pluginのversion更新を要求する。
+- pre-1.0では、振る舞いを変えない修正をPATCH、機能追加・成果契約・権限契約・利用者影響の変更をMINORとする。
+- 新規pluginは `0.1.0` から開始する。
+- リポジトリ管理専用のテスト・fixture・設計文書だけを変え、配布物を変えないPRにはversion更新を要求しない。
+- 変更理由、旧version、新version、互換性レベルの変化をrelease noteまたはPR説明へ記録する。
+
+`dev-workflow` の1.0到達条件、Phase、長期的なversioning戦略はIssue #404の責務とし、本設計で再定義しない。本設計が定めるのは、チーム配布において「配布物が変わったのにversionが据え置かれる」経路を許さないrelease gateである。Issue #404が上記暫定規則を置き換えた場合は、その決定を全pluginへ自動適用せず、pluginごとのversioning規約として取り込むかを別々に判定する。
+
 ## 7. スキルとホスト差分
 
 ### 7.1 共通本文
@@ -150,13 +162,13 @@ Claude用とCodex用のmanifestは各ホストに自然な形式で直接編集�
 
 ### 7.2 パス解決
 
-スキル同梱資産は、スキルディレクトリからの相対位置を規範上の表記とする。
+Wave 0の調査が決着するまでは、ADR-202606040737-01が定める現在の参照基点を維持する。
 
-- スキル内参照: `<skill-root>/references/...`
-- プラグイン共有参照: `<skill-root>/../../references/...`
-- プラグイン共有script: `<skill-root>/../../scripts/...`
+- スキル固有参照: `${CLAUDE_SKILL_DIR}/references/...`
+- プラグイン共有参照: `${CLAUDE_PLUGIN_ROOT}/references/...`
+- スキルからプラグイン共有scriptを実行する既存の可搬経路: `${CLAUDE_SKILL_DIR}/../../scripts/...`
 
-Claude adapterでは `<skill-root>` を `${CLAUDE_SKILL_DIR}` へ写像する。`${CLAUDE_PLUGIN_ROOT}` はSKILL.md内の解決手段として使わない。Codex adapterの正式なskill root解決方法はWave 0の調査で確定する。相対解決が保証されない場合は、Codexがスキル一覧で提供するskill pathを使う明示手順を定める。
+Wave 0はClaude CodeのSKILL.md Read経路における `${CLAUDE_PLUGIN_ROOT}` の展開可否と、Codexのskill/plugin root解決方法を実測する。Claude Codeで展開されるならADR-202606040737-01の再検討条件は発火せず、Codex側だけに同じ資産へ到達するadapterを定める。展開されないと判明した場合に限り、同ADRの再検討条件が発火したものとして `manage-adr` の編集分類（core／非core／些末）をユーザーに問い、分類に応じた操作を完了してから参照形式を変更する。調査結果だけで有効ADRを黙って変更しない。
 
 ### 7.3 対話とサブエージェント
 
@@ -176,6 +188,25 @@ Claude adapterでは `<skill-root>` を `${CLAUDE_SKILL_DIR}` へ写像する。
 - 一方に同等の静的制約がない場合の縮退と残余リスク
 
 適合性検査では成果契約と権限契約を別々に判定する。成果が同じでも権限境界が広がった場合は完全適合としない。
+
+「必要最小限」は、スキルごとのpermission ledgerで判定する。ledgerは各許可について次を1行ずつ持つ。
+
+| 項目 | 内容 |
+|---|---|
+| 許可 | `allowed-tools`、sandbox、approval、tool制約の具体値 |
+| 必須操作 | 当該許可を必要とするworkflow上の操作 |
+| witness | 許可を除くと必須操作が実行不能になる代表fixture |
+| より狭い代替 | より狭いコマンドglob、read/write範囲、approval条件で同じ操作を満たせるか |
+| 判定 | 必要／過剰／ホスト制約により縮退 |
+
+次をすべて満たす場合だけ必要最小限と判定する。
+
+1. 全許可に必須操作とwitnessが対応し、対応先のない許可がない。
+2. 全必須操作に許可または明記された `degraded` 経路が対応する。
+3. より狭い代替でwitnessを満たせる許可が残っていない。
+4. ホストの制約で許可が粗くなる場合は `degraded` とし、追加で可能になる操作と残余リスクを列挙する。
+
+静的検査はpermission ledgerと実際の宣言の集合一致を検査する。witnessの妥当性と「より狭い代替」の有無はレビュー手順で1件ずつ判定する。
 
 ## 8. 互換性レベル
 
@@ -258,14 +289,17 @@ Issueの作成、準備判定、計画、実装、PRまでを一つの開発ラ�
 2. Codexでスキルごとの権限境界をどこまで静的に制約できるか。
 3. Codexで暗黙発火の試行を自動実行し、発火有無を観測できるか。
 4. Claude Codeで `${CLAUDE_PLUGIN_ROOT}` がSKILL.mdのRead経路で展開されるか。
+5. 各pluginのversioning規約の正本と、暫定規則からの差分は何か。
 
 調査結果を入力に次を実装する。
 
 - manifest / marketplace整合lint
+- 配布物差分があるpluginのversion bump漏れ検査
 - 検査対象0件を失敗にするskill lint
 - 壊れた参照と配布境界の検査
 - host固有語の許可領域検査
 - capability / permission compatibility matrix schema
+- permission ledger schemaと宣言集合の一致検査
 - Claude/Codexローカル起動経路の対称化
 - `plugins/` を名指す既存スクリプト、テスト、設定、文書の参照台帳
 
@@ -382,14 +416,16 @@ scripts/
 
 ### 権限
 
-- [ ] 意味上必要な能力とホスト別権限が列挙される。
-- [ ] Claude Codeの `allowed-tools` が必要最小限である。
-- [ ] Codexのsandbox、approval、tool制約が必要最小限である。
+- [ ] 全許可について、必須操作、witness、より狭い代替、判定をpermission ledgerへ列挙する。
+- [ ] permission ledgerとClaude Codeの `allowed-tools` の宣言集合が一致し、§7.4の4条件をすべて満たす。
+- [ ] permission ledgerとCodexのsandbox、approval、tool制約の宣言集合が一致し、§7.4の4条件をすべて満たす。
 - [ ] 権限が同等でない場合、`degraded` と残余リスクが明記される。
 
 ### 運用
 
 - [ ] `degraded` / `surface-specific` がREADMEとcompatibility matrixに明記される。
+- [ ] 配布物を変更したpluginのversionが、そのpluginのversioning規約に従って更新される。
+- [ ] version変更理由、旧version、新version、互換性レベルの変化がrelease noteまたはPR説明に記録される。
 - [ ] 既存利用者向けの移行経路と破壊的変更が記録される。
 - [ ] リリース対象versionで両ホストの検証証拠が残る。
 - [ ] 検査対象集合の完全性を検査し、0件走査を成功にしない。
@@ -404,10 +440,12 @@ scripts/
 
 含めるもの:
 
-- Wave 0の4調査問いの決着台帳
+- Wave 0の5調査問いの決着台帳
 - manifest / marketplace整合lint
+- 配布物差分とversion bumpの整合lint
 - skill lintの対象集合保証
 - capability / permission compatibility matrix
+- permission ledgerと最小性レビュー手順
 - plugin path参照台帳と既存検査の張替え
 - ADRのパス、対話、tool、権限契約
 - ADRの契約fixture
@@ -441,6 +479,8 @@ scripts/
 
 今回の構成は `dev-workflow` のplugin名、ルート `agents/` 配置、`dev-workflow:<name>` 名前空間を維持するため、ADR-202605250838-01のcoreを変更しない。テストを配布物外へ置くため、ADR-202608061516-01と `docs/distribution-boundary.md` の方向も変更しない。共有規約を複製しないため、ADR-202607261002-02が求める単一出典とも矛盾しない。
 
+ADR-202606040737-01が定める `${CLAUDE_PLUGIN_ROOT}` による共有参照は、Wave 0の調査結果が出るまで維持する。同変数がSKILL.mdのRead経路で展開されないと判明した場合は、同ADR自身が持つ再検討条件が発火する。その時点で `manage-adr` の編集分類をユーザーへ問い、分類に応じた操作が完了するまで参照形式を変更しない。
+
 ## 15. リスクと対策
 
 ### 過分割を避けた結果、`dev-workflow` がなお大きい
@@ -468,9 +508,11 @@ runnerで推奨pluginを一括導入できる経路を維持する。分離判�
 - OpenAI Developers, Plugin architecture: https://developers.openai.com/plugins/concepts/plugins
 - OpenAI Developers, Build skills: https://developers.openai.com/plugins/build/skills
 - OpenAI Developers, Package your plugin: https://developers.openai.com/plugins/build/plugins
+- GitHub Issue #404 `dev-workflow のバージョン戦略を確定する`: https://github.com/kuchita-el/claude-shared-skills/issues/404
 - `docs/superpowers/specs/2026-08-07-writing-plugin-design.md`
 - `docs/distribution-boundary.md`
 - `plugins/dev-workflow/references/completion-judgment.md`
 - `docs/adr/ADR-202605250838-01-subagent-agents-consolidation.md`
+- `docs/adr/ADR-202606040737-01-dor-shared-resource-consolidation.md`
 - `docs/adr/ADR-202607261002-02-behavior-invariant-placement.md`
 - `docs/adr/ADR-202608061516-01-distribution-boundary-inexecutability-test.md`
