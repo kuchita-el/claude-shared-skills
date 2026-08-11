@@ -1,0 +1,9 @@
+[
+  {
+    "permission": "Read",
+    "requiredOperation": "配布物内の参照を読む",
+    "witness": "read-plugin-reference",
+    "narrowerAlternative": "なし。個別ファイルは入力で変動する",
+    "verdict": "necessary"
+  }
+]
