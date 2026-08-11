@@ -1,6 +1,7 @@
 {
   "name": "writing",
-  "version": "0.1.1",
+  "version": "0.2.0",
+  "skills": "./skills/",
   "description": "日本語文書の品質基準を提供するCodexプラグイン。",
   "author": {
     "name": "Kuchita El"
@@ -15,6 +16,6 @@
     "capabilities": [
       "Write"
     ],
-    "defaultPrompt": "日本語文書をガードレールに沿ってレビューしてください。"
+    "defaultPrompt": "write-docで日本語文書を起草し、lintと独立レビューを実行してください。"
   }
 }

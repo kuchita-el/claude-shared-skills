@@ -24,10 +24,11 @@
 | README.md | 60 | plugins/dev-workflow | dev-workflow | usage | wave-0 | current |
 | README.md | 64 | plugins/dev-workflow | dev-workflow | usage | wave-0 | current |
 | README.md | 110 | plugins/dev-workflow | dev-workflow | usage | wave-0 | current |
-| docs/development/test-execution.md | 49 | plugins/adr | adr | test setup | wave-0 | current |
-| docs/development/test-execution.md | 138 | plugins/adr | adr | test setup | wave-0 | current |
-| docs/development/test-execution.md | 155 | plugins/adr | adr | test setup | wave-0 | current |
-| docs/development/test-execution.md | 159 | plugins/adr | adr | test setup | wave-0 | current |
+| docs/development/test-execution.md | 51 | plugins/adr | adr | test setup | wave-0 | current |
+| docs/development/test-execution.md | 140 | plugins/adr | adr | test setup | wave-0 | current |
+| docs/development/test-execution.md | 157 | plugins/adr | adr | test setup | wave-0 | current |
+| docs/development/test-execution.md | 161 | plugins/adr | adr | test setup | wave-0 | current |
+| docs/development/test-execution.md | 20 | plugins/writing | writing | release evidence | wave-2 | current |
 | .agents/plugins/marketplace.json | 11 | plugins/dev-workflow | dev-workflow | marketplace source | wave-0 | current |
 | .agents/plugins/marketplace.json | 23 | plugins/growth | growth | marketplace source | wave-0 | current |
 | .agents/plugins/marketplace.json | 35 | plugins/adr | adr | marketplace source | wave-0 | current |
@@ -60,6 +61,30 @@
 | scripts/tests/lint-adr-stem.bats | 2 | plugins/adr | adr | fixture | wave-0 | current |
 | scripts/tests/lint-adr-xref.bats | 2 | plugins/adr | adr | fixture | wave-0 | current |
 | scripts/tests/next-adr-id.bats | 2 | plugins/adr | adr | fixture | wave-0 | current |
+| scripts/tests/writing-lint.bats | 5 | plugins/writing | writing | lint contract | wave-2 | current |
+| scripts/tests/writing-lint.bats | 11 | plugins/writing | writing | lint contract | wave-2 | current |
+| scripts/tests/writing-lint.bats | 17 | plugins/writing | writing | lint contract | wave-2 | current |
+| scripts/tests/writing-lint.bats | 23 | plugins/writing | writing | lint contract | wave-2 | current |
+| scripts/tests/writing-lint.bats | 29 | plugins/writing | writing | lint contract | wave-2 | current |
+| scripts/tests/writing-lint.bats | 34 | plugins/writing | writing | lint contract | wave-2 | current |
+| scripts/tests/writing-lint.bats | 39 | plugins/writing | writing | lint contract | wave-2 | current |
+| scripts/tests/writing-lint.bats | 47 | plugins/writing | writing | lint contract | wave-2 | current |
+| scripts/tests/writing-lint.bats | 61 | plugins/writing | writing | lint contract | wave-2 | current |
+| scripts/tests/writing-lint.bats | 64 | plugins/writing | writing | lint contract | wave-2 | current |
+| scripts/tests/writing-lint.bats | 77 | plugins/writing | writing | lint contract | wave-2 | current |
+| scripts/tests/writing-lint.bats | 85 | plugins/writing | writing | lint contract | wave-2 | current |
+| scripts/tests/writing-lint.bats | 88 | plugins/writing | writing | lint contract | wave-2 | current |
+| scripts/tests/writing-contract.bats | 4 | plugins/writing | writing | contract test | wave-2 | current |
+| scripts/tests/writing-contract.bats | 5 | plugins/writing | writing | contract test | wave-2 | current |
+| scripts/tests/writing-contract.bats | 9 | plugins/writing | writing | contract test | wave-2 | current |
+| scripts/tests/writing-contract.bats | 20 | plugins/writing | writing | contract test | wave-2 | current |
+| scripts/tests/writing-contract.bats | 30 | plugins/writing | writing | contract test | wave-2 | current |
+| scripts/tests/writing-contract.bats | 36 | plugins/writing | writing | contract test | wave-2 | current |
+| scripts/tests/writing-contract.bats | 53 | plugins/writing | writing | contract test | wave-2 | current |
+| scripts/tests/writing-contract.bats | 63 | plugins/writing | writing | contract test | wave-2 | current |
+| scripts/tests/writing-contract.bats | 65 | plugins/writing | writing | contract test | wave-2 | current |
+| scripts/tests/writing-contract.bats | 75 | plugins/writing | writing | contract test | wave-2 | current |
+| scripts/tests/writing-contract.bats | 81 | plugins/writing | writing | contract test | wave-2 | current |
 | scripts/tests/adr-portability.bats | 18 | plugins/adr | adr | fixture | wave-1 | current |
 | scripts/tests/adr-portability.bats | 22 | plugins/adr | adr | fixture | wave-1 | current |
 | scripts/tests/adr-portability.bats | 27 | plugins/adr | adr | fixture | wave-1 | current |

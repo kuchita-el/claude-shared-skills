@@ -1,0 +1,1 @@
+{"documentType":"ADR","structure":["Context","Decision","Consequences"],"materials":["入力を検証してから保存する"],"audience":"リポジトリの開発者","outputPath":"docs/example.md"}

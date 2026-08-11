@@ -1,0 +1,26 @@
+[
+  {
+    "feature": "write-doc draft-lint-review loop",
+    "claudeLevel": "portable",
+    "codexLevel": "adapted",
+    "adapter": "Wave 0の最も狭いagent adapter。利用できない場合はdegraded手動検査へ切り替える。",
+    "fixtures": [
+      "writing/reviewer/f1-valid.md",
+      "writing/reviewer/f1-invalid.md",
+      "writing/reviewer/f3-valid.md",
+      "writing/reviewer/f3-invalid.md",
+      "writing/reviewer/f4-valid.md",
+      "writing/reviewer/f4-invalid.md",
+      "writing/reviewer/f5-valid.md",
+      "writing/reviewer/f5-invalid.md"
+    ],
+    "residualRisk": "Codexのagent登録面が利用できない環境では、reviewerの明示起動と結果記録を人が行う。"
+  },
+  {
+    "feature": "correction loop bound",
+    "claudeLevel": "portable",
+    "codexLevel": "portable",
+    "adapter": "両hostで修正回数0/1/2を同じ状態として記録する。",
+    "fixtures": ["writing/reviewer/f5-invalid.md"]
+  }
+]

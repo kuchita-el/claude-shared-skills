@@ -17,6 +17,8 @@
 
 runner はいずれかが失敗しても残りを最後まで実行してから非0で終わる。失敗を1回の実行で出揃わせるためである。成功したスイートの出力は畳み、失敗したスイートの出力だけを展開する（bats については通過ケースの `ok ` 行も畳む）。
 
+Writing Wave 2の追加検査は`writing-lint.bats`と`writing-contract.bats`で行う。前者は`lint-ja.sh`のfile/diff、候補、長文、退役ADR境界を検査し、後者はskill/agent、F1/F3/F4/F5正負fixture、最大2回loop、両host matrix、permission ledgerを検査する。Codex agent登録面が利用できない場合の明示起動・degraded手動検査は、`plugins/writing/compatibility.json`へ記録する。
+
 ## 2. いつ走るか — 自動起動の射程
 
 runner は commit ゲート（`scripts/hooks/pre-commit-gate.sh`）から起動される。ゲートは `.claude/settings.json` の PreToolUse フックに登録されており、検査が違反していれば exit 2 で commit をブロックする。
@@ -211,6 +213,14 @@ FAILED: 1/2 suites (6s) -- bats
 移行前後で「実行アサーション数が保存される」という不変条件は採らない。旧ランナーの総数加算箇所の多くは前提不成立分岐であり、それをケース化すれば総数は必ず増えるため、等号は算術的に成立しない。代わりに「旧ラベル集合の包含」と「増分の事前宣言（上記12件）」を不変条件とした。
 
 ## 8. 動作確認済み
+
+### Writing Wave 2（2026-08-11）
+
+- `mise exec -- bats scripts/tests/writing-lint.bats`: lint契約の正負・境界を検証。
+- `mise exec -- bats scripts/tests/writing-contract.bats`: skill/agent、reviewer、fixture、matrix、ledgerを検証。
+- `bash scripts/validate-plugin-manifests.sh .`: 両marketplace、両manifest、skill集合を検証。
+- `bash scripts/validate-plugin-portability.sh .`: writing matrix、permission ledger、参照境界を検証。
+- Codexはagent登録面を自動観測できないため、明示起動とdegraded手動検査の契約を`compatibility.json`へ記録した。
 
 - **2026-08-01（#645）**: 移行完了時点の実測。
   - `bash scripts/run-tests.sh` が exit 0。報告ケース数 76、失敗 0。

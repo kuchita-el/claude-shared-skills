@@ -1,0 +1,6 @@
+diff --git a/docs/adr/ADR-0001.md b/docs/adr/ADR-0001.md
+--- a/docs/adr/ADR-0001.md
++++ b/docs/adr/ADR-0001.md
+@@ -1 +1 @@
+-退役した決定本文は歴史的成果物として保存する。
++退役した決定本文は歴史的成果物として保存するため、編集しない。
