@@ -1,6 +1,6 @@
 ---
 name: create-issue
-description: 粗いアイデアからDoR（Definition of Ready）を満たしたIssueを対話生成し起票する。Issueを新規作成したい・アイデアをIssue化したい・タスクを起票したいときに使用。作成段階でDoRを前倒し充足させ、refine-issueが後で指摘する欠落系・品質系の不足をshift-leftで潰す。「Issueにして」「Issue立てて」「起票して」「これIssueにしといて」等の依頼に必ず使うこと
+description: DoRを満たしたIssueを生成する。Issue起票時に使用し、入力不足を質問または停止で扱う。
 allowed-tools:
   - Read
   - AskUserQuestion
@@ -78,6 +78,10 @@ DoR項目に対応する本文セクションをドラフトする（出力形�
 本文（タイトル案を含む）をユーザーにプレビュー提示する。
 
 ### 6. 起票
+
+#### Host adapter
+
+共通成果は、DoR全項目を列挙した本文、検証可能なAC、`decision`、`unresolved`、`writes` で固定する。Claude Codeでは不足情報を `AskUserQuestion` で補い、承認後に `gh issue create` を実行する。Codexでは同じ確認をapprovalで行い、承認が得られない場合は `decision=stop`、未解決項目を列挙し、`writes=[]` とする。host名や起動経路をIssue本文へ混入させない。
 
 - `--dry-run` 指定時: 一時ファイルのパスと本文プレビューを示して**停止する**（`gh issue create` は実行しない）。
 - 通常時: 以下で起票する。
