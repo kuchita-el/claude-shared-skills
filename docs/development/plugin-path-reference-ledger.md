@@ -43,7 +43,6 @@
 | scripts/tests/local-plugin-runners.bats | 51 | plugins/dev-workflow | dev-workflow | runner test | wave-0 | current |
 | scripts/tests/plugin-path-references.bats | 12 | plugins/adr | adr | checker test | wave-0 | current |
 | scripts/tests/plugin-path-references.bats | 17 | plugins/writing | writing | checker test | wave-0 | current |
-| scripts/validate-plugin-portability.sh | 35 | plugins/growth | growth | excluded plugin note | wave-0 | current |
 | scripts/lint-domain-doc.sh | 9 | plugins/dev-workflow | dev-workflow | shared reference | wave-0 | current |
 | scripts/tests/adr-scoping-cases-basic.bats | 2 | plugins/adr | adr | fixture | wave-0 | current |
 | scripts/tests/adr-scoping-cases-basic.bats | 717 | plugins/adr | adr | fixture | wave-0 | current |
