@@ -8,8 +8,12 @@ if [ -n "${2:-}" ]; then
   mapfile -t changed <"$2"
 else
   if ! git rev-parse --verify "$base_ref^{commit}" >/dev/null 2>&1; then
-    echo "base refを解決できません: $base_ref"
-    exit 1
+    if git rev-parse --verify "origin/$base_ref^{commit}" >/dev/null 2>&1; then
+      base_ref="origin/$base_ref"
+    else
+      echo "base refを解決できません: $base_ref"
+      exit 1
+    fi
   fi
   changed_output="$(git diff --name-only "$base_ref" -- 'plugins/*')"
   mapfile -t changed <<<"$changed_output"

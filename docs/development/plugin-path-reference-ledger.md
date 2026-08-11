@@ -54,6 +54,7 @@
 | scripts/tests/adr-scoping-cases-basic.bats | 822 | plugins/adr | adr | fixture | wave-0 | current |
 | scripts/tests/adr-scoping-cases-basic.bats | 823 | plugins/adr | adr | fixture | wave-0 | current |
 | scripts/tests/adr-scoping-cases-basic.bats | 824 | plugins/adr | adr | fixture | wave-0 | current |
+| scripts/tests/adr-scoping-cases-basic.bats | 847 | plugins/adr | adr | fixture | wave-0 | current |
 | scripts/tests/adr-scoping-cases-edge.bats | 2 | plugins/adr | adr | fixture | wave-0 | current |
 | scripts/tests/lint-adr-index.bats | 2 | plugins/adr | adr | fixture | wave-0 | current |
 | scripts/tests/lint-adr-layers.bats | 2 | plugins/adr | adr | fixture | wave-0 | current |
