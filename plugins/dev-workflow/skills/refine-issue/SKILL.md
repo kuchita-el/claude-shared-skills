@@ -13,6 +13,7 @@ Issueの準備状態をDoR（Definition of Ready）に基づいて精査し、�
 1件の詳細精査と全件一括精査の両方に対応。精査はサブエージェントで実行し、メインコンテキストを消費しない。
 
 **出力と範囲の規律**: 出力・成果物の分量と作業範囲は `${CLAUDE_PLUGIN_ROOT}/references/behavior-invariants.md` の不変条件に従う。
+精査の粒度判定は `plugins/dev-workflow/skills/refine-issue/references/delivery-item-granularity.md` を直接参照する。
 
 ## 引数
 

@@ -32,7 +32,9 @@ for skill in "${skills[@]}"; do
   # SKILLからreferenceへのパスが存在するか、referenceからreferenceへのedgeを報告する。
   while IFS= read -r ref; do
     [ -n "$ref" ] || continue
+    skill_plugin_root="$(dirname "$(dirname "$(dirname "$skill")")")"
     target="$(dirname "$skill")/$ref"
+    [ -e "$target" ] || target="$skill_plugin_root/$ref"
     [ -e "$target" ] || fail "壊れた参照: ${skill#$root/} -> $ref"
     if [ -f "$target" ] && grep -Eq '(^|[[:space:]`(])references/[A-Za-z0-9_./-]+' "$target"; then
       fail "2段参照: ${skill#$root/} -> $ref"

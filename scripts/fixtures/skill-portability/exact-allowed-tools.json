@@ -1,0 +1,7 @@
+{
+  "plugins/adr/skills/manage-adr/SKILL.md": ["Read", "Grep", "Glob", "Write", "Edit", "AskUserQuestion", "Bash(bash *scripts/lint-adr.sh*)", "Bash(bash *scripts/gen-adr-index.sh*)", "Bash(bash *scripts/next-adr-id.sh*)"],
+  "plugins/dev-workflow/skills/refine-issue/SKILL.md": ["Bash(gh issue view*)", "Bash(bash *skills/refine-issue/scripts/prepare-issues.sh*)", "Agent"],
+  "plugins/dev-workflow/skills/plan-issue/SKILL.md": ["Read", "Grep", "Glob", "Edit", "Write", "Bash(gh issue view*)", "Bash(gh repo view*)", "Bash(git worktree list*)", "Agent", "AskUserQuestion"],
+  "plugins/dev-workflow/skills/event-storming/SKILL.md": ["Read", "Write", "Glob", "Grep", "Bash(mkdir *)", "AskUserQuestion"],
+  "plugins/dev-workflow/skills/domain-modeling/SKILL.md": ["Read", "Write", "Glob", "Grep", "Bash(mkdir *)", "AskUserQuestion"]
+}

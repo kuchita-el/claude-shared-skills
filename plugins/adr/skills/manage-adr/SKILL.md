@@ -36,7 +36,7 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 | 廃止 | `validity: 廃止済み`（`superseded-by` は付与しない） |
 | 却下 | `status: 却下`（`validity`・`superseded-by` は付与しない） |
 
-各遷移後の front-matter 最終状態は `${CLAUDE_SKILL_DIR}/references/adr-model.md` の必須ルール表に一致させる。採番規則・写入手順・上書きの双方向相互参照の書き込みは `${CLAUDE_SKILL_DIR}/references/transitions.md` を参照する。ADR 本文へ他文書への参照を書く場合（起票時を含む）は、`${CLAUDE_SKILL_DIR}/references/edit-decision.md` の「記録の参照原則」に従う。原 ADR の一部決定だけが反転する 1→N（部分上書き）は、5遷移ではなく下記「分割」を扱う。
+各遷移後の front-matter 最終状態は `${CLAUDE_SKILL_DIR}/references/adr-model.md` の必須ルール表に一致させる。採番・lint・index生成は `plugins/adr/scripts/next-adr-id.sh`、`plugins/adr/scripts/lint-adr.sh`、`plugins/adr/scripts/gen-adr-index.sh` を直接参照する。採番規則・写入手順・上書きの双方向相互参照の書き込みは `${CLAUDE_SKILL_DIR}/references/transitions.md` を参照する。ADR 本文へ他文書への参照を書く場合（起票時を含む）は、`${CLAUDE_SKILL_DIR}/references/edit-decision.md` の「記録の参照原則」に従う。原 ADR の一部決定だけが反転する 1→N（部分上書き）は、5遷移ではなく下記「分割」を扱う。
 
 ### 分割（多決定 ADR の部分上書き。5遷移とは別軸の構造操作）
 
