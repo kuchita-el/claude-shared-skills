@@ -70,9 +70,10 @@
 | scripts/tests/writing-lint.bats | 39 | plugins/writing | writing | lint contract | wave-2 | current |
 | scripts/tests/writing-lint.bats | 47 | plugins/writing | writing | lint contract | wave-2 | current |
 | scripts/tests/writing-lint.bats | 61 | plugins/writing | writing | lint contract | wave-2 | current |
-| scripts/tests/writing-lint.bats | 74 | plugins/writing | writing | lint contract | wave-2 | current |
-| scripts/tests/writing-lint.bats | 82 | plugins/writing | writing | lint contract | wave-2 | current |
+| scripts/tests/writing-lint.bats | 64 | plugins/writing | writing | lint contract | wave-2 | current |
+| scripts/tests/writing-lint.bats | 77 | plugins/writing | writing | lint contract | wave-2 | current |
 | scripts/tests/writing-lint.bats | 85 | plugins/writing | writing | lint contract | wave-2 | current |
+| scripts/tests/writing-lint.bats | 88 | plugins/writing | writing | lint contract | wave-2 | current |
 | scripts/tests/writing-contract.bats | 4 | plugins/writing | writing | contract test | wave-2 | current |
 | scripts/tests/writing-contract.bats | 5 | plugins/writing | writing | contract test | wave-2 | current |
 | scripts/tests/writing-contract.bats | 9 | plugins/writing | writing | contract test | wave-2 | current |

@@ -60,6 +60,9 @@ load 'helpers/common'
   sed -i 's/変更前。/変更後。/' "$repo/doc.md"
   run bash -c 'cd "$1" && bash "$2" --diff HEAD -- doc.md' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh"
   [ "$status" -eq 0 ]
+  printf '%s\n%s。\n' 'あいうえおあいうえおあいうえおあいうえおあいうえおあいうえおあいうえおあいうえおあいうえおあいうえお。' "$(printf 'う%.0s' {1..120})" > "$repo/doc.md"
+  run bash -c 'cd "$1" && bash "$2" --diff HEAD -- doc.md' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh"
+  [ "$status" -eq 1 ]
 }
 
 @test "diffモードは未追跡の新規文書を検査する" {

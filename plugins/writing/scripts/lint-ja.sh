@@ -59,7 +59,7 @@ else
           next
         }
         /^\+/ {
-          printf "%s\t%d\n", path, next_line
+          printf "%d\t%s\n", next_line, path
           next_line++
         }
       ' >> "$targets"
