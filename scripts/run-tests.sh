@@ -90,6 +90,8 @@ EXPECTED_BATS=(
     plugin-manifests.bats
     plugin-path-references.bats
     skill-portability.bats
+    writing-lint.bats
+    writing-contract.bats
 )
 
 BATS_FILES=()
