@@ -16,7 +16,7 @@ allowed-tools:
 
 # プラン作成（Plan Issue）
 
-Host adapter契約: Claude Codeは `dev-workflow:plan` と `dev-workflow:plan-reviewer` をnative起動する。Codexは `agents/plan.md` と `agents/plan-reviewer.md` の定義全文を呼び出し側で読み、独立汎用sub-agentへ注入する。plan生成は汎用sub-agent不可時にメインfallbackできるが、reviewerは定義完全注入・独立汎用sub-agent・独立文脈のいずれかが欠ければメインself-reviewせず `decision-request` で停止する。成果には起動metadataを混入しない。
+Host adapter契約: Claude Codeは `${CLAUDE_PLUGIN_ROOT}` をpluginRootとして解決し、`dev-workflow:plan` と `dev-workflow:plan-reviewer` をnative起動する。Codexはhostが解決したpluginRoot（環境変数名を仮定しない絶対パス）を入力として受け、`{pluginRoot}/agents/plan.md` と `{pluginRoot}/agents/plan-reviewer.md` の定義全文を独立汎用sub-agentへ注入する。plan生成は汎用sub-agent不可時にメインfallbackできるが、reviewerは定義完全注入・独立汎用sub-agent・独立文脈のいずれかが欠ければメインself-reviewせず `decision-request` で停止する。成果には起動metadataを混入しない。
 
 Issueの実装プランを作成し、プランファイル（保存先はモードで分岐。ステップ5参照）に保存する。プランには技術設計・タスク分解に加え、AC全項目と対応する**テストケース対応表**を含める。
 plan サブエージェント（計画骨格を superpowers `writing-plans` へ委譲）でプラン作成 → 独立レビュアーエージェントによるレビュー → 修正のループを最大2周実行し、要確認事項をユーザーに質問する。
@@ -120,7 +120,7 @@ gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'
 
 **7b. レビュアーエージェントの起動:**
 
-Agent tool（`subagent_type: dev-workflow:plan-reviewer`）で起動する。モデルと effort は定義の frontmatter に従い、呼び出し側では指定しない。Agent toolが使えない場合や起動に失敗した場合は、`plugins/dev-workflow/agents/plan-reviewer.md` の定義内容をプロンプト本文へ埋め込んでインラインで直接実行する（サブエージェント側からの定義ファイル再Readは行わない）。
+Agent tool（`subagent_type: dev-workflow:plan-reviewer`）で起動する。モデルと effort は定義の frontmatter に従い、呼び出し側では指定しない。Agent toolが使えない場合、起動に失敗した場合、定義全文を注入できない場合、または独立文脈を保証できない場合は、メインループでself-reviewやinline実行へ縮退せず `decision-request` として停止する。Claudeの定義解決元は `${CLAUDE_PLUGIN_ROOT}/agents/plan-reviewer.md`、Codexの解決元はhostから渡された `{pluginRoot}/agents/plan-reviewer.md` とし、サブエージェント側から再Readさせない。
 
 **7c. レビュー結果の処理:**
 

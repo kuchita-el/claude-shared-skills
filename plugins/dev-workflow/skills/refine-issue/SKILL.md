@@ -74,14 +74,14 @@ bash ${CLAUDE_SKILL_DIR}/scripts/prepare-issues.sh [--repo <owner/repo>] [--labe
 
 #### Host adapter と完了境界
 
-DoRチェックは定義ファイルの全項目を1件ずつ列挙し、1件でも未充足なら `Not Ready` とする。Claude Codeは `dev-workflow:issue-refiner` をnative起動する。Codexは呼び出し側が `plugins/dev-workflow/agents/issue-refiner.md` の全文を読み、`issue,projectDor,pluginRoot,outputContract` とともに独立汎用sub-agentへ注入する。汎用sub-agentを使えない場合はメインループが同じ入力と出力契約で精査するが、全項目評価とNot Ready境界は変えない。起動方式は通常成果へ追加しない。
+DoRチェックは定義ファイルの全項目を1件ずつ列挙し、1件でも未充足なら `Not Ready` とする。Claude Codeは `${CLAUDE_PLUGIN_ROOT}` をpluginRootとして解決し、`dev-workflow:issue-refiner` をnative起動する。Codexはhostが解決したpluginRoot（環境変数名を仮定しない絶対パス）を入力として受け、`{pluginRoot}/agents/issue-refiner.md` の全文を `issue,projectDor,pluginRoot,outputContract` とともに独立汎用sub-agentへ注入する。汎用sub-agentを使えない場合はメインループが同じ入力と出力契約で精査するが、全項目評価とNot Ready境界は変えない。起動方式は通常成果へ追加しない。
 
 **1件モード・`--input` モード:**
 
 メイン側で以下のパス・識別子を文字列で組み立て、Agent tool（`subagent_type: dev-workflow:issue-refiner`）を1回起動する（参照ファイル本文の埋め込みは行わない。全件モードと同型のパス渡し）。モデルと effort は定義の frontmatter に従い、呼び出し側では指定しない。
 
 - スキルディレクトリパス（`${CLAUDE_SKILL_DIR}` を展開した実パス）
-- プラグインルートパス（`${CLAUDE_PLUGIN_ROOT}` を展開した実パス。共有DoR・種別プロファイル・振る舞いの不変条件の参照に使用）
+- プラグインルートパス（Claudeでは`${CLAUDE_PLUGIN_ROOT}`、Codexではhostが渡す解決済み`pluginRoot`の絶対パス。共有DoR・種別プロファイル・振る舞いの不変条件と `{pluginRoot}/agents/issue-refiner.md` の参照に使用）
 - プロジェクトルートパス（現在の作業ディレクトリ）
 - 精査対象 Issue の情報:
   - **`--input` モード**: 入力 JSON ファイルのパス（サブエージェントが Read する）
