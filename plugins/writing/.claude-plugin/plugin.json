@@ -1,5 +1,5 @@
 {
   "name": "writing",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Claude Code向けの日本語文書ガードレールのプラグイン。共通規約 japanese-writing.md が、語の接地・参照の自己完結・文書の自立・判断依頼の材料・根拠の同居の5条を定める。文書種別ごとの差分は document-type-profiles.md が持つ。機械検査・独立レビューの執行層と、起草スキル・起草エージェントの起草層は後続で追加する。"
 }

@@ -1,6 +1,6 @@
 {
   "name": "writing",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "日本語文書の品質基準を提供するCodexプラグイン。",
   "author": {
     "name": "Kuchita El"
