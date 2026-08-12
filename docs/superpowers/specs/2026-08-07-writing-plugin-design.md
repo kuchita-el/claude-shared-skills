@@ -347,7 +347,7 @@ plugins/writing/
 
 ### 7.2 `behavior-invariants.md`
 
-`plugins/dev-workflow/references/behavior-invariants.md` は、出力・成果物の分量と作業範囲を扱う規約である。本設計の規約は語彙・参照・判断依頼の材料を扱う。軸が異なるため内容を重複させない。境界は次のとおり。
+`docs/behavior-invariants.md` は、出力・成果物の分量と作業範囲を扱う規約である。本設計の規約は語彙・参照・判断依頼の材料を扱う。軸が異なるため内容を重複させない。境界は次のとおり。
 
 - どれだけ書くか、どこまでやるか → `behavior-invariants.md`
 - どう書けば読み手が意味を取れるか → `japanese-writing.md`

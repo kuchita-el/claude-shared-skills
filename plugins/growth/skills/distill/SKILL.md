@@ -12,6 +12,13 @@ allowed-tools:
 
 # distill
 
+## 文脈固有ルール
+
+- **対象範囲**: 個人storeのカーソル以降の生観察だけをバッチ仮説形成する。
+- **成果物**: provenance付きのbehavior-diffまたはdecision-record候補をcandidatesへupsertする。
+- **停止条件**: 根拠・分類・重み付けが未決なら仮説化せず、検証や配布へ進まない。
+- **変更境界**: capturesの解釈改変、共有Issue起票、learnings配布を行わない。
+
 個人ローカル store の未処理の生観察を仮説形成し、知識型に応じた仮説（摩擦知→`behavior-diff` / 判断知→`decision-record`）へ変換する。各仮説にスコープタグ・キャリアタグ（Route 統合）と provenance を付与し仮説ファイル（`candidates.md`）へ永続化する。学習ループ（`[Capture] → [Distill+Route] → [Promote] → [Distribute]`）の Distill 段（Route 統合）。
 
 ## 目的・原則

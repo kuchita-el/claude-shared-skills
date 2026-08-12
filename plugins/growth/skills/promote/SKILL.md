@@ -11,6 +11,13 @@ allowed-tools:
 
 # promote
 
+## 文脈固有ルール
+
+- **対象範囲**: candidates.mdの検証済み仮説だけを共有Issueへ昇格する。
+- **成果物**: 通過仮説のIssueとcandidate-statusのpendingからpromotedへの更新を残す。
+- **停止条件**: 検証不通過・起票失敗・status不整合があれば昇格を確定しない。
+- **変更境界**: captures、learnings、未通過候補を変更しない。
+
 distill が仮説ファイル（`candidates.md`）へ永続化した仮説を検証し、検証を通過したものだけを `gh` で Issue へ自動起票して既存ワークフローへ渡す。起票成功後に候補ファイル（`candidates.md`）の `candidate-status` を `promoted` へ前進させる（`captures.md` は書き換えない）。学習ループ（`[Capture] → [Distill+Route] → [Promote] → [Distribute]`）の Promote 段。
 
 ## 目的・原則

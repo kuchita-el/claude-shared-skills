@@ -1,0 +1,1 @@
+[{"feature":"event-storming explicit invocation","claudeLevel":"portable","codexLevel":"portable","fixtures":["plugin-boundaries/domain-design/isolated-expected.json"]},{"feature":"domain-modeling explicit invocation","claudeLevel":"portable","codexLevel":"portable","fixtures":["plugin-boundaries/domain-design/isolated-expected.json"]}]

@@ -12,10 +12,17 @@ allowed-tools:
 
 # イベントストーミング（Event Storming）
 
+## 実行ルール
+
+- **対象範囲**: 依頼されたドメインのイベント・コマンド・境界だけを扱い、Big Picture と Design Level の起動条件を混同しない。
+- **成果物**: 要求されたイベントフロー、集約、境界だけを必要十分な粒度で返す。
+- **停止条件**: 前提不足やユーザー確認が必要な段階を飛ばさず、未決事項を残したまま確定しない。
+- **変更境界**: 入力にないドメイン事実や、依頼外の設計・コード変更を追加しない。
+
 イベントストーミング手法に基づいて対話的にドメインを分析し、ドキュメントを生成する。
 Big Picture（システム全体俯瞰）とDesign Level（単一ドメイン深掘り）の2つのフェーズに対応する。
 
-**出力と範囲の規律**: 出力・成果物の分量と作業範囲は `${CLAUDE_PLUGIN_ROOT}/references/behavior-invariants.md` の不変条件に従う。
+**出力と範囲**: ドメイン範囲・成果物・停止条件・変更境界は上記の実行ルールで判定する。
 成果物のテンプレートは `${CLAUDE_SKILL_DIR}/references/big-picture-template.md` と `${CLAUDE_SKILL_DIR}/references/event-storming-template.md` を直接参照する。
 
 ## 引数

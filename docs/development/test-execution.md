@@ -244,3 +244,9 @@ FAILED: 1/2 suites (6s) -- bats
   - **未信頼 worktree での fail-closed**: 1回目は worktree の `mise.toml` が未信頼で bats を解決できず、runner が非0、ゲートが exit 2 で commit をブロックした。runner は `mise exec` に失敗すると PATH へフォールバックする（§4）ため、この環境では PATH 上にも `bats` が無かったことになる。`mise trust --show` で project root=trusted / worktree=untrusted を確認。`mise trust` 後に上記の緑になった。
   - この観測により、#645 時点の §2 の記述（worktree では自動起動が働かないため手動実行が要る）が誤りであることが確定した。
 dev-workflow Wave 3は`dev-workflow-create-contract.bats`、`dev-workflow-refine-contract.bats`、`dev-workflow-plan-contract.bats`、`dev-workflow-implementation-contract.bats`を前段順に実行し、`skill-portability.bats`と各validatorを回帰実行する。fixtureは成果状態とhost adapter witnessを分離する。
+
+## Cross-host Plugin Wave 4（2026-08-12）
+
+- `domain-design`（0.1.0）と`dependency-insight`（0.1.0）はmarketplace登録前の単体配布物として、両manifest、skill内reference、compatibility、permission ledgerを検査する。
+- `dev-workflow`は境界変更により0.10.0、`adr`は0.3.1、`growth`は0.2.2、`writing`は0.2.1へ更新した。各version変更は文脈固有ルール追加またはskill移設に伴う配布物変更を理由とする。
+- 明示呼び出しの契約fixtureは`plugin-boundaries/domain-design`と`plugin-boundaries/dependency-insight`に置き、`check-plugin-boundary-decision.sh`で旧path、agent依存、graph差分、7判定、J1/J2承認を検査する。marketplace/runner登録はWave 5の対象である。

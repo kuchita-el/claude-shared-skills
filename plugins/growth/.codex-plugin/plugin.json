@@ -1,6 +1,6 @@
 {
   "name": "growth",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "セッションの学びを観測、検証、共有するCodexプラグイン。",
   "author": {
     "name": "Kuchita El"

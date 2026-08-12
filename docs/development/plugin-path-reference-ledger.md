@@ -17,7 +17,6 @@
 | CLAUDE.md | 66 | plugins/dev-workflow | dev-workflow | repository convention | wave-0 | current |
 | CLAUDE.md | 87 | plugins/dev-workflow | dev-workflow | repository convention | wave-0 | current |
 | CLAUDE.md | 91 | plugins/dev-workflow | dev-workflow | repository convention | wave-0 | current |
-| CLAUDE.md | 95 | plugins/dev-workflow | dev-workflow | repository convention | wave-0 | current |
 | CLAUDE.md | 115 | plugins/dev-workflow | dev-workflow | repository convention | wave-0 | current |
 | README.md | 52 | plugins/dev-workflow | dev-workflow | usage | wave-0 | current |
 | README.md | 55 | plugins/dev-workflow | dev-workflow | usage | wave-0 | current |

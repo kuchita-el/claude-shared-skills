@@ -54,7 +54,7 @@ Claude manifestの `dev-workflow` は `0.8.0`、Codex manifestは `0.7.0` であ
 
 `dev-workflow` はIssue管理、ドメイン設計、依存更新調査、実装、PR、CI、レビュー対応を含む。ただし、単純にスキルごとへ分割すると、次の共有資産がプラグイン境界を跨ぐ。
 
-- `behavior-invariants.md`: 全スキルと一部agentsが参照する。
+- `docs/behavior-invariants.md`: 全スキルと一部agentsが設計時に参照する単一出典。実行時の具体化は各定義に置く。
 - `completion-judgment.md`: `refine-issue` と `implementation` が参照する。
 - `plan-location-resolution.md`: `plan-issue` と `implementation` が参照する。
 - `agents/`: Issue精査、計画、レビュー、実装支援の役割を含む。
@@ -285,7 +285,7 @@ Issueの作成、準備判定、計画、実装、PRまでを一つの開発ラ�
 - `domain-modeling`
 - ドメイン成果物のschemaとlint
 
-移設時に `behavior-invariants.md` のうちドメイン設計に必要な規範を調べる。全スキル共通であり続ける規範を複製しない。ドメイン設計固有の成果契約へ言い換えて各skill内へ置ける場合のみ移設する。言い換えられず共有単一出典が実行に必要なら、両スキルを `dev-workflow` に残して分離を見送る。
+移設時に `docs/behavior-invariants.md` を設計基準として確認する。全スキル共通であり続ける規範を複製せず、ドメイン設計固有の成果契約へ言い換えて各skill内へ置ける場合のみ移設する。言い換えられず共有単一出典が実行に必要なら、両スキルを `dev-workflow` に残して分離を見送る。
 
 ### 9.5 `dependency-insight`
 
@@ -293,7 +293,7 @@ Issueの作成、準備判定、計画、実装、PRまでを一つの開発ラ�
 - package ecosystem別の調査規約
 - 互換性、breaking changes、更新順序の出力契約
 
-`behavior-invariants.md` との関係は `domain-design` と同じ判定を行う。自己完結できなければ分離を見送る。
+`docs/behavior-invariants.md` との関係は `domain-design` と同じ判定を行う。自己完結できなければ分離を見送る。
 
 ## 10. 移行順序
 
