@@ -1,0 +1,1 @@
+{"candidates":[{"id":"domain-design","skills":["event-storming"],"checks":[],"decision":"split","approval":{"id":"J1","status":"approved"}},{"id":"dependency-insight","skills":["dependency-check"],"checks":[],"decision":"split","approval":{"id":"J2","status":"approved"}}],"graph":[]}
