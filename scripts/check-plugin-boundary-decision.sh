@@ -41,8 +41,8 @@ for candidate in domain-design dependency-insight; do
     while IFS= read -r ref; do
       target="$dir/$ref"; [ -e "$target" ] || fail "壊れた参照: ${dir#$root/} -> $ref"
       actual_graph+=("$candidate|${dir#$root/}/SKILL.md|outbound|${target#$root/}")
-    done < <(rg -o '\$\{CLAUDE_SKILL_DIR\}/references/[A-Za-z0-9_./-]+' "$dir/SKILL.md" | sed 's#.*references/#references/#' | sort -u || true)
-    rg -n '(^|[^a-z])agents/|docs/behavior-invariants' "$dir" >/dev/null && fail "共有またはagent依存: $candidate/$skill" || true
+    done < <(grep -oE '\$\{CLAUDE_SKILL_DIR\}/references/[A-Za-z0-9_./-]+' "$dir/SKILL.md" | sed 's#.*references/#references/#' | sort -u || true)
+    grep -R -n -E '(^|[^a-z])agents/|docs/behavior-invariants' "$dir" >/dev/null && fail "共有またはagent依存: $candidate/$skill" || true
   done
 done
 [ "${#actual_graph[@]}" -gt 0 ] || fail "実参照グラフが0件"

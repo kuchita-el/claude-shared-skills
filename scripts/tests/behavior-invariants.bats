@@ -6,9 +6,8 @@ load 'helpers/common'
   [ -f "$REPO_ROOT/docs/behavior-invariants.md" ]
   [ ! -e "$plugin_root/dev-workflow/references/behavior-invariants.md" ]
   local old_ref='plugins/'"dev-workflow"'/references/behavior-invariants.md'
-  run rg -n "$old_ref|\$\{CLAUDE_PLUGIN_ROOT\}/references/behavior-invariants\.md" \
-    "$REPO_ROOT/CLAUDE.md" "$plugin_root" "$REPO_ROOT/docs" \
-    --glob '!docs/adr/**' --glob '!docs/superpowers/plans/**'
+  run grep -R -n -E --exclude-dir=adr --exclude-dir=plans "$old_ref|\$\{CLAUDE_PLUGIN_ROOT\}/references/behavior-invariants\.md" \
+    "$REPO_ROOT/CLAUDE.md" "$plugin_root" "$REPO_ROOT/docs"
   [ "$status" -eq 1 ]
 }
 
@@ -34,9 +33,9 @@ load 'helpers/common'
   local file
   for file in "${files[@]}"; do
     [ -f "$file" ]
-    rg -qi '対象|範囲' "$file"
-    rg -qi '成果物|出力' "$file"
-    rg -qi '停止|未決|保留|Not Ready' "$file"
-    rg -qi '変更|境界|対象外' "$file"
+    grep -qiE '対象|範囲' "$file"
+    grep -qiE '成果物|出力' "$file"
+    grep -qiE '停止|未決|保留|Not Ready' "$file"
+    grep -qiE '変更|境界|対象外' "$file"
   done
 }
