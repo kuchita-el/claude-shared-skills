@@ -34,15 +34,15 @@ for candidate in domain-design dependency-insight; do
 done
 declare -a actual_graph=()
 for candidate in domain-design dependency-insight; do
-  case "$candidate" in domain-design) skills=(event-storming domain-modeling);; dependency-insight) skills=(dependency-check);; esac
+  case "$candidate" in domain-design) plugin=domain-design; skills=(event-storming domain-modeling);; dependency-insight) plugin=dependency-insight; skills=(dependency-check);; esac
   for skill in "${skills[@]}"; do
-    dir="$root/plugins/dev-workflow/skills/$skill"; [ -d "$dir" ] || continue
+    dir="$root/plugins/$plugin/skills/$skill"; [ -d "$dir" ] || continue
     [ "$(find "$dir" -type f | wc -l)" -gt 0 ] || fail "検査対象skillが0件: $candidate/$skill"
     while IFS= read -r ref; do
       target="$dir/$ref"; [ -e "$target" ] || fail "壊れた参照: ${dir#$root/} -> $ref"
       actual_graph+=("$candidate|${dir#$root/}/SKILL.md|outbound|${target#$root/}")
     done < <(rg -o '\$\{CLAUDE_SKILL_DIR\}/references/[A-Za-z0-9_./-]+' "$dir/SKILL.md" | sed 's#.*references/#references/#' | sort -u || true)
-    rg -n '(^|[^a-z])agents/|plugins/dev-workflow|docs/behavior-invariants' "$dir" >/dev/null && fail "共有またはagent依存: $candidate/$skill" || true
+    rg -n '(^|[^a-z])agents/|docs/behavior-invariants' "$dir" >/dev/null && fail "共有またはagent依存: $candidate/$skill" || true
   done
 done
 [ "${#actual_graph[@]}" -gt 0 ] || fail "実参照グラフが0件"

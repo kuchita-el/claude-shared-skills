@@ -1,5 +1,5 @@
 {
   "name": "writing",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "日本語文書を起草・lint・独立レビューするClaude Code向けplugin。write-doc、doc-writer、doc-reviewer、lint-ja.shを同じ成果契約で提供する。"
 }

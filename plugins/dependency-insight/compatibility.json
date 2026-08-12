@@ -1,0 +1,1 @@
+[{"feature":"dependency-check explicit invocation","claudeLevel":"portable","codexLevel":"portable","fixtures":["plugin-boundaries/dependency-insight/isolated-expected.json"]}]

@@ -1,6 +1,6 @@
 {
   "name": "dev-workflow",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Issue管理、設計、実装を支援する汎用開発ワークフローのCodexプラグイン。",
   "author": {
     "name": "Kuchita El"
@@ -10,7 +10,7 @@
   "interface": {
     "displayName": "Dev Workflow",
     "shortDescription": "Issueから実装までの開発フローを支援します。",
-    "longDescription": "Issueの作成と精査、実装計画、ドメイン設計、依存関係調査、実装までの開発ワークフローを提供します。",
+    "longDescription": "Issueの作成と精査、実装計画、実装までの開発ワークフローを提供します。ドメイン設計と依存関係調査は別pluginです。",
     "developerName": "Kuchita El",
     "category": "Developer Tools",
     "capabilities": [

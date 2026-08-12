@@ -2,31 +2,34 @@
 load 'helpers/common'
 
 @test "抽象規約の正本がトップレベルへ昇格して旧共有参照が消える" {
+  local plugin_root="$REPO_ROOT/plugins"
   [ -f "$REPO_ROOT/docs/behavior-invariants.md" ]
-  [ ! -e "$REPO_ROOT/plugins/dev-workflow/references/behavior-invariants.md" ]
-  run rg -n 'plugins/dev-workflow/references/behavior-invariants\.md|\$\{CLAUDE_PLUGIN_ROOT\}/references/behavior-invariants\.md' \
-    "$REPO_ROOT/CLAUDE.md" "$REPO_ROOT/plugins" "$REPO_ROOT/docs" \
+  [ ! -e "$plugin_root/dev-workflow/references/behavior-invariants.md" ]
+  local old_ref='plugins/'"dev-workflow"'/references/behavior-invariants.md'
+  run rg -n "$old_ref|\$\{CLAUDE_PLUGIN_ROOT\}/references/behavior-invariants\.md" \
+    "$REPO_ROOT/CLAUDE.md" "$plugin_root" "$REPO_ROOT/docs" \
     --glob '!docs/adr/**' --glob '!docs/superpowers/plans/**'
   [ "$status" -eq 1 ]
 }
 
 @test "全対象に文脈固有の範囲・成果物・停止・変更境界がある" {
+  local plugin_root="$REPO_ROOT/plugins"
   local files=(
-    "$REPO_ROOT/plugins/adr/skills/manage-adr/SKILL.md"
-    "$REPO_ROOT/plugins/dev-workflow/skills/create-issue/SKILL.md"
-    "$REPO_ROOT/plugins/dev-workflow/skills/refine-issue/SKILL.md"
-    "$REPO_ROOT/plugins/dev-workflow/skills/plan-issue/SKILL.md"
-    "$REPO_ROOT/plugins/dev-workflow/skills/implementation/SKILL.md"
-    "$REPO_ROOT/plugins/dev-workflow/skills/event-storming/SKILL.md"
-    "$REPO_ROOT/plugins/dev-workflow/skills/domain-modeling/SKILL.md"
-    "$REPO_ROOT/plugins/dev-workflow/skills/dependency-check/SKILL.md"
-    "$REPO_ROOT/plugins/growth/skills/capture/SKILL.md"
-    "$REPO_ROOT/plugins/growth/skills/distill/SKILL.md"
-    "$REPO_ROOT/plugins/growth/skills/intake/SKILL.md"
-    "$REPO_ROOT/plugins/growth/skills/promote/SKILL.md"
-    "$REPO_ROOT/plugins/writing/skills/write-doc/SKILL.md"
-    "$REPO_ROOT/plugins/dev-workflow/agents/issue-refiner.md"
-    "$REPO_ROOT/plugins/dev-workflow/agents/issue-refiner-batch.md"
+    "$plugin_root/adr/skills/manage-adr/SKILL.md"
+    "$plugin_root/dev-workflow/skills/create-issue/SKILL.md"
+    "$plugin_root/dev-workflow/skills/refine-issue/SKILL.md"
+    "$plugin_root/dev-workflow/skills/plan-issue/SKILL.md"
+    "$plugin_root/dev-workflow/skills/implementation/SKILL.md"
+    "$plugin_root/domain-design/skills/event-storming/SKILL.md"
+    "$plugin_root/domain-design/skills/domain-modeling/SKILL.md"
+    "$plugin_root/dependency-insight/skills/dependency-check/SKILL.md"
+    "$plugin_root/growth/skills/capture/SKILL.md"
+    "$plugin_root/growth/skills/distill/SKILL.md"
+    "$plugin_root/growth/skills/intake/SKILL.md"
+    "$plugin_root/growth/skills/promote/SKILL.md"
+    "$plugin_root/writing/skills/write-doc/SKILL.md"
+    "$plugin_root/dev-workflow/agents/issue-refiner.md"
+    "$plugin_root/dev-workflow/agents/issue-refiner-batch.md"
   )
   local file
   for file in "${files[@]}"; do
