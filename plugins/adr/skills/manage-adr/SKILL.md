@@ -15,6 +15,13 @@ allowed-tools:
 
 # ADRライフサイクル操作（Manage ADR）
 
+## 文脈固有ルール
+
+- **対象範囲**: 指定されたADRと許可された遷移・編集分類だけを扱う。
+- **成果物**: front-matter、本文、相互参照をスキーマに沿って必要十分に更新する。
+- **停止条件**: 遷移条件、参照整合、lintのいずれかが未決・不合格なら状態を進めない。
+- **変更境界**: 対象ADR以外を変更せず、別判断を黙って混ぜない。
+
 ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR の編集で、front-matter（`status`/`validity`/`superseded-by`）と `## 関連ADR` の相互参照を正しく書き込む。手順の実体は本スキルが持ち、手作業で組み立てずスキル経由で一貫した状態遷移を実行し、各操作の締めに drift-lint で自己検証する。
 
 Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行する。Codexにはこのplugin単位hookがないため、ホストにかかわらず各操作後の明示lintを必須とする。Codex側のhook/policy callbackが利用可能になった場合だけ、重複workflowを作らずhost adapterへ移行する。

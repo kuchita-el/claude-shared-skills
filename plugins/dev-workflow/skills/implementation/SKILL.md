@@ -40,11 +40,18 @@ allowed-tools:
 
 # 汎用実装
 
+## 実行ルール
+
+- **対象範囲**: 入力されたIssue・計画・レビュー指摘の作業リストだけを実装する。
+- **成果物**: 受け入れ条件に対応する変更・テスト・検証証拠を必要十分な範囲で残す。
+- **停止条件**: 仕様の曖昧さ、未解消ブロッカー、検証不能が残る場合は完了扱いにせずエスカレーションする。
+- **変更境界**: 対象ファイルと作業ブランチを限定し、無関係な変更や別Issue切り出しを自判断で行わない。
+
 完了契約はAC、review、CI、PRの全項目を `resolved|unresolved|blocked|unknown` で列挙し、1件でも `unresolved`、`blocked`、`unknown` があれば完了報告しない。superpowersやwritingが利用できないhostでは、既存本文の最小inline手順へ縮退するが、agent起動fallbackとは区別して記録する。
 
 Issue・計画ファイル・PRレビュー指摘・会話コンテキストを起点に、実装→セルフレビュー→修正→PR作成までを一貫して実行する。
 
-**出力と範囲の規律**: 出力・成果物の分量と作業範囲は `${CLAUDE_PLUGIN_ROOT}/references/behavior-invariants.md` の不変条件に従う。
+**出力と範囲**: 実装対象・変更成果物・停止条件・変更境界は上記の実行ルールで判定する。
 計画ファイルの解決規約は `${CLAUDE_PLUGIN_ROOT}/references/plan-location-resolution.md` を直接参照する。
 
 ## 引数

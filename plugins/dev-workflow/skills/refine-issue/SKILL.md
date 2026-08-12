@@ -9,10 +9,17 @@ allowed-tools:
 
 # Issue精査（Refine Issue）
 
+## 実行ルール
+
+- **対象範囲**: 指定されたIssueと適用するDoR定義の全項目だけを精査する。
+- **成果物**: 各DoR項目を列挙した精査結果、欠落、Ready境界を返す。
+- **停止条件**: 一項目でも未充足ならNot Readyとし、未決を合格へ変換しない。
+- **変更境界**: Issue本文や実装を勝手に変更せず、精査結果の範囲に限定する。
+
 Issueの準備状態をDoR（Definition of Ready）に基づいて精査し、結果をレポートする。
 1件の詳細精査と全件一括精査の両方に対応。精査はサブエージェントで実行し、メインコンテキストを消費しない。
 
-**出力と範囲の規律**: 出力・成果物の分量と作業範囲は `${CLAUDE_PLUGIN_ROOT}/references/behavior-invariants.md` の不変条件に従う。
+**出力と範囲**: Issueの対象・精査結果・停止条件・変更境界は上記の実行ルールで判定する。
 精査の粒度判定は `${CLAUDE_SKILL_DIR}/references/delivery-item-granularity.md` を直接参照する。
 
 ## 引数

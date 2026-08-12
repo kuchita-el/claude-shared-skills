@@ -16,6 +16,13 @@ allowed-tools:
 
 # プラン作成（Plan Issue）
 
+## 実行ルール
+
+- **対象範囲**: 入力Issueまたは補足テキストが定める実装範囲と受け入れ条件を計画化する。
+- **成果物**: 技術設計、タスク分解、ACとテストケースの対応表を必要十分に作る。
+- **停止条件**: レビューで未解決の欠落や判断依頼が残る場合はプランをReady扱いにしない。
+- **変更境界**: 指定されたプラン保存先以外の実装や既存設計を変更しない。
+
 Host adapter契約: Claude Codeは `${CLAUDE_PLUGIN_ROOT}` をpluginRootとして解決し、`dev-workflow:plan` と `dev-workflow:plan-reviewer` をnative起動する。Codexはhostが解決したpluginRoot（環境変数名を仮定しない絶対パス）を入力として受け、`{pluginRoot}/agents/plan.md` と `{pluginRoot}/agents/plan-reviewer.md` の定義全文を独立汎用sub-agentへ注入する。plan生成は汎用sub-agent不可時にメインfallbackできるが、reviewerは定義完全注入・独立汎用sub-agent・独立文脈のいずれかが欠ければメインself-reviewせず `decision-request` で停止する。成果には起動metadataを混入しない。
 
 Issueの実装プランを作成し、プランファイル（保存先はモードで分岐。ステップ5参照）に保存する。プランには技術設計・タスク分解に加え、AC全項目と対応する**テストケース対応表**を含める。
@@ -23,7 +30,7 @@ plan サブエージェント（計画骨格を superpowers `writing-plans` へ�
 
 Issue番号を起点とする**通常モード**のほか、Issueを立てずにフリーテキストの補足指示だけでプランを作成する**Issueなしモード**を備える。
 
-**出力と範囲の規律**: 出力・成果物の分量と作業範囲は `${CLAUDE_PLUGIN_ROOT}/references/behavior-invariants.md` の不変条件に従う。
+**出力と範囲**: 計画対象・設計成果物・停止条件・変更境界は上記の実行ルールで判定する。
 計画出力とサブエージェント用promptの必須資産は `${CLAUDE_SKILL_DIR}/references/plan-output-format.md`、`${CLAUDE_SKILL_DIR}/references/plan-prompt.md` を直接参照する。
 
 ## 引数
