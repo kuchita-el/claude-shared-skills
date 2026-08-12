@@ -4,8 +4,8 @@
 
 | path | line | pluginPath | owner | purpose | migrationWave | expected |
 |---|---:|---|---|---|---|---|
-| .gitignore | 7 | plugins/growth | growth | local store exclusion | wave-0 | current |
 | .gitignore | 8 | plugins/growth | growth | local store exclusion | wave-0 | current |
+| .gitignore | 9 | plugins/growth | growth | local store exclusion | wave-0 | current |
 | CLAUDE.md | 25 | plugins/dev-workflow | dev-workflow | repository architecture | wave-0 | current |
 | CLAUDE.md | 26 | plugins/dev-workflow | dev-workflow | repository architecture | wave-0 | current |
 | CLAUDE.md | 27 | plugins/dev-workflow | dev-workflow | repository architecture | wave-0 | current |
