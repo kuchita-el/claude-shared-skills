@@ -10,7 +10,7 @@
   "interface": {
     "displayName": "Dev Workflow",
     "shortDescription": "Issueから実装までの開発フローを支援します。",
-    "longDescription": "Issueの作成と精査、実装計画、実装までの開発ワークフローを提供します。ドメイン設計と依存関係調査は別pluginです。",
+    "longDescription": "Issueの作成と精査、実装計画、実装までの開発ワークフローを提供します。",
     "developerName": "Kuchita El",
     "category": "Developer Tools",
     "capabilities": [

@@ -2,8 +2,6 @@
 
 Issue の起票から計画・実装・レビューまでを支援するスキルとサブエージェントを配布する Claude Code プラグイン。GitHub CLI（`gh`）以外のプロジェクト固有ツールには依存しない。
 
-Wave 4でドメイン設計（`domain-design`）と依存更新分析（`dependency-insight`）を履歴保持移設したため、本pluginはIssue管理・計画・実装の中核だけを配布する。旧skill名の呼び出しは各新pluginのREADMEに従って移行する。今回の境界変更に伴いversionを0.9.0から0.10.0へ更新した。
-
 スキルの一覧と使い分けは各 `skills/{name}/SKILL.md` の `description` を参照。
 
 ## サブエージェントの実行パラメータ

@@ -14,7 +14,7 @@ token に関わる規律は3軸ある。本規約は**実行時フロー軸**を
 |---|---|---|
 | 作成時（静的） | CLAUDE.md「スキル設計の token 規律」 | `description` 長・SKILL.md 行数・`allowed-tools` 最小化（スキルという成果物の静的サイズ） |
 | 実行時（フロー） | 本規約 | スキル実行中にメイン context を通過・滞留するデータ（下記5要素） |
-| 実行時（生成・範囲） | `docs/behavior-invariants.md` | 出力・成果物の分量と、作業として踏み込む範囲 |
+| 実行時（生成・範囲） | トップレベル設計規約 | 出力・成果物の分量と、作業として踏み込む範囲 |
 
 ## 適用対象
 
@@ -66,6 +66,5 @@ gh / git 等の生 stdout をメインに残さない。後続処理が必要な
 ## 関連
 
 - CLAUDE.md「スキル設計の token 規律」（作成時・静的軸。本規約と補完する）
-- `docs/behavior-invariants.md`（実行時の生成・範囲軸。本規約と補完する）
 - `completion-judgment.md` と同様、規約本文を各 SKILL.md へ転記せず、各スキルは本単一出典を参照する
 - [ADR-202606270040-01-skill-context-budget-convention](../../../docs/adr/ADR-202606270040-01-skill-context-budget-convention.md)（本規約を単一出典として確立する決定）
