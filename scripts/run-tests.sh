@@ -98,6 +98,7 @@ EXPECTED_BATS=(
     dev-workflow-implementation-contract.bats
     writing-lint.bats
     writing-contract.bats
+    team-migration.bats
 )
 
 BATS_FILES=()
