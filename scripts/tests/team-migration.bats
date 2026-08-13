@@ -79,6 +79,24 @@ setup_file() {
     ! jq -e '.plugins[] | select(.name == "growth")' "$repo/.agents/plugins/marketplace.json" >/dev/null
 }
 
+@test "delete row without rollback is rejected during emit" {
+    ledger="$BATS_FILE_TMPDIR/delete-missing-rollback.json"
+    awk '/```migration-ledger-json/{inside=1; next} inside && /^```/{exit} inside{print}' "$FIXTURES_DIR/team-migration/valid/ledger.md" >"$ledger"
+    jq '.migrations += [{"oldPluginId":"growth","newPluginId":"growth","movedSkills":[],"oldEntryAction":"delete","installCommand":"remove"}]' "$ledger" >"$ledger.next" && mv "$ledger.next" "$ledger"
+    run bash "$CHECKER" emit-actions "$ledger" "$FIXTURES_DIR/team-migration/valid/boundary-decision.json" "$BATS_FILE_TMPDIR/actions.json"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"削除行にrollbackがありません"* ]]
+}
+
+@test "retain and delete rows for one old plugin are rejected during emit" {
+    ledger="$BATS_FILE_TMPDIR/delete-retain-conflict.json"
+    awk '/```migration-ledger-json/{inside=1; next} inside && /^```/{exit} inside{print}' "$FIXTURES_DIR/team-migration/valid/ledger.md" >"$ledger"
+    jq '.migrations += [{"oldPluginId":"growth","newPluginId":"growth","movedSkills":[],"oldEntryAction":"retain","installCommand":"keep","rollback":"restore"},{"oldPluginId":"growth","newPluginId":"growth","movedSkills":[],"oldEntryAction":"delete","installCommand":"remove","rollback":"restore"}]' "$ledger" >"$ledger.next" && mv "$ledger.next" "$ledger"
+    run bash "$CHECKER" emit-actions "$ledger" "$FIXTURES_DIR/team-migration/valid/boundary-decision.json" "$BATS_FILE_TMPDIR/actions.json"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"retain/delete"* ]]
+}
+
 @test "retain candidate added only to release set is rejected" {
     ledger="$BATS_FILE_TMPDIR/retain-release-ledger.json"
     awk '/```migration-ledger-json/{inside=1; next} inside && /^```/{exit} inside{print}' "$FIXTURES_DIR/team-migration/valid/ledger.md" >"$ledger"

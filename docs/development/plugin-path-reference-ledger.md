@@ -80,7 +80,7 @@ This ledger is regenerated when tracked source/config/docs add or move a `plugin
 | scripts/tests/plugin-path-references.bats | 12 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/plugin-path-references.bats | 17 | plugins/writing | migration | reference | wave-5 | current |
 | scripts/tests/team-migration.bats | 75 | plugins/dependency-insight | migration | reference | wave-5 | current |
-| scripts/tests/team-migration.bats | 117 | plugins/domain-design | migration | reference | wave-5 | current |
+| scripts/tests/team-migration.bats | 135 | plugins/domain-design | migration | reference | wave-5 | current |
 | scripts/tests/writing-contract.bats | 4 | plugins/writing | migration | reference | wave-5 | current |
 | scripts/tests/writing-contract.bats | 5 | plugins/writing | migration | reference | wave-5 | current |
 | scripts/tests/writing-contract.bats | 9 | plugins/writing | migration | reference | wave-5 | current |

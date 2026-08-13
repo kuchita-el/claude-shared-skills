@@ -43,6 +43,12 @@ while IFS= read -r row; do
   new=$(jq -r '.newPluginId' <<<"$row")
   case " dev-workflow growth adr writing ${split_ids[*]} " in *" $new "*) ;; *) fail "未知のmigration plugin ID: $new" ;; esac
 done < <(jq -c '.migrations[]?' "$ledger")
+while IFS= read -r old; do
+  [ -n "$old" ] || continue
+  has_retain=$(jq --arg old "$old" '[.migrations[] | select(.oldPluginId == $old and .oldEntryAction == "retain")] | length' "$ledger")
+  has_delete=$(jq --arg old "$old" '[.migrations[] | select(.oldPluginId == $old and .oldEntryAction == "delete")] | length' "$ledger")
+  [ "$has_retain" -eq 0 ] || [ "$has_delete" -eq 0 ] || fail "retain/delete conflict for old plugin ID: $old"
+done < <(jq -r '.migrations[]?.oldPluginId' "$ledger" | sort -u)
 while IFS= read -r row; do
   [ -n "$row" ] || continue
   action=$(jq -r '.oldEntryAction' <<<"$row")
