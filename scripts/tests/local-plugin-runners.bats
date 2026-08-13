@@ -53,13 +53,6 @@ setup() {
     grep -Fx -- 'claude|--plugin-dir|./plugins/dev-workflow|--plugin-dir|./plugins/growth|--plugin-dir|./plugins/adr|--plugin-dir|./plugins/writing|--plugin-dir|./plugins/dependency-insight|--plugin-dir|./plugins/domain-design|--model|opus|--resume|session name' "$CALLS"
 }
 
-@test "Claude runnerはmarketplaceのWave 5 pluginを含めて引数を渡す" {
-    run env PATH="$FAKE_BIN:$PATH" "$REPO_ROOT/run-claude-local.sh" --help
-    [ "$status" -eq 0 ]
-    grep -F -- '--plugin-dir|./plugins/dependency-insight' "$CALLS"
-    grep -F -- '--plugin-dir|./plugins/domain-design|--help' "$CALLS"
-}
-
 @test "Codex runnerは未導入のmarketplaceと全pluginを導入して全引数を渡す" {
     run env PATH="$FAKE_BIN:$PATH" FAKE_CODEX_STATE=empty "$REPO_ROOT/run-codex-local.sh" --model gpt-5.6 --search
     [ "$status" -eq 0 ]

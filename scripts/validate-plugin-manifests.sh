@@ -67,7 +67,7 @@ mapfile -t duplicate_skills < <(printf '%s\n' "${all_skill_names[@]}" | sed '/^$
 for skill in "${duplicate_skills[@]}"; do
   owners=$(for name in "${claude_names[@]}"; do
     path="$root/$(jq -r --arg n "$name" '.plugins[] | select(.name == $n) | .source' "$claude_marketplace")"
-    collect_skill_names "$path" | grep -Fx "$skill" >/dev/null && printf '%s ' "$name"
+    if collect_skill_names "$path" | grep -Fxq "$skill"; then printf '%s ' "$name"; fi
   done)
   fail "同名skillが複数pluginに存在します: $skill (${owners% })"
 done

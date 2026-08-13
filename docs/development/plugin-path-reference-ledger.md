@@ -1,5 +1,7 @@
 # plugin path reference ledger
 
+`growth` は既存runner導入対象として保持するが、Claudeのsession jsonl/local store依存のため、Codexでは恒久的に `surface-specific` として扱う。Codex adapterを追加する場合のみcompatibility matrixと本台帳を更新し、適合判定対象へ戻す。
+
 This ledger is regenerated when tracked source/config/docs add or move a `plugins/<name>` reference.
 
 | path | line | pluginPath | owner | purpose | migrationWave | expected |
@@ -38,11 +40,11 @@ This ledger is regenerated when tracked source/config/docs add or move a `plugin
 | README.md | 62 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | README.md | 66 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | README.md | 112 | plugins/dev-workflow | migration | reference | wave-5 | current |
-| docs/development/test-execution.md | 21 | plugins/writing | migration | reference | wave-5 | current |
-| docs/development/test-execution.md | 54 | plugins/adr | migration | reference | wave-5 | current |
-| docs/development/test-execution.md | 143 | plugins/adr | migration | reference | wave-5 | current |
-| docs/development/test-execution.md | 160 | plugins/adr | migration | reference | wave-5 | current |
-| docs/development/test-execution.md | 164 | plugins/adr | migration | reference | wave-5 | current |
+| docs/development/test-execution.md | 22 | plugins/writing | migration | reference | wave-5 | current |
+| docs/development/test-execution.md | 55 | plugins/adr | migration | reference | wave-5 | current |
+| docs/development/test-execution.md | 144 | plugins/adr | migration | reference | wave-5 | current |
+| docs/development/test-execution.md | 161 | plugins/adr | migration | reference | wave-5 | current |
+| docs/development/test-execution.md | 165 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/lint-domain-doc.sh | 9 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | scripts/tests/adr-portability.bats | 18 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/adr-portability.bats | 22 | plugins/adr | migration | reference | wave-5 | current |
@@ -74,12 +76,11 @@ This ledger is regenerated when tracked source/config/docs add or move a `plugin
 | scripts/tests/lint-adr-stem.bats | 2 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/lint-adr-xref.bats | 2 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/local-plugin-runners.bats | 53 | plugins/dev-workflow | migration | reference | wave-5 | current |
-| scripts/tests/local-plugin-runners.bats | 59 | plugins/dependency-insight | migration | reference | wave-5 | current |
-| scripts/tests/local-plugin-runners.bats | 60 | plugins/domain-design | migration | reference | wave-5 | current |
 | scripts/tests/next-adr-id.bats | 2 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/plugin-path-references.bats | 12 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/plugin-path-references.bats | 17 | plugins/writing | migration | reference | wave-5 | current |
-| scripts/tests/team-migration.bats | 69 | plugins/domain-design | migration | reference | wave-5 | current |
+| scripts/tests/team-migration.bats | 75 | plugins/dependency-insight | migration | reference | wave-5 | current |
+| scripts/tests/team-migration.bats | 117 | plugins/domain-design | migration | reference | wave-5 | current |
 | scripts/tests/writing-contract.bats | 4 | plugins/writing | migration | reference | wave-5 | current |
 | scripts/tests/writing-contract.bats | 5 | plugins/writing | migration | reference | wave-5 | current |
 | scripts/tests/writing-contract.bats | 9 | plugins/writing | migration | reference | wave-5 | current |

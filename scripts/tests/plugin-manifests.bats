@@ -38,3 +38,18 @@ setup() { SUT="$REPO_ROOT/scripts/validate-plugin-manifests.sh"; }
   [ "$status" -eq 1 ]
   [[ "$output" == *"skill集合不一致: example"* ]]
 }
+
+@test "plugin間の同名skill重複を所有者付きで報告する" {
+  fixture="$BATS_FILE_TMPDIR/duplicate-skill"
+  cp -R "$FIXTURES_DIR/plugin-manifests/valid" "$fixture"
+  mkdir -p "$fixture/plugins/other/.claude-plugin" "$fixture/plugins/other/.codex-plugin" "$fixture/plugins/other/skills/example"
+  cp "$fixture/plugins/example/.claude-plugin/plugin.json" "$fixture/plugins/other/.claude-plugin/plugin.json"
+  cp "$fixture/plugins/example/.codex-plugin/plugin.json" "$fixture/plugins/other/.codex-plugin/plugin.json"
+  sed -i 's/"name":"example"/"name":"other"/' "$fixture/plugins/other/.claude-plugin/plugin.json" "$fixture/plugins/other/.codex-plugin/plugin.json"
+  touch "$fixture/plugins/other/skills/example/SKILL.md"
+  jq '.plugins += [{"name":"other","source":"./plugins/other"}]' "$fixture/.claude-plugin/marketplace.json" >"$fixture/.claude-plugin/marketplace.json.next" && mv "$fixture/.claude-plugin/marketplace.json.next" "$fixture/.claude-plugin/marketplace.json"
+  jq '.plugins += [{"name":"other","source":{"path":"./plugins/other"}}]' "$fixture/.agents/plugins/marketplace.json" >"$fixture/.agents/plugins/marketplace.json.next" && mv "$fixture/.agents/plugins/marketplace.json.next" "$fixture/.agents/plugins/marketplace.json"
+  run bash "$SUT" "$fixture"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"同名skillが複数pluginに存在します"* ]]
+}
