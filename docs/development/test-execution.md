@@ -14,8 +14,7 @@
 | `validate-plugin-versions` | `scripts/validate-plugin-versions.sh origin/main` | plugin配下差分時のversion bump |
 | `validate-plugin-portability` | `scripts/validate-plugin-portability.sh .` | matrix、permission ledger、参照境界 |
 | `validate-plugin-path-references` | `scripts/validate-plugin-path-references.sh . docs/development/plugin-path-reference-ledger.md` | plugin path参照台帳の双方向一致 |
-| `team-migration` | `scripts/check-team-migration.sh` / `scripts/tests/team-migration.bats` | Wave 5のrelease集合、旧新対応表、利用者確認、削除gate |
-| `team-migration-ledger` | `scripts/check-team-migration.sh validate ...` | 本番migration台帳のfail-closed検査 |
+| `team-migration` | `scripts/check-team-migration.sh` / `scripts/tests/team-migration.bats` | Wave 5のrelease集合、旧新対応表、利用者確認、削除gateのロジック検査（fixtureベース） |
 
 runner はいずれかが失敗しても残りを最後まで実行してから非0で終わる。失敗を1回の実行で出揃わせるためである。成功したスイートの出力は畳み、失敗したスイートの出力だけを展開する（bats については通過ケースの `ok ` 行も畳む）。
 
@@ -78,7 +77,7 @@ mise exec -- bats scripts/tests/lint-adr-stem.bats
 mise exec -- bats --count scripts/tests/*.bats
 ```
 
-各検査器は対象集合0件、JSON不正、期待集合と実集合の不一致を非0にする。host smokeは固定promptを各3回実行し、skill-load観測APIが無い場合は自動合格にせず、`docs/development/cross-host-plugin-inquiry-ledger.md` の `degraded` 手動検査として証拠を保存する。
+各検査器は対象集合0件、JSON不正、期待集合と実集合の不一致を非0にする。host smokeは固定promptを各3回実行し、skill-load観測APIが無い場合は自動合格にせず、`degraded` 手動検査として証拠を保存する（証拠の保存先は各Waveの運用文書に従う。例は §1 Writing Wave 2 の記載を参照）。
 
 ## 4. セットアップ
 
