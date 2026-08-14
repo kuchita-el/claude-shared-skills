@@ -30,6 +30,18 @@ setup() { SUT="$REPO_ROOT/scripts/validate-plugin-manifests.sh"; }
   run bash "$SUT" "$fixture"
   [ "$status" -eq 0 ]
 }
+@test "surface-specific免除でもClaude側source検査を実行する" {
+  fixture="$BATS_FILE_TMPDIR/surface-specific-claude-checks"
+  cp -R "$FIXTURES_DIR/plugin-manifests/valid" "$fixture"
+  mkdir -p "$fixture/docs/references"
+  growth_name=growth
+  jq --arg name "$growth_name" --arg source "./plugins/$growth_name" '.plugins += [{"name":$name,"source":$source}]' "$fixture/.claude-plugin/marketplace.json" >"$fixture/.claude-plugin/marketplace.json.next"
+  mv "$fixture/.claude-plugin/marketplace.json.next" "$fixture/.claude-plugin/marketplace.json"
+  printf '%s\n' '[{"feature":"growth","plugin":"growth","claudeLevel":"portable","codexLevel":"surface-specific","fixtures":["example"],"residualRisk":"Codexでは提供しない"}]' >"$fixture/docs/references/cross-host-compatibility.json"
+  run bash "$SUT" "$fixture"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Claude source pathが無い: growth"* ]]
+}
 @test "surface-specific未宣言の片側plugin欠落を報告する" {
   fixture="$BATS_FILE_TMPDIR/undeclared-surface-specific"
   cp -R "$FIXTURES_DIR/plugin-manifests/valid" "$fixture"
