@@ -32,7 +32,6 @@ bash scripts/run-tests.sh # テストと検査器を一括実行する
 - `plugins/dependency-insight/` — Wave 4でdev-workflowから分離したdependency-check
 - `run-claude-local.sh` — ローカル開発用起動スクリプト（Claude の引数を透過するラッパー）
 - `run-codex-local.sh` — Codex用 marketplace と自前プラグイン、必須の公式Superpowersを登録して起動するラッパー
-- `docs/development/cross-host-plugin-team-migration.md` — Wave 5の旧新対応表、利用者確認、rollback台帳
 
 ### Skill Definition Format
 

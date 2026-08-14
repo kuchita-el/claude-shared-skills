@@ -1,9 +1,0 @@
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "type": "object",
-  "required": ["candidates", "graph"],
-  "properties": {
-    "candidates": {"type": "array", "minItems": 2, "items": {"type": "object", "required": ["id", "skills", "checks", "decision", "approval"]}},
-    "graph": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["candidate", "path", "direction", "target"]}}
-  }
-}
