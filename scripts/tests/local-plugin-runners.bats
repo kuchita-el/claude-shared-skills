@@ -59,6 +59,7 @@ setup() {
     grep -Fx -- 'codex|plugin|add|superpowers@openai-curated' "$CALLS"
     grep -Fx -- 'codex|plugin|add|domain-design@claude-shared-skills' "$CALLS"
     grep -Fx -- 'codex|plugin|add|dependency-insight@claude-shared-skills' "$CALLS"
+    ! grep -Fx -- 'codex|plugin|add|growth@claude-shared-skills' "$CALLS"
     grep -Fx -- 'codex|--model|gpt-5.6|--search' "$CALLS"
 }
 

@@ -5,9 +5,31 @@ set -euo pipefail
 root="${1:?usage: validate-plugin-manifests.sh <repo-root>}"
 claude_marketplace="$root/.claude-plugin/marketplace.json"
 codex_marketplace="$root/.agents/plugins/marketplace.json"
+compatibility="$root/docs/references/cross-host-compatibility.json"
 errors=0
 all_skill_names=()
 fail() { printf '%s\n' "$1"; errors=$((errors + 1)); }
+
+surface_specific_codex_plugins=()
+surface_specific_claude_plugins=()
+if [ -f "$compatibility" ] && jq empty "$compatibility" >/dev/null 2>&1; then
+  mapfile -t surface_specific_codex_plugins < <(jq -r '.[]? | select(.plugin? != null and .codexLevel == "surface-specific") | .plugin' "$compatibility")
+  mapfile -t surface_specific_claude_plugins < <(jq -r '.[]? | select(.plugin? != null and .claudeLevel == "surface-specific") | .plugin' "$compatibility")
+fi
+
+declared_surface_specific() {
+  local host="$1" name="$2" plugin
+  local -n plugins
+  if [ "$host" = codex ]; then
+    plugins=surface_specific_codex_plugins
+  else
+    plugins=surface_specific_claude_plugins
+  fi
+  for plugin in "${plugins[@]}"; do
+    [ "$plugin" = "$name" ] && return 0
+  done
+  return 1
+}
 
 for file in "$claude_marketplace" "$codex_marketplace"; do
   if ! jq empty "$file" >/dev/null 2>&1; then fail "JSON不正: ${file#$root/}"; fi
@@ -20,13 +42,20 @@ mapfile -t codex_names < <(jq -r '.plugins[]?.name // empty' "$codex_marketplace
 [ "${#codex_names[@]}" -gt 0 ] || fail "Codex marketplaceの対象pluginが0件"
 
 for name in "${claude_names[@]}"; do
-  printf '%s\n' "${codex_names[@]}" | grep -Fxq "$name" || fail "Codex marketplaceに無い: $name"
+  printf '%s\n' "${codex_names[@]}" | grep -Fxq "$name" || {
+    declared_surface_specific codex "$name" || fail "Codex marketplaceに無い: $name"
+  }
 done
 for name in "${codex_names[@]}"; do
-  printf '%s\n' "${claude_names[@]}" | grep -Fxq "$name" || fail "Claude marketplaceに無い: $name"
+  printf '%s\n' "${claude_names[@]}" | grep -Fxq "$name" || {
+    declared_surface_specific claude "$name" || fail "Claude marketplaceに無い: $name"
+  }
 done
 
 for name in "${claude_names[@]}"; do
+  if ! printf '%s\n' "${codex_names[@]}" | grep -Fxq "$name"; then
+    declared_surface_specific codex "$name" && continue
+  fi
   claude_path="$root/$(jq -r --arg n "$name" '.plugins[] | select(.name == $n) | .source' "$claude_marketplace")"
   codex_path="$root/$(jq -r --arg n "$name" '.plugins[] | select(.name == $n) | .source.path' "$codex_marketplace")"
   [ -d "$claude_path" ] || fail "Claude source pathが無い: $name"

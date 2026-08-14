@@ -8,6 +8,7 @@
   },
   {
     "feature": "growth plugin portability",
+    "plugin": "growth",
     "claudeLevel": "portable",
     "codexLevel": "surface-specific",
     "fixtures": ["growth-codex-surface"],

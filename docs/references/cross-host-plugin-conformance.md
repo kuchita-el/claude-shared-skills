@@ -11,12 +11,15 @@ matrixはJSON配列として保持し、各行は次の字段を持つ。`residu
 | 字段 | 型 | 値域・意味 |
 |---|---|---|
 | `feature` | string | 検査対象の能力名。空文字不可 |
+| `plugin` | string | 任意。片host固有の配布差分を宣言する場合は対象plugin名を指定する |
 | `claudeLevel` | enum | `portable` / `adapted` / `degraded` / `surface-specific` |
 | `codexLevel` | enum | 同上 |
 | `fixtures` | array[string] | 少なくとも1件の再現fixture |
 | `residualRisk` | string | `degraded` または `surface-specific` の場合は必須。それ以外では省略可。存在時は空文字不可 |
 
 `portable` は同じ契約で利用できること、`adapted` はhost adapterを介して同じ成果を得ること、`degraded` は自動保証を縮退させ残余リスクを明記すること、`surface-specific` は片host固有であることを示す。
+
+`plugin` を持つ行で `codexLevel` が `surface-specific` の場合、検査器はそのpluginがCodex marketplaceに存在しないことを許容する。`claudeLevel` が `surface-specific` の場合はClaude marketplace側の欠落を許容する。片host固有の例外はplugin名とhost側のlevelをmatrixへ宣言し、検査器へplugin名を直接ハードコードしない。
 
 ## Permission ledger
 

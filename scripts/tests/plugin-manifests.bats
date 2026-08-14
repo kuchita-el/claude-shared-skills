@@ -13,6 +13,37 @@ setup() { SUT="$REPO_ROOT/scripts/validate-plugin-manifests.sh"; }
   [ "$status" -eq 1 ]
   [[ "$output" == *"Codex marketplaceに無い: example"* ]]
 }
+@test "surface-specific宣言済みの片側plugin欠落を許容する" {
+  fixture="$BATS_FILE_TMPDIR/surface-specific"
+  cp -R "$FIXTURES_DIR/plugin-manifests/valid" "$fixture"
+  mkdir -p "$fixture/docs/references"
+  jq '.plugins += [{"name":"growth","source":"./plugins"}]' "$fixture/.claude-plugin/marketplace.json" >"$fixture/.claude-plugin/marketplace.json.next"
+  mv "$fixture/.claude-plugin/marketplace.json.next" "$fixture/.claude-plugin/marketplace.json"
+  printf '%s\n' '[{"feature":"growth","plugin":"growth","claudeLevel":"portable","codexLevel":"surface-specific","fixtures":["example"],"residualRisk":"Codexでは提供しない"}]' >"$fixture/docs/references/cross-host-compatibility.json"
+  run bash "$SUT" "$fixture"
+  [ "$status" -eq 0 ]
+}
+@test "surface-specific未宣言の片側plugin欠落を報告する" {
+  fixture="$BATS_FILE_TMPDIR/undeclared-surface-specific"
+  cp -R "$FIXTURES_DIR/plugin-manifests/valid" "$fixture"
+  mkdir -p "$fixture/docs/references"
+  jq '.plugins += [{"name":"growth","source":"./plugins"}]' "$fixture/.claude-plugin/marketplace.json" >"$fixture/.claude-plugin/marketplace.json.next"
+  mv "$fixture/.claude-plugin/marketplace.json.next" "$fixture/.claude-plugin/marketplace.json"
+  printf '%s\n' '[{"feature":"example","plugin":"example","claudeLevel":"portable","codexLevel":"portable","fixtures":["example"]}]' >"$fixture/docs/references/cross-host-compatibility.json"
+  run bash "$SUT" "$fixture"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Codex marketplaceに無い: growth"* ]]
+}
+@test "surface-specific宣言済みのClaude側plugin欠落を許容する" {
+  fixture="$BATS_FILE_TMPDIR/surface-specific-claude"
+  cp -R "$FIXTURES_DIR/plugin-manifests/valid" "$fixture"
+  mkdir -p "$fixture/docs/references"
+  jq '.plugins += [{"name":"codex-only","source":{"path":"./plugins"}}]' "$fixture/.agents/plugins/marketplace.json" >"$fixture/.agents/plugins/marketplace.json.next"
+  mv "$fixture/.agents/plugins/marketplace.json.next" "$fixture/.agents/plugins/marketplace.json"
+  printf '%s\n' '[{"feature":"codex-only","plugin":"codex-only","claudeLevel":"surface-specific","codexLevel":"portable","fixtures":["example"],"residualRisk":"Claudeでは提供しない"}]' >"$fixture/docs/references/cross-host-compatibility.json"
+  run bash "$SUT" "$fixture"
+  [ "$status" -eq 0 ]
+}
 @test "manifest version差を報告する" {
   run bash "$SUT" "$FIXTURES_DIR/plugin-manifests/version-mismatch"
   [ "$status" -eq 1 ]
