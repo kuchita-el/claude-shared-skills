@@ -13,6 +13,67 @@ setup() { SUT="$REPO_ROOT/scripts/validate-plugin-manifests.sh"; }
   [ "$status" -eq 1 ]
   [[ "$output" == *"Codex marketplaceに無い: example"* ]]
 }
+@test "surface-specific宣言済みの片側plugin欠落を許容する" {
+  fixture="$BATS_FILE_TMPDIR/surface-specific"
+  cp -R "$FIXTURES_DIR/plugin-manifests/valid" "$fixture"
+  mkdir -p "$fixture/docs/references"
+  growth_name=growth
+  growth_path="$fixture/plugins/$growth_name"
+  mkdir -p "$growth_path/.claude-plugin" "$growth_path/.codex-plugin" "$growth_path/skills/growth-skill"
+  printf '%s\n' '{"name":"growth","version":"0.1.0"}' >"$growth_path/.claude-plugin/plugin.json"
+  printf '%s\n' '{"name":"growth","version":"0.1.0","skills":"./skills/"}' >"$growth_path/.codex-plugin/plugin.json"
+  printf '%s\n' '# growth' >"$growth_path/README.md"
+  touch "$growth_path/skills/growth-skill/SKILL.md"
+  jq --arg name "$growth_name" --arg source "./plugins/$growth_name" '.plugins += [{"name":$name,"source":$source}]' "$fixture/.claude-plugin/marketplace.json" >"$fixture/.claude-plugin/marketplace.json.next"
+  mv "$fixture/.claude-plugin/marketplace.json.next" "$fixture/.claude-plugin/marketplace.json"
+  printf '%s\n' '[{"feature":"growth","plugin":"growth","claudeLevel":"portable","codexLevel":"surface-specific","fixtures":["example"],"residualRisk":"Codexでは提供しない"}]' >"$fixture/docs/references/cross-host-compatibility.json"
+  run bash "$SUT" "$fixture"
+  [ "$status" -eq 0 ]
+}
+@test "surface-specific免除でもClaude側source検査を実行する" {
+  fixture="$BATS_FILE_TMPDIR/surface-specific-claude-checks"
+  cp -R "$FIXTURES_DIR/plugin-manifests/valid" "$fixture"
+  mkdir -p "$fixture/docs/references"
+  growth_name=growth
+  jq --arg name "$growth_name" --arg source "./plugins/$growth_name" '.plugins += [{"name":$name,"source":$source}]' "$fixture/.claude-plugin/marketplace.json" >"$fixture/.claude-plugin/marketplace.json.next"
+  mv "$fixture/.claude-plugin/marketplace.json.next" "$fixture/.claude-plugin/marketplace.json"
+  printf '%s\n' '[{"feature":"growth","plugin":"growth","claudeLevel":"portable","codexLevel":"surface-specific","fixtures":["example"],"residualRisk":"Codexでは提供しない"}]' >"$fixture/docs/references/cross-host-compatibility.json"
+  run bash "$SUT" "$fixture"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Claude source pathが無い: growth"* ]]
+}
+@test "surface-specific未宣言の片側plugin欠落を報告する" {
+  fixture="$BATS_FILE_TMPDIR/undeclared-surface-specific"
+  cp -R "$FIXTURES_DIR/plugin-manifests/valid" "$fixture"
+  mkdir -p "$fixture/docs/references"
+  jq '.plugins += [{"name":"growth","source":"./plugins/example"}]' "$fixture/.claude-plugin/marketplace.json" >"$fixture/.claude-plugin/marketplace.json.next"
+  mv "$fixture/.claude-plugin/marketplace.json.next" "$fixture/.claude-plugin/marketplace.json"
+  printf '%s\n' '[{"feature":"example","plugin":"example","claudeLevel":"portable","codexLevel":"portable","fixtures":["example"]}]' >"$fixture/docs/references/cross-host-compatibility.json"
+  run bash "$SUT" "$fixture"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Codex marketplaceに無い: growth"* ]]
+}
+@test "surface-specific宣言済みのClaude側plugin欠落を許容する" {
+  fixture="$BATS_FILE_TMPDIR/surface-specific-claude"
+  cp -R "$FIXTURES_DIR/plugin-manifests/valid" "$fixture"
+  mkdir -p "$fixture/docs/references"
+  jq '.plugins += [{"name":"codex-only","source":{"path":"./plugins"}}]' "$fixture/.agents/plugins/marketplace.json" >"$fixture/.agents/plugins/marketplace.json.next"
+  mv "$fixture/.agents/plugins/marketplace.json.next" "$fixture/.agents/plugins/marketplace.json"
+  printf '%s\n' '[{"feature":"codex-only","plugin":"codex-only","claudeLevel":"surface-specific","codexLevel":"portable","fixtures":["example"],"residualRisk":"Claudeでは提供しない"}]' >"$fixture/docs/references/cross-host-compatibility.json"
+  run bash "$SUT" "$fixture"
+  [ "$status" -eq 0 ]
+}
+@test "surface-specific未宣言のClaude側plugin欠落を報告する" {
+  fixture="$BATS_FILE_TMPDIR/undeclared-surface-specific-claude"
+  cp -R "$FIXTURES_DIR/plugin-manifests/valid" "$fixture"
+  mkdir -p "$fixture/docs/references"
+  jq '.plugins += [{"name":"codex-only","source":{"path":"./plugins"}}]' "$fixture/.agents/plugins/marketplace.json" >"$fixture/.agents/plugins/marketplace.json.next"
+  mv "$fixture/.agents/plugins/marketplace.json.next" "$fixture/.agents/plugins/marketplace.json"
+  printf '%s\n' '[{"feature":"example","plugin":"example","claudeLevel":"portable","codexLevel":"portable","fixtures":["example"]}]' >"$fixture/docs/references/cross-host-compatibility.json"
+  run bash "$SUT" "$fixture"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Claude marketplaceに無い: codex-only"* ]]
+}
 @test "manifest version差を報告する" {
   run bash "$SUT" "$FIXTURES_DIR/plugin-manifests/version-mismatch"
   [ "$status" -eq 1 ]

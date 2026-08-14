@@ -1,17 +1,16 @@
 # plugin path reference ledger
 
-`growth` は既存runner導入対象として保持するが、Claudeのsession jsonl/local store依存のため、Codexでは恒久的に `surface-specific` として扱う。Codex adapterを追加する場合のみcompatibility matrixと本台帳を更新し、適合判定対象へ戻す。
+`growth` はClaudeのsession jsonl/local store依存のため、Codex marketplaceとrunnerの導入対象から除外し、恒久的に `surface-specific` として扱う。Codex adapterを追加する場合のみcompatibility matrixと本台帳を更新し、適合判定対象へ戻す。
 
 This ledger is regenerated when tracked source/config/docs add or move a `plugins/<name>` reference.
 
 | path | line | pluginPath | owner | purpose | migrationWave | expected |
 |---|---:|---|---|---|---|---|
 | .agents/plugins/marketplace.json | 11 | plugins/dev-workflow | migration | reference | wave-5 | current |
-| .agents/plugins/marketplace.json | 23 | plugins/growth | migration | reference | wave-5 | current |
-| .agents/plugins/marketplace.json | 35 | plugins/adr | migration | reference | wave-5 | current |
-| .agents/plugins/marketplace.json | 47 | plugins/writing | migration | reference | wave-5 | current |
-| .agents/plugins/marketplace.json | 59 | plugins/dependency-insight | migration | reference | wave-5 | current |
-| .agents/plugins/marketplace.json | 71 | plugins/domain-design | migration | reference | wave-5 | current |
+| .agents/plugins/marketplace.json | 23 | plugins/adr | migration | reference | wave-5 | current |
+| .agents/plugins/marketplace.json | 35 | plugins/writing | migration | reference | wave-5 | current |
+| .agents/plugins/marketplace.json | 47 | plugins/dependency-insight | migration | reference | wave-5 | current |
+| .agents/plugins/marketplace.json | 59 | plugins/domain-design | migration | reference | wave-5 | current |
 | .claude-plugin/marketplace.json | 9 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | .claude-plugin/marketplace.json | 13 | plugins/growth | migration | reference | wave-5 | current |
 | .claude-plugin/marketplace.json | 17 | plugins/adr | migration | reference | wave-5 | current |
