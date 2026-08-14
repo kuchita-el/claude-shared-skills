@@ -4,7 +4,7 @@
 
 ## 1. 何が走るか
 
-実行経路は `scripts/run-tests.sh`（以下 runner）の1本である。runner はBatsと6つのfail-closed検査スイートを順に実行する。
+実行経路は `scripts/run-tests.sh`（以下 runner）の1本である。runner はBatsと5つのfail-closed検査スイートを順に実行する。
 
 | スイート | 実体 | 内容 |
 |---|---|---|
@@ -20,7 +20,7 @@ runner はいずれかが失敗しても残りを最後まで実行してから�
 
 Writing Wave 2の追加検査は`writing-lint.bats`と`writing-contract.bats`で行う。前者は`lint-ja.sh`のfile/diff、候補、長文、退役ADR境界を検査し、後者はskill/agent、F1/F3/F4/F5正負fixture、最大2回loop、両host matrix、permission ledgerを検査する。Codex agent登録面が利用できない場合の明示起動・degraded手動検査は、`plugins/writing/compatibility.json`へ記録する。
 
-Wave 5のteam migrationは、`team-migration.bats`で未確認利用者、retain誤追加、core削除をfail-closedに検査し、重複skillは`validate-plugin-manifests.sh`で検査する。`check-team-migration.sh emit-actions`の出力だけを`apply-team-migration.sh`へ渡し、J2承認と全利用者confirmedが揃わない限り`deletePluginIds`は空である。外部利用者の確認証拠は推測で埋めず、台帳に記録してからvalidateする。
+Wave 5のteam migrationでは、`team-migration.bats`で未確認利用者、retain誤追加、core削除をfail-closedに検査し、重複skillは`validate-plugin-manifests.sh`で検査した。`check-team-migration.sh emit-actions`の出力だけを`apply-team-migration.sh`へ渡し、J2承認と全利用者confirmedが揃わない限り`deletePluginIds`は空とする運用とし、外部利用者の確認証拠は推測で埋めず台帳に記録してからvalidateしていた。本番台帳（旧新対応表・利用者確認・rollback台帳）はmigration完了後に削除済みであり、`check-team-migration.sh`のロジックは`team-migration.bats`のfixtureによる回帰検査としてのみ残す。
 
 ## 2. いつ走るか — 自動起動の射程
 
