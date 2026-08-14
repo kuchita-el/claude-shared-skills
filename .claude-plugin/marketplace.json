@@ -19,6 +19,14 @@
     {
       "name": "writing",
       "source": "./plugins/writing"
+    },
+    {
+      "name": "dependency-insight",
+      "source": "./plugins/dependency-insight"
+    },
+    {
+      "name": "domain-design",
+      "source": "./plugins/domain-design"
     }
   ]
 }

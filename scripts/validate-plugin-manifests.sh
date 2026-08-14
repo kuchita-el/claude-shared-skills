@@ -6,6 +6,7 @@ root="${1:?usage: validate-plugin-manifests.sh <repo-root>}"
 claude_marketplace="$root/.claude-plugin/marketplace.json"
 codex_marketplace="$root/.agents/plugins/marketplace.json"
 errors=0
+all_skill_names=()
 fail() { printf '%s\n' "$1"; errors=$((errors + 1)); }
 
 for file in "$claude_marketplace" "$codex_marketplace"; do
@@ -52,6 +53,7 @@ for name in "${claude_names[@]}"; do
   }
   mapfile -t codex_skill_names < <(collect_skill_names "$codex_path")
   mapfile -t claude_skill_names < <(collect_skill_names "$claude_path")
+  for skill in "${claude_skill_names[@]}"; do all_skill_names+=("$skill"); done
   if [ "$(jq -r '.skills // empty' "$codex_manifest" 2>/dev/null)" = "./skills/" ]; then
     [ "${#skills[@]}" -gt 0 ] || fail "検査対象skillが0件: $name"
   fi
@@ -59,6 +61,15 @@ for name in "${claude_names[@]}"; do
   if [ "$(printf '%s\n' "${claude_skill_names[@]}")" != "$(printf '%s\n' "${codex_skill_names[@]}")" ]; then
     fail "skill集合不一致: $name"
   fi
+done
+
+mapfile -t duplicate_skills < <(printf '%s\n' "${all_skill_names[@]}" | sed '/^$/d' | sort | uniq -d)
+for skill in "${duplicate_skills[@]}"; do
+  owners=$(for name in "${claude_names[@]}"; do
+    path="$root/$(jq -r --arg n "$name" '.plugins[] | select(.name == $n) | .source' "$claude_marketplace")"
+    if collect_skill_names "$path" | grep -Fxq "$skill"; then printf '%s ' "$name"; fi
+  done)
+  fail "同名skillが複数pluginに存在します: $skill (${owners% })"
 done
 
 [ "$errors" -eq 0 ] || exit 1

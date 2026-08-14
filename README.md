@@ -6,7 +6,7 @@ Claude Code / Codex 向けの汎用スキル集です。プロジェクト固有
 
 ### Codex
 
-Codex 用 marketplace の登録と、このリポジトリが提供する4つのプラグインのインストールを一度に行えます:
+Codex 用 marketplace の登録と、このリポジトリが提供する6つのプラグインのインストールを一度に行えます:
 
 ```bash
 ./run-codex-local.sh --model gpt-5.6
@@ -33,6 +33,8 @@ Claude Code と Codex はプラグインのインストール状態を別々に�
 # プラグインをインストール
 /plugin install dev-workflow@claude-shared-skills
 /plugin install adr@claude-shared-skills   # ADR運用機構（任意）
+/plugin install domain-design@claude-shared-skills
+/plugin install dependency-insight@claude-shared-skills
 ```
 
 スコープを指定してインストール先を選択できます:
@@ -119,7 +121,7 @@ cp plugins/dev-workflow/skills/refine-issue/references/dor-default.md /path/to/y
 ./run-claude-local.sh --model opus
 ```
 
-`claude --plugin-dir ./plugins/dev-workflow --plugin-dir ./plugins/adr --plugin-dir ./plugins/writing` で3つのプラグインを読み込んだClaude Codeが起動します。各スキルは `/dev-workflow:{skill-name}`・`/adr:{skill-name}` のスコープ付き呼び出しで利用できます。
+`run-claude-local.sh` はmarketplaceから全6つのplugin-dirを動的に読み込みます。各スキルは `/dev-workflow:{skill-name}`・`/domain-design:{skill-name}`・`/dependency-insight:{skill-name}` などのスコープ付き呼び出しで利用できます。
 
 Codex では `./run-codex-local.sh --model gpt-5.6` を実行し、新しいセッションを開いてください。Superpowers は必須で導入されます。
 

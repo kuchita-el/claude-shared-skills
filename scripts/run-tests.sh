@@ -25,6 +25,7 @@ SUITES=(
     "validate-plugin-versions|check"
     "validate-plugin-portability|check"
     "validate-plugin-path-references|check"
+    "team-migration-ledger|check"
 )
 
 TESTS_DIR="$REPO_ROOT/scripts/tests"
@@ -98,6 +99,7 @@ EXPECTED_BATS=(
     dev-workflow-implementation-contract.bats
     writing-lint.bats
     writing-contract.bats
+    team-migration.bats
 )
 
 BATS_FILES=()
@@ -144,6 +146,7 @@ run_one() {
         validate-plugin-versions) bash scripts/validate-plugin-versions.sh "${BASE_REF:-${GITHUB_BASE_REF:-origin/main}}" ;;
         validate-plugin-portability) bash scripts/validate-plugin-portability.sh . ;;
         validate-plugin-path-references) bash scripts/validate-plugin-path-references.sh . docs/development/plugin-path-reference-ledger.md ;;
+        team-migration-ledger) bash scripts/check-team-migration.sh validate docs/development/cross-host-plugin-team-migration.md docs/development/plugin-boundary-decision.md ;;
         *)
             echo "run-tests: 実体が未定義のスイートです: $1" >&2
             return 1

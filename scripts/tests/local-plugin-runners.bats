@@ -34,6 +34,8 @@ elif [[ "$1 ${2:-} ${3:-}" == "plugin list --json" ]]; then
         printf '{"pluginId": "growth@claude-shared-skills"}\n'
         printf '{"pluginId": "adr@claude-shared-skills"}\n'
         printf '{"pluginId": "writing@claude-shared-skills"}\n'
+        printf '{"pluginId": "domain-design@claude-shared-skills"}\n'
+        printf '{"pluginId": "dependency-insight@claude-shared-skills"}\n'
         printf '{"pluginId": "superpowers@openai-curated"}\n'
     fi
 fi
@@ -48,13 +50,15 @@ setup() {
 @test "Claude runnerはローカルplugin-dirと全引数を渡す" {
     run env PATH="$FAKE_BIN:$PATH" "$REPO_ROOT/run-claude-local.sh" --model opus --resume "session name"
     [ "$status" -eq 0 ]
-    grep -Fx -- 'claude|--plugin-dir|./plugins/dev-workflow|--plugin-dir|./plugins/growth|--plugin-dir|./plugins/adr|--plugin-dir|./plugins/writing|--model|opus|--resume|session name' "$CALLS"
+    grep -Fx -- 'claude|--plugin-dir|./plugins/dev-workflow|--plugin-dir|./plugins/growth|--plugin-dir|./plugins/adr|--plugin-dir|./plugins/writing|--plugin-dir|./plugins/dependency-insight|--plugin-dir|./plugins/domain-design|--model|opus|--resume|session name' "$CALLS"
 }
 
 @test "Codex runnerは未導入のmarketplaceと全pluginを導入して全引数を渡す" {
     run env PATH="$FAKE_BIN:$PATH" FAKE_CODEX_STATE=empty "$REPO_ROOT/run-codex-local.sh" --model gpt-5.6 --search
     [ "$status" -eq 0 ]
     grep -Fx -- 'codex|plugin|add|superpowers@openai-curated' "$CALLS"
+    grep -Fx -- 'codex|plugin|add|domain-design@claude-shared-skills' "$CALLS"
+    grep -Fx -- 'codex|plugin|add|dependency-insight@claude-shared-skills' "$CALLS"
     grep -Fx -- 'codex|--model|gpt-5.6|--search' "$CALLS"
 }
 

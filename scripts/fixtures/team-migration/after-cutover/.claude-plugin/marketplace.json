@@ -1,0 +1,1 @@
+{"name":"fixture","plugins":[{"name":"dev-workflow","source":"./plugins/dev-workflow"},{"name":"growth","source":"./plugins/growth"},{"name":"adr","source":"./plugins/adr"},{"name":"writing","source":"./plugins/writing"}]}
