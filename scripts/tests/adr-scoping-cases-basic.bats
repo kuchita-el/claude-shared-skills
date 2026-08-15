@@ -149,6 +149,31 @@ copy_valid_case_dir() {
     collect_finish
 }
 
+@test "面⑥a: validate は必要条件列の値域と行内対応を検査する" {
+    collect_init
+
+    sc validate "$CASES_DIR/invalid-precondition"
+    collect_run 1 "06a. validate invalid-precondition → 12列目の値域外を報告する" "期待_必要条件" "値域外"
+
+    sc validate "$CASES_DIR/precondition-mismatch"
+    collect_run 1 "06b. validate precondition-mismatch → 不成立時の点数を報告する" "必要条件が不成立" "CASE-A1"
+
+    sc validate "$CASES_DIR/precondition-dest-mismatch"
+    collect_run 1 "06c. validate precondition-dest-mismatch → 裸の行き先を報告する" "行き先" "CASE-A1"
+
+    sc validate "$CASES_DIR/valid-precondition"
+    collect_run 0 "06d. validate valid-precondition → 不成立の正しい行を受け入れる"
+
+    local missing_column="$BATS_TEST_TMPDIR/missing-column"
+    copy_valid_case_dir "$missing_column"
+    awk -F '\t' 'BEGIN { OFS="\t" } { NF--; print }' "$missing_column/expectations.tsv" > "$missing_column/expectations.tmp"
+    mv "$missing_column/expectations.tmp" "$missing_column/expectations.tsv"
+    sc validate "$missing_column"
+    collect_run 1 "06e. validate 12列目欠落 → 列数違反を報告する" "列数が12でない"
+
+    collect_finish
+}
+
 @test "面②: validate 必須項目の欠落" {
     collect_init
 
@@ -638,6 +663,17 @@ check_unreadable_case_dir() {
     collect_finish
 }
 
+@test "面⑪b: report は不成立の点数と不問セルを正しく扱う" {
+    collect_init
+    local judgments="$BATS_TEST_TMPDIR/precondition-report.tsv"
+    awk -F '\t' 'BEGIN { OFS="\t" } { if ($1 == "CASE-A1") { $3=$4=$5=$6="-"; if ($2 == "1") $3=1 }; if ($1 == "CASE-A2" && $2 == "2") $5=1; print }' \
+        "$CASES_DIR/judgments/valid-judgments.tsv" > "$judgments"
+    sc report "$judgments" "$CASES_DIR/valid-precondition"
+    collect_run 0 "22e. report 不成立行の点数 → 期待帰結との差へ列挙する" "CASE-A1 試行1 項目1" "差 1 件"
+    collect_out "$output" "22f. report 不成立行の不問セル → 1点率と一致率の分母から除外する" "項目1 100.0% (1/1)" "一致 4 / 4 セル"
+    collect_finish
+}
+
 @test "面⑫: report 記録の異常" {
     collect_init
 
@@ -731,6 +767,7 @@ check_unreadable_case_dir() {
         --thresholds "$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json" \
         --doc-commit deadbee
     [ "$status" -ne 0 ]
+    [[ "$output" == *"照合件数: 0"* ]]
 }
 
 @test "面⑰: derive は実測事実と閾値設定から算出する" {
@@ -776,6 +813,22 @@ check_unreadable_case_dir() {
     run bash "$SUT" derive "$no_alternative" --thresholds "$thresholds" --doc-commit 0000000
     [ "$status" -eq 0 ]
     [[ "$output" == *"必要条件: 不成立"* ]]
+
+    local blocked warning shared pr
+    blocked="$BATS_TEST_TMPDIR/no-alternative-blocked.json"
+    warning="$BATS_TEST_TMPDIR/no-alternative-warning.json"
+    shared="$BATS_TEST_TMPDIR/no-alternative-shared.json"
+    pr="$BATS_TEST_TMPDIR/no-alternative-pr.json"
+    jq '. + {"必要条件_成立": false, "項目4_阻止状態": "現に阻止"}' "$json" > "$blocked"
+    jq '. + {"必要条件_成立": false, "項目4_阻止状態": "警告どまり", "複数作業者": true}' "$json" > "$warning"
+    jq '. + {"必要条件_成立": false, "項目4_阻止状態": "検査なし", "複数作業者": true}' "$json" > "$shared"
+    jq '. + {"必要条件_成立": false, "項目4_阻止状態": "検査なし", "複数作業者": false, "複数箇所": false}' "$json" > "$pr"
+    for pair in "$blocked|ADR化しない/実装・テスト資産・操作手順" "$warning|ADR化しない/実装・テスト資産・操作手順" "$shared|ADR化しない/共有規約文書" "$pr|ADR化しない/PR説明"; do
+        IFS='|' read -r input expected <<< "$pair"
+        run bash "$SUT" derive "$input" --thresholds "$thresholds" --doc-commit 0000000
+        [ "$status" -eq 0 ]
+        [[ "$output" == *"行き先: $expected"* ]]
+    done
 }
 
 @test "面⑱: derive は型違反と閾値欠落を fail-closed で拒否する" {
@@ -816,6 +869,32 @@ check_unreadable_case_dir() {
     run bash "$SUT" crosscheck "$changed" "$returns" --thresholds "$thresholds" --doc-commit 0000000 --allow-missing CASE-A1:2
     [ "$status" -ne 0 ]
     [[ "$output" == *"不一致"* ]]
+}
+
+@test "面⑲a: crosscheck は不成立の行き先と成立側の点数を照合する" {
+    local thresholds="$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json"
+    local returns="$CASES_DIR/returns-precondition"
+    run bash "$SUT" crosscheck "$CASES_DIR/judgments/precondition-judgments.tsv" "$returns" \
+        --thresholds "$thresholds" --doc-commit 0000000
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"照合件数: 2"* ]]
+
+    local changed="$BATS_TEST_TMPDIR/precondition-dest.tsv"
+    awk -F '\t' 'BEGIN { OFS="\t" } { if ($1 == "CASE-P1") $7="ADR化しない"; print }' \
+        "$CASES_DIR/judgments/precondition-judgments.tsv" > "$changed"
+    run bash "$SUT" crosscheck "$changed" "$returns" --thresholds "$thresholds" --doc-commit 0000000
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"不一致"* ]]
+
+    local legacy="$BATS_TEST_TMPDIR/precondition-legacy.tsv"
+    local legacy_returns="$BATS_TEST_TMPDIR/legacy-returns"
+    mkdir -p "$legacy_returns"
+    cp "$CASES_DIR/returns-precondition/CASE-P1-1.json" "$legacy_returns/"
+    jq '."必要条件_成立" = "当時未施行"' "$CASES_DIR/returns-precondition/CASE-P2-1.json" > "$legacy_returns/CASE-P2-1.json"
+    cp "$CASES_DIR/judgments/precondition-judgments.tsv" "$legacy"
+    run bash "$SUT" crosscheck "$legacy" "$legacy_returns" --thresholds "$thresholds" --doc-commit 0000000
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"照合件数: 2"* ]]
 }
 
 @test "面⑳: 契約と閾値の所在宣言が文書化されている" {
