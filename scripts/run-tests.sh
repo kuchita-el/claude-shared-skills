@@ -99,6 +99,7 @@ EXPECTED_BATS=(
     writing-lint.bats
     writing-contract.bats
     team-migration.bats
+    distribution-boundary.bats
 )
 
 BATS_FILES=()
