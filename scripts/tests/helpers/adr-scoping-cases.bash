@@ -8,6 +8,8 @@ stats_run() {
     run --separate-stderr bash "$sut" report "$judgments" "$cases_dir" --stats </dev/null
 }
 
+# 本文の数値の符号化（n / m、N 件中 M 件）は抽出規則の前提である。
+# この区切りや計数語を変更する場合は、ここでの抽出と対応する検査も更新する。
 stats_body_ratios() {
     grep -oE '[0-9]+[[:space:]]*/[[:space:]]*[0-9]+' <<< "$1" \
         | sed -E 's/[[:space:]]+//g' | paste -sd ' ' -
