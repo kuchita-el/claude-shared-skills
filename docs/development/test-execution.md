@@ -8,7 +8,7 @@
 
 | スイート | 実体 | 内容 |
 |---|---|---|
-| `bats` | `scripts/tests/*.bats` | adr プラグイン同梱の検査器4本（`lint-adr.sh` / `gen-adr-index.sh` / `next-adr-id.sh` / `adr-scoping-cases.sh`）のテストを中心に、配布物外スクリプトのテスト・リポジトリ横断の規約検査・配布物と配布元の一方向性の検査を含む（`scripts/tests/*.bats` の網羅列挙ではない） |
+| `bats` | `scripts/tests/*.bats` | adr プラグイン同梱の検査器のテスト・配布物外スクリプトのテスト・リポジトリ横断の規約検査・配布物と配布元の一方向性の検査（`scripts/tests/*.bats` の網羅列挙ではない） |
 | `validate-skills` | `scripts/validate-skills.sh` | スキル定義の `allowed-tools` 検査 |
 | `validate-plugin-manifests` | `scripts/validate-plugin-manifests.sh .` | marketplace、manifest、README、skill集合の双方向一致 |
 | `validate-plugin-versions` | `scripts/validate-plugin-versions.sh origin/main` | plugin配下差分時のversion bump |
@@ -111,7 +111,7 @@ $ echo $?
 
 ## 5. 失敗時の読み方
 
-bats は TAP 形式で報告する。runner は失敗したスイートの出力にスイート名を前置し、通過ケースの行を畳んで出す。
+bats は TAP 形式で報告する。runner は失敗したスイートの出力にスイート名を前置し、通過ケースの行を畳んで出す。次のブロックは過去の実行例であり、報告ケース総数を含む具体値はその時点のものである（総数の正解ではない）。
 
 ```
 [test ] bats                 ... FAILED (exit 1, 6s)
@@ -182,7 +182,7 @@ FAILED: 1/2 suites (6s) -- bats
 | 1. 後戻りコストが高い | 1 | 反転で `run-tests.sh` 本体・`pre-commit-gate.sh`・`distribution-boundary.md` §3・本書の4本に修正が要る（3本以上）。加えて非本数条件「ファイル群の構造変更（配置の規約変更）」にも当たる |
 | 2. 複数の適用先に波及する | 0 | 新たに決めたのは runner の帰属のみである。テスト・fixture の帰属は `distribution-boundary.md` §3 が既に定めており本決定の適用先ではない。ゲートは既に配布物外に在る。数える単位が2つ以上か迷うため、同点処理により0点 |
 | 3. 採用理由が揮発しやすい | 0 | 保持先が `docs/distribution-boundary.md`（共有規約文書）であり、§3 に採用理由（参照方向を一方向に固定する）が現に書かれているため値域(B) を満たす |
-| 4. ツールで自動強制できない | 1 | 実行経路が配布物内へ移されたことを検出する検査は無い。`adr-scoping-cases-edge.bats` 面⑤の走査は被テスト検査器1本と配布物内の Issue 番号に限られ、この違反を検出しない |
+| 4. ツールで自動強制できない | 1 | 実行経路が配布物内へ移されたことを検出する検査は無い。`adr-scoping-cases-edge.bats` 面⑤の走査は被テスト検査器1本と配布物内の Issue 番号に限られ、この違反を検出しない（採点は判定時点のもの。#637 で追加した一方向性の検査により、以後は移された実体の相対パスまたは内容に走査語彙が現れる場合に限り検出される） |
 | **合計** | **2** | |
 
 **結論: ADR 化しない**（2点以下）。行き先は「ツールでは強制できないが複数の箇所へ効かせたい規範 → 共有規約文書」であり、規範そのものは `docs/distribution-boundary.md` §3 に、採用理由は同節に置いてある。本書 §6 の記述はその決定に至った経緯（既存の判断軸をどう適用したか、なぜ境界文書へ節を足さなかったか）であり、規範の正本ではない。
