@@ -778,6 +778,32 @@ check_unreadable_case_dir() {
     [[ "$output" == *"照合件数: 0"* ]]
 }
 
+# 2026-08-15 の走行に対する常設ゲート。面⑯と異なり据え置きの免除が1組も無いため
+# --allow-missing を渡さない。渡さずに通ることが、48組すべての返却全文が在ることの検査を兼ねる。
+@test "面⑯bis: 2026-08-15 の走行の crosscheck 常設ゲート" {
+    local doc_commit
+    # 台帳13列目の版を使う。現行版を渡すと版ずれで全件スキップされ、
+    # 照合0件のまま緑になる経路が開く。
+    doc_commit="$(awk -F '\t' '!/^#/ && $1 != "題材ID" { print $13; exit }' \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-15-judgments.tsv")"
+    run bash "$SUT" crosscheck \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-15-judgments.tsv" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-15-returns" \
+        --thresholds "$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json" \
+        --doc-commit "$doc_commit"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"照合件数: 48"* ]]
+    [[ "$output" == *"スキップ件数: 0"* ]]
+
+    run bash "$SUT" crosscheck \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-15-judgments.tsv" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-15-returns" \
+        --thresholds "$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json" \
+        --doc-commit deadbee
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"照合件数: 0"* ]]
+}
+
 @test "面⑰: derive は実測事実と閾値設定から算出する" {
     local json="$REPO_ROOT/scripts/fixtures/adr-scoping-cases/returns/CASE-A1-1.json"
     local thresholds="$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json"
