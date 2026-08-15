@@ -20,10 +20,10 @@
 | `docs/development/adr-scoping-cases/sources.md` | 題材の出所台帳。各題材が PR #603 のどの巡のどの入力に由来するかを持つ | 配布物外 |
 | `docs/development/adr-scoping-cases/defect-ledger.md` | 条文欠陥台帳。`expectations.tsv` の備考列へ散っている「規範側の一意性の欠陥」を題材・欠陥・追跡の対応として集約し、対象文書の改訂で動いた測定対象を持つ | 配布物外 |
 | `docs/development/adr-scoping-cases/README.md`（本書） | 実行手順書 | 配布物外 |
-| `docs/development/adr-scoping-cases/runs/<実行日>-judgments.tsv` | 判定記録。題材 × 試行 × 項目の粒度で判定を残す | 配布物外 |
-| `docs/development/adr-scoping-cases/runs/<実行日>-report.md` | 集計レポート。試行間一致・期待帰結との差・差の帰属を残す（部分集合の走行では一時複製へ出力する） | 配布物外 |
-| `docs/development/adr-scoping-cases/runs/<実行日>-raw-returns.md` | 判定側の返却全文。`judgments.tsv` の根拠列・行き先列はこれを人手で符号化した派生物であり、符号化の妥当性を後から確かめるための原文 | 配布物外 |
-| `docs/development/adr-scoping-cases/runs/<実行日>-returns/` | 判定器が返した実測事実の JSON。点数・合計・行き先は持たず、台帳の導出結果と一致検査する | 配布物外 |
+| `docs/development/adr-scoping-cases/runs/<STEM>-judgments.tsv` | 判定記録。題材 × 試行 × 項目の粒度で判定を残す | 配布物外 |
+| `docs/development/adr-scoping-cases/runs/<STEM>-report.md` | 集計レポート。試行間一致・期待帰結との差・差の帰属を残す（部分集合の走行では一時複製へ出力する） | 配布物外 |
+| `docs/development/adr-scoping-cases/runs/<STEM>-raw-returns.md` | 判定側の返却全文。`judgments.tsv` の根拠列・行き先列はこれを人手で符号化した派生物であり、符号化の妥当性を後から確かめるための原文 | 配布物外 |
+| `docs/development/adr-scoping-cases/runs/<STEM>-returns/` | 判定器が返した実測事実の JSON。点数・合計・行き先は持たず、台帳の導出結果と一致検査する | 配布物外 |
 | `plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json` | 項目閾値とスコア境界の唯一の実体 | **配布物内** |
 | `docs/development/adr-scoping-cases/<実行日>-<主題>.md` | 判別記録。対象文書の特定の規定について、判定を分けているかを判別した単発の調査の結論と根拠。`runs/` 配下（題材 × 試行の判定記録）とは別系統であり、独立2試行の手順に乗らない調査を置く | 配布物外 |
 | `plugins/adr/scripts/adr-scoping-cases.sh` | 実行支援スクリプト。`prompt` / `validate` / `report` / `derive` / `crosscheck` を持つ | **配布物内** |
@@ -31,7 +31,7 @@
 | `scripts/tests/adr-scoping-cases-edge.bats` | 上記スクリプトのテスト（特殊系。環境操作を伴うもの） | 配布物外 |
 | `scripts/fixtures/adr-scoping-cases/` | 上記テストが使う fixture（正常系・異常系の最小の題材集合。本リポジトリのデータを含まない当て馬） | 配布物外 |
 
-`runs/` 配下のファイルは語幹 `<実行日>` で採番する。同一実行日に2つの走行が在る場合（例: 一方が既存全題材の走行、他方が未実測境界の追加走行）は、後発の走行の語幹へ判別子を足して `<実行日>-<判別子>` とし、既存ファイルと衝突させない（例: `runs/2026-08-15-cases25-29-judgments.tsv`）。
+`runs/` 配下のファイルは語幹 `<STEM>` で採番する。`<STEM>` は実行日が単独なら `<実行日>` そのもの、同一実行日に2つの走行が在る場合（例: 一方が既存全題材の走行、他方が未実測境界の追加走行）は後発の走行の語幹へ判別子を足した `<実行日>-<判別子>` とし、既存ファイルと衝突させない（例: `runs/2026-08-15-cases25-29-judgments.tsv`）。以降の本書の手順・成果物一覧で `<実行日>` と書く箇所は、この `<STEM>` の読み替えを含む。
 
 実行支援スクリプトだけが配布物内に在る。これは検査器であり、**題材集合ディレクトリと対象文書パスをすべて引数で受けて既定値を持たない**ため、本リポジトリ固有のデータ（ディレクトリ構成・対象文書名・題材の中身）を一切持たない。逆に、題材集合・記録・レポートは本リポジトリ固有のデータであるため配布物外に置く。
 
@@ -175,7 +175,7 @@ bash plugins/adr/scripts/adr-scoping-cases.sh crosscheck \
 
 返却全文が残らない6組（CASE-01:1、CASE-01:2、CASE-02:1、CASE-02:2、CASE-17:1、CASE-17:2）は旧形式のまま据え置く。免除は欠落を隠すものではなく、この6組に限って明示するための運用である。
 
-この保存済み記録を検査するときは、台帳13列目に記録された対象文書 commit を `--doc-commit` へ渡す。現行対象文書の commit を渡す場合、歴史的記録は版ずれとして全件スキップされ、照合件数が0になるため常設ゲートには使わない。常設ゲートは照合件数42・スキップ件数0を要求する。
+この保存済み記録を検査するときは、台帳13列目に記録された対象文書 commit を `--doc-commit` へ渡す。現行対象文書の commit を渡す場合、歴史的記録は版ずれとして全件スキップされ、照合件数が0になるため常設ゲートには使わない。各常設ゲートは、当該走行の判定記録が持つ総試行数と一致する照合件数・スキップ件数0を要求する（`scripts/tests/adr-scoping-cases-basic.bats` の面⑯は照合件数42、面⑯bis は48、面⑯ter は10）。
 
 ## 4. 実行主体
 
