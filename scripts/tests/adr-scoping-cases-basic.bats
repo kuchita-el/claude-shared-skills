@@ -14,6 +14,7 @@
 # より行う（helpers/common.bash の「検査器の起動の型」に従う）。
 
 load 'helpers/common'
+load 'helpers/adr-scoping-cases'
 
 SUT="$PLUGIN_ROOT/scripts/adr-scoping-cases.sh"
 CASES_DIR="$FIXTURES_DIR/adr-scoping-cases"
@@ -86,11 +87,13 @@ sc_stdout_in() {
     return 0
 }
 
-# report 出力の「期待帰結との差」節を、診断行と件数行の順序を保ったまま畳む。
+# report 出力の「期待帰結との差」節を、診断明細だけ順序を保って畳む。
+# 件数は --stats の diff.count で別に検査する。
 collect_expectation_diff_section() {
     awk '
         $0 == "== 期待帰結との差 ==" { in_section = 1; next }
         in_section && $0 !~ /^  / { exit }
+        in_section && index($0, "  差 ") == 1 { next }
         in_section {
             sub(/^  /, "")
             if (count++) printf " | "
@@ -622,8 +625,6 @@ check_unreadable_case_dir() {
 
 # ---------------------------------------------------------------- report 系
 
-# 項目1〜4 以外の出力層（カバレッジ件数・合計列・行き先列・差の総数）も押さえる。
-# 項目別の一致率だけを見ていると、これらを壊しても検査が通ってしまう。
 @test "面⑪: report 正常系の出力内容" {
     collect_init
 
@@ -631,32 +632,63 @@ check_unreadable_case_dir() {
     local report_output="$output"
     collect_run 0 "18. report valid-judgments.tsv valid → exit 0"
 
-    collect_out "$report_output" "19. report 出力がセル単位の試行間一致件数を含む" \
-        "試行 1 と 試行 2: 一致 7 / 8 セル (87.5%)"
+    collect_out "$report_output" "19d. report 出力が試行間一致区画を含む" \
+        "== 試行間一致（セル単位。項目1〜4 を1セルと数える） =="
 
-    collect_out "$report_output" "20. report 出力が項目別一致率を4項目分含む" \
-        "項目1: 一致 2 / 2 (100.0%)" \
-        "項目2: 一致 2 / 2 (100.0%)" \
-        "項目3: 一致 1 / 2 (50.0%)" \
-        "項目4: 一致 2 / 2 (100.0%)"
+    collect_out "$report_output" "20d. report 出力が各項目の1点率区画を含む" \
+        "== 各項目の1点率（周辺分布。試行ごと） =="
 
-    collect_out "$report_output" "21. report 出力が各項目の1点率（周辺分布）を試行ごとに含む" \
-        "== 各項目の1点率（周辺分布。試行ごと） ==" \
-        "試行 1:  項目1 50.0% (1/2)  項目2 50.0% (1/2)  項目3 50.0% (1/2)  項目4 50.0% (1/2)" \
-        "試行 2:  項目1 50.0% (1/2)  項目2 50.0% (1/2)  項目3 0.0% (0/2)  項目4 50.0% (1/2)"
+    collect_out "$report_output" "21d. report 出力が期待帰結との差区画を含む" \
+        "== 期待帰結との差 =="
 
     collect_out "$report_output" "22. report 出力が期待帰結との差として CASE-A2 の項目3 の差を含む" \
         "CASE-A2 試行2 項目3: 期待 1 / 判定 0"
 
-    collect_out "$report_output" "22a. report 出力がカバレッジ件数行を含む" \
-        "題材 2 件中 2 件を記録が覆う"
+    collect_finish
+}
 
-    collect_out "$report_output" "22b. report 出力が合計列・行き先列の試行間一致率を含む" \
-        "合計: 一致 1 / 2 (50.0%)" \
-        "行き先: 一致 2 / 2 (100.0%)"
+@test "面⑪stats: report --stats の値と本文の数値が一致する" {
+    collect_init
 
-    collect_out "$report_output" "22c. report 出力が期待帰結との差として項目差と差の総数を含む" \
-        "差 1 件"
+    stats_run "$SUT" "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid"
+    if stats_keys_match \
+        coverage.cases coverage.covered trials.count agreement.trial.a agreement.trial.b \
+        agreement.cells.matched agreement.cells.total \
+        agreement.item1.matched agreement.item1.total agreement.item2.matched agreement.item2.total \
+        agreement.item3.matched agreement.item3.total agreement.item4.matched agreement.item4.total \
+        ones.trial1.item1.count ones.trial1.item1.total ones.trial1.item2.count ones.trial1.item2.total \
+        ones.trial1.item3.count ones.trial1.item3.total ones.trial1.item4.count ones.trial1.item4.total \
+        ones.trial2.item1.count ones.trial2.item1.total ones.trial2.item2.count ones.trial2.item2.total \
+        ones.trial2.item3.count ones.trial2.item3.total ones.trial2.item4.count ones.trial2.item4.total \
+        agreement.sum.matched agreement.sum.total agreement.dest.matched agreement.dest.total diff.count; then
+        collect_ok "19s. report --stats のキー集合が契約どおり閉じている"
+    else
+        collect_fail "19s. report --stats のキー集合が契約どおり閉じている" "stdout のキー集合が契約と一致しない: $output"
+    fi
+    collect_stats 0 "19s. report --stats がキーと値だけを出し、セル一致と試行を検査できる" \
+        coverage.cases=2 coverage.covered=2 trials.count=2 agreement.trial.a=1 agreement.trial.b=2 \
+        agreement.cells.matched=7 agreement.cells.total=8
+    collect_stats 0 "20s. report --stats が項目別一致率を数値で検査できる" \
+        agreement.item1.matched=2 agreement.item1.total=2 agreement.item2.matched=2 agreement.item2.total=2 \
+        agreement.item3.matched=1 agreement.item3.total=2 agreement.item4.matched=2 agreement.item4.total=2
+    collect_stats 0 "21s. report --stats が各項目の1点率を数値で検査できる" \
+        ones.trial1.item1.count=1 ones.trial1.item1.total=2 ones.trial1.item2.count=1 ones.trial1.item2.total=2 \
+        ones.trial1.item3.count=1 ones.trial1.item3.total=2 ones.trial1.item4.count=1 ones.trial1.item4.total=2 \
+        ones.trial2.item1.count=1 ones.trial2.item1.total=2 ones.trial2.item2.count=1 ones.trial2.item2.total=2 \
+        ones.trial2.item3.count=0 ones.trial2.item3.total=2 ones.trial2.item4.count=1 ones.trial2.item4.total=2
+    collect_stats 0 "22as. report --stats がカバレッジ件数を数値で検査できる" coverage.cases=2 coverage.covered=2
+    collect_stats 0 "22bs. report --stats が合計列・行き先列の一致を数値で検査できる" \
+        agreement.sum.matched=1 agreement.sum.total=2 agreement.dest.matched=2 agreement.dest.total=2
+    collect_stats 0 "22cs. report --stats が期待帰結との差の件数を数値で検査できる" diff.count=1
+
+    local expected_ratios="7/8 2/2 2/2 1/2 2/2 1/2 2/2 1/2 1/2 1/2 1/2 1/2 1/2 0/2 1/2"
+    collect_equals "$(stats_body_ratios "$stderr")" "$expected_ratios" \
+        "本文の集計数値が --stats の分子・分母と一致する"
+    local expected_coverage="$(stats_value coverage.covered)/$(stats_value coverage.cases)"
+    collect_equals "$(stats_body_coverage "$stderr")" "$expected_coverage" \
+        "本文のカバレッジ件数が --stats の値と一致する"
+    collect_equals "$(stats_body_last_count "$stderr")" "1" \
+        "本文の差件数が --stats の diff.count と一致する"
 
     collect_finish
 }
@@ -678,8 +710,10 @@ check_unreadable_case_dir() {
     ' "$JUDGMENTS_DIR/valid-judgments.tsv" > "$judgments"
 
     sc report "$judgments" "$CASES_DIR/valid"
-    collect_run 0 "22d. report（合計列を除き項目値を変更）→ 項目1〜4の和から合計一致を算出する" \
-        "合計: 一致 1 / 2 (50.0%)"
+    collect_run 0 "22d. report（合計列を除き項目値を変更）→ 本文の試行間一致区画を出す" \
+        "== 試行間一致（セル単位。項目1〜4 を1セルと数える） =="
+    stats_run "$SUT" "$judgments" "$CASES_DIR/valid"
+    collect_stats 0 "22ds. report --stats → 合計一致を数値で検査する" agreement.sum.matched=1 agreement.sum.total=2
 
     collect_finish
 }
@@ -690,8 +724,17 @@ check_unreadable_case_dir() {
     awk -F '\t' 'BEGIN { OFS="\t" } { if ($1 == "CASE-A1") { $3=$4=$5=$6="-"; if ($2 == "1") $3=1 }; if ($1 == "CASE-A2" && $2 == "2") $5=1; print }' \
         "$CASES_DIR/judgments/valid-judgments.tsv" > "$judgments"
     sc report "$judgments" "$CASES_DIR/valid-precondition"
-    collect_run 0 "22e. report 不成立行の点数 → 期待帰結との差へ列挙する" "CASE-A1 試行1 項目1" "差 1 件"
-    collect_out "$output" "22f. report 不成立行の不問セル → 1点率と一致率の分母から除外する" "項目1 100.0% (1/1)" "一致 4 / 4 セル"
+    collect_run 0 "22e. report 不成立行の点数 → 期待帰結との差へ列挙する" "CASE-A1 試行1 項目1"
+    stats_run "$SUT" "$judgments" "$CASES_DIR/valid-precondition"
+    collect_stats 0 "22f. report --stats → 不問セルを分母から除外する" \
+        ones.trial2.item1.count=1 ones.trial2.item1.total=1 agreement.cells.matched=4 agreement.cells.total=4 diff.count=1
+
+    local single_trial="$BATS_TEST_TMPDIR/single-trial.tsv"
+    awk -F '\t' 'BEGIN { OFS="\t" } /^#/ || $1 == "題材ID" || $2 == "1" { print }' \
+        "$JUDGMENTS_DIR/valid-judgments.tsv" > "$single_trial"
+    stats_run "$SUT" "$single_trial" "$CASES_DIR/valid"
+    collect_stats 0 "22k. report --stats → 試行1つでは一致の分子・分母を0にする" \
+        trials.count=1 agreement.cells.matched=0 agreement.cells.total=0 ones.trial1.item1.total=2
     collect_finish
 }
 
@@ -706,9 +749,11 @@ check_unreadable_case_dir() {
     local report_output="$output"
     collect_run 0 "22g. report 複数件の期待帰結との差 → exit 0"
 
-    local want="CASE-A1 試行1 項目1: 期待 0 / 判定 1 | CASE-A1 試行2 行き先: 期待 ADR化しない/実装・テスト資産・操作手順 / 判定 ADR化する | CASE-A2 試行1 項目2: 期待 1 / 判定 0 | CASE-A2 試行1 項目3: 期待 1 / 判定 0 | CASE-A2 試行2 項目4: 期待 1 / 判定 0 | CASE-A2 試行2 行き先: 期待 ADR化する / 判定 ADR化しない/実装・テスト資産・操作手順 | 差 6 件"
+    local want="CASE-A1 試行1 項目1: 期待 0 / 判定 1 | CASE-A1 試行2 行き先: 期待 ADR化しない/実装・テスト資産・操作手順 / 判定 ADR化する | CASE-A2 試行1 項目2: 期待 1 / 判定 0 | CASE-A2 試行1 項目3: 期待 1 / 判定 0 | CASE-A2 試行2 項目4: 期待 1 / 判定 0 | CASE-A2 試行2 行き先: 期待 ADR化する / 判定 ADR化しない/実装・テスト資産・操作手順"
     collect_equals "$(collect_expectation_diff_section "$report_output")" "$want" \
-        "22h. report 期待帰結との差の節 → 全件と件数を出現順で完全一致させる"
+        "22h. report 期待帰結との差の節 → 明細を出現順で完全一致させる"
+    stats_run "$SUT" "$JUDGMENTS_DIR/expectation-diff-multi-judgments.tsv" "$CASES_DIR/valid"
+    collect_stats 0 "22hs. report --stats → 差の件数を数値で検査する" diff.count=6
 
     collect_finish
 }
@@ -727,9 +772,11 @@ check_unreadable_case_dir() {
     local report_output="$output"
     collect_run 0 "22i. report 全分岐の複数件差 → exit 0"
 
-    local want="CASE-A1 試行1 項目1: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行1 項目2: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行1 項目3: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行1 項目4: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行2 項目1: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行2 項目2: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行2 項目3: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行2 項目4: 期待 -（必要条件が不成立） / 判定 0 | CASE-A2 試行1 行き先: 期待 ADR化する / 判定 ADR化しない/実装・テスト資産・操作手順 | CASE-A2 試行2 項目3: 期待 1 / 判定 0 | 差 10 件"
+    local want="CASE-A1 試行1 項目1: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行1 項目2: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行1 項目3: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行1 項目4: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行2 項目1: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行2 項目2: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行2 項目3: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行2 項目4: 期待 -（必要条件が不成立） / 判定 0 | CASE-A2 試行1 行き先: 期待 ADR化する / 判定 ADR化しない/実装・テスト資産・操作手順 | CASE-A2 試行2 項目3: 期待 1 / 判定 0"
     collect_equals "$(collect_expectation_diff_section "$report_output")" "$want" \
-        "22j. report 全分岐の差の節 → 全件と件数を出現順で完全一致させる"
+        "22j. report 全分岐の差の節 → 明細を出現順で完全一致させる"
+    stats_run "$SUT" "$judgments" "$CASES_DIR/valid-precondition"
+    collect_stats 0 "22js. report --stats → 差の件数を数値で検査する" diff.count=10
 
     collect_finish
 }
@@ -742,6 +789,9 @@ check_unreadable_case_dir() {
 
     sc report "$JUDGMENTS_DIR/missing-case-judgments.tsv" "$CASES_DIR/valid"
     collect_run 1 "24. report missing-case-judgments.tsv → exit 1、未カバー題材 CASE-A2 を列挙する" "CASE-A2" "未カバー"
+    stats_run "$SUT" "$JUDGMENTS_DIR/missing-case-judgments.tsv" "$CASES_DIR/valid"
+    collect_stats 1 "24a. report --stats missing-case-judgments.tsv → exit 1 のままカバレッジ値を出す" \
+        coverage.cases=2 coverage.covered=1
 
     sc report "$JUDGMENTS_DIR/duplicate-judgments.tsv" "$CASES_DIR/valid"
     collect_run 1 "36. report duplicate-judgments.tsv → exit 1、CASE-A1 の重複した行を告げる" "重複" "CASE-A1"
@@ -768,6 +818,21 @@ check_unreadable_case_dir() {
     collect_run 2 "26. report（題材集合ディレクトリの省略）→ exit 2、引数の個数が合わないことを理由として告げる" \
         "report は引数を2つ取る"
 
+    sc report "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid" --unknown
+    collect_run 2 "26a. report（未知の3つ目の引数）→ exit 2、--stats 以外を拒否する" \
+        "3つ目の引数は --stats でなければならない"
+
+    sc report "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid" --stats extra
+    collect_run 2 "26b. report（--stats の後ろに余分な引数）→ 3引数契約を案内する" \
+        "末尾に --stats を加えた3つ取る"
+
+    local invalid_trial="$BATS_TEST_TMPDIR/invalid-trial.tsv"
+    awk -F '\t' 'BEGIN { OFS="\t" } !done && $2 == "1" { $2="A=B"; done=1 } { print }' \
+        "$JUDGMENTS_DIR/valid-judgments.tsv" > "$invalid_trial"
+    sc report "$invalid_trial" "$CASES_DIR/valid"
+    collect_run 1 "26c. report（試行番号をキーへ埋め込めない）→ 形式違反を診断する" \
+        "試行番号がキーへ安全に埋め込めない形式"
+
     collect_finish
 }
 
@@ -778,8 +843,10 @@ check_unreadable_case_dir() {
 
     sc report "$JUDGMENTS_DIR/two-digit-trial-judgments.tsv" "$CASES_DIR/valid"
     collect_run 0 "45. report（試行番号が2桁を含む）→ 試行番号を数値順に並べ、試行1と試行2 を比較する" \
-        "試行が 3 つあるため、試行 1 と 試行 2 のみを比較した" \
-        "試行 1 と 試行 2: 一致 7 / 8 セル (87.5%)"
+        "試行が 3 つあるため、試行 1 と 試行 2 のみを比較した"
+    stats_run "$SUT" "$JUDGMENTS_DIR/two-digit-trial-judgments.tsv" "$CASES_DIR/valid"
+    collect_stats 0 "45s. report --stats → 数値順に選んだ試行を値で検査する" \
+        agreement.trial.a=1 agreement.trial.b=2 agreement.cells.matched=7 agreement.cells.total=8
 
     collect_finish
 }

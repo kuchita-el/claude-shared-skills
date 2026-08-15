@@ -11,6 +11,7 @@
 # 【配置について】テストと fixture を配布物外へ置く境界は docs/distribution-boundary.md が定める。
 
 load 'helpers/common'
+load 'helpers/adr-scoping-cases'
 
 SUT="$PLUGIN_ROOT/scripts/adr-scoping-cases.sh"
 CASES_DIR="$FIXTURES_DIR/adr-scoping-cases"
@@ -413,6 +414,158 @@ check_weird_tmpdir() {
     esac
     [ "$noexp0_ok" -eq 1 ] && collect_ok "$noexp0_label" || collect_fail "$noexp0_label" "$noexp0_detail"
 
+    collect_finish
+}
+
+# ---------------------------------------------------------------- report の層分離
+
+@test "面⑪変異ゲート: 表示層の変更は通し、統計値の変更は止める" {
+    collect_init
+
+    local mutant_dir="$BATS_TEST_TMPDIR/report-mutants"
+    mkdir -p "$mutant_dir"
+
+    mutation_lines() {
+        local original="$1" mutant="$2" diff_file="$BATS_TEST_TMPDIR/mutation.diff"
+        diff -u "$original" "$mutant" >"$diff_file" || true
+        awk 'NR > 2 && /^-/ { n++ } END { print n + 0 }' "$diff_file"
+    }
+
+    local display_mutant="$mutant_dir/display.sh"
+    sed '/ncases - miss/s/say(sprintf("  題材/say(sprintf("  [表示変更] 題材/' "$SUT" >"$display_mutant"
+    chmod +x "$display_mutant"
+    local display_lines
+    display_lines="$(mutation_lines "$SUT" "$display_mutant")"
+    [ "$display_lines" -eq 1 ] && collect_ok "表示文言の変異が1箇所だけ適用される" || \
+        collect_fail "表示文言の変異が1箇所だけ適用される" "差分行数: $display_lines"
+    stats_run "$SUT" "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid"
+    local baseline_stats="$output"
+    stats_run "$display_mutant" "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid"
+    if [ "$status" -eq 0 ] && [ "$output" = "$baseline_stats" ]; then
+        case "$stderr" in
+            *"[表示変更]"*) collect_ok "表示文言だけの変異は統計値の突き合わせを通る" ;;
+            *) collect_fail "表示文言だけの変異は統計値の突き合わせを通る" "本文側へ変異が現れていない" ;;
+        esac
+    else
+        collect_fail "表示文言だけの変異は統計値の突き合わせを通る" "status=$status stdout=$output stderr=$stderr"
+    fi
+
+    local body_mutant="$mutant_dir/body.sh"
+    sed '/合計: 一致/s/tagree/agree/' "$SUT" >"$body_mutant"
+    chmod +x "$body_mutant"
+    local body_lines
+    body_lines="$(mutation_lines "$SUT" "$body_mutant")"
+    [ "$body_lines" -eq 1 ] && collect_ok "本文数値の変異が1箇所だけ適用される" || \
+        collect_fail "本文数値の変異が1箇所だけ適用される" "差分行数: $body_lines"
+    stats_run "$SUT" "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid"
+    local baseline_body_stats baseline_body_ratios
+    baseline_body_stats="$output"
+    baseline_body_ratios="$(stats_body_ratios "$stderr")"
+    stats_run "$body_mutant" "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid"
+    if [ "$status" -eq 0 ] && [ "$output" = "$baseline_body_stats" ] && \
+        [ "$(stats_body_ratios "$stderr")" != "$baseline_body_ratios" ]; then
+        collect_ok "本文数値だけの変異は本文と統計値の突き合わせで止まる"
+    else
+        collect_fail "本文数値だけの変異は本文と統計値の突き合わせで止まる" "本文の数値変異を検出できない"
+    fi
+
+    local coverage_mutant="$mutant_dir/coverage.sh"
+    sed 's/say(sprintf("  題材 %d 件中 %d 件を記録が覆う", ncases,/say(sprintf("  題材 %d 件中 %d 件を記録が覆う", ncases + 3,/' "$SUT" >"$coverage_mutant"
+    chmod +x "$coverage_mutant"
+    local coverage_lines
+    coverage_lines="$(mutation_lines "$SUT" "$coverage_mutant")"
+    [ "$coverage_lines" -eq 1 ] && collect_ok "本文カバレッジ件数の変異が1箇所だけ適用される" || \
+        collect_fail "本文カバレッジ件数の変異が1箇所だけ適用される" "差分行数: $coverage_lines"
+    stats_run "$SUT" "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid"
+    local baseline_coverage_stats baseline_coverage_body
+    baseline_coverage_stats="$output"
+    baseline_coverage_body="$(stats_body_coverage "$stderr")"
+    stats_run "$coverage_mutant" "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid"
+    if [ "$status" -eq 0 ] && [ "$output" = "$baseline_coverage_stats" ] && \
+        [ "$(stats_body_coverage "$stderr")" != "$baseline_coverage_body" ]; then
+        collect_ok "本文カバレッジ件数だけの変異は本文と統計値の突き合わせで止まる"
+    else
+        collect_fail "本文カバレッジ件数だけの変異は本文と統計値の突き合わせで止まる" "本文のカバレッジ件数変異を検出できない"
+    fi
+
+    local cells_mutant="$mutant_dir/cells.sh"
+    sed 's/agree++; iagree\[i\]++/agree += 2; iagree[i]++/' "$SUT" >"$cells_mutant"
+    chmod +x "$cells_mutant"
+    local cells_lines
+    cells_lines="$(mutation_lines "$SUT" "$cells_mutant")"
+    [ "$cells_lines" -eq 1 ] && collect_ok "一致セル数の変異が1箇所だけ適用される" || \
+        collect_fail "一致セル数の変異が1箇所だけ適用される" "差分行数: $cells_lines"
+    stats_run "$SUT" "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid"
+    local baseline_cells baseline_cells_total
+    baseline_cells="$(stats_value agreement.cells.matched)"
+    baseline_cells_total="$(stats_value agreement.cells.total)"
+    stats_run "$cells_mutant" "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid"
+    local mutated_cells
+    mutated_cells="$(stats_value agreement.cells.matched)"
+    if [ "$status" -eq 0 ] && [ -n "$baseline_cells" ] && [ "$mutated_cells" != "$baseline_cells" ]; then
+        case " $(stats_body_ratios "$stderr") " in
+            *" $mutated_cells/$baseline_cells_total "*) collect_ok "一致セル数の変異は統計値と本文の双方に現れる" ;;
+            *) collect_fail "一致セル数の変異は統計値と本文の双方に現れる" "本文側に同じずれが無い: $stderr" ;;
+        esac
+    else
+        collect_fail "一致セル数の変異は統計値と本文の双方に現れる" "統計値の変異が不一致にならない: $output"
+    fi
+
+    local diff_mutant="$mutant_dir/diff.sh"
+    sed '/exp_item.*ndiff++/s/ndiff++/ndiff += 0/' "$SUT" >"$diff_mutant"
+    chmod +x "$diff_mutant"
+    local diff_lines
+    diff_lines="$(mutation_lines "$SUT" "$diff_mutant")"
+    [ "$diff_lines" -eq 1 ] && collect_ok "差の件数の変異が1箇所だけ適用される" || \
+        collect_fail "差の件数の変異が1箇所だけ適用される" "差分行数: $diff_lines"
+    stats_run "$SUT" "$JUDGMENTS_DIR/expectation-diff-multi-judgments.tsv" "$CASES_DIR/valid"
+    local baseline_diff
+    baseline_diff="$(stats_value diff.count)"
+    stats_run "$diff_mutant" "$JUDGMENTS_DIR/expectation-diff-multi-judgments.tsv" "$CASES_DIR/valid"
+    local mutated_diff
+    mutated_diff="$(stats_value diff.count)"
+    if [ "$status" -eq 0 ] && [ -n "$baseline_diff" ] && [ "$mutated_diff" != "$baseline_diff" ]; then
+        if [ "$(stats_body_last_count "$stderr")" = "$mutated_diff" ]; then
+            collect_ok "差の件数の変異は統計値と本文の双方に現れる"
+        else
+            collect_fail "差の件数の変異は統計値と本文の双方に現れる" "本文側に同じずれが無い: $stderr"
+        fi
+    else
+        collect_fail "差の件数の変異は統計値と本文の双方に現れる" "統計値の変異が不一致にならない: $output"
+    fi
+
+    local no_change_mutant="$mutant_dir/no-change.sh"
+    sed 's/文字列として存在しない置換対象/変異/' "$SUT" >"$no_change_mutant"
+    chmod +x "$no_change_mutant"
+    local no_change_lines
+    no_change_lines="$(mutation_lines "$SUT" "$no_change_mutant")"
+    [ "$no_change_lines" -eq 0 ] && collect_ok "無置換の変異は事前検査で拒否できる" || \
+        collect_fail "無置換の変異は事前検査で拒否できる" "差分行数: $no_change_lines"
+
+    local broad_mutant="$mutant_dir/broad-change.sh"
+    sed 's/ndiff++/ndiff += 0/g' "$SUT" >"$broad_mutant"
+    chmod +x "$broad_mutant"
+    local broad_lines
+    broad_lines="$(mutation_lines "$SUT" "$broad_mutant")"
+    [ "$broad_lines" -gt 1 ] && collect_ok "複数箇所へ当たる変異は事前検査で拒否できる" || \
+        collect_fail "複数箇所へ当たる変異は事前検査で拒否できる" "差分行数: $broad_lines"
+
+    collect_finish
+}
+
+@test "面⑪mawk: report --stats が想定実装でも動く" {
+    collect_init
+    if ! command -v mawk >/dev/null 2>&1; then
+        collect_skipped "mawk で report --stats を実行する" "mawk が無い環境のため未実行"
+    else
+        local awk_shim="$BATS_TEST_TMPDIR/mawk-bin"
+        mkdir -p "$awk_shim"
+        printf '#!/usr/bin/env bash\nexec mawk "$@"\n' >"$awk_shim/awk"
+        chmod +x "$awk_shim/awk"
+        PATH="$awk_shim:$PATH" stats_run "$SUT" "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid"
+        collect_stats 0 "mawk で report --stats が統計値を出す" \
+            coverage.cases=2 coverage.covered=2 agreement.cells.matched=7 diff.count=1
+    fi
     collect_finish
 }
 
