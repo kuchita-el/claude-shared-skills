@@ -782,40 +782,43 @@ cmd_report() {
                 bad_col[nbad] = "題材集合commit"; bad_val[nbad] = $14
             }
         }
+        function say(s) { report_lines[++nreport_lines] = s }
         END {
             # BEGIN 側の打ち切りをここで実現する。集計本文を1行も出さずに抜けること。
             if (noexp) exit 3
 
             fail = 0
-            print "== カバレッジ =="
+            say("== カバレッジ ==")
             miss = 0
-            for (k = 1; k <= ncases; k++) if (!(order[k] in covered)) { printf "  未カバーの題材: %s\n", order[k]; miss++ }
+            for (k = 1; k <= ncases; k++) if (!(order[k] in covered)) { say(sprintf("  未カバーの題材: %s", order[k])); miss++ }
             for (u = 1; u <= nunknown; u++) {
-                printf "  題材集合に無い題材IDの行: %s (行%s)\n", unknown_order[u], unknown[unknown_order[u]]; fail = 1
+                say(sprintf("  題材集合に無い題材IDの行: %s (行%s)", unknown_order[u], unknown[unknown_order[u]])); fail = 1
             }
             for (d = 1; d <= ndupes; d++) {
-                split(dupe_order[d], a, SUBSEP); printf "  重複した行: 題材 %s 試行 %s\n", a[1], a[2]; fail = 1
+                split(dupe_order[d], a, SUBSEP); say(sprintf("  重複した行: 題材 %s 試行 %s", a[1], a[2])); fail = 1
             }
             if (miss > 0) fail = 1
-            printf "  題材 %d 件中 %d 件を記録が覆う\n", ncases, ncases - miss
+            say(sprintf("  題材 %d 件中 %d 件を記録が覆う", ncases, ncases - miss))
 
             if (nbad > 0) {
-                printf "\n== commit 列の未確定 ==\n"
+                say("")
+                say("== commit 列の未確定 ==")
                 for (b = 1; b <= nbad; b++)
-                    printf "  %s 試行%s %s が短縮ハッシュでない: %s\n", bad_id[b], bad_trial[b], bad_col[b], bad_val[b]
-                printf "  未確定 %d 件\n", nbad
+                    say(sprintf("  %s 試行%s %s が短縮ハッシュでない: %s", bad_id[b], bad_trial[b], bad_col[b], bad_val[b]))
+                say(sprintf("  未確定 %d 件", nbad))
                 fail = 1
             }
 
             nt = 0; for (t in trials) tlist[++nt] = t
             n = asort_simple(tlist, nt)
 
-            printf "\n== 試行間一致（セル単位。項目1〜4 を1セルと数える） ==\n"
+            say("")
+            say("== 試行間一致（セル単位。項目1〜4 を1セルと数える） ==")
             if (nt < 2) {
-                print "  試行が2つ未満のため一致は測れない"
+                say("  試行が2つ未満のため一致は測れない")
             } else {
                 t1 = tlist[1]; t2 = tlist[2]
-                if (nt > 2) printf "  試行が %d つあるため、試行 %s と 試行 %s のみを比較した（他の試行は一致の計算に入れていない）\n", nt, t1, t2
+                if (nt > 2) say(sprintf("  試行が %d つあるため、試行 %s と 試行 %s のみを比較した（他の試行は一致の計算に入れていない）", nt, t1, t2))
                 agree = 0; cells = 0
                 for (k = 1; k <= ncases; k++) {
                     id = order[k]
@@ -827,31 +830,33 @@ cmd_report() {
                         }
                     }
                 }
-                printf "  試行 %s と 試行 %s: 一致 %d / %d セル (%s)\n", t1, t2, agree, cells, pct(agree, cells)
-                for (i = 1; i <= 4; i++) printf "    項目%d: 一致 %d / %d (%s)\n", i, iagree[i], icells[i], pct(iagree[i], icells[i])
+                say(sprintf("  試行 %s と 試行 %s: 一致 %d / %d セル (%s)", t1, t2, agree, cells, pct(agree, cells)))
+                for (i = 1; i <= 4; i++) say(sprintf("    項目%d: 一致 %d / %d (%s)", i, iagree[i], icells[i], pct(iagree[i], icells[i])))
                 tagree = 0; tcells = 0
                 for (k = 1; k <= ncases; k++) {
                     id = order[k]
                     if ((id, t1) in total && (id, t2) in total) { tcells++; if (total[id, t1] == total[id, t2]) tagree++ }
                 }
-                printf "    合計: 一致 %d / %d (%s)\n", tagree, tcells, pct(tagree, tcells)
+                say(sprintf("    合計: 一致 %d / %d (%s)", tagree, tcells, pct(tagree, tcells)))
                 dagree = 0; dcells = 0
                 for (k = 1; k <= ncases; k++) {
                     id = order[k]
                     if ((id, t1) in dest && (id, t2) in dest) { dcells++; if (dest[id, t1] == dest[id, t2]) dagree++ }
                 }
-                printf "    行き先: 一致 %d / %d (%s)\n", dagree, dcells, pct(dagree, dcells)
+                say(sprintf("    行き先: 一致 %d / %d (%s)", dagree, dcells, pct(dagree, dcells)))
             }
 
-            printf "\n== 各項目の1点率（周辺分布。試行ごと） ==\n"
+            say("")
+            say("== 各項目の1点率（周辺分布。試行ごと） ==")
             for (j = 1; j <= nt; j++) {
                 t = tlist[j]
-                printf "  試行 %s:", t
-                for (i = 1; i <= 4; i++) printf "  項目%d %s (%d/%d)", i, pct(ones[t, i], cnt[t, i]), ones[t, i], cnt[t, i]
-                printf "\n"
+                line = sprintf("  試行 %s:", t)
+                for (i = 1; i <= 4; i++) line = line sprintf("  項目%d %s (%d/%d)", i, pct(ones[t, i], cnt[t, i]), ones[t, i], cnt[t, i])
+                say(line)
             }
 
-            printf "\n== 期待帰結との差 ==\n"
+            say("")
+            say("== 期待帰結との差 ==")
             ndiff = 0
             for (k = 1; k <= ncases; k++) {
                 id = order[k]
@@ -860,20 +865,22 @@ cmd_report() {
                     for (i = 1; i <= 4; i++) {
                         if (!((id, t, i) in item)) continue
                         if (exp_pre[id] == "不成立" && item[id, t, i] != "-") {
-                            printf "  %s 試行%s 項目%d: 期待 -（必要条件が不成立） / 判定 %s\n", id, t, i, item[id, t, i]; ndiff++
+                            say(sprintf("  %s 試行%s 項目%d: 期待 -（必要条件が不成立） / 判定 %s", id, t, i, item[id, t, i])); ndiff++
                             continue
                         }
                         if (exp_item[id, i] != "" && exp_item[id, i] != "-" && item[id, t, i] != exp_item[id, i]) {
-                            printf "  %s 試行%s 項目%d: 期待 %s / 判定 %s\n", id, t, i, exp_item[id, i], item[id, t, i]; ndiff++
+                            say(sprintf("  %s 試行%s 項目%d: 期待 %s / 判定 %s", id, t, i, exp_item[id, i], item[id, t, i])); ndiff++
                         }
                     }
                     if ((id, t) in dest && exp_dest[id] != "" && exp_dest[id] != "-" && dest[id, t] != exp_dest[id]) {
-                        printf "  %s 試行%s 行き先: 期待 %s / 判定 %s\n", id, t, exp_dest[id], dest[id, t]; ndiff++
+                        say(sprintf("  %s 試行%s 行き先: 期待 %s / 判定 %s", id, t, exp_dest[id], dest[id, t])); ndiff++
                     }
                 }
             }
-            if (ndiff == 0) print "  差は無い"
-            else printf "  差 %d 件\n", ndiff
+            if (ndiff == 0) say("  差は無い")
+            else say(sprintf("  差 %d 件", ndiff))
+
+            for (i = 1; i <= nreport_lines; i++) print report_lines[i]
 
             exit fail
         }
