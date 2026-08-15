@@ -713,6 +713,27 @@ check_unreadable_case_dir() {
     collect_finish
 }
 
+@test "面⑪d: report は不成立分岐と非最終試行の行き先差も全件列挙する" {
+    collect_init
+
+    local judgments="$BATS_TEST_TMPDIR/expectation-diff-all-branches.tsv"
+    awk -F '\t' 'BEGIN { OFS="\t" } {
+        if ($1 == "CASE-A1") $3=$4=$5=$6=0
+        if ($1 == "CASE-A2" && $2 == "1") $7="ADR化しない/実装・テスト資産・操作手順"
+        print
+    }' "$JUDGMENTS_DIR/valid-judgments.tsv" > "$judgments"
+
+    sc report "$judgments" "$CASES_DIR/valid-precondition"
+    local report_output="$output"
+    collect_run 0 "22i. report 全分岐の複数件差 → exit 0"
+
+    local want="CASE-A1 試行1 項目1: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行1 項目2: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行1 項目3: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行1 項目4: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行2 項目1: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行2 項目2: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行2 項目3: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行2 項目4: 期待 -（必要条件が不成立） / 判定 0 | CASE-A2 試行1 行き先: 期待 ADR化する / 判定 ADR化しない/実装・テスト資産・操作手順 | CASE-A2 試行2 項目3: 期待 1 / 判定 0 | 差 10 件"
+    collect_equals "$(collect_expectation_diff_section "$report_output")" "$want" \
+        "22j. report 全分岐の差の節 → 全件と件数を出現順で完全一致させる"
+
+    collect_finish
+}
+
 @test "面⑫: report 記録の異常" {
     collect_init
 
