@@ -2,7 +2,7 @@
 # 固定題材集合の実行支援スクリプト（plugins/adr/scripts/adr-scoping-cases.sh）のテスト（基本系）。
 #
 # scripts/fixtures/adr-scoping-cases/ 配下の fixture を題材集合ディレクトリとして被テスト
-# スクリプトへ末尾引数で渡し、exit code と出力の部分一致を検査する。
+# スクリプトへ末尾引数で渡し、exit code と出力を検査する（部分一致、および節を畳んだ完全一致）。
 #
 # 環境操作を伴うケース（awk の代役・$TMPDIR の異常・診断の走査順・配布物の非依存性）は
 # adr-scoping-cases-edge.bats が持つ。
@@ -84,6 +84,19 @@ sc_stdout_in() {
     run --separate-stderr bash "$SUT" "$@" </dev/null
     cd "$prev" || return 1
     return 0
+}
+
+# report 出力の「期待帰結との差」節を、診断行と件数行の順序を保ったまま畳む。
+collect_expectation_diff_section() {
+    awk '
+        $0 == "== 期待帰結との差 ==" { in_section = 1; next }
+        in_section && $0 !~ /^  / { exit }
+        in_section {
+            sub(/^  /, "")
+            if (count++) printf " | "
+            printf "%s", $0
+        }
+    ' <<< "$1"
 }
 
 # 直前の実行結果を収集する。$1 期待 exit code / $2 ラベル / $3 以降 出力に含まれるべき文字列
@@ -679,6 +692,45 @@ check_unreadable_case_dir() {
     sc report "$judgments" "$CASES_DIR/valid-precondition"
     collect_run 0 "22e. report 不成立行の点数 → 期待帰結との差へ列挙する" "CASE-A1 試行1 項目1" "差 1 件"
     collect_out "$output" "22f. report 不成立行の不問セル → 1点率と一致率の分母から除外する" "項目1 100.0% (1/1)" "一致 4 / 4 セル"
+    collect_finish
+}
+
+# 差の列挙が途中で打ち切られても終了状態は 0 のまま変わらず、件数行も同時に減るため
+# 出力に矛盾が残らないという静かな縮退を、部分一致ではなく節全体の完全一致で検出する。
+# これは走査順の検査ではない。差のループの順序は構成上すでに決定的であり、全件列挙を
+# 畳んで比較することで順序も副次的に固定されるだけである。
+@test "面⑪c: report は期待帰結との差を全件列挙する" {
+    collect_init
+
+    sc report "$JUDGMENTS_DIR/expectation-diff-multi-judgments.tsv" "$CASES_DIR/valid"
+    local report_output="$output"
+    collect_run 0 "22g. report 複数件の期待帰結との差 → exit 0"
+
+    local want="CASE-A1 試行1 項目1: 期待 0 / 判定 1 | CASE-A1 試行2 行き先: 期待 ADR化しない/実装・テスト資産・操作手順 / 判定 ADR化する | CASE-A2 試行1 項目2: 期待 1 / 判定 0 | CASE-A2 試行1 項目3: 期待 1 / 判定 0 | CASE-A2 試行2 項目4: 期待 1 / 判定 0 | CASE-A2 試行2 行き先: 期待 ADR化する / 判定 ADR化しない/実装・テスト資産・操作手順 | 差 6 件"
+    collect_equals "$(collect_expectation_diff_section "$report_output")" "$want" \
+        "22h. report 期待帰結との差の節 → 全件と件数を出現順で完全一致させる"
+
+    collect_finish
+}
+
+@test "面⑪d: report は不成立分岐と非最終試行の行き先差も全件列挙する" {
+    collect_init
+
+    local judgments="$BATS_TEST_TMPDIR/expectation-diff-all-branches.tsv"
+    awk -F '\t' 'BEGIN { OFS="\t" } {
+        if ($1 == "CASE-A1") $3=$4=$5=$6=0
+        if ($1 == "CASE-A2" && $2 == "1") $7="ADR化しない/実装・テスト資産・操作手順"
+        print
+    }' "$JUDGMENTS_DIR/valid-judgments.tsv" > "$judgments"
+
+    sc report "$judgments" "$CASES_DIR/valid-precondition"
+    local report_output="$output"
+    collect_run 0 "22i. report 全分岐の複数件差 → exit 0"
+
+    local want="CASE-A1 試行1 項目1: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行1 項目2: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行1 項目3: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行1 項目4: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行2 項目1: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行2 項目2: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行2 項目3: 期待 -（必要条件が不成立） / 判定 0 | CASE-A1 試行2 項目4: 期待 -（必要条件が不成立） / 判定 0 | CASE-A2 試行1 行き先: 期待 ADR化する / 判定 ADR化しない/実装・テスト資産・操作手順 | CASE-A2 試行2 項目3: 期待 1 / 判定 0 | 差 10 件"
+    collect_equals "$(collect_expectation_diff_section "$report_output")" "$want" \
+        "22j. report 全分岐の差の節 → 全件と件数を出現順で完全一致させる"
+
     collect_finish
 }
 
