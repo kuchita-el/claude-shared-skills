@@ -74,7 +74,8 @@ MSG
 # これは #645 の発端——検知機構は正しいのに走らせる経路が無い——と同型の穴であり、
 # 対象を変えて runner 側に再生産される。期待リストを固定し、glob 結果と**双方向で**
 # 突き合わせる（`lint-adr-surface.bats` が同梱スクリプトの参照ファイルに対して採るのと
-# 同じ方式）。テストファイルを増減させたときは本リストと実行ガイドの対応表を更新する。
+# 同じ方式）。テストファイルを増減させたときは本リストと実行ガイド §1 のスイート表を
+# 更新する（§7 の移行対応表は移行完了時点の凍結記録であり、追随の対象ではない）。
 EXPECTED_BATS=(
     adr-scoping-cases-basic.bats
     adr-scoping-cases-edge.bats
@@ -99,6 +100,7 @@ EXPECTED_BATS=(
     writing-lint.bats
     writing-contract.bats
     team-migration.bats
+    distribution-boundary.bats
 )
 
 BATS_FILES=()
