@@ -469,6 +469,25 @@ check_weird_tmpdir() {
         collect_fail "本文数値だけの変異は本文と統計値の突き合わせで止まる" "本文の数値変異を検出できない"
     fi
 
+    local coverage_mutant="$mutant_dir/coverage.sh"
+    sed 's/say(sprintf("  題材 %d 件中 %d 件を記録が覆う", ncases,/say(sprintf("  題材 %d 件中 %d 件を記録が覆う", ncases + 3,/' "$SUT" >"$coverage_mutant"
+    chmod +x "$coverage_mutant"
+    local coverage_lines
+    coverage_lines="$(mutation_lines "$SUT" "$coverage_mutant")"
+    [ "$coverage_lines" -eq 1 ] && collect_ok "本文カバレッジ件数の変異が1箇所だけ適用される" || \
+        collect_fail "本文カバレッジ件数の変異が1箇所だけ適用される" "差分行数: $coverage_lines"
+    stats_run "$SUT" "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid"
+    local baseline_coverage_stats baseline_coverage_body
+    baseline_coverage_stats="$output"
+    baseline_coverage_body="$(stats_body_coverage "$stderr")"
+    stats_run "$coverage_mutant" "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid"
+    if [ "$status" -eq 0 ] && [ "$output" = "$baseline_coverage_stats" ] && \
+        [ "$(stats_body_coverage "$stderr")" != "$baseline_coverage_body" ]; then
+        collect_ok "本文カバレッジ件数だけの変異は本文と統計値の突き合わせで止まる"
+    else
+        collect_fail "本文カバレッジ件数だけの変異は本文と統計値の突き合わせで止まる" "本文のカバレッジ件数変異を検出できない"
+    fi
+
     local cells_mutant="$mutant_dir/cells.sh"
     sed 's/agree++; iagree\[i\]++/agree += 2; iagree[i]++/' "$SUT" >"$cells_mutant"
     chmod +x "$cells_mutant"

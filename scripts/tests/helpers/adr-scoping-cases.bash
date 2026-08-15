@@ -13,6 +13,11 @@ stats_body_ratios() {
         | sed -E 's/[[:space:]]+//g' | paste -sd ' ' -
 }
 
+stats_body_coverage() {
+    grep -oE '[0-9]+[[:space:]]+件中[[:space:]]+[0-9]+[[:space:]]+件' <<< "$1" \
+        | sed -E 's/([0-9]+)[[:space:]]+件中[[:space:]]+([0-9]+)[[:space:]]+件/\2\/\1/' | paste -sd ' ' -
+}
+
 stats_body_last_count() {
     grep -oE '[0-9]+' <<< "$1" | tail -1
 }

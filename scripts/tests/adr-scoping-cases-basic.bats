@@ -632,7 +632,7 @@ check_unreadable_case_dir() {
     local report_output="$output"
     collect_run 0 "18. report valid-judgments.tsv valid → exit 0"
 
-    collect_out "$report_output" "19. report 出力がセル単位の試行間一致件数を含む" \
+    collect_out "$report_output" "19d. report 出力が試行間一致区画を含む" \
         "== 試行間一致（セル単位。項目1〜4 を1セルと数える） =="
 
     collect_out "$report_output" "20d. report 出力が各項目の1点率区画を含む" \
@@ -684,6 +684,9 @@ check_unreadable_case_dir() {
     local expected_ratios="7/8 2/2 2/2 1/2 2/2 1/2 2/2 1/2 1/2 1/2 1/2 1/2 1/2 0/2 1/2"
     collect_equals "$(stats_body_ratios "$stderr")" "$expected_ratios" \
         "本文の集計数値が --stats の分子・分母と一致する"
+    local expected_coverage="$(stats_value coverage.covered)/$(stats_value coverage.cases)"
+    collect_equals "$(stats_body_coverage "$stderr")" "$expected_coverage" \
+        "本文のカバレッジ件数が --stats の値と一致する"
     collect_equals "$(stats_body_last_count "$stderr")" "1" \
         "本文の差件数が --stats の diff.count と一致する"
 
