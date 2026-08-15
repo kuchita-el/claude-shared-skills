@@ -40,7 +40,7 @@
 # 使い方:
 #   bash adr-scoping-cases.sh prompt   <対象文書パス> <題材ID> <題材集合ディレクトリ>
 #   bash adr-scoping-cases.sh validate <題材集合ディレクトリ>
-#   bash adr-scoping-cases.sh report   <判定記録TSV> <題材集合ディレクトリ>
+#   bash adr-scoping-cases.sh report   <判定記録TSV> <題材集合ディレクトリ> [--stats]
 #   bash adr-scoping-cases.sh derive   <返却JSON> --thresholds <JSON> --doc-commit <hash>
 #   bash adr-scoping-cases.sh crosscheck <判定記録TSV> <返却ディレクトリ> --thresholds <JSON> --doc-commit <hash> [--allow-missing ID:試行]
 #
@@ -76,7 +76,7 @@ usage() {
 使い方:
   adr-scoping-cases.sh prompt   <対象文書パス> <題材ID> <題材集合ディレクトリ>
   adr-scoping-cases.sh validate <題材集合ディレクトリ>
-  adr-scoping-cases.sh report   <判定記録TSV> <題材集合ディレクトリ>
+  adr-scoping-cases.sh report   <判定記録TSV> <題材集合ディレクトリ> [--stats]
   adr-scoping-cases.sh derive   <返却JSON> --thresholds <設定JSON> --doc-commit <短縮ハッシュ>
   adr-scoping-cases.sh crosscheck <判定記録TSV> <返却ディレクトリ> --thresholds <設定JSON> --doc-commit <短縮ハッシュ> [--allow-missing ID:試行]
 
@@ -676,8 +676,12 @@ cmd_validate() {
 # ---------------------------------------------------------------- report
 
 cmd_report() {
-    [ $# -eq 2 ] || die_usage "report は引数を2つ取る（判定記録TSV・題材集合ディレクトリ）"
-    local judgments dir
+    if [ $# -gt 2 ] && [ "$3" != "--stats" ]; then
+        die_usage "report の3つ目の引数は --stats でなければならない"
+    fi
+    [ $# -eq 2 ] || [ $# -eq 3 ] || die_usage "report は引数を2つ取る（判定記録TSV・題材集合ディレクトリ）"
+    local judgments dir stats_mode=0
+    [ $# -eq 3 ] && stats_mode=1
     normalize_path "$1"; judgments="$_normalized"
     # 題材集合ディレクトリ側の正規化は現状デッドである（この値は expfile の環境変数渡しと
     # `list_case_ids` の `grep --` 経由でしか使われず、awk のオペランドに現れない）。
@@ -700,11 +704,12 @@ cmd_report() {
     list_case_ids "$dir" > "$ids_file"
 
     set +e
-    idsfile="$ids_file" expfile="$dir/expectations.tsv" awk -F'\t' '
+    idsfile="$ids_file" expfile="$dir/expectations.tsv" stats_mode="$stats_mode" awk -F'\t' '
         function pct(n, d) { return d == 0 ? "n/a" : sprintf("%.1f%%", 100 * n / d) }
         BEGIN {
             idsfile = ENVIRON["idsfile"]
             expfile = ENVIRON["expfile"]
+            stats_mode = ENVIRON["stats_mode"] == "1"
             nread = 0
             while ((getline line < idsfile) > 0) if (line != "") { known[line] = 1; order[++ncases] = line }
             close(idsfile)
@@ -851,10 +856,13 @@ cmd_report() {
             for (j = 1; j <= nt; j++) {
                 t = tlist[j]
                 line = sprintf("  試行 %s:", t)
-                for (i = 1; i <= 4; i++) line = line sprintf("  項目%d %s (%d/%d)", i, pct(ones[t, i], cnt[t, i]), ones[t, i], cnt[t, i])
+                for (i = 1; i <= 4; i++) {
+                    stats_ones[t, i] = ones[t, i] + 0
+                    stats_counts[t, i] = cnt[t, i] + 0
+                    line = line sprintf("  項目%d %s (%d/%d)", i, pct(stats_ones[t, i], stats_counts[t, i]), stats_ones[t, i], stats_counts[t, i])
+                }
                 say(line)
             }
-
             say("")
             say("== 期待帰結との差 ==")
             ndiff = 0
@@ -879,8 +887,35 @@ cmd_report() {
             }
             if (ndiff == 0) say("  差は無い")
             else say(sprintf("  差 %d 件", ndiff))
-
-            for (i = 1; i <= nreport_lines; i++) print report_lines[i]
+            for (i = 1; i <= nreport_lines; i++) {
+                if (stats_mode) print report_lines[i] > "/dev/stderr"
+                else print report_lines[i]
+            }
+            if (stats_mode) {
+                printf "coverage.cases=%d\n", ncases
+                printf "coverage.covered=%d\n", ncases - miss
+                printf "trials.count=%d\n", nt
+                printf "agreement.trial.a=%s\n", nt >= 2 ? tlist[1] : ""
+                printf "agreement.trial.b=%s\n", nt >= 2 ? tlist[2] : ""
+                printf "agreement.cells.matched=%d\n", agree + 0
+                printf "agreement.cells.total=%d\n", cells + 0
+                for (i = 1; i <= 4; i++) {
+                    printf "agreement.item%d.matched=%d\n", i, iagree[i] + 0
+                    printf "agreement.item%d.total=%d\n", i, icells[i] + 0
+                }
+                for (j = 1; j <= nt; j++) {
+                    t = tlist[j]
+                    for (i = 1; i <= 4; i++) {
+                        printf "ones.trial%s.item%d.count=%d\n", t, i, stats_ones[t, i]
+                        printf "ones.trial%s.item%d.total=%d\n", t, i, stats_counts[t, i]
+                    }
+                }
+                printf "agreement.sum.matched=%d\n", tagree + 0
+                printf "agreement.sum.total=%d\n", tcells + 0
+                printf "agreement.dest.matched=%d\n", dagree + 0
+                printf "agreement.dest.total=%d\n", dcells + 0
+                printf "diff.count=%d\n", ndiff + 0
+            }
 
             exit fail
         }
