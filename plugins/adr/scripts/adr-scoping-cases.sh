@@ -153,8 +153,17 @@ cmd_derive() {
     validate_return_json "$json" || exit 1
     local actual; actual="$(jq -r '.["対象文書commit"]' "$json")"
     [ "$actual" = "$_doc_commit" ] || { printf 'エラー: 版ずれ: JSON=%s / 現行=%s (%s)\n' "$actual" "$_doc_commit" "$json" >&2; exit 1; }
+    # `当時未施行` / `原文に記述なし` は、必要条件そのものが現行条文の測定対象外
+    # だった履歴データを表す。これらは既存の6行形式（項目1〜4を算出）へ進め、
+    # `false` だけを現行条文の不成立・2行形式へ分岐させる。
     if jq -e '.["必要条件_成立"] == false' "$json" >/dev/null; then
-        printf '必要条件: 不成立\n行き先: ADR化しない\n'
+        local pre_dest="PR説明"
+        if jq -e '.["項目4_阻止状態"] == "現に阻止" or .["項目4_阻止状態"] == "警告どまり"' "$json" >/dev/null; then
+            pre_dest="実装・テスト資産・操作手順"
+        elif jq -e '.["複数作業者"] == true or .["複数箇所"] == true' "$json" >/dev/null; then
+            pre_dest="共有規約文書"
+        fi
+        printf '必要条件: 不成立\n行き先: ADR化しない/%s\n' "$pre_dest"
         return 0
     fi
     if jq -e '
@@ -200,11 +209,25 @@ cmd_crosscheck() {
         if [ ! -f "$file" ]; then if [ "$allowed" -eq 0 ]; then printf '欠落: %s\n' "$key"; missing=$((missing + 1)); fi; continue; fi
         validate_return_json "$file" || { mismatch=$((mismatch + 1)); continue; }
         local output; output="$(cmd_derive "$file" --thresholds "$_thresholds" --doc-commit "$_doc_commit")" || { mismatch=$((mismatch + 1)); continue; }
-        local got; got="$(printf '%s\n' "$output" | sed -n '1,4p' | cut -d' ' -f2 | paste -sd' ' -)"
-        # 行き先は既存台帳の自由記述をそのまま保存した値であり、導出側の
-        # ADR 分岐未特定などと一対一に正規化できないため、AC8 では点数4列だけを比較する。
-        local expected="$a $b $c $d"
-        if [ "$got" != "$expected" ]; then printf '不一致: %s 台帳=[%s] 算出=[%s]\n' "$key" "$expected" "$got"; mismatch=$((mismatch + 1)); fi
+        local expected got
+        if [[ "$output" == "必要条件: 不成立"* ]]; then
+            got="$(printf '%s\n' "$output" | sed -n '2p' | cut -d' ' -f2-)"
+            expected="$dest"
+            if [ "$a" != "-" ] || [ "$b" != "-" ] || [ "$c" != "-" ] || [ "$d" != "-" ] || [ "$got" != "$expected" ]; then
+                printf '不一致: %s 必要条件不成立で点数を数えない、台帳=[%s] 算出=[%s]\n' "$key" "$expected" "$got"
+                mismatch=$((mismatch + 1))
+            fi
+        # 成立側の行き先は、既存台帳が ADR の下位分岐を自由記述で保存しており、
+        # derive 側の未特定な分岐名と一対一に正規化できないため比較しない。
+        # 不成立側は本Issueで一般則の3分岐を固定値化したため、上の枝で厳密比較する。
+        elif [[ "$output" == 項目1:*$'\n'項目2:*$'\n'項目3:*$'\n'項目4:* ]]; then
+            got="$(printf '%s\n' "$output" | sed -n '1,4p' | cut -d' ' -f2 | paste -sd' ' -)"
+            expected="$a $b $c $d"
+            if [ "$got" != "$expected" ]; then printf '不一致: %s 台帳=[%s] 算出=[%s]\n' "$key" "$expected" "$got"; mismatch=$((mismatch + 1)); fi
+        else
+            printf '不一致: %s derive の出力形式が不正\n' "$key"
+            mismatch=$((mismatch + 1))
+        fi
         checked=$((checked + 1))
     done < "$tsv"
     for file in "$returns"/*.json; do
@@ -595,15 +618,22 @@ cmd_validate() {
     local tsv_issues
     tsv_issues="$(awk -F'\t' '
         /^#/ { next }
-        $1 == "題材ID" { header=1; if (NF != 11) printf "ヘッダの列数が11でない (%d列)\n", NF; next }
+        $1 == "題材ID" { header=1; if (NF != 12) printf "ヘッダの列数が12でない (%d列)\n", NF; next }
         NF == 0 { next }
         {
             id = $1
-            if (NF != 11) { printf "%s: 列数が11でない (%d列)\n", id, NF; next }
+            if (NF != 12) { printf "%s: 列数が12でない (%d列)\n", id, NF; next }
             if ($2 == "" || $2 == "-") printf "%s: 3層のうち「導出すべきもの」が欠けている\n", id
             for (i = 3; i <= 6; i++) if ($i == "") printf "%s: 3層のうち期待帰結（期待_項目%d）が欠けている\n", id, i - 2
             for (i = 3; i <= 6; i++) if ($i != "-" && $i !~ /^[0-9]+$/) printf "%s: 期待_項目%d が数値または - でない (%s)\n", id, i - 2, $i
             if ($7 == "" || $7 == "-") printf "%s: 3層のうち期待帰結（期待_行き先）が欠けている\n", id
+            if ($12 != "成立" && $12 != "不成立" && $12 != "-") printf "%s: 期待_必要条件が値域外 (%s)\n", id, $12
+            if ($12 == "不成立") {
+                score_present = 0
+                for (i = 3; i <= 6; i++) if ($i != "-") score_present = 1
+                if (score_present) printf "%s: 必要条件が不成立の題材は期待_項目1〜4を数えない\n", id
+                if ($7 != "ADR化しない/実装・テスト資産・操作手順" && $7 != "ADR化しない/共有規約文書" && $7 != "ADR化しない/PR説明") printf "%s: 必要条件不成立時の期待_行き先が3分岐のいずれでもない (%s)\n", id, $7
+            }
             if ($8 == "" || $8 == "-") printf "%s: 由来が未記入\n", id
             else if ($8 != "改訂前から在る" && $8 != "改訂の結果として追加") printf "%s: 由来が語彙外 (%s)\n", id, $8
             if ($9 == "" || $9 == "-") printf "%s: 対の相手ID が未記入（相手が居ない場合は NONE を置く）\n", id
@@ -683,6 +713,7 @@ cmd_report() {
                 if ($0 ~ /^#/ || $1 == "題材ID" || NF < 7) continue
                 for (i = 1; i <= 4; i++) exp_item[$1, i] = $(i + 2)
                 exp_dest[$1] = $7
+                exp_pre[$1] = (NF >= 12 && $12 != "" ? $12 : "-")
                 nread++
             }
             close(expfile)
@@ -731,8 +762,12 @@ cmd_report() {
             seen[key] = 1
             covered[id] = 1
             trials[trial] = 1
-            for (i = 1; i <= 4; i++) { item[id, trial, i] = $(i + 2); if ($(i + 2) == "1") ones[trial, i]++ ; cnt[trial, i]++ }
-            total[id, trial] = $3 + $4 + $5 + $6; dest[id, trial] = $7
+            for (i = 1; i <= 4; i++) {
+                item[id, trial, i] = $(i + 2)
+                if ($(i + 2) ~ /^[0-9]+$/) { if ($(i + 2) == "1") ones[trial, i]++; cnt[trial, i]++ }
+            }
+            if ($3 ~ /^[0-9]+$/ && $4 ~ /^[0-9]+$/ && $5 ~ /^[0-9]+$/ && $6 ~ /^[0-9]+$/) total[id, trial] = $3 + $4 + $5 + $6
+            dest[id, trial] = $7
             # commit 列は持つ場合のみ検査する（列を持たない記録も受け付ける）。
             # 埋め忘れ・プレースホルダのまま提出された記録を素通りさせないための検査であり、
             # 短縮ハッシュの形をしていない値は名指しで報告する。
@@ -785,7 +820,7 @@ cmd_report() {
                 for (k = 1; k <= ncases; k++) {
                     id = order[k]
                     for (i = 1; i <= 4; i++) {
-                        if ((id, t1, i) in item && (id, t2, i) in item) {
+                        if ((id, t1, i) in item && (id, t2, i) in item && item[id, t1, i] ~ /^[0-9]+$/ && item[id, t2, i] ~ /^[0-9]+$/) {
                             cells++
                             if (item[id, t1, i] == item[id, t2, i]) { agree++; iagree[i]++ }
                             icells[i]++
@@ -824,6 +859,10 @@ cmd_report() {
                     t = tlist[j]
                     for (i = 1; i <= 4; i++) {
                         if (!((id, t, i) in item)) continue
+                        if (exp_pre[id] == "不成立" && item[id, t, i] != "-") {
+                            printf "  %s 試行%s 項目%d: 期待 -（必要条件が不成立） / 判定 %s\n", id, t, i, item[id, t, i]; ndiff++
+                            continue
+                        }
                         if (exp_item[id, i] != "" && exp_item[id, i] != "-" && item[id, t, i] != exp_item[id, i]) {
                             printf "  %s 試行%s 項目%d: 期待 %s / 判定 %s\n", id, t, i, exp_item[id, i], item[id, t, i]; ndiff++
                         }
