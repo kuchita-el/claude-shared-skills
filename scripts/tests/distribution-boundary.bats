@@ -128,3 +128,90 @@ scan_distribution_boundary() {
 
     collect_finish
 }
+
+# 配布物の複製へ走査語彙を混入させ、検出できることを確認する。
+# 複製は BATS_TEST_TMPDIR 配下に作り、配布物本体（PLUGIN_ROOT）は一切書き換えない。
+# 混入は各項目ごとに複製を作り直して1件だけに保つ。
+@test "面②: 走査語彙の混入を検出する" {
+    collect_init
+
+    # 対照: 混入を加えていない複製は exit 0（負例が空振りでも赤に見える事態を防ぐ）
+    local control_dup="$BATS_TEST_TMPDIR/control"
+    mkdir -p "$control_dup"
+    cp -r "$PLUGIN_ROOT"/. "$control_dup"/
+    run scan_distribution_boundary "$control_dup"
+    collect_rc 0 "対照: 混入のない複製は exit 0"
+
+    # 語彙5種それぞれについて、README.md の末尾へ1行だけ混入させる
+    local label content expect_count
+    local -a labels=('scripts/tests/' 'scripts/fixtures/' 'fixtures/' 'run-tests' '.bats')
+    local -a contents=(
+        '詳細は scripts/tests/ を参照'
+        '詳細は scripts/fixtures/ を参照'
+        '詳細は fixtures/ を参照'
+        '検証は run-tests で行う'
+        '検証は distribution-boundary.bats で行う'
+    )
+    local -a expect_counts=(1 2 1 1 1)
+
+    local i
+    for i in "${!labels[@]}"; do
+        label="${labels[$i]}"
+        content="${contents[$i]}"
+        expect_count="${expect_counts[$i]}"
+
+        local dup="$BATS_TEST_TMPDIR/vocab-$i"
+        mkdir -p "$dup"
+        cp -r "$PLUGIN_ROOT"/. "$dup"/
+        printf '%s\n' "$content" >>"$dup/README.md"
+        local line_no
+        line_no="$(grep -nF -- "$content" "$dup/README.md" | tail -1 | cut -d: -f1)"
+
+        run scan_distribution_boundary "$dup"
+        collect_rc 1 "語彙「$label」の混入は非0で終わる"
+
+        local actual_count=0
+        [ -n "$output" ] && actual_count="$(wc -l <<<"$output")"
+        collect_equals "$actual_count" "$expect_count" "語彙「$label」の混入は一致行が $expect_count 本になる"
+
+        local needle="${label}"$'\t'"README.md:${line_no}:${content}"
+        collect_contains "$output" "$needle" "語彙「$label」の一致行がラベル・所在・行本文の組で出力される"
+    done
+
+    # 新規ファイル経路: 除外リストを持たない設計が新規ファイルも自動的に覆うことの確認
+    local newfile_dup="$BATS_TEST_TMPDIR/newfile"
+    mkdir -p "$newfile_dup"
+    cp -r "$PLUGIN_ROOT"/. "$newfile_dup"/
+    printf '%s\n' '詳細は scripts/tests/ を参照' >"$newfile_dup/new-note.md"
+    run scan_distribution_boundary "$newfile_dup"
+    collect_rc 1 "新規ファイルへの混入は非0で終わる"
+    collect_contains "$output" "scripts/tests/"$'\t'"new-note.md:1:詳細は scripts/tests/ を参照" "新規ファイル new-note.md の一致行が出力される"
+
+    # 拡張子なしファイル経路: 拡張子で絞らない設計であることの確認（Issue 決定2）
+    local noext_dup="$BATS_TEST_TMPDIR/noext"
+    mkdir -p "$noext_dup"
+    cp -r "$PLUGIN_ROOT"/. "$noext_dup"/
+    local noext_content='# 詳細は scripts/tests/ を参照'
+    printf '%s\n' "$noext_content" >>"$noext_dup/hooks/adr-commit-gate"
+    local noext_line_no
+    noext_line_no="$(grep -nF -- "$noext_content" "$noext_dup/hooks/adr-commit-gate" | tail -1 | cut -d: -f1)"
+    run scan_distribution_boundary "$noext_dup"
+    collect_rc 1 "拡張子を持たないファイルへの混入は非0で終わる"
+    collect_contains "$output" "scripts/tests/"$'\t'"hooks/adr-commit-gate:${noext_line_no}:${noext_content}" "拡張子なしファイル hooks/adr-commit-gate の一致行が出力される"
+
+    collect_finish
+}
+
+@test "面③: 走査根の前提が崩れたとき、0件照合を緑にせず fail-closed で終わる" {
+    collect_init
+
+    run scan_distribution_boundary "$BATS_TEST_TMPDIR/does-not-exist"
+    collect_rc 2 "走査根が存在しない場合、前提不成立として exit 2 で終わる"
+
+    local empty_dir="$BATS_TEST_TMPDIR/empty-root"
+    mkdir -p "$empty_dir"
+    run scan_distribution_boundary "$empty_dir"
+    collect_rc 2 "走査根の配下にファイルが1件も無い場合、前提不成立として exit 2 で終わる"
+
+    collect_finish
+}
