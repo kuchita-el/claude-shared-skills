@@ -164,6 +164,14 @@ copy_valid_case_dir() {
     sc validate "$CASES_DIR/valid-precondition"
     collect_run 0 "06d. validate valid-precondition → 不成立の正しい行を受け入れる"
 
+    local repeated_violation="$BATS_TEST_TMPDIR/repeated-precondition-violation"
+    cp -R "$CASES_DIR/valid-precondition" "$repeated_violation"
+    awk -F '\t' 'BEGIN { OFS="\t" } { if ($1 == "CASE-A1") { $3=$4=$5=$6=1; $12="不成立" }; print }' \
+        "$repeated_violation/expectations.tsv" > "$repeated_violation/expectations.tmp"
+    mv "$repeated_violation/expectations.tmp" "$repeated_violation/expectations.tsv"
+    sc validate "$repeated_violation"
+    collect_run 1 "06d-a. validate 不成立行の点数違反 → 診断を1件に集約する" "必要条件が不成立" "違反 1 件"
+
     local missing_column="$BATS_TEST_TMPDIR/missing-column"
     copy_valid_case_dir "$missing_column"
     awk -F '\t' 'BEGIN { OFS="\t" } { NF--; print }' "$missing_column/expectations.tsv" > "$missing_column/expectations.tmp"
@@ -892,6 +900,9 @@ check_unreadable_case_dir() {
     cp "$CASES_DIR/returns-precondition/CASE-P1-1.json" "$legacy_returns/"
     jq '."必要条件_成立" = "当時未施行"' "$CASES_DIR/returns-precondition/CASE-P2-1.json" > "$legacy_returns/CASE-P2-1.json"
     cp "$CASES_DIR/judgments/precondition-judgments.tsv" "$legacy"
+    run bash "$SUT" derive "$legacy_returns/CASE-P2-1.json" --thresholds "$thresholds" --doc-commit 0000000
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"項目1:"* && "$output" == *"合計:"* ]]
     run bash "$SUT" crosscheck "$legacy" "$legacy_returns" --thresholds "$thresholds" --doc-commit 0000000
     [ "$status" -eq 0 ]
     [[ "$output" == *"照合件数: 2"* ]]

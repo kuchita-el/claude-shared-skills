@@ -153,6 +153,9 @@ cmd_derive() {
     validate_return_json "$json" || exit 1
     local actual; actual="$(jq -r '.["対象文書commit"]' "$json")"
     [ "$actual" = "$_doc_commit" ] || { printf 'エラー: 版ずれ: JSON=%s / 現行=%s (%s)\n' "$actual" "$_doc_commit" "$json" >&2; exit 1; }
+    # `当時未施行` / `原文に記述なし` は、必要条件そのものが現行条文の測定対象外
+    # だった履歴データを表す。これらは既存の6行形式（項目1〜4を算出）へ進め、
+    # `false` だけを現行条文の不成立・2行形式へ分岐させる。
     if jq -e '.["必要条件_成立"] == false' "$json" >/dev/null; then
         local pre_dest="PR説明"
         if jq -e '.["項目4_阻止状態"] == "現に阻止" or .["項目4_阻止状態"] == "警告どまり"' "$json" >/dev/null; then
@@ -214,6 +217,9 @@ cmd_crosscheck() {
                 printf '不一致: %s 必要条件不成立で点数を数えない、台帳=[%s] 算出=[%s]\n' "$key" "$expected" "$got"
                 mismatch=$((mismatch + 1))
             fi
+        # 成立側の行き先は、既存台帳が ADR の下位分岐を自由記述で保存しており、
+        # derive 側の未特定な分岐名と一対一に正規化できないため比較しない。
+        # 不成立側は本Issueで一般則の3分岐を固定値化したため、上の枝で厳密比較する。
         elif [[ "$output" == 項目1:*$'\n'項目2:*$'\n'項目3:*$'\n'項目4:* ]]; then
             got="$(printf '%s\n' "$output" | sed -n '1,4p' | cut -d' ' -f2 | paste -sd' ' -)"
             expected="$a $b $c $d"
@@ -623,7 +629,9 @@ cmd_validate() {
             if ($7 == "" || $7 == "-") printf "%s: 3層のうち期待帰結（期待_行き先）が欠けている\n", id
             if ($12 != "成立" && $12 != "不成立" && $12 != "-") printf "%s: 期待_必要条件が値域外 (%s)\n", id, $12
             if ($12 == "不成立") {
-                for (i = 3; i <= 6; i++) if ($i != "-") printf "%s: 必要条件が不成立の題材は期待_項目1〜4を数えない\n", id
+                score_present = 0
+                for (i = 3; i <= 6; i++) if ($i != "-") score_present = 1
+                if (score_present) printf "%s: 必要条件が不成立の題材は期待_項目1〜4を数えない\n", id
                 if ($7 != "ADR化しない/実装・テスト資産・操作手順" && $7 != "ADR化しない/共有規約文書" && $7 != "ADR化しない/PR説明") printf "%s: 必要条件不成立時の期待_行き先が3分岐のいずれでもない (%s)\n", id, $7
             }
             if ($8 == "" || $8 == "-") printf "%s: 由来が未記入\n", id
