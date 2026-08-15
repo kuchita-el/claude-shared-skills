@@ -432,20 +432,41 @@ check_weird_tmpdir() {
     }
 
     local display_mutant="$mutant_dir/display.sh"
-    sed 's/== カバレッジ ==/== COVERAGE ==/' "$SUT" >"$display_mutant"
+    sed '/ncases - miss/s/say(sprintf("  題材/say(sprintf("  [表示変更] 題材/' "$SUT" >"$display_mutant"
     chmod +x "$display_mutant"
     local display_lines
     display_lines="$(mutation_lines "$SUT" "$display_mutant")"
     [ "$display_lines" -eq 1 ] && collect_ok "表示文言の変異が1箇所だけ適用される" || \
         collect_fail "表示文言の変異が1箇所だけ適用される" "差分行数: $display_lines"
+    stats_run "$SUT" "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid"
+    local baseline_stats="$output"
     stats_run "$display_mutant" "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid"
-    if [ "$status" -eq 0 ] && stats_values_match coverage.cases=2 coverage.covered=2 agreement.cells.matched=7 diff.count=1; then
+    if [ "$status" -eq 0 ] && [ "$output" = "$baseline_stats" ]; then
         case "$stderr" in
-            *"== COVERAGE =="*) collect_ok "表示文言だけの変異は統計値の突き合わせを通る" ;;
+            *"[表示変更]"*) collect_ok "表示文言だけの変異は統計値の突き合わせを通る" ;;
             *) collect_fail "表示文言だけの変異は統計値の突き合わせを通る" "本文側へ変異が現れていない" ;;
         esac
     else
         collect_fail "表示文言だけの変異は統計値の突き合わせを通る" "status=$status stdout=$output stderr=$stderr"
+    fi
+
+    local body_mutant="$mutant_dir/body.sh"
+    sed '/合計: 一致/s/tagree/agree/' "$SUT" >"$body_mutant"
+    chmod +x "$body_mutant"
+    local body_lines
+    body_lines="$(mutation_lines "$SUT" "$body_mutant")"
+    [ "$body_lines" -eq 1 ] && collect_ok "本文数値の変異が1箇所だけ適用される" || \
+        collect_fail "本文数値の変異が1箇所だけ適用される" "差分行数: $body_lines"
+    stats_run "$SUT" "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid"
+    local baseline_body_stats baseline_body_ratios
+    baseline_body_stats="$output"
+    baseline_body_ratios="$(stats_body_ratios "$stderr")"
+    stats_run "$body_mutant" "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid"
+    if [ "$status" -eq 0 ] && [ "$output" = "$baseline_body_stats" ] && \
+        [ "$(stats_body_ratios "$stderr")" != "$baseline_body_ratios" ]; then
+        collect_ok "本文数値だけの変異は本文と統計値の突き合わせで止まる"
+    else
+        collect_fail "本文数値だけの変異は本文と統計値の突き合わせで止まる" "本文の数値変異を検出できない"
     fi
 
     local cells_mutant="$mutant_dir/cells.sh"
@@ -455,12 +476,16 @@ check_weird_tmpdir() {
     cells_lines="$(mutation_lines "$SUT" "$cells_mutant")"
     [ "$cells_lines" -eq 1 ] && collect_ok "一致セル数の変異が1箇所だけ適用される" || \
         collect_fail "一致セル数の変異が1箇所だけ適用される" "差分行数: $cells_lines"
+    stats_run "$SUT" "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid"
+    local baseline_cells baseline_cells_total
+    baseline_cells="$(stats_value agreement.cells.matched)"
+    baseline_cells_total="$(stats_value agreement.cells.total)"
     stats_run "$cells_mutant" "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid"
-    local expected_cells_line
-    printf -v expected_cells_line '  試行 1 と 試行 2: 一致 %d / 8 セル' 14
-    if [ "$status" -eq 0 ] && ! stats_values_match agreement.cells.matched=7; then
-        case "$stderr" in
-            *"$expected_cells_line"*) collect_ok "一致セル数の変異は統計値と本文の双方に現れる" ;;
+    local mutated_cells
+    mutated_cells="$(stats_value agreement.cells.matched)"
+    if [ "$status" -eq 0 ] && [ -n "$baseline_cells" ] && [ "$mutated_cells" != "$baseline_cells" ]; then
+        case " $(stats_body_ratios "$stderr") " in
+            *" $mutated_cells/$baseline_cells_total "*) collect_ok "一致セル数の変異は統計値と本文の双方に現れる" ;;
             *) collect_fail "一致セル数の変異は統計値と本文の双方に現れる" "本文側に同じずれが無い: $stderr" ;;
         esac
     else
@@ -474,14 +499,18 @@ check_weird_tmpdir() {
     diff_lines="$(mutation_lines "$SUT" "$diff_mutant")"
     [ "$diff_lines" -eq 1 ] && collect_ok "差の件数の変異が1箇所だけ適用される" || \
         collect_fail "差の件数の変異が1箇所だけ適用される" "差分行数: $diff_lines"
+    stats_run "$SUT" "$JUDGMENTS_DIR/expectation-diff-multi-judgments.tsv" "$CASES_DIR/valid"
+    local baseline_diff
+    baseline_diff="$(stats_value diff.count)"
     stats_run "$diff_mutant" "$JUDGMENTS_DIR/expectation-diff-multi-judgments.tsv" "$CASES_DIR/valid"
-    local expected_diff_line
-    printf -v expected_diff_line '  差 %d 件' 2
-    if [ "$status" -eq 0 ] && ! stats_values_match diff.count=6; then
-        case "$stderr" in
-            *"$expected_diff_line"*) collect_ok "差の件数の変異は統計値と本文の双方に現れる" ;;
-            *) collect_fail "差の件数の変異は統計値と本文の双方に現れる" "本文側に同じずれが無い: $stderr" ;;
-        esac
+    local mutated_diff
+    mutated_diff="$(stats_value diff.count)"
+    if [ "$status" -eq 0 ] && [ -n "$baseline_diff" ] && [ "$mutated_diff" != "$baseline_diff" ]; then
+        if [ "$(stats_body_last_count "$stderr")" = "$mutated_diff" ]; then
+            collect_ok "差の件数の変異は統計値と本文の双方に現れる"
+        else
+            collect_fail "差の件数の変異は統計値と本文の双方に現れる" "本文側に同じずれが無い: $stderr"
+        fi
     else
         collect_fail "差の件数の変異は統計値と本文の双方に現れる" "統計値の変異が不一致にならない: $output"
     fi
@@ -502,6 +531,22 @@ check_weird_tmpdir() {
     [ "$broad_lines" -gt 1 ] && collect_ok "複数箇所へ当たる変異は事前検査で拒否できる" || \
         collect_fail "複数箇所へ当たる変異は事前検査で拒否できる" "差分行数: $broad_lines"
 
+    collect_finish
+}
+
+@test "面⑪mawk: report --stats が想定実装でも動く" {
+    collect_init
+    if ! command -v mawk >/dev/null 2>&1; then
+        collect_skipped "mawk で report --stats を実行する" "mawk が無い環境のため未実行"
+    else
+        local awk_shim="$BATS_TEST_TMPDIR/mawk-bin"
+        mkdir -p "$awk_shim"
+        printf '#!/usr/bin/env bash\nexec mawk "$@"\n' >"$awk_shim/awk"
+        chmod +x "$awk_shim/awk"
+        PATH="$awk_shim:$PATH" stats_run "$SUT" "$JUDGMENTS_DIR/valid-judgments.tsv" "$CASES_DIR/valid"
+        collect_stats 0 "mawk で report --stats が統計値を出す" \
+            coverage.cases=2 coverage.covered=2 agreement.cells.matched=7 diff.count=1
+    fi
     collect_finish
 }
 

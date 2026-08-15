@@ -679,6 +679,9 @@ cmd_report() {
     if [ $# -gt 2 ] && [ "$3" != "--stats" ]; then
         die_usage "report の3つ目の引数は --stats でなければならない"
     fi
+    if [ $# -gt 3 ]; then
+        die_usage "report は引数を2つ、または末尾に --stats を加えた3つ取る"
+    fi
     [ $# -eq 2 ] || [ $# -eq 3 ] || die_usage "report は引数を2つ取る（判定記録TSV・題材集合ディレクトリ）"
     local judgments dir stats_mode=0
     [ $# -eq 3 ] && stats_mode=1
@@ -750,6 +753,11 @@ cmd_report() {
         NF == 0 { next }
         {
             id = $1; trial = $2
+            if (trial !~ /^[A-Za-z0-9_-]+$/) {
+                printf "エラー: 試行番号がキーへ安全に埋め込めない形式: %s\n", trial > "/dev/stderr"
+                bad_trial_input = 1
+                next
+            }
             # 未知の題材ID・重複した行はどちらも出力が集計レポートへ貼り込まれる。
             # 連想配列の走査順（awk の実装依存）に委ねず、記録の出現順で並ぶよう
             # 添字つきの配列へ初出時の順序を積む（commit 列の未確定と同じ扱い）。
@@ -793,6 +801,7 @@ cmd_report() {
             if (noexp) exit 3
 
             fail = 0
+            if (bad_trial_input) fail = 1
             say("== カバレッジ ==")
             miss = 0
             for (k = 1; k <= ncases; k++) if (!(order[k] in covered)) { say(sprintf("  未カバーの題材: %s", order[k])); miss++ }
@@ -895,8 +904,8 @@ cmd_report() {
                 printf "coverage.cases=%d\n", ncases
                 printf "coverage.covered=%d\n", ncases - miss
                 printf "trials.count=%d\n", nt
-                printf "agreement.trial.a=%s\n", nt >= 2 ? tlist[1] : ""
-                printf "agreement.trial.b=%s\n", nt >= 2 ? tlist[2] : ""
+                printf "agreement.trial.a=%s\n", (nt >= 2 ? tlist[1] : "")
+                printf "agreement.trial.b=%s\n", (nt >= 2 ? tlist[2] : "")
                 printf "agreement.cells.matched=%d\n", agree + 0
                 printf "agreement.cells.total=%d\n", cells + 0
                 for (i = 1; i <= 4; i++) {

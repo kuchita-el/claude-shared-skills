@@ -8,21 +8,58 @@ stats_run() {
     run --separate-stderr bash "$sut" report "$judgments" "$cases_dir" --stats </dev/null
 }
 
+stats_body_ratios() {
+    grep -oE '[0-9]+[[:space:]]*/[[:space:]]*[0-9]+' <<< "$1" \
+        | sed -E 's/[[:space:]]+//g' | paste -sd ' ' -
+}
+
+stats_body_last_count() {
+    grep -oE '[0-9]+' <<< "$1" | tail -1
+}
+
 stats_values_match() {
-    local pair key value line actual_count=0
+    local pair key value line matched_count=0
     declare -A actual=()
     while IFS= read -r line; do
         [[ "$line" =~ ^([A-Za-z0-9.]+)=(-?[0-9]*)$ ]] || return 1
         key="${BASH_REMATCH[1]}"
         actual["$key"]="${BASH_REMATCH[2]}"
-        actual_count=$((actual_count + 1))
     done <<< "$output"
-    [ "$actual_count" -ge "$#" ] || return 1
     for pair in "$@"; do
         key="${pair%%=*}"
         value="${pair#*=}"
         [ "${actual[$key]+yes}" = yes ] || return 1
         [ "${actual[$key]}" = "$value" ] || return 1
+        matched_count=$((matched_count + 1))
+    done
+    [ "$matched_count" -ge "$#" ] || return 1
+    return 0
+}
+
+stats_value() {
+    local wanted="$1" line key
+    while IFS= read -r line; do
+        key="${line%%=*}"
+        if [ "$key" = "$wanted" ]; then
+            printf '%s' "${line#*=}"
+            return 0
+        fi
+    done <<< "$output"
+    return 1
+}
+
+stats_keys_match() {
+    local wanted key line actual_count=0
+    declare -A actual=()
+    while IFS= read -r line; do
+        [[ "$line" =~ ^([A-Za-z0-9.]+)=(-?[0-9]*)$ ]] || return 1
+        key="${BASH_REMATCH[1]}"
+        [ "${actual[$key]+yes}" = yes ] || actual_count=$((actual_count + 1))
+        actual["$key"]=1
+    done <<< "$output"
+    [ "$actual_count" -eq "$#" ] || return 1
+    for wanted in "$@"; do
+        [ "${actual[$wanted]+yes}" = yes ] || return 1
     done
     return 0
 }
@@ -30,7 +67,7 @@ stats_values_match() {
 collect_stats() {
     local want_rc="$1" label="$2"
     shift 2
-    local ok=1 detail="" line key value pair actual_count=0
+    local ok=1 detail="" line key value pair matched_count=0
     declare -A actual=()
 
     if [ "$status" -ne "$want_rc" ]; then
@@ -43,17 +80,11 @@ collect_stats() {
             key="${BASH_REMATCH[1]}"
             value="${BASH_REMATCH[2]}"
             actual["$key"]="$value"
-            actual_count=$((actual_count + 1))
         else
             ok=0
             detail="${detail}${detail:+ / }統計値でない行が標準出力にある: $line"
         fi
     done <<< "$output"
-
-    if [ "$actual_count" -lt "$#" ]; then
-        ok=0
-        detail="${detail}${detail:+ / }照合した統計値が期待件数未満: $actual_count / $#"
-    fi
 
     for pair in "$@"; do
         key="${pair%%=*}"
@@ -64,8 +95,14 @@ collect_stats() {
         elif [ "${actual[$key]}" != "$value" ]; then
             ok=0
             detail="${detail}${detail:+ / }$key の期待 $value / 実際 ${actual[$key]}"
+        else
+            matched_count=$((matched_count + 1))
         fi
     done
+    if [ "$matched_count" -lt "$#" ]; then
+        ok=0
+        detail="${detail}${detail:+ / }照合した統計値が期待件数未満: $matched_count / $#"
+    fi
 
     if [ "$ok" -eq 1 ]; then
         collect_ok "$label"
