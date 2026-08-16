@@ -114,3 +114,5 @@ This ledger is regenerated when tracked source/config/docs add or move a `plugin
 | scripts/tests/adr-scoping-cases-basic.bats | 1216 | plugins/adr | migration | reference | issue-619 | current |
 | scripts/tests/adr-scoping-cases-basic.bats | 1231 | plugins/adr | migration | reference | issue-620 | current |
 | scripts/tests/adr-scoping-cases-basic.bats | 1251 | plugins/adr | migration | reference | issue-620 | current |
+| scripts/tests/adr-scoping-cases-basic.bats | 1264 | plugins/adr | migration | reference | issue-624 | current |
+| scripts/tests/adr-scoping-cases-basic.bats | 1284 | plugins/adr | migration | reference | issue-624 | current |

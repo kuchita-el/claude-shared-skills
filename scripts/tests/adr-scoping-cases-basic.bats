@@ -1253,3 +1253,36 @@ check_unreadable_case_dir() {
     [ "$status" -ne 0 ]
     [[ "$output" == *"照合件数: 0"* ]]
 }
+# Issue #624 の CASE-02・09・11・32 独立2試行に対する常設ゲート。
+@test "面⑯sexies: 2026-08-16 の CASE-624 走行の crosscheck 常設ゲート" {
+    local doc_commit
+    doc_commit="$(awk -F '\t' '!/^#/ && $1 != "題材ID" { print $13; exit }' \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-judgments.tsv")"
+    run bash "$SUT" crosscheck \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-judgments.tsv" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns" \
+        --thresholds "$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json" \
+        --doc-commit "$doc_commit"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"照合件数: 8"* ]]
+    [[ "$output" == *"スキップ件数: 0"* ]]
+    for return_json in \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns/CASE-32-1.json" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns/CASE-32-2.json"; do
+        run jq -e '.["項目3_条件1"] == false and .["項目3_条件2"] == false' "$return_json"
+        [ "$status" -eq 0 ]
+    done
+    for return_json in \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns/CASE-02-1.json" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns/CASE-02-2.json"; do
+        run jq -e '.["項目3_値域B"] == true and .["項目3_採用理由確認可能"] == true' "$return_json"
+        [ "$status" -eq 0 ]
+    done
+    run bash "$SUT" crosscheck \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-judgments.tsv" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns" \
+        --thresholds "$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json" \
+        --doc-commit deadbee
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"照合件数: 0"* ]]
+}
