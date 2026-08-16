@@ -895,6 +895,7 @@ check_unreadable_case_dir() {
         --doc-commit deadbee
     [ "$status" -ne 0 ]
     [[ "$output" == *"照合件数: 0"* ]]
+
 }
 
 # 2026-08-15 の走行に対する常設ゲート。面⑯と異なり据え置きの免除が1組も無いため
@@ -1285,4 +1286,18 @@ check_unreadable_case_dir() {
         --doc-commit deadbee
     [ "$status" -ne 0 ]
     [[ "$output" == *"照合件数: 0"* ]]
+    run bash -c '
+        raw="$1"
+        awk '"'"'
+            /^## CASE-[0-9]+ trial [12]$/ {
+                if (seen && !closed) exit 1
+                seen++; closed=0; next
+            }
+            seen && /^}$/ { closed=1 }
+            END { exit !(seen == 8 && closed) }
+        '"'"' "$raw"
+    ' -- "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-raw-returns.md"
+    [ "$status" -eq 0 ]
+
 }
+
