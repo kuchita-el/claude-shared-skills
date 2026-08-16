@@ -895,6 +895,7 @@ check_unreadable_case_dir() {
         --doc-commit deadbee
     [ "$status" -ne 0 ]
     [[ "$output" == *"照合件数: 0"* ]]
+
 }
 
 # 2026-08-15 の走行に対する常設ゲート。面⑯と異なり据え置きの免除が1組も無いため
@@ -1253,3 +1254,64 @@ check_unreadable_case_dir() {
     [ "$status" -ne 0 ]
     [[ "$output" == *"照合件数: 0"* ]]
 }
+# Issue #624 の CASE-02・09・11・32 独立2試行に対する常設ゲート。
+@test "面⑯sexies: 2026-08-16 の CASE-624 走行の crosscheck 常設ゲート" {
+    local doc_commit
+    doc_commit="$(awk -F '\t' '!/^#/ && $1 != "題材ID" { print $13; exit }' \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-judgments.tsv")"
+    run bash "$SUT" crosscheck \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-judgments.tsv" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns" \
+        --thresholds "$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json" \
+        --doc-commit "$doc_commit"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"照合件数: 8"* ]]
+    [[ "$output" == *"スキップ件数: 0"* ]]
+    for return_json in \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns/CASE-32-1.json" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns/CASE-32-2.json"; do
+        run jq -e '.["項目3_条件1"] == false and .["項目3_条件2"] == false' "$return_json"
+        [ "$status" -eq 0 ]
+    done
+    for return_json in \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns/CASE-02-1.json" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns/CASE-02-2.json"; do
+        run jq -e '.["項目3_値域B"] == true and .["項目3_採用理由確認可能"] == true' "$return_json"
+        [ "$status" -eq 0 ]
+    done
+    run bash "$SUT" crosscheck \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-judgments.tsv" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns" \
+        --thresholds "$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json" \
+        --doc-commit deadbee
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"照合件数: 0"* ]]
+    run bash -c '
+        raw="$1"
+        awk '"'"'
+            /^## CASE-[0-9]+ trial [12]$/ {
+                if (seen && !closed) exit 1
+                seen++; closed=0; next
+            }
+            seen && /^}$/ { closed=1 }
+            END { exit !(seen == 8 && closed) }
+        '"'"' "$raw"
+    ' -- "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-raw-returns.md"
+    [ "$status" -eq 0 ]
+
+    run bash -c '
+        raw="$1"
+        returns="$2"
+        tmp="$3"
+        for pair in CASE-02-1 CASE-02-2 CASE-09-1 CASE-09-2 CASE-11-1 CASE-11-2 CASE-32-1 CASE-32-2; do
+            id="${pair%-*}"
+            trial="${pair##*-}"
+            awk -v heading="## ${id} trial ${trial}" "\$0 == heading { inside=1; next } inside && /^## / { exit } inside { print }" "$raw" | sed "/^$/d" > "$tmp/${pair}.json"
+            jq -S . "$tmp/${pair}.json" > "$tmp/${pair}.sorted"
+            jq -S . "$returns/${pair}.json" > "$tmp/${pair}.expected.sorted"
+            cmp -s "$tmp/${pair}.sorted" "$tmp/${pair}.expected.sorted" || exit 1
+        done
+    ' -- "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-raw-returns.md" "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns" "$BATS_TEST_TMPDIR"
+    [ "$status" -eq 0 ]
+}
+
