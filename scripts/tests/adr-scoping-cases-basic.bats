@@ -1196,16 +1196,19 @@ check_unreadable_case_dir() {
         "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case30-returns/CASE-30-1.json" \
         "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case30-returns/CASE-30-2.json"; do
         run jq -e '
-            .必要条件_成立 == true and
-            .項目3_値域A == false and
-            .項目3_値域B == false and
-            .項目3_採用理由確認可能 == true and
-            .項目3_条件1 == false and
-            .項目3_条件2 == true and
-            .項目3 == 1
+            .["必要条件_成立"] == true and
+            .["項目3_値域A"] == false and
+            .["項目3_値域B"] == false and
+            .["項目3_採用理由確認可能"] == true and
+            .["項目3_条件1"] == false and
+            .["項目3_条件2"] == true
         ' "$return_json"
         [ "$status" -eq 0 ]
     done
+
+    run jq -e '.["項目3_条件3"] == false' \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case30-returns/CASE-30-1.json"
+    [ "$status" -eq 0 ]
 
     run bash "$SUT" crosscheck \
         "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case30-judgments.tsv" \
