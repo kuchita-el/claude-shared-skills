@@ -111,4 +111,4 @@ This ledger is regenerated when tracked source/config/docs add or move a `plugin
 | scripts/tests/writing-lint.bats | 85 | plugins/writing | migration | reference | wave-5 | current |
 | scripts/tests/writing-lint.bats | 88 | plugins/writing | migration | reference | wave-5 | current |
 | scripts/tests/adr-scoping-cases-basic.bats | 1189 | plugins/adr | migration | reference | issue-619 | current |
-| scripts/tests/adr-scoping-cases-basic.bats | 1198 | plugins/adr | migration | reference | issue-619 | current |
+| scripts/tests/adr-scoping-cases-basic.bats | 1213 | plugins/adr | migration | reference | issue-619 | current |
