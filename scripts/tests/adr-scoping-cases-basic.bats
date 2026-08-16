@@ -1218,3 +1218,38 @@ check_unreadable_case_dir() {
     [ "$status" -ne 0 ]
     [[ "$output" == *"照合件数: 0"* ]]
 }
+
+# Issue #620 の CASE-31 独立2試行に対する常設ゲート。--allow-missing は渡さず、
+# 照合件数2・スキップ件数0と、実測事実 JSON 2件の存在を検査する。意味検査は期待値ではなく記録済み観測値を固定する。
+@test "面⑯quinquies: 2026-08-16 の CASE-31 走行の crosscheck 常設ゲート" {
+    local doc_commit
+    doc_commit="$(awk -F '\t' '!/^#/ && $1 != "題材ID" { print $13; exit }' \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case31-judgments.tsv")"
+    run bash "$SUT" crosscheck \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case31-judgments.tsv" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case31-returns" \
+        --thresholds "$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json" \
+        --doc-commit "$doc_commit"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"照合件数: 2"* ]]
+    [[ "$output" == *"スキップ件数: 0"* ]]
+
+    for return_json in \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case31-returns/CASE-31-1.json" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case31-returns/CASE-31-2.json"; do
+        run jq -e '
+            .["必要条件_成立"] == true and
+            .["発見型_短絡"] == false and
+            .["項目4_阻止状態"] == "現に阻止"
+        ' "$return_json"
+        [ "$status" -eq 0 ]
+    done
+
+    run bash "$SUT" crosscheck \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case31-judgments.tsv" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case31-returns" \
+        --thresholds "$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json" \
+        --doc-commit deadbee
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"照合件数: 0"* ]]
+}
