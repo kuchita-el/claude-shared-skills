@@ -33,6 +33,29 @@ setup_file() {
     common_setup_file
 }
 
+@test "面㉒: validate-returns は全件を検査し0件と新スキーマ違反を拒否する" {
+    local dir count
+    for dir in \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-07-29-returns" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-15-returns" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-15-cases25-29-returns" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case30-returns" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case31-returns" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns"; do
+        run bash "$SUT" validate-returns "$dir"
+        [ "$status" -eq 0 ]
+    done
+    run bash "$SUT" validate-returns "$BATS_TEST_TMPDIR"
+    [ "$status" -ne 0 ]
+    mkdir -p "$BATS_TEST_TMPDIR/empty"
+    run bash "$SUT" validate-returns "$BATS_TEST_TMPDIR/empty"
+    [ "$status" -ne 0 ]
+    for invalid in "$REPO_ROOT/scripts/fixtures/adr-scoping-cases/returns-invalid"/*.json; do
+        run bash "$SUT" derive "$invalid" --thresholds "$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json" --doc-commit 0000000
+        [ "$status" -ne 0 ]
+    done
+}
+
 # パーミッションを変えたディレクトリ・ファイルが残ったままだと、bats の tmpdir 掃除自体が
 # 失敗する。各ケース内でも戻しているが、途中で abort した場合に備えて teardown でも
 # 一括で戻す（teardown は errexit で abort した @test の後でも走る）。

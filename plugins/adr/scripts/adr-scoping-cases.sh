@@ -43,6 +43,7 @@
 #   bash adr-scoping-cases.sh report   <判定記録TSV> <題材集合ディレクトリ> [--stats]
 #   bash adr-scoping-cases.sh derive   <返却JSON> --thresholds <JSON> --doc-commit <hash>
 #   bash adr-scoping-cases.sh crosscheck <判定記録TSV> <返却ディレクトリ> --thresholds <JSON> --doc-commit <hash> [--allow-missing ID:試行]
+#   bash adr-scoping-cases.sh validate-returns <返却ディレクトリ>
 #
 # prompt は組み立てたプロンプトを一時ファイルへ書き出し、そのパスだけを標準出力へ返す。
 # プロンプト本文を標準出力へ流さないのは、呼び出し側の文脈へ題材本文を載せないためである。
@@ -79,6 +80,7 @@ usage() {
   adr-scoping-cases.sh report   <判定記録TSV> <題材集合ディレクトリ> [--stats]
   adr-scoping-cases.sh derive   <返却JSON> --thresholds <設定JSON> --doc-commit <短縮ハッシュ>
   adr-scoping-cases.sh crosscheck <判定記録TSV> <返却ディレクトリ> --thresholds <設定JSON> --doc-commit <短縮ハッシュ> [--allow-missing ID:試行]
+  adr-scoping-cases.sh validate-returns <返却ディレクトリ>
 
 題材集合ディレクトリは全サブコマンドで必須であり、既定値を持たない。
 題材集合ディレクトリは cases.md と expectations.tsv を持つこと
@@ -125,12 +127,17 @@ validate_return_json() {
     for field in "${json_required_fields[@]}"; do
         jq -e --arg k "$field" 'has($k)' "$json" >/dev/null || { printf 'エラー: 必須フィールドが無い: %s (%s)\n' "$field" "$json" >&2; return 1; }
     done
+    if ! jq -e 'has("欠測")' "$json" >/dev/null; then
+        printf 'エラー: 新スキーマの必須フィールドが無い: 欠測 (%s)\n' "$json" >&2
+        return 1
+    fi
     if jq -e 'has("欠測")' "$json" >/dev/null; then
         jq -e '
           def targets: ["必要条件_成立","項目1_構造変更","項目1_スキーマ変更","項目1_配布済み成果物への利用者影響","項目1_蓄積済みデータ移行","項目3_値域A","項目3_値域B","項目3_採用理由確認可能","項目3_条件1","項目3_条件2","項目3_条件3"];
           . as $root |
           (.["欠測"] | type == "object") and (.["欠測"] | all(.[]; . == "当時未施行" or . == "原文に記述なし")) and
-          (targets | all(.[]; . as $k | ((($root | has($k)) and ($root[$k] | type == "boolean")) or (($root["欠測"] | has($k)) and ($root["欠測"][$k] | type == "string"))))) and
+          (.["欠測"] | keys | all(. as $k | ["必要条件_成立","項目1_構造変更","項目1_スキーマ変更","項目1_配布済み成果物への利用者影響","項目1_蓄積済みデータ移行","項目3_値域A","項目3_値域B","項目3_採用理由確認可能","項目3_条件1","項目3_条件2","項目3_条件3"] | index($k) != null)) and
+          (targets | all(.[]; . as $k | ((($root | has($k)) != ($root["欠測"] | has($k))) and ((($root | has($k)) and ($root[$k] | type == "boolean")) or (($root["欠測"] | has($k)) and ($root["欠測"][$k] | type == "string")))))) and
           (. as $root | (["項目1_追跡下ファイル","項目2_最小単位","推定で補った事実","参照ファイル"] | all(.[]; . as $k | $root[$k] | type == "array" and all(.[]; type == "string")))) and
           (.["項目1_追跡下ファイル数"] | type == "number" and floor == . and . >= 0) and
           (.["項目2_最小単位数"] | type == "number" and floor == . and . >= 0) and
@@ -274,6 +281,19 @@ cmd_crosscheck() {
     done
     printf '照合件数: %s\nスキップ件数: %s\n' "$checked" "$skipped"
     [ "$checked" -gt 0 ] && [ "$missing" -eq 0 ] && [ "$orphan" -eq 0 ] && [ "$mismatch" -eq 0 ]
+}
+
+cmd_validate_returns() {
+    [ "$#" -eq 1 ] || die_usage "validate-returns は返却ディレクトリを1つ取る"
+    local dir="$1" count=0 file
+    [ -d "$dir" ] || die_usage "返却ディレクトリが存在しない: $dir"
+    for file in "$dir"/*.json; do
+        [ -f "$file" ] || continue
+        validate_return_json "$file" || exit 1
+        count=$((count + 1))
+    done
+    [ "$count" -gt 0 ] || { printf 'エラー: 検査件数0: %s\n' "$dir" >&2; exit 1; }
+    printf '検査件数: %s\n' "$count"
 }
 
 die_usage() {
@@ -1016,6 +1036,7 @@ case "$subcommand" in
     report)   cmd_report "$@" ;;
     derive)   cmd_derive "$@" ;;
     crosscheck) cmd_crosscheck "$@" ;;
+    validate-returns) cmd_validate_returns "$@" ;;
     -h|--help|help) usage; exit 0 ;;
     *) die_usage "サブコマンドが不明: $subcommand" ;;
 esac
