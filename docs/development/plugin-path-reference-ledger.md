@@ -59,10 +59,10 @@ This ledger is regenerated when tracked source/config/docs add or move a `plugin
 | scripts/tests/adr-scoping-cases-basic.bats | 1017 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/adr-scoping-cases-basic.bats | 1043 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/adr-scoping-cases-basic.bats | 1056 | plugins/adr | migration | reference | wave-5 | current |
-| scripts/tests/adr-scoping-cases-basic.bats | 1085 | plugins/adr | migration | reference | wave-5 | current |
+| scripts/tests/adr-scoping-cases-basic.bats | 1088 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/adr-scoping-cases-basic.bats | 1086 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/adr-scoping-cases-basic.bats | 1087 | plugins/adr | migration | reference | wave-5 | current |
-| scripts/tests/adr-scoping-cases-basic.bats | 1110 | plugins/adr | migration | reference | wave-5 | current |
+| scripts/tests/adr-scoping-cases-basic.bats | 1111 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/adr-scoping-cases-edge.bats | 2 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/adr-scoping-cases-edge.bats | 605 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/dev-workflow-create-contract.bats | 6 | plugins/dev-workflow | migration | reference | wave-5 | current |
@@ -110,10 +110,9 @@ This ledger is regenerated when tracked source/config/docs add or move a `plugin
 | scripts/tests/writing-lint.bats | 77 | plugins/writing | migration | reference | wave-5 | current |
 | scripts/tests/writing-lint.bats | 85 | plugins/writing | migration | reference | wave-5 | current |
 | scripts/tests/writing-lint.bats | 88 | plugins/writing | migration | reference | wave-5 | current |
-| scripts/tests/adr-scoping-cases-basic.bats | 1190 | plugins/adr | migration | reference | issue-619 | current |
-| scripts/tests/adr-scoping-cases-basic.bats | 1217 | plugins/adr | migration | reference | issue-619 | current |
-| scripts/tests/adr-scoping-cases-basic.bats | 1232 | plugins/adr | migration | reference | issue-620 | current |
-| scripts/tests/adr-scoping-cases-basic.bats | 1252 | plugins/adr | migration | reference | issue-620 | current |
-| scripts/tests/adr-scoping-cases-basic.bats | 1265 | plugins/adr | migration | reference | issue-624 | current |
-| scripts/tests/adr-scoping-cases-basic.bats | 1285 | plugins/adr | migration | reference | issue-624 | current |
-
+| scripts/tests/adr-scoping-cases-basic.bats | 1191 | plugins/adr | migration | reference | issue-619 | current |
+| scripts/tests/adr-scoping-cases-basic.bats | 1218 | plugins/adr | migration | reference | issue-619 | current |
+| scripts/tests/adr-scoping-cases-basic.bats | 1233 | plugins/adr | migration | reference | issue-620 | current |
+| scripts/tests/adr-scoping-cases-basic.bats | 1253 | plugins/adr | migration | reference | issue-620 | current |
+| scripts/tests/adr-scoping-cases-basic.bats | 1266 | plugins/adr | migration | reference | issue-624 | current |
+| scripts/tests/adr-scoping-cases-basic.bats | 1286 | plugins/adr | migration | reference | issue-624 | current |

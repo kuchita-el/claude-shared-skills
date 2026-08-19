@@ -35,5 +35,6 @@
     "doc.md",
     "adr-judgment-contract.md"
   ],
-  "対象文書commit": "0000000"
+  "対象文書commit": "0000000",
+  "欠測": {}
 }

@@ -3,13 +3,18 @@
   "必要条件_補足": "却下した選択肢と却下理由が同じ節に対として特定できる。",
   "発見型_短絡": false,
   "発見型_理由": "保持先は共有規約ファイルで、formatter による強制は未実装のため通常判定した。",
-  "項目1_追跡下ファイル": ["原文列挙_1"],
+  "項目1_追跡下ファイル": [
+    "原文列挙_1"
+  ],
   "項目1_追跡下ファイル数": 1,
   "項目1_構造変更": false,
   "項目1_スキーマ変更": false,
   "項目1_配布済み成果物への利用者影響": false,
   "項目1_蓄積済みデータ移行": false,
-  "項目2_最小単位": ["原文列挙_1", "原文列挙_2"],
+  "項目2_最小単位": [
+    "原文列挙_1",
+    "原文列挙_2"
+  ],
   "項目2_最小単位数": 2,
   "項目3_値域A": false,
   "項目3_値域B": true,
@@ -25,6 +30,10 @@
   "根拠_項目3": "値域(A)は不成立。共有規約ファイルへ書かれ、同じ節に採用理由が併記されるため値域(B)は成立し、保持先が1つ在るので条件1〜3は偽へ倒した。",
   "根拠_項目4": "formatter による強制は未実装で違反は検出されないため、阻止状態は検査なし。",
   "推定で補った事実": [],
-  "参照ファイル": ["plugins/adr/skills/manage-adr/references/adr-scoping.md", "plugins/adr/skills/manage-adr/references/adr-judgment-contract.md"],
-  "対象文書commit": "03a5b79"
+  "参照ファイル": [
+    "plugins/adr/skills/manage-adr/references/adr-scoping.md",
+    "plugins/adr/skills/manage-adr/references/adr-judgment-contract.md"
+  ],
+  "対象文書commit": "03a5b79",
+  "欠測": {}
 }
