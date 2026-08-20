@@ -1344,9 +1344,11 @@ check_unreadable_case_dir() {
 }
 
 @test "derive は成功・失敗時とも正規化用一時ファイルを残さない" {
-    local tmpdir valid invalid thresholds doc_commit
+    local tmpdir input_dir valid thresholds doc_commit
     tmpdir="$BATS_TEST_TMPDIR/derive-tmp"
+    input_dir="$BATS_TEST_TMPDIR/input"
     mkdir -p "$tmpdir"
+    mkdir -p "$input_dir"
     valid="$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns/CASE-02-1.json"
     thresholds="$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json"
     doc_commit="$(jq -r '."対象文書commit"' "$valid")"
@@ -1356,10 +1358,21 @@ check_unreadable_case_dir() {
     [ "$status" -eq 0 ]
     [ -z "$(find "$tmpdir" -type f -print -quit)" ]
 
-    invalid="$tmpdir/invalid.json"
-    jq '."項目1_構造変更" = "不正"' "$valid" > "$invalid"
-    run env TMPDIR="$tmpdir" bash "$SUT" derive "$invalid" \
-        --thresholds "$thresholds" --doc-commit "$doc_commit"
+    run env TMPDIR="$tmpdir" bash "$SUT" derive "$valid" \
+        --thresholds "$thresholds" --doc-commit deadbee
     [ "$status" -ne 0 ]
-    [ -z "$(find "$tmpdir" -type f -name 'tmp.*' -print -quit)" ]
+    [ -z "$(find "$tmpdir" -type f -print -quit)" ]
+}
+
+@test "derive は対象11キーの欠測スコアを算出不能として拒否する" {
+    local input thresholds doc_commit
+    input="$BATS_TEST_TMPDIR/scoring-missing.json"
+    thresholds="$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json"
+    jq 'del(."項目3_条件3") | .["欠測"]["項目3_条件3"] = "原文に記述なし"' \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns/CASE-02-1.json" > "$input"
+    doc_commit="$(jq -r '."対象文書commit"' "$input")"
+
+    run bash "$SUT" derive "$input" --thresholds "$thresholds" --doc-commit "$doc_commit"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"算出不能"* ]]
 }
