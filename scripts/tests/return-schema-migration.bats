@@ -47,3 +47,14 @@ setup() {
     [ "$status" -eq 0 ]
     jq -e '.["必要条件_補足"] == "原文に記述なし" and .["欠測"] == {}' "$tmp/with-prose.json"
 }
+
+@test "移行スクリプトの対象キーが返却検査器の定義と一致する" {
+    local validator migration
+    validator="$(sed -n "s/^target_fields_json='\(.*\)'$/\1/p" \
+        "$REPO_ROOT/plugins/adr/scripts/adr-scoping-cases.sh")"
+    migration="$(sed -n "s/^[[:space:]]*targets='\(.*\)'$/\1/p" \
+        "$REPO_ROOT/scripts/migrate-return-schema.sh")"
+    [ -n "$validator" ]
+    [ -n "$migration" ]
+    [ "$(jq -S -c . <<<"$validator")" = "$(jq -S -c . <<<"$migration")" ]
+}

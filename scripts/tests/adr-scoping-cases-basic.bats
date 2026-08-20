@@ -1183,7 +1183,7 @@ check_unreadable_case_dir() {
         keys+=("\"${field}\":")
     done
     collect_out "$return_body" \
-        "49. prompt 出力に契約の判定器記入フィールド27件がJSONキー形で全て現れる" \
+        "49. prompt 出力に契約の判定器記入フィールド28件がJSONキー形で全て現れる" \
         "${keys[@]}"
 
     # 実データ雛形の返却形式は言語タグ無しの素の ``` で囲まれる。```json に固定しない。
@@ -1341,4 +1341,25 @@ check_unreadable_case_dir() {
         done
     ' -- "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-raw-returns.md" "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns" "$BATS_TEST_TMPDIR" "$REPO_ROOT/scripts/migrate-return-schema.sh"
     [ "$status" -eq 0 ]
+}
+
+@test "derive は成功・失敗時とも正規化用一時ファイルを残さない" {
+    local tmpdir valid invalid thresholds doc_commit
+    tmpdir="$BATS_TEST_TMPDIR/derive-tmp"
+    mkdir -p "$tmpdir"
+    valid="$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns/CASE-02-1.json"
+    thresholds="$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json"
+    doc_commit="$(jq -r '."対象文書commit"' "$valid")"
+
+    run env TMPDIR="$tmpdir" bash "$SUT" derive "$valid" \
+        --thresholds "$thresholds" --doc-commit "$doc_commit"
+    [ "$status" -eq 0 ]
+    [ -z "$(find "$tmpdir" -type f -print -quit)" ]
+
+    invalid="$tmpdir/invalid.json"
+    jq '."項目1_構造変更" = "不正"' "$valid" > "$invalid"
+    run env TMPDIR="$tmpdir" bash "$SUT" derive "$invalid" \
+        --thresholds "$thresholds" --doc-commit "$doc_commit"
+    [ "$status" -ne 0 ]
+    [ -z "$(find "$tmpdir" -type f -name 'tmp.*' -print -quit)" ]
 }

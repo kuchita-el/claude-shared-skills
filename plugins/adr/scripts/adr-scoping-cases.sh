@@ -59,6 +59,7 @@ set -euo pipefail
 _cleanup_body_file=""
 _cleanup_out_file=""
 _cleanup_ids_file=""
+_cleanup_normalized_file=""
 
 # EXIT trap の本体。パスを trap 文字列へ埋め込まず関数名だけを渡すのは、$TMPDIR に
 # 単一引用符が含まれる場合に trap 本体のクォートが壊れ、処理が成功していても EXIT 時の
@@ -69,6 +70,7 @@ _cleanup_temp_files() {
     [ -z "$_cleanup_body_file" ] || rm -f -- "$_cleanup_body_file"
     [ -z "$_cleanup_out_file" ] || rm -f -- "$_cleanup_out_file"
     [ -z "$_cleanup_ids_file" ] || rm -f -- "$_cleanup_ids_file"
+    [ -z "$_cleanup_normalized_file" ] || rm -f -- "$_cleanup_normalized_file"
     return 0
 }
 
@@ -177,6 +179,8 @@ cmd_derive() {
     validate_return_json "$json" || exit 1
     local normalized
     normalized="$(mktemp)"
+    _cleanup_normalized_file="$normalized"
+    trap _cleanup_temp_files EXIT
     normalize_return_json "$json" > "$normalized"
     json="$normalized"
     local actual; actual="$(jq -r '.["対象文書commit"]' "$json")"
