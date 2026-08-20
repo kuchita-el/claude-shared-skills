@@ -120,6 +120,8 @@ json_required_fields=(
   項目4_阻止状態 複数作業者 複数箇所 根拠_項目1 根拠_項目2 根拠_項目3 根拠_項目4 推定で補った事実 参照ファイル 対象文書commit
 )
 
+target_fields_json='["必要条件_成立","項目1_構造変更","項目1_スキーマ変更","項目1_配布済み成果物への利用者影響","項目1_蓄積済みデータ移行","項目3_値域A","項目3_値域B","項目3_採用理由確認可能","項目3_条件1","項目3_条件2","項目3_条件3"]'
+
 validate_return_json() {
     local json="$1"
     jq -e 'type == "object"' "$json" >/dev/null || { printf 'エラー: JSON オブジェクトでない: %s\n' "$json" >&2; return 1; }
@@ -131,38 +133,22 @@ validate_return_json() {
         printf 'エラー: 新スキーマの必須フィールドが無い: 欠測 (%s)\n' "$json" >&2
         return 1
     fi
-    if jq -e 'has("欠測")' "$json" >/dev/null; then
-        jq -e '
-          def targets: ["必要条件_成立","項目1_構造変更","項目1_スキーマ変更","項目1_配布済み成果物への利用者影響","項目1_蓄積済みデータ移行","項目3_値域A","項目3_値域B","項目3_採用理由確認可能","項目3_条件1","項目3_条件2","項目3_条件3"];
-          . as $root |
-          (.["欠測"] | type == "object") and (.["欠測"] | all(.[]; . == "当時未施行" or . == "原文に記述なし")) and
-          (.["欠測"] | keys | all(. as $k | ["必要条件_成立","項目1_構造変更","項目1_スキーマ変更","項目1_配布済み成果物への利用者影響","項目1_蓄積済みデータ移行","項目3_値域A","項目3_値域B","項目3_採用理由確認可能","項目3_条件1","項目3_条件2","項目3_条件3"] | index($k) != null)) and
-          (targets | all(.[]; . as $k | ((($root | has($k)) != ($root["欠測"] | has($k))) and ((($root | has($k)) and ($root[$k] | type == "boolean")) or (($root["欠測"] | has($k)) and ($root["欠測"][$k] | type == "string")))))) and
-          (. as $root | (["項目1_追跡下ファイル","項目2_最小単位","推定で補った事実","参照ファイル"] | all(.[]; . as $k | $root[$k] | type == "array" and all(.[]; type == "string")))) and
-          (.["項目1_追跡下ファイル数"] | type == "number" and floor == . and . >= 0) and
-          (.["項目2_最小単位数"] | type == "number" and floor == . and . >= 0) and
-          (.["項目1_追跡下ファイル"] | length) == .["項目1_追跡下ファイル数"] and
-          (.["項目2_最小単位"] | length) == .["項目2_最小単位数"] and
-          (. as $root | (["発見型_短絡","複数作業者","複数箇所"] | all(.[]; . as $k | $root[$k] | type == "boolean")))
-        ' "$json" >/dev/null || { printf 'エラー: 新スキーマの型または排他規則が契約違反: %s\n' "$json" >&2; return 1; }
-        for field in 根拠_項目1 根拠_項目2 根拠_項目3 根拠_項目4; do
-            jq -e --arg k "$field" '(.[$k] | type == "string" and length > 0)' "$json" >/dev/null || { printf 'エラー: 根拠が空である: %s (%s)\n' "$field" "$json" >&2; return 1; }
-        done
-        jq -e '.["項目4_阻止状態"] == "現に阻止" or .["項目4_阻止状態"] == "警告どまり" or .["項目4_阻止状態"] == "検査なし"' "$json" >/dev/null || { printf 'エラー: 項目4_阻止状態が値域外: %s\n' "$json" >&2; return 1; }
-        jq -e '.["対象文書commit"] | type == "string" and test("^[0-9a-f]{7,40}$")' "$json" >/dev/null || { printf 'エラー: 対象文書commitが不正: %s\n' "$json" >&2; return 1; }
-        return 0
-    fi
-    jq -e '
-      (.["必要条件_成立"] | type == "boolean" or . == "当時未施行" or . == "原文に記述なし") and
-      (. as $root | (["項目1_追跡下ファイル","項目2_最小単位","推定で補った事実","参照ファイル"] | all(.[]; . as $k | $root[$k] | type == "array" and all(.[]; type == "string")))) and
-      (."項目1_追跡下ファイル数" | type == "number" and floor == . and . >= 0) and
-      (."項目2_最小単位数" | type == "number" and floor == . and . >= 0) and
-      (."項目1_追跡下ファイル" | length) == .["項目1_追跡下ファイル数"] and
-      (."項目2_最小単位" | length) == .["項目2_最小単位数"] and
-      (. as $root | (["発見型_短絡","複数作業者","複数箇所"] | all(.[]; . as $k | $root[$k] | type == "boolean"))) and
-      (. as $root | (["項目1_構造変更","項目1_スキーマ変更","項目1_配布済み成果物への利用者影響","項目1_蓄積済みデータ移行"] | all(.[]; . as $k | $root[$k] | (type == "boolean" or . == "当時未施行" or . == "原文に記述なし")))) and
-      (. as $root | (["項目3_値域A","項目3_値域B","項目3_採用理由確認可能","項目3_条件1","項目3_条件2","項目3_条件3"] | all(.[]; . as $k | $root[$k] | (type == "boolean" or (. == "当時未施行" or . == "原文に記述なし")))))
-    ' "$json" >/dev/null || { printf 'エラー: JSON の型または件数が契約違反: %s\n' "$json" >&2; return 1; }
+    jq --argjson targets "$target_fields_json" -e '
+      . as $root |
+      ($root["欠測"] | type == "object") and
+      ($root["欠測"] | all(.[]; . == "当時未施行" or . == "原文に記述なし")) and
+      ($root["欠測"] | keys | all(. as $k | ($targets | index($k) != null))) and
+      ($targets | all(.[]; . as $k |
+        ((($root | has($k)) != ($root["欠測"] | has($k))) and
+         ((($root | has($k)) and ($root[$k] | type == "boolean")) or
+          (($root["欠測"] | has($k)) and ($root["欠測"][$k] | type == "string")))))) and
+      (["項目1_追跡下ファイル","項目2_最小単位","推定で補った事実","参照ファイル"] | all(.[]; . as $k | $root[$k] | type == "array" and all(.[]; type == "string"))) and
+      ($root["項目1_追跡下ファイル数"] | type == "number" and floor == . and . >= 0) and
+      ($root["項目2_最小単位数"] | type == "number" and floor == . and . >= 0) and
+      ($root["項目1_追跡下ファイル"] | length) == $root["項目1_追跡下ファイル数"] and
+      ($root["項目2_最小単位"] | length) == $root["項目2_最小単位数"] and
+      (["発見型_短絡","複数作業者","複数箇所"] | all(.[]; . as $k | $root[$k] | type == "boolean"))
+    ' "$json" >/dev/null || { printf 'エラー: 新スキーマの型または排他規則が契約違反: %s\n' "$json" >&2; return 1; }
     for field in 根拠_項目1 根拠_項目2 根拠_項目3 根拠_項目4; do
         jq -e --arg k "$field" '(.[$k] | type == "string" and length > 0)' "$json" >/dev/null || { printf 'エラー: 根拠が空である: %s (%s)\n' "$field" "$json" >&2; return 1; }
     done
@@ -173,8 +159,8 @@ validate_return_json() {
 
 normalize_return_json() {
     local input="$1"
-    jq '
-      reduce ["必要条件_成立","項目1_構造変更","項目1_スキーマ変更","項目1_配布済み成果物への利用者影響","項目1_蓄積済みデータ移行","項目3_値域A","項目3_値域B","項目3_採用理由確認可能","項目3_条件1","項目3_条件2","項目3_条件3"][] as $k
+    jq --argjson targets "$target_fields_json" '
+      reduce $targets[] as $k
         (.;
           if has($k) then .
           elif (.["欠測"] | has($k)) then .[$k] = .["欠測"][$k]
@@ -189,12 +175,10 @@ cmd_derive() {
     parse_options "$@"
     [ -f "$json" ] || die_usage "返却JSONが存在しない: $json"
     validate_return_json "$json" || exit 1
-    if jq -e 'has("欠測")' "$json" >/dev/null; then
-        local normalized
-        normalized="$(mktemp)"
-        normalize_return_json "$json" > "$normalized"
-        json="$normalized"
-    fi
+    local normalized
+    normalized="$(mktemp)"
+    normalize_return_json "$json" > "$normalized"
+    json="$normalized"
     local actual; actual="$(jq -r '.["対象文書commit"]' "$json")"
     [ "$actual" = "$_doc_commit" ] || { printf 'エラー: 版ずれ: JSON=%s / 現行=%s (%s)\n' "$actual" "$_doc_commit" "$json" >&2; exit 1; }
     # `当時未施行` / `原文に記述なし` は、必要条件そのものが現行条文の測定対象外
