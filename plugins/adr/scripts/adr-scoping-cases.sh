@@ -198,9 +198,10 @@ cmd_derive() {
         printf '必要条件: 不成立\n行き先: ADR化しない/%s\n' "$pre_dest"
         return 0
     fi
+    # 項目2_最小単位数は返却検査器が非負整数を強制するため、欠測語にならず対象外。
     if jq --argjson targets "$target_fields_json" -e '
       . as $root |
-      (($targets - ["必要条件_成立"]) + ["項目2_最小単位数"]) as $score_fields |
+      ($targets - ["必要条件_成立"]) as $score_fields |
       [$score_fields[] | $root[.]]
       | any(.[]; . == "当時未施行" or . == "原文に記述なし")
     ' "$json" >/dev/null; then

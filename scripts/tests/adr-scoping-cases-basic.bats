@@ -1344,11 +1344,9 @@ check_unreadable_case_dir() {
 }
 
 @test "derive は成功・失敗時とも正規化用一時ファイルを残さない" {
-    local tmpdir input_dir valid thresholds doc_commit
+    local tmpdir valid thresholds doc_commit
     tmpdir="$BATS_TEST_TMPDIR/derive-tmp"
-    input_dir="$BATS_TEST_TMPDIR/input"
     mkdir -p "$tmpdir"
-    mkdir -p "$input_dir"
     valid="$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns/CASE-02-1.json"
     thresholds="$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json"
     doc_commit="$(jq -r '."対象文書commit"' "$valid")"
