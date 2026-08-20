@@ -34,5 +34,6 @@
     "plugins/adr/skills/manage-adr/references/adr-scoping.md",
     "adr-judgment-contract.md"
   ],
-  "対象文書commit": "03a5b79"
+  "対象文書commit": "03a5b79",
+  "欠測": {}
 }

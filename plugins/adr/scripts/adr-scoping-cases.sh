@@ -43,6 +43,7 @@
 #   bash adr-scoping-cases.sh report   <判定記録TSV> <題材集合ディレクトリ> [--stats]
 #   bash adr-scoping-cases.sh derive   <返却JSON> --thresholds <JSON> --doc-commit <hash>
 #   bash adr-scoping-cases.sh crosscheck <判定記録TSV> <返却ディレクトリ> --thresholds <JSON> --doc-commit <hash> [--allow-missing ID:試行]
+#   bash adr-scoping-cases.sh validate-returns <返却ディレクトリ>
 #
 # prompt は組み立てたプロンプトを一時ファイルへ書き出し、そのパスだけを標準出力へ返す。
 # プロンプト本文を標準出力へ流さないのは、呼び出し側の文脈へ題材本文を載せないためである。
@@ -58,6 +59,7 @@ set -euo pipefail
 _cleanup_body_file=""
 _cleanup_out_file=""
 _cleanup_ids_file=""
+_cleanup_normalized_file=""
 
 # EXIT trap の本体。パスを trap 文字列へ埋め込まず関数名だけを渡すのは、$TMPDIR に
 # 単一引用符が含まれる場合に trap 本体のクォートが壊れ、処理が成功していても EXIT 時の
@@ -68,6 +70,7 @@ _cleanup_temp_files() {
     [ -z "$_cleanup_body_file" ] || rm -f -- "$_cleanup_body_file"
     [ -z "$_cleanup_out_file" ] || rm -f -- "$_cleanup_out_file"
     [ -z "$_cleanup_ids_file" ] || rm -f -- "$_cleanup_ids_file"
+    [ -z "$_cleanup_normalized_file" ] || rm -f -- "$_cleanup_normalized_file"
     return 0
 }
 
@@ -79,6 +82,7 @@ usage() {
   adr-scoping-cases.sh report   <判定記録TSV> <題材集合ディレクトリ> [--stats]
   adr-scoping-cases.sh derive   <返却JSON> --thresholds <設定JSON> --doc-commit <短縮ハッシュ>
   adr-scoping-cases.sh crosscheck <判定記録TSV> <返却ディレクトリ> --thresholds <設定JSON> --doc-commit <短縮ハッシュ> [--allow-missing ID:試行]
+  adr-scoping-cases.sh validate-returns <返却ディレクトリ>
 
 題材集合ディレクトリは全サブコマンドで必須であり、既定値を持たない。
 題材集合ディレクトリは cases.md と expectations.tsv を持つこと
@@ -113,11 +117,12 @@ parse_options() {
 }
 
 json_required_fields=(
-  必要条件_成立 必要条件_補足 発見型_短絡 発見型_理由
-  項目1_追跡下ファイル 項目1_追跡下ファイル数 項目1_構造変更 項目1_スキーマ変更 項目1_配布済み成果物への利用者影響 項目1_蓄積済みデータ移行
-  項目2_最小単位 項目2_最小単位数 項目3_値域A 項目3_値域B 項目3_採用理由確認可能 項目3_条件1 項目3_条件2 項目3_条件3
+  必要条件_補足 発見型_短絡 発見型_理由
+  項目1_追跡下ファイル 項目1_追跡下ファイル数 項目2_最小単位 項目2_最小単位数
   項目4_阻止状態 複数作業者 複数箇所 根拠_項目1 根拠_項目2 根拠_項目3 根拠_項目4 推定で補った事実 参照ファイル 対象文書commit
 )
+
+target_fields_json='["必要条件_成立","項目1_構造変更","項目1_スキーマ変更","項目1_配布済み成果物への利用者影響","項目1_蓄積済みデータ移行","項目3_値域A","項目3_値域B","項目3_採用理由確認可能","項目3_条件1","項目3_条件2","項目3_条件3"]'
 
 validate_return_json() {
     local json="$1"
@@ -126,17 +131,26 @@ validate_return_json() {
     for field in "${json_required_fields[@]}"; do
         jq -e --arg k "$field" 'has($k)' "$json" >/dev/null || { printf 'エラー: 必須フィールドが無い: %s (%s)\n' "$field" "$json" >&2; return 1; }
     done
-    jq -e '
-      (.["必要条件_成立"] | type == "boolean" or . == "当時未施行" or . == "原文に記述なし") and
-      (. as $root | (["項目1_追跡下ファイル","項目2_最小単位","推定で補った事実","参照ファイル"] | all(.[]; . as $k | $root[$k] | type == "array" and all(.[]; type == "string")))) and
-      (."項目1_追跡下ファイル数" | type == "number" and floor == . and . >= 0) and
-      (."項目2_最小単位数" | type == "number" and floor == . and . >= 0) and
-      (."項目1_追跡下ファイル" | length) == .["項目1_追跡下ファイル数"] and
-      (."項目2_最小単位" | length) == .["項目2_最小単位数"] and
-      (. as $root | (["発見型_短絡","複数作業者","複数箇所"] | all(.[]; . as $k | $root[$k] | type == "boolean"))) and
-      (. as $root | (["項目1_構造変更","項目1_スキーマ変更","項目1_配布済み成果物への利用者影響","項目1_蓄積済みデータ移行"] | all(.[]; . as $k | $root[$k] | (type == "boolean" or . == "当時未施行" or . == "原文に記述なし")))) and
-      (. as $root | (["項目3_値域A","項目3_値域B","項目3_採用理由確認可能","項目3_条件1","項目3_条件2","項目3_条件3"] | all(.[]; . as $k | $root[$k] | (type == "boolean" or (. == "当時未施行" or . == "原文に記述なし")))))
-    ' "$json" >/dev/null || { printf 'エラー: JSON の型または件数が契約違反: %s\n' "$json" >&2; return 1; }
+    if ! jq -e 'has("欠測")' "$json" >/dev/null; then
+        printf 'エラー: 新スキーマの必須フィールドが無い: 欠測 (%s)\n' "$json" >&2
+        return 1
+    fi
+    jq --argjson targets "$target_fields_json" -e '
+      . as $root |
+      ($root["欠測"] | type == "object") and
+      ($root["欠測"] | all(.[]; . == "当時未施行" or . == "原文に記述なし")) and
+      ($root["欠測"] | keys | all(. as $k | ($targets | index($k) != null))) and
+      ($targets | all(.[]; . as $k |
+        ((($root | has($k)) != ($root["欠測"] | has($k))) and
+         ((($root | has($k)) and ($root[$k] | type == "boolean")) or
+          (($root["欠測"] | has($k)) and ($root["欠測"][$k] | type == "string")))))) and
+      (["項目1_追跡下ファイル","項目2_最小単位","推定で補った事実","参照ファイル"] | all(.[]; . as $k | $root[$k] | type == "array" and all(.[]; type == "string"))) and
+      ($root["項目1_追跡下ファイル数"] | type == "number" and floor == . and . >= 0) and
+      ($root["項目2_最小単位数"] | type == "number" and floor == . and . >= 0) and
+      ($root["項目1_追跡下ファイル"] | length) == $root["項目1_追跡下ファイル数"] and
+      ($root["項目2_最小単位"] | length) == $root["項目2_最小単位数"] and
+      (["発見型_短絡","複数作業者","複数箇所"] | all(.[]; . as $k | $root[$k] | type == "boolean"))
+    ' "$json" >/dev/null || { printf 'エラー: 新スキーマの型または排他規則が契約違反: %s\n' "$json" >&2; return 1; }
     for field in 根拠_項目1 根拠_項目2 根拠_項目3 根拠_項目4; do
         jq -e --arg k "$field" '(.[$k] | type == "string" and length > 0)' "$json" >/dev/null || { printf 'エラー: 根拠が空である: %s (%s)\n' "$field" "$json" >&2; return 1; }
     done
@@ -145,12 +159,30 @@ validate_return_json() {
     return 0
 }
 
+normalize_return_json() {
+    local input="$1"
+    jq --argjson targets "$target_fields_json" '
+      reduce $targets[] as $k
+        (.;
+          if has($k) then .
+          elif (.["欠測"] | has($k)) then .[$k] = .["欠測"][$k]
+          else . end)
+      | del(.["欠測"])
+    ' "$input"
+}
+
 cmd_derive() {
     [ $# -ge 1 ] || die_usage "derive は返却JSONを取る"
     local json="$1"; shift
     parse_options "$@"
     [ -f "$json" ] || die_usage "返却JSONが存在しない: $json"
     validate_return_json "$json" || exit 1
+    local normalized
+    normalized="$(mktemp)"
+    _cleanup_normalized_file="$normalized"
+    trap _cleanup_temp_files EXIT
+    normalize_return_json "$json" > "$normalized"
+    json="$normalized"
     local actual; actual="$(jq -r '.["対象文書commit"]' "$json")"
     [ "$actual" = "$_doc_commit" ] || { printf 'エラー: 版ずれ: JSON=%s / 現行=%s (%s)\n' "$actual" "$_doc_commit" "$json" >&2; exit 1; }
     # `当時未施行` / `原文に記述なし` は、必要条件そのものが現行条文の測定対象外
@@ -166,10 +198,11 @@ cmd_derive() {
         printf '必要条件: 不成立\n行き先: ADR化しない/%s\n' "$pre_dest"
         return 0
     fi
-    if jq -e '
-      [.["項目1_構造変更"], .["項目1_スキーマ変更"], .["項目1_配布済み成果物への利用者影響"], .["項目1_蓄積済みデータ移行"],
-       .["項目2_最小単位数"], .["項目3_値域A"], .["項目3_値域B"], .["項目3_採用理由確認可能"],
-       .["項目3_条件1"], .["項目3_条件2"], .["項目3_条件3"]]
+    # 項目2_最小単位数は返却検査器が非負整数を強制するため、欠測語にならず対象外。
+    if jq --argjson targets "$target_fields_json" -e '
+      . as $root |
+      ($targets - ["必要条件_成立"]) as $score_fields |
+      [$score_fields[] | $root[.]]
       | any(.[]; . == "当時未施行" or . == "原文に記述なし")
     ' "$json" >/dev/null; then
         printf 'エラー: 項目スコア入力が欠損しているため算出不能: %s\n' "$json" >&2
@@ -237,6 +270,19 @@ cmd_crosscheck() {
     done
     printf '照合件数: %s\nスキップ件数: %s\n' "$checked" "$skipped"
     [ "$checked" -gt 0 ] && [ "$missing" -eq 0 ] && [ "$orphan" -eq 0 ] && [ "$mismatch" -eq 0 ]
+}
+
+cmd_validate_returns() {
+    [ "$#" -eq 1 ] || die_usage "validate-returns は返却ディレクトリを1つ取る"
+    local dir="$1" count=0 file
+    [ -d "$dir" ] || die_usage "返却ディレクトリが存在しない: $dir"
+    for file in "$dir"/*.json; do
+        [ -f "$file" ] || continue
+        validate_return_json "$file" || exit 1
+        count=$((count + 1))
+    done
+    [ "$count" -gt 0 ] || { printf 'エラー: 検査件数0: %s\n' "$dir" >&2; exit 1; }
+    printf '検査件数: %s\n' "$count"
 }
 
 die_usage() {
@@ -979,6 +1025,7 @@ case "$subcommand" in
     report)   cmd_report "$@" ;;
     derive)   cmd_derive "$@" ;;
     crosscheck) cmd_crosscheck "$@" ;;
+    validate-returns) cmd_validate_returns "$@" ;;
     -h|--help|help) usage; exit 0 ;;
     *) die_usage "サブコマンドが不明: $subcommand" ;;
 esac

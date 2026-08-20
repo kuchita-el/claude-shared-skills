@@ -33,6 +33,29 @@ setup_file() {
     common_setup_file
 }
 
+@test "面㉒: validate-returns は全件を検査し0件と新スキーマ違反を拒否する" {
+    local dir count
+    for dir in \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-07-29-returns" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-15-returns" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-15-cases25-29-returns" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case30-returns" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case31-returns" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns"; do
+        run bash "$SUT" validate-returns "$dir"
+        [ "$status" -eq 0 ]
+    done
+    run bash "$SUT" validate-returns "$BATS_TEST_TMPDIR"
+    [ "$status" -ne 0 ]
+    mkdir -p "$BATS_TEST_TMPDIR/empty"
+    run bash "$SUT" validate-returns "$BATS_TEST_TMPDIR/empty"
+    [ "$status" -ne 0 ]
+    for invalid in "$REPO_ROOT/scripts/fixtures/adr-scoping-cases/returns-invalid"/*.json; do
+        run bash "$SUT" derive "$invalid" --thresholds "$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json" --doc-commit 0000000
+        [ "$status" -ne 0 ]
+    done
+}
+
 # パーミッションを変えたディレクトリ・ファイルが残ったままだと、bats の tmpdir 掃除自体が
 # 失敗する。各ケース内でも戻しているが、途中で abort した場合に備えて teardown でも
 # 一括で戻す（teardown は errexit で abort した @test の後でも走る）。
@@ -1019,13 +1042,13 @@ check_unreadable_case_dir() {
     jq '."項目1_追跡下ファイル数" = "3"' "$json" > "$invalid"
     run bash "$SUT" derive "$invalid" --thresholds "$thresholds" --doc-commit 0000000
     [ "$status" -ne 0 ]
-    [[ "$output" == *"型または件数"* ]]
+    [[ "$output" == *"型または件数"* || "$output" == *"型または排他規則"* ]]
 
     local missing_boolean="$BATS_TEST_TMPDIR/missing-boolean-return.json"
     jq '."項目1_構造変更" = "原文に記述なし"' "$json" > "$missing_boolean"
     run bash "$SUT" derive "$missing_boolean" --thresholds "$thresholds" --doc-commit 0000000
     [ "$status" -ne 0 ]
-    [[ "$output" == *"スコア入力が欠損"* ]]
+    [[ "$output" == *"型または排他規則"* ]]
 
     run bash "$SUT" derive "$json" --doc-commit 0000000
     [ "$status" -eq 2 ]
@@ -1058,7 +1081,7 @@ check_unreadable_case_dir() {
     run bash "$SUT" crosscheck "$CASES_DIR/judgments/precondition-judgments.tsv" "$returns" \
         --thresholds "$thresholds" --doc-commit 0000000
     [ "$status" -eq 0 ]
-    [[ "$output" == *"照合件数: 2"* ]]
+    [[ "$output" == *"照合件数: 4"* ]]
 
     local changed="$BATS_TEST_TMPDIR/precondition-dest.tsv"
     awk -F '\t' 'BEGIN { OFS="\t" } { if ($1 == "CASE-P1") $7="ADR化しない"; print }' \
@@ -1071,8 +1094,9 @@ check_unreadable_case_dir() {
     local legacy_returns="$BATS_TEST_TMPDIR/legacy-returns"
     mkdir -p "$legacy_returns"
     cp "$CASES_DIR/returns-precondition/CASE-P1-1.json" "$legacy_returns/"
-    jq '."必要条件_成立" = "当時未施行"' "$CASES_DIR/returns-precondition/CASE-P2-1.json" > "$legacy_returns/CASE-P2-1.json"
-    cp "$CASES_DIR/judgments/precondition-judgments.tsv" "$legacy"
+    jq 'del(."必要条件_成立") | .["欠測"]={"必要条件_成立":"当時未施行"}' "$CASES_DIR/returns-precondition/CASE-P2-1.json" > "$legacy_returns/CASE-P2-1.json"
+    awk -F '\t' '$1 == "CASE-P1" || $1 == "CASE-P2" || $1 == "題材ID" || $1 ~ /^#/ { print }' \
+        "$CASES_DIR/judgments/precondition-judgments.tsv" > "$legacy"
     run bash "$SUT" derive "$legacy_returns/CASE-P2-1.json" --thresholds "$thresholds" --doc-commit 0000000
     [ "$status" -eq 0 ]
     [[ "$output" == *"項目1:"* && "$output" == *"合計:"* ]]
@@ -1114,7 +1138,7 @@ check_unreadable_case_dir() {
 
     collect_init
 
-    # 現行契約で判定器が記入するフィールド数は27件。契約表の形式が変わって抽出が
+    # 現行契約で判定器が記入するフィールド数は28件。契約表の形式が変わって抽出が
     # 空振りした場合に、照合ゼロのまま緑へ縮退させないため下限を先に検査する。
     mapfile -t fields < <(awk -F'|' '
         /^[|].*[|]$/ && $2 !~ /フィールド名/ && $5 ~ /判定器/ {
@@ -1123,10 +1147,10 @@ check_unreadable_case_dir() {
             print field
         }
     ' "$contract")
-    if [ "${#fields[@]}" -ge 27 ]; then
-        collect_ok "47. 契約仕様から判定器記入フィールドを27件以上抽出する"
+    if [ "${#fields[@]}" -ge 28 ]; then
+        collect_ok "47. 契約仕様から判定器記入フィールドを28件以上抽出する"
     else
-        collect_fail "47. 契約仕様から判定器記入フィールドを27件以上抽出する" \
+        collect_fail "47. 契約仕様から判定器記入フィールドを28件以上抽出する" \
             "抽出件数が不足: ${#fields[@]}"
     fi
 
@@ -1159,7 +1183,7 @@ check_unreadable_case_dir() {
         keys+=("\"${field}\":")
     done
     collect_out "$return_body" \
-        "49. prompt 出力に契約の判定器記入フィールド27件がJSONキー形で全て現れる" \
+        "49. prompt 出力に契約の判定器記入フィールド28件がJSONキー形で全て現れる" \
         "${keys[@]}"
 
     # 実データ雛形の返却形式は言語タグ無しの素の ``` で囲まれる。```json に固定しない。
@@ -1303,6 +1327,10 @@ check_unreadable_case_dir() {
         raw="$1"
         returns="$2"
         tmp="$3"
+        script="$4"
+        cp -R "$returns" "$tmp/returns"
+        bash "$script" --reverse "$tmp/returns" || exit 1
+        returns="$tmp/returns"
         for pair in CASE-02-1 CASE-02-2 CASE-09-1 CASE-09-2 CASE-11-1 CASE-11-2 CASE-32-1 CASE-32-2; do
             id="${pair%-*}"
             trial="${pair##*-}"
@@ -1311,7 +1339,38 @@ check_unreadable_case_dir() {
             jq -S . "$returns/${pair}.json" > "$tmp/${pair}.expected.sorted"
             cmp -s "$tmp/${pair}.sorted" "$tmp/${pair}.expected.sorted" || exit 1
         done
-    ' -- "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-raw-returns.md" "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns" "$BATS_TEST_TMPDIR"
+    ' -- "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-raw-returns.md" "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns" "$BATS_TEST_TMPDIR" "$REPO_ROOT/scripts/migrate-return-schema.sh"
     [ "$status" -eq 0 ]
 }
 
+@test "derive は成功・失敗時とも正規化用一時ファイルを残さない" {
+    local tmpdir valid thresholds doc_commit
+    tmpdir="$BATS_TEST_TMPDIR/derive-tmp"
+    mkdir -p "$tmpdir"
+    valid="$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns/CASE-02-1.json"
+    thresholds="$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json"
+    doc_commit="$(jq -r '."対象文書commit"' "$valid")"
+
+    run env TMPDIR="$tmpdir" bash "$SUT" derive "$valid" \
+        --thresholds "$thresholds" --doc-commit "$doc_commit"
+    [ "$status" -eq 0 ]
+    [ -z "$(find "$tmpdir" -type f -print -quit)" ]
+
+    run env TMPDIR="$tmpdir" bash "$SUT" derive "$valid" \
+        --thresholds "$thresholds" --doc-commit deadbee
+    [ "$status" -ne 0 ]
+    [ -z "$(find "$tmpdir" -type f -print -quit)" ]
+}
+
+@test "derive は対象11キーの欠測スコアを算出不能として拒否する" {
+    local input thresholds doc_commit
+    input="$BATS_TEST_TMPDIR/scoring-missing.json"
+    thresholds="$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json"
+    jq 'del(."項目3_条件3") | .["欠測"]["項目3_条件3"] = "原文に記述なし"' \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-returns/CASE-02-1.json" > "$input"
+    doc_commit="$(jq -r '."対象文書commit"' "$input")"
+
+    run bash "$SUT" derive "$input" --thresholds "$thresholds" --doc-commit "$doc_commit"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"算出不能"* ]]
+}
