@@ -1203,7 +1203,8 @@ check_unreadable_case_dir() {
     collect_finish
 }
 # Issue #619 の CASE-30 独立2試行に対する常設ゲート。--allow-missing を渡さず、
-# 照合件数2で返却全文2件の存在も検査する。負例は台帳13列目と異なる deadbee を使う。
+# 照合件数2・スキップ件数0と、実測事実 JSON 2件の存在を検査する。意味検査は期待値ではなく記録済み観測値を固定する。負例は台帳13列目と異なる deadbee を使う。
+# 項目3_条件3は試行間で値が割れたため、試行1の false のみ固定し、試行2の true は報告書で棄却済みとして固定しない。
 @test "面⑯quater: 2026-08-16 の CASE-30 走行の crosscheck 常設ゲート" {
     local doc_commit
     doc_commit="$(awk -F '\t' '!/^#/ && $1 != "題材ID" { print $13; exit }' \

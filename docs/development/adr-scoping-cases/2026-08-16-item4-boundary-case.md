@@ -33,4 +33,4 @@ CASE-01の旧来の項目4=0は、必要条件不成立により項目1〜4が�
 
 ## 残タスク
 
-面⑯quaterの冒頭コメント（`scripts/tests/adr-scoping-cases-basic.bats` の既存コメント）が返却全文の存在検査を説明している誤記は、本PRでは修正せず [#759](https://github.com/kuchita-el/claude-shared-skills/issues/759) として起票済みである（D7、#755の射程外）。
+面⑯quaterの冒頭コメント（`scripts/tests/adr-scoping-cases-basic.bats` の既存コメント）が返却全文の存在検査を説明している誤記は、[#759](https://github.com/kuchita-el/claude-shared-skills/issues/759) で是正済みである（D7、#755の射程外）。
