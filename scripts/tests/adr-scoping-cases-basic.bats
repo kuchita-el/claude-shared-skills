@@ -893,8 +893,8 @@ check_unreadable_case_dir() {
 # 据え置き6組の免除記録だけを検査する。
 @test "面⑯: 実データの crosscheck 常設ゲート" {
     local doc_commit
-    # 台帳が記録している対象文書の版を使う。現行版を渡すと歴史的42件を
-    # 全てスキップし、常設ゲートが何も照合しないためである。
+    # 台帳13列目の版を使う。この走行は後に対象文書が進んだ歴史的記録であり、現行版を渡すと
+    # 42件全てが版ずれで外れて何も照合しない。負例は台帳13列目と異なる deadbee を使う。
     doc_commit="$(awk -F '\t' '!/^#/ && $1 != "題材ID" { print $13; exit }' \
         "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-07-29-judgments.tsv")"
     run bash "$SUT" crosscheck \
