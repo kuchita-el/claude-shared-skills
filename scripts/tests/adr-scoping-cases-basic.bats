@@ -893,8 +893,8 @@ check_unreadable_case_dir() {
 # 据え置き6組の免除記録だけを検査する。
 @test "面⑯: 実データの crosscheck 常設ゲート" {
     local doc_commit
-    # 台帳が記録している対象文書の版を使う。現行版を渡すと歴史的42件を
-    # 全てスキップし、常設ゲートが何も照合しないためである。
+    # 台帳13列目の版を使う。この走行は後に対象文書が進んだ歴史的記録であり、現行版を渡すと
+    # 42件全てが版ずれで外れて何も照合しない。負例は台帳13列目と異なる deadbee を使う。
     doc_commit="$(awk -F '\t' '!/^#/ && $1 != "題材ID" { print $13; exit }' \
         "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-07-29-judgments.tsv")"
     run bash "$SUT" crosscheck \
@@ -922,11 +922,12 @@ check_unreadable_case_dir() {
 }
 
 # 2026-08-15 の走行に対する常設ゲート。面⑯と異なり据え置きの免除が1組も無いため
-# --allow-missing を渡さない。渡さずに通ることが、48組すべての返却全文が在ることの検査を兼ねる。
+# --allow-missing を渡さない。渡さずに通ることが、48組すべての実測事実 JSON が在ることの検査を兼ねる。
 @test "面⑯bis: 2026-08-15 の走行の crosscheck 常設ゲート" {
     local doc_commit
-    # 台帳13列目の版を使う。現行版を渡すと版ずれで全件スキップされ、
-    # 照合0件のまま緑になる経路が開く。
+    # 台帳13列目の版を使うのは、照合をその走行が行われた当時の版へ固定するためである。
+    # 負例は台帳13列目と異なる deadbee を使い、版が食い違えば全件が外れることを見る。
+    # この走行が歴史的記録側へ移ったかは、台帳13列目と対象文書の現行版を突き合わせて判断する。
     doc_commit="$(awk -F '\t' '!/^#/ && $1 != "題材ID" { print $13; exit }' \
         "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-15-judgments.tsv")"
     run bash "$SUT" crosscheck \
@@ -949,11 +950,12 @@ check_unreadable_case_dir() {
 
 # Issue #703 の走行（CASE-25〜29）に対する常設ゲート。面⑯bis と同様、据え置きの
 # 免除は1組も無いため --allow-missing を渡さない。渡さずに通ることが、10組すべての
-# 返却全文が在ることの検査を兼ねる。
+# 実測事実 JSON が在ることの検査を兼ねる。
 @test "面⑯ter: 2026-08-15 の走行(CASE-25〜29)の crosscheck 常設ゲート" {
     local doc_commit
-    # 台帳13列目の版を使う。現行版を渡すと版ずれで全件スキップされ、
-    # 照合0件のまま緑になる経路が開く。
+    # 台帳13列目の版を使うのは、照合をその走行が行われた当時の版へ固定するためである。
+    # 負例は台帳13列目と異なる deadbee を使い、版が食い違えば全件が外れることを見る。
+    # この走行が歴史的記録側へ移ったかは、台帳13列目と対象文書の現行版を突き合わせて判断する。
     doc_commit="$(awk -F '\t' '!/^#/ && $1 != "題材ID" { print $13; exit }' \
         "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-15-cases25-29-judgments.tsv")"
     run bash "$SUT" crosscheck \
@@ -1207,6 +1209,9 @@ check_unreadable_case_dir() {
 # 項目3_条件3は試行間で値が割れたため、試行1の false のみ固定し、試行2の true は報告書で棄却済みとして固定しない。
 @test "面⑯quater: 2026-08-16 の CASE-30 走行の crosscheck 常設ゲート" {
     local doc_commit
+    # 台帳13列目の版を使うのは、照合をその走行が行われた当時の版へ固定するためである。
+    # 負例は台帳13列目と異なる deadbee を使い、版が食い違えば全件が外れることを見る。
+    # この走行が歴史的記録側へ移ったかは、台帳13列目と対象文書の現行版を突き合わせて判断する。
     doc_commit="$(awk -F '\t' '!/^#/ && $1 != "題材ID" { print $13; exit }' \
         "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case30-judgments.tsv")"
     run bash "$SUT" crosscheck \
@@ -1249,6 +1254,9 @@ check_unreadable_case_dir() {
 # 照合件数2・スキップ件数0と、実測事実 JSON 2件の存在を検査する。意味検査は期待値ではなく記録済み観測値を固定する。
 @test "面⑯quinquies: 2026-08-16 の CASE-31 走行の crosscheck 常設ゲート" {
     local doc_commit
+    # 台帳13列目の版を使うのは、照合をその走行が行われた当時の版へ固定するためである。
+    # 負例は台帳13列目と異なる deadbee を使い、版が食い違えば全件が外れることを見る。
+    # この走行が歴史的記録側へ移ったかは、台帳13列目と対象文書の現行版を突き合わせて判断する。
     doc_commit="$(awk -F '\t' '!/^#/ && $1 != "題材ID" { print $13; exit }' \
         "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case31-judgments.tsv")"
     run bash "$SUT" crosscheck \
@@ -1282,6 +1290,9 @@ check_unreadable_case_dir() {
 # Issue #624 の CASE-02・09・11・32 独立2試行に対する常設ゲート。
 @test "面⑯sexies: 2026-08-16 の CASE-624 走行の crosscheck 常設ゲート" {
     local doc_commit
+    # 台帳13列目の版を使うのは、照合をその走行が行われた当時の版へ固定するためである。
+    # 負例は台帳13列目と異なる deadbee を使い、版が食い違えば全件が外れることを見る。
+    # この走行が歴史的記録側へ移ったかは、台帳13列目と対象文書の現行版を突き合わせて判断する。
     doc_commit="$(awk -F '\t' '!/^#/ && $1 != "題材ID" { print $13; exit }' \
         "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-16-case624-judgments.tsv")"
     run bash "$SUT" crosscheck \
