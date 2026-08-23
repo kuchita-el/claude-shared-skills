@@ -925,8 +925,9 @@ check_unreadable_case_dir() {
 # --allow-missing を渡さない。渡さずに通ることが、48組すべての返却全文が在ることの検査を兼ねる。
 @test "面⑯bis: 2026-08-15 の走行の crosscheck 常設ゲート" {
     local doc_commit
-    # 台帳13列目の版を使う。現行版を渡すと版ずれで全件スキップされ、
-    # 照合0件のまま緑になる経路が開く。
+    # 台帳13列目の版を使うのは、照合をその走行が行われた当時の版へ固定するためである。
+    # 負例は台帳13列目と異なる deadbee を使い、版が食い違えば全件が外れることを見る。
+    # この走行が歴史的記録側へ移ったかは、台帳13列目と対象文書の現行版を突き合わせて判断する。
     doc_commit="$(awk -F '\t' '!/^#/ && $1 != "題材ID" { print $13; exit }' \
         "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-15-judgments.tsv")"
     run bash "$SUT" crosscheck \
@@ -952,8 +953,9 @@ check_unreadable_case_dir() {
 # 返却全文が在ることの検査を兼ねる。
 @test "面⑯ter: 2026-08-15 の走行(CASE-25〜29)の crosscheck 常設ゲート" {
     local doc_commit
-    # 台帳13列目の版を使う。現行版を渡すと版ずれで全件スキップされ、
-    # 照合0件のまま緑になる経路が開く。
+    # 台帳13列目の版を使うのは、照合をその走行が行われた当時の版へ固定するためである。
+    # 負例は台帳13列目と異なる deadbee を使い、版が食い違えば全件が外れることを見る。
+    # この走行が歴史的記録側へ移ったかは、台帳13列目と対象文書の現行版を突き合わせて判断する。
     doc_commit="$(awk -F '\t' '!/^#/ && $1 != "題材ID" { print $13; exit }' \
         "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-15-cases25-29-judgments.tsv")"
     run bash "$SUT" crosscheck \
