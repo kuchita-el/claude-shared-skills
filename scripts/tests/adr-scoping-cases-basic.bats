@@ -1355,6 +1355,127 @@ check_unreadable_case_dir() {
     [ "$status" -eq 0 ]
 }
 
+# Issue #749 の CASE-02・CASE-14・CASE-24 独立2試行に対する常設ゲート。
+@test "面⑯septies: 2026-08-27 の #749 走行の crosscheck 常設ゲート" {
+    local doc_commit
+    # 台帳13列目の版を使うのは、照合をその走行が行われた当時の版へ固定するためである。
+    # 負例は台帳13列目と異なる deadbee を使い、版が食い違えば全件が外れることを見る。
+    doc_commit="$(awk -F '\t' '!/^#/ && $1 != "題材ID" { print $13; exit }' \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-judgments.tsv")"
+    run bash "$SUT" crosscheck \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-judgments.tsv" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-returns" \
+        --thresholds "$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json" \
+        --doc-commit "$doc_commit"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"照合件数: 6"* ]]
+    [[ "$output" == *"スキップ件数: 0"* ]]
+    # 必要条件不成立の2題材は点数を数えず一般則3分岐へ落ちる。条文改訂が
+    # この経路を動かしていないことを、返却の実測事実の側でも固定する。
+    for return_json in \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-returns/CASE-14-1.json" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-returns/CASE-14-2.json" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-returns/CASE-24-1.json" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-returns/CASE-24-2.json"; do
+        run jq -e '.["必要条件_成立"] == false' "$return_json"
+        [ "$status" -eq 0 ]
+    done
+    run bash "$SUT" crosscheck \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-judgments.tsv" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-returns" \
+        --thresholds "$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json" \
+        --doc-commit deadbee
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"照合件数: 0"* ]]
+    run bash -c '
+        raw="$1"
+        awk '"'"'
+            /^## CASE-[0-9]+ trial [12]$/ {
+                if (seen && !closed) exit 1
+                seen++; closed=0; next
+            }
+            seen && /^}$/ { closed=1 }
+            END { exit !(seen == 6 && closed) }
+        '"'"' "$raw"
+    ' -- "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-raw-returns.md"
+    [ "$status" -eq 0 ]
+
+    # 本走行は返却スキーマの分離（欠測 キーの追加）より後に保存されたため、
+    # 原文と returns/ がともに現行スキーマである。migrate-return-schema.sh --reverse を
+    # 掛けると returns/ 側から 欠測 が落ち、原文と食い違う。掛けずに突き合わせる。
+    # 適用側／非適用側の判別子は原文が JSON キーとしての 欠測 を持つかであり
+    # （README §7.2）、本走行は持つ側＝非適用側に落ちる。次のアサートがそれを固定する。
+    run grep -q '"欠測"' "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-raw-returns.md"
+    [ "$status" -eq 0 ]
+    run bash -c '
+        raw="$1"
+        returns="$2"
+        tmp="$3"
+        for pair in CASE-02-1 CASE-02-2 CASE-14-1 CASE-14-2 CASE-24-1 CASE-24-2; do
+            id="${pair%-*}"
+            trial="${pair##*-}"
+            awk -v heading="## ${id} trial ${trial}" "\$0 == heading { inside=1; next } inside && /^## / { exit } inside { print }" "$raw" | sed "/^$/d" > "$tmp/${pair}.json"
+            jq -S . "$tmp/${pair}.json" > "$tmp/${pair}.sorted"
+            jq -S . "$returns/${pair}.json" > "$tmp/${pair}.expected.sorted"
+            cmp -s "$tmp/${pair}.sorted" "$tmp/${pair}.expected.sorted" || exit 1
+        done
+    ' -- "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-raw-returns.md" "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-returns" "$BATS_TEST_TMPDIR"
+    [ "$status" -eq 0 ]
+}
+
+# Issue #749 の CASE-03 独立2試行に対する常設ゲート。主走行と記録を分けているのは、
+# 主走行側の照合件数6 を字義で要求する受入条件があるためである。
+@test "面⑯octies: 2026-08-27 の #749 CASE-03 走行の crosscheck 常設ゲート" {
+    local doc_commit
+    doc_commit="$(awk -F '\t' '!/^#/ && $1 != "題材ID" { print $13; exit }' \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-case03-judgments.tsv")"
+    run bash "$SUT" crosscheck \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-case03-judgments.tsv" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-case03-returns" \
+        --thresholds "$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json" \
+        --doc-commit "$doc_commit"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"照合件数: 2"* ]]
+    [[ "$output" == *"スキップ件数: 0"* ]]
+    run bash "$SUT" crosscheck \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-case03-judgments.tsv" \
+        "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-case03-returns" \
+        --thresholds "$REPO_ROOT/plugins/adr/skills/manage-adr/references/adr-scoring-thresholds.json" \
+        --doc-commit deadbee
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"照合件数: 0"* ]]
+    run bash -c '
+        raw="$1"
+        awk '"'"'
+            /^## CASE-[0-9]+ trial [12]$/ {
+                if (seen && !closed) exit 1
+                seen++; closed=0; next
+            }
+            seen && /^}$/ { closed=1 }
+            END { exit !(seen == 2 && closed) }
+        '"'"' "$raw"
+    ' -- "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-case03-raw-returns.md"
+    [ "$status" -eq 0 ]
+
+    # 面⑯septies と同じ理由で --reverse を掛けない（README §7.2 の判別子＝原文が 欠測 を持つか）。
+    run grep -q '"欠測"' "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-case03-raw-returns.md"
+    [ "$status" -eq 0 ]
+    run bash -c '
+        raw="$1"
+        returns="$2"
+        tmp="$3"
+        for pair in CASE-03-1 CASE-03-2; do
+            id="${pair%-*}"
+            trial="${pair##*-}"
+            awk -v heading="## ${id} trial ${trial}" "\$0 == heading { inside=1; next } inside && /^## / { exit } inside { print }" "$raw" | sed "/^$/d" > "$tmp/${pair}.json"
+            jq -S . "$tmp/${pair}.json" > "$tmp/${pair}.sorted"
+            jq -S . "$returns/${pair}.json" > "$tmp/${pair}.expected.sorted"
+            cmp -s "$tmp/${pair}.sorted" "$tmp/${pair}.expected.sorted" || exit 1
+        done
+    ' -- "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-case03-raw-returns.md" "$REPO_ROOT/docs/development/adr-scoping-cases/runs/2026-08-27-issue749-case03-returns" "$BATS_TEST_TMPDIR"
+    [ "$status" -eq 0 ]
+}
+
 @test "derive は成功・失敗時とも正規化用一時ファイルを残さない" {
     local tmpdir valid thresholds doc_commit
     tmpdir="$BATS_TEST_TMPDIR/derive-tmp"

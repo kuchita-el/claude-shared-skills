@@ -64,8 +64,8 @@ This ledger is regenerated when tracked source/config/docs add or move a `plugin
 | scripts/tests/adr-scoping-cases-basic.bats | 1112 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/adr-scoping-cases-basic.bats | 1113 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/adr-scoping-cases-basic.bats | 1136 | plugins/adr | migration | reference | wave-5 | current |
-| scripts/tests/adr-scoping-cases-basic.bats | 1363 | plugins/adr | migration | reference | wave-5 | current |
-| scripts/tests/adr-scoping-cases-basic.bats | 1380 | plugins/adr | migration | reference | wave-5 | current |
+| scripts/tests/adr-scoping-cases-basic.bats | 1484 | plugins/adr | migration | reference | wave-5 | current |
+| scripts/tests/adr-scoping-cases-basic.bats | 1501 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/return-schema-migration.bats | 54 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/adr-scoping-cases-edge.bats | 2 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/adr-scoping-cases-edge.bats | 605 | plugins/adr | migration | reference | wave-5 | current |
@@ -120,3 +120,7 @@ This ledger is regenerated when tracked source/config/docs add or move a `plugin
 | scripts/tests/adr-scoping-cases-basic.bats | 1285 | plugins/adr | migration | reference | issue-620 | current |
 | scripts/tests/adr-scoping-cases-basic.bats | 1301 | plugins/adr | migration | reference | issue-624 | current |
 | scripts/tests/adr-scoping-cases-basic.bats | 1321 | plugins/adr | migration | reference | issue-624 | current |
+| scripts/tests/adr-scoping-cases-basic.bats | 1368 | plugins/adr | migration | reference | issue-749 | current |
+| scripts/tests/adr-scoping-cases-basic.bats | 1386 | plugins/adr | migration | reference | issue-749 | current |
+| scripts/tests/adr-scoping-cases-basic.bats | 1435 | plugins/adr | migration | reference | issue-749 | current |
+| scripts/tests/adr-scoping-cases-basic.bats | 1443 | plugins/adr | migration | reference | issue-749 | current |
