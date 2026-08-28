@@ -32,11 +32,13 @@ PRECONDITION_PATHS=("$MANAGE_ADR_DIR")
 AC5_SURFACE_FILES=(
     "$MANAGE_ADR_DIR/SKILL.md"
     "$MANAGE_ADR_DIR/references/adr-demotion.md"
+    "$MANAGE_ADR_DIR/references/adr-destination.md"
     "$MANAGE_ADR_DIR/references/adr-model.md"
+    "$MANAGE_ADR_DIR/references/adr-reference-principle.md"
     "$MANAGE_ADR_DIR/references/adr-scoping.md"
+    "$MANAGE_ADR_DIR/references/adr-splitting.md"
     "$MANAGE_ADR_DIR/references/cross-references.md"
     "$EDIT_DECISION"
-    "$MANAGE_ADR_DIR/references/io-examples.md"
     "$MANAGE_ADR_DIR/references/template.md"
     "$MANAGE_ADR_DIR/references/transitions.md"
 )
@@ -108,6 +110,218 @@ setup_file() {
         "AC5: 旧 Amended（部分改訂）手順節が manage-adr スキル面から除去されている"
     collect_not_contains "$surface" "## 保留した決定" \
         "AC5: 旧「保留した決定」節が manage-adr スキル面から除去されている"
+
+    collect_finish
+}
+
+# ---- 節名参照の解決 ----
+#
+# 参照面は「正本のファイル名と節名を直接書いて指す」作法で組まれており、`SKILL.md` の
+# フィードバックループは `adr-model.md`「検査項目と正本の対応」表を唯一の索引にしている。
+# 節を改名・削除しても指す側は静かに壊れるだけで、lint も既存のテストも赤にならない。
+# 節名参照の解決を検査に載せ、指し先の消滅を退行として捕まえる。
+#
+# 照合件数の下限を明示するのは、抽出が退行したときに少ない件数のまま緑になるのを防ぐため。
+# 下限は名目値（1件）ではなく現在の実数を置く。名目値にすると、抽出が部分的に壊れて
+# 数件しか拾えなくなっても緑のまま通り、下限が検査として働かない。
+
+# 参照面に現存する節名参照の件数。参照を減らす変更でここが赤になるのは意図した摩擦であり、
+# 減らすことが正しいと判断した場合に限り本定数を下げる。
+AC5_SECTION_REF_MIN=31
+
+# 参照面の見出しを "<basename><TAB><見出しテキスト>" の行として出す。
+surface_heading_index() {
+    local f base h
+    for f in "${AC5_SURFACE_FILES[@]}"; do
+        [ -f "$f" ] || continue
+        base="${f##*/}"
+        while IFS= read -r h; do
+            printf '%s\t%s\n' "$base" "$h"
+        done < <(sed -n 's/^#\{1,6\}[[:space:]]\{1,\}\(.*[^[:space:]]\)[[:space:]]*$/\1/p' "$f")
+    done
+}
+
+# 参照面から `<path>.md`「<節名>」 形式の節名参照を取り出し、
+# "<参照元basename><TAB><参照先basename><TAB><節名>" の行として出す。
+# 多バイト文字を awk の文字クラスへ入れると mawk ではバイト単位に分解されて誤判定するため、
+# 抽出は bash のリテラル部分文字列操作だけで行う。
+surface_section_refs() {
+    local f base line rest before path sec
+    local delim='`「'
+    for f in "${AC5_SURFACE_FILES[@]}"; do
+        [ -f "$f" ] || continue
+        base="${f##*/}"
+        while IFS= read -r line; do
+            rest="$line"
+            while [ -n "$rest" ]; do
+                case "$rest" in
+                    *"$delim"*) : ;;
+                    *) break ;;
+                esac
+                before="${rest%%"$delim"*}"
+                rest="${rest#*"$delim"}"
+                path="${before##*\`}"
+                case "$rest" in
+                    *"」"*) sec="${rest%%」*}" ;;
+                    *) continue ;;
+                esac
+                case "$path" in
+                    *.md) printf '%s\t%s\t%s\n' "$base" "${path##*/}" "$sec" ;;
+                esac
+            done
+        done < "$f"
+    done
+}
+
+@test "面⑤: 参照面の節名参照がすべて実在の見出しへ解決する" {
+    collect_init
+
+    local index refs
+    index="$(surface_heading_index)"
+    refs="$(surface_section_refs)"
+
+    local total=0
+    if [ -n "$refs" ]; then
+        total="$(printf '%s\n' "$refs" | wc -l)"
+    fi
+
+    # 抽出が退行したまま緑になるのを防ぐ下限。
+    if [ "$total" -ge "$AC5_SECTION_REF_MIN" ]; then
+        collect_ok "AC5: 節名参照の照合件数が下限を満たす（$total 件 / 下限 $AC5_SECTION_REF_MIN 件）"
+    else
+        collect_fail "AC5: 節名参照の照合件数が下限を満たす" \
+            "照合件数 $total 件が下限 $AC5_SECTION_REF_MIN 件を下回る（抽出の退行か参照の削減。後者なら本定数を下げる）"
+    fi
+
+    local src dst sec needle label
+    while IFS=$'\t' read -r src dst sec; do
+        [ -n "$dst" ] || continue
+        label="AC5: 節名参照が解決する: $src -> $dst「$sec」"
+        needle="$dst"$'\t'"$sec"
+        case $'\n'"$index"$'\n' in
+            *$'\n'"$needle"$'\n'*)
+                collect_ok "$label"
+                ;;
+            *)
+                collect_fail "$label" \
+                    "参照先ファイルが参照面に無いか、その節見出しが実在しない"
+                ;;
+        esac
+    done < <(printf '%s\n' "$refs")
+
+    collect_finish
+}
+
+# Issue #722 AC2 が列挙する検査項目7件。対応表から導出せず固定する。導出すると行が消えた
+# ときに期待側も一緒に縮み、欠落が素通りする（面①② が期待リストを固定するのと同じ理由）。
+# レイヤ5 は3検査を束ねるため、レイヤ番号の集合の一致だけではこの縮小を捕まえられない。
+AC2_CHECK_ITEMS=(
+    "レイヤ1 front-matter スキーマ"
+    "レイヤ2 index 同期"
+    "レイヤ3 相互参照双方向性"
+    "レイヤ4 \`Related:\` 参照の生存性・実在性"
+    "レイヤ5 ファイル名形式"
+    "レイヤ5 識別子重複"
+    "レイヤ5 H1 整合"
+)
+
+# 第1引数が第2引数以降の集合に完全一致で含まれるか。項目名が空白を含むため、
+# 部分文字列照合（`case " ${arr[*]} " in *" $x "*`）では判定できない。
+ac2_in_list() {
+    local needle="$1"
+    shift
+    local candidate
+    for candidate in "$@"; do
+        if [ "$candidate" = "$needle" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+# 末尾の空白を落とす。表のセルは区切りの `|` の手前に空白を持つ。
+ac2_rtrim() {
+    local v="$1"
+    printf '%s' "${v%"${v##*[![:space:]]}"}"
+}
+
+@test "面⑥: 検査項目と正本の対応表が7項目を過不足なく持つ" {
+    collect_init
+
+    local model="$MANAGE_ADR_DIR/references/adr-model.md"
+    local lint="$PLUGIN_ROOT/scripts/lint-adr.sh"
+
+    # 対応表の本文行（見出し行・区切り行を除く）を "検査項目|正本" の形で取り出す。
+    local rows
+    rows="$(sed -n '/^## 検査項目と正本の対応$/,/^## /p' "$model" \
+        | sed -n 's/^| *\(レイヤ[0-9][^|]*\)| *\(.*[^ ]\) *|$/\1|\2/p')"
+
+    local nrows=0
+    if [ -n "$rows" ]; then
+        nrows="$(printf '%s\n' "$rows" | wc -l)"
+    fi
+
+    # AC2「表の行数が7である」。重複行の混入もここで落ちる。
+    collect_equals "$nrows" "${#AC2_CHECK_ITEMS[@]}" \
+        "AC2: 対応表の行数が検査項目数と一致する"
+
+    # 表に現れた検査項目を集める。
+    local -a actual_items=()
+    local item canon
+    while IFS='|' read -r item canon; do
+        [ -n "$item" ] || continue
+        item="$(ac2_rtrim "$item")"
+        actual_items+=("$item")
+
+        # 正本セルが節名参照の形式を取ること（面⑤ の照合に載る形の担保）。
+        case "$canon" in
+            *'.md`「'*'」'*)
+                collect_ok "AC2: 正本セルが節名参照の形式を取る: $item"
+                ;;
+            *)
+                collect_fail "AC2: 正本セルが節名参照の形式を取る: $item" \
+                    "正本セルが \`<path>.md\`「<節名>」 形式でない: $canon"
+                ;;
+        esac
+    done < <(printf '%s\n' "$rows")
+
+    # 期待 → 表: 検査項目が対応表から落ちていないこと。
+    local expected
+    for expected in "${AC2_CHECK_ITEMS[@]}"; do
+        if ac2_in_list "$expected" ${actual_items[@]+"${actual_items[@]}"}; then
+            collect_ok "AC2: 対応表が検査項目を持つ: $expected"
+        else
+            collect_fail "AC2: 対応表が検査項目を持つ: $expected" \
+                "対応表に当該検査項目の行が無い"
+        fi
+    done
+
+    # 表 → 期待: 期待リストに無い行が増えていないこと（列挙の宣言なしの追加を防ぐ）。
+    local actual
+    for actual in ${actual_items[@]+"${actual_items[@]}"}; do
+        if ac2_in_list "$actual" "${AC2_CHECK_ITEMS[@]}"; then
+            collect_ok "AC2: 対応表の行が期待リストに宣言されている: $actual"
+        else
+            collect_fail "AC2: 対応表の行が期待リストに宣言されている: $actual" \
+                "期待リストに無い検査項目が対応表にある（検査を足したなら期待リストへも足す）"
+        fi
+    done
+
+    # レイヤ番号の集合が lint-adr.sh のヘッダ宣言と一致すること。
+    local table_layers lint_layers
+    table_layers="$(printf '%s\n' "$rows" | sed -n 's/^レイヤ\([0-9]\).*/\1/p' | sort -u | tr '\n' ' ')"
+    lint_layers="$(sed -n '1,/^set -euo pipefail/p' "$lint" \
+        | sed -n 's/^# レイヤ\([0-9]\).*/\1/p' | sort -u | tr '\n' ' ')"
+
+    if [ -n "$lint_layers" ]; then
+        collect_ok "AC2: lint-adr.sh ヘッダからレイヤ宣言を抽出できる（$lint_layers）"
+    else
+        collect_fail "AC2: lint-adr.sh ヘッダからレイヤ宣言を抽出できる" \
+            "ヘッダに「# レイヤN」形式の宣言が1件も無い"
+    fi
+
+    collect_equals "$table_layers" "$lint_layers" \
+        "AC2: 対応表のレイヤ集合が lint-adr.sh のヘッダ宣言と一致する"
 
     collect_finish
 }

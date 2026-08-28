@@ -109,7 +109,7 @@ next_id() {
     local dir
     dir="$(make_corpus "ADR-$TS-99-lifecycle-tooling-delegation.md")"
     collect_equals "$(next_id "$dir")" ":1" \
-        "同一時刻部が 99 件に達していれば exit 1"
+        "同一時刻部の既存の最大連番が 99 なら exit 1"
     collect_finish
 }
 

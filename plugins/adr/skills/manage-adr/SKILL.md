@@ -26,7 +26,7 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 
 Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行する。Codexにはこのplugin単位hookがないため、ホストにかかわらず各操作後の明示lintを必須とする。Codex側のhook/policy callbackが利用可能になった場合だけ、重複workflowを作らずhost adapterへ移行する。
 
-状態値は日本語ユビキタス言語（`提案中`/`承認済み`/`却下`/`有効`/`上書き済み`/`廃止済み`）、キーは英語。値の説明・トレーリングコメントを front-matter 内に書かない（lint パーサが行全体を値として取り込むため）。
+状態値の値域と各値の定義は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「状態の2軸」に従う（キーは英語の構造的フィールド名、値は日本語ユビキタス言語）。値の説明・トレーリングコメントを front-matter 内に書かない（lint パーサが行全体を値として取り込むため）。
 
 ## 引数
 
@@ -39,13 +39,13 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 
 | 操作 | 概要 |
 |---|---|
-| 起票 | 採番規則で新規 ADR ファイルを生成し `status: 提案中`（`validity`/`superseded-by` は空） |
-| 承認 | `status: 承認済み`・`validity: 有効`（`superseded-by` は空のまま） |
-| 上書き | 旧 ADR に `validity: 上書き済み`・`superseded-by: <後継>`、後継本文 `## 関連ADR` に `Supersedes: <旧>`（双方向）、旧 ADR 本文 `## 関連ADR` に `Superseded by: <後継>` |
-| 廃止 | `validity: 廃止済み`（`superseded-by` は付与しない） |
-| 却下 | `status: 却下`（`validity`・`superseded-by` は付与しない） |
+| 起票 | 採番規則で新規 ADR ファイルを生成し、状態の型の `提案中` 構成子へ置く |
+| 承認 | `有効` 構成子へ移す |
+| 上書き | 旧 ADR を後継を保持する `上書き済み` 構成子へ移し、後継本文 `## 関連ADR` に `Supersedes: <旧>`、旧 ADR 本文 `## 関連ADR` に `Superseded by: <後継>` を書く（双方向） |
+| 廃止 | `廃止済み` 構成子へ移す |
+| 却下 | `却下` 構成子へ移す |
 
-各遷移後の front-matter 最終状態は `${CLAUDE_SKILL_DIR}/references/adr-model.md` の必須ルール表に一致させる。採番規則・写入手順・上書きの双方向相互参照の書き込みは `${CLAUDE_SKILL_DIR}/references/transitions.md` を参照する。ADR 本文へ他文書への参照を書く場合（起票時を含む）は、`${CLAUDE_SKILL_DIR}/references/edit-decision.md` の「記録の参照原則」に従う。原 ADR の一部決定だけが反転する 1→N（部分上書き）は、5遷移ではなく下記「分割」を扱う。
+各遷移後の front-matter 最終状態は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「状態の型」の構成子として構成できる形にする。採番規則・写入手順・上書きの双方向相互参照の書き込みは `${CLAUDE_SKILL_DIR}/references/transitions.md` を参照する。ADR 本文へ他文書への参照を書く場合（起票時を含む）は、`${CLAUDE_SKILL_DIR}/references/adr-reference-principle.md` に従う。原 ADR の一部決定だけが反転する 1→N（部分上書き）は、5遷移ではなく下記「分割」を扱う。
 
 ### 分割（多決定 ADR の部分上書き。5遷移とは別軸の構造操作）
 
@@ -56,7 +56,7 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 - **反転駆動**: 前段の1→N の部分上書きがこれにあたる。部分 core 反転が実際に当たったときに駆動する（要求される）
 - **衛生的分割**: 前段の予防的な分解がこれにあたる。既定（分割しない）に対する**任意**の例外であり、反転駆動と違って要求されない
 
-新規に起こす ADR が独立に反転しうる core を束ねないための制約は `${CLAUDE_SKILL_DIR}/references/adr-scoping.md`「新規 ADR の束ねの制約」節に従う。
+新規に起こす ADR が独立に反転しうる core を束ねないための制約は `${CLAUDE_SKILL_DIR}/references/adr-splitting.md` に従う。
 
 分割は5遷移（front-matter 状態遷移）の一種ではない。決定のファイル間再配置という別軸の構造操作であり、本文編集の core／非core／些末分類でもなくリファクタリングに相当する。終端 front-matter は上書きと同型（原 ADR `validity: 上書き済み`・`superseded-by` に全後継を列挙）だが、後継が複数（1→N）で生存決定の救出を伴う点で上書き（1→1）と操作が異なる。
 
@@ -74,9 +74,9 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 
 ### ADR 化要否の判定（起票の前段）
 
-ある決定を ADR にすべきか、いつ起票するか、命名規約を ADR の対象に含めるかは、却下代替の必要条件と粒度判定基準で判定する。まず当該決定が採らなかった選択肢とその却下理由を持つかを確認し、持たなければ点数を数えず ADR 化しない。持つ場合に粒度判定基準のチェックリストで採点し、判定境界では「書かない」を優先する。4項目の名称・同点処理・行き先に加え、各項目が判定する入力の値域と定義、閾値とスコア境界の数値、および判定結果に添える申告の規律（数えた対象の列挙・発見型短絡の申告・推定で補わないこと）も `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` が単独で持つ。同ファイルのみを参照し、スキル独自の基準を導入しない。
+ある決定を ADR にすべきか、いつ起票するか、命名規約を ADR の対象に含めるかは、却下代替の必要条件と粒度判定基準で判定する。まず当該決定が採らなかった選択肢とその却下理由を持つかを確認し、持たなければ点数を数えず ADR 化しない。持つ場合に粒度判定基準のチェックリストで採点し、判定境界では「書かない」を優先する。4項目の名称・同点処理に加え、各項目が判定する入力の値域と定義、閾値とスコア境界の数値、および判定結果に添える申告の規律（数えた対象の列挙・発見型短絡の申告・推定で補わないこと）は `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` が単独で持つ。判定結果の行き先は `${CLAUDE_SKILL_DIR}/references/adr-destination.md` が単独で持つ。いずれについてもこれらのファイルのみを参照し、スキル独自の基準を導入しない。
 
-要否の判定は起票操作の前段であり、ADR 化すると判断した場合のみ起票（5遷移）へ進む。ただしその行き先は新規 ADR とは限らず、既存 ADR への非core 改訂の側もある（分類の確定は粒度判定ではなく前掲の編集判定フローに従う）。ADR 化しないと判断した対象にも置き場所の一般則がある。いずれの振り分けも前掲の `adr-scoping.md`「判定結果の行き先」節に従う。
+要否の判定は起票操作の前段であり、ADR 化すると判断した場合のみ起票（5遷移）へ進む。ただしその行き先は新規 ADR とは限らず、既存 ADR への非core 改訂の側もある（分類の確定は粒度判定ではなく前掲の編集判定フローに従う）。ADR 化しないと判断した対象にも置き場所の一般則がある。いずれの振り分けも `${CLAUDE_SKILL_DIR}/references/adr-destination.md` に従う。
 
 ### 格下げ判定（既存 ADR を退役させるか）
 
@@ -86,14 +86,16 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 
 ## 手順の参照（各 references を直接参照）
 
-- `${CLAUDE_SKILL_DIR}/references/adr-model.md` — 状態の2軸の値域・遷移ごとの front-matter 必須ルール表・配置・採番方式（full slug の定義）
-- `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` — ADR 化要否の必要条件・4項目の名称・同点処理・判定する入力の値域と定義・閾値とスコア境界・判定に添える申告・起票のタイミング・判定結果の行き先・束ね・命名規約
+- `${CLAUDE_SKILL_DIR}/references/adr-model.md` — 状態の2軸の値域・合法な front-matter を表す状態の型・配置・採番方式（full slug の定義）・発番スクリプトの契約・index の同期・識別子の一意性・H1 見出しの形式と識別子部の整合・検査項目と正本の対応
+- `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` — ADR 化要否の必要条件・4項目の名称・同点処理・判定する入力の値域と定義・閾値とスコア境界・判定に添える申告・起票のタイミング
+- `${CLAUDE_SKILL_DIR}/references/adr-destination.md` — 判定結果の行き先（ADR 化する側／しない側の分岐）と命名規約の ADR 化基準
+- `${CLAUDE_SKILL_DIR}/references/adr-splitting.md` — 新規に起こす ADR へ何を束ねてよいかの制約
 - `${CLAUDE_SKILL_DIR}/references/adr-demotion.md` — 既存 ADR の格下げ（退役）判定の条件・判定形式・安全側の向き・格下げ固有の入力の採否
 - `${CLAUDE_SKILL_DIR}/references/template.md` — 新規 ADR の雛形（front-matter＋見出し骨格。起票時にこの構成へ準拠する）と、`## 変更履歴` 節の配置規約（節を持たない ADR で新設するときに従う単一出典）
 - `${CLAUDE_SKILL_DIR}/references/transitions.md` — 5遷移と分割の実行手順・採番規則・双方向相互参照の書き込み・index の再生成
-- `${CLAUDE_SKILL_DIR}/references/edit-decision.md` — core／非core／些末 の判定と `AskUserQuestion` 問い設計・操作分岐、および ADR 本文へ参照を書く／直す際の判定（記録の参照原則。起票時にも適用する）
+- `${CLAUDE_SKILL_DIR}/references/edit-decision.md` — core／非core／些末 の判定と `AskUserQuestion` 問い設計・操作分岐
+- `${CLAUDE_SKILL_DIR}/references/adr-reference-principle.md` — ADR 本文へ参照を書く／直す際の判定（記録の参照原則。起票時にも適用する）
 - `${CLAUDE_SKILL_DIR}/references/cross-references.md` — `## 関連ADR` の関係語彙・`Related:` の書式規約・機械検査の範囲と是正手段（相互参照を書くときに従う）
-- `${CLAUDE_SKILL_DIR}/references/io-examples.md` — 起票・承認・上書きの入出力例
 
 以降の手順に現れる `<対象ディレクトリ>` の解決（既定と第1引数による上書き）は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「配置」節に従う。
 
@@ -105,7 +107,7 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 
 1. **index 同期**（`validity` を変える操作＝承認・上書き・分割・廃止の後）: `bash ${CLAUDE_SKILL_DIR}/../../scripts/gen-adr-index.sh <対象ディレクトリ>` の出力で `<対象ディレクトリ>/index.md` を再生成する（起票・却下は `validity` を変えないため index 再生成不要）。
 2. **lint 実行**: `bash ${CLAUDE_SKILL_DIR}/../../scripts/lint-adr.sh <対象ディレクトリ>` を実行し exit 0 を確認する。**この exit 0 が合否基準**である。
-3. **フィードバックループ**（exit 0 以外）: lint-adr の出力を利用者へ提示し、指摘に応じて ADR を修正する。レイヤ1 スキーマ／レイヤ3 相互参照なら front-matter（`status`/`validity`/`superseded-by`）または相互参照（旧側 `superseded-by`・後継側 `Supersedes:`）を直す。レイヤ2 index 同期 drift なら `gen-adr-index.sh` を再実行して index を同期する。レイヤ4 Related 参照なら、参照先が**上書き済み**であればその決定を引き継いだ後継へ差し替え、参照先が**実在しない**（dangling）なら識別子の誤りを正すか、指すべき対象が無い場合は参照行を除去する（規約と是正手段の詳細は `${CLAUDE_SKILL_DIR}/references/cross-references.md`）。レイヤ5 はファイル名側の是正で、形式違反はリネーム、識別子重複は `next-adr-id.sh` で再発番して片方をリネーム（本文 H1・相互参照・index も追随）、H1 整合違反は H1 見出しの識別子部をファイル名へ揃える。再度 lint-adr を実行し、**exit 0 になるまで反復する**。exit 0 を得られないまま操作を完了扱いにしない。
+3. **フィードバックループ**（exit 0 以外）: lint-adr の出力を利用者へ提示し、報告された検査項目を `${CLAUDE_SKILL_DIR}/references/adr-model.md`「検査項目と正本の対応」で引き、指された正本文書の是正手段に従って ADR を直す。再度 lint-adr を実行し、**exit 0 になるまで反復する**。exit 0 を得られないまま操作を完了扱いにしない。
 
 `lint-adr.sh` の exit code: `0`＝違反0件／`1`＝違反検出／`2`＝対象ディレクトリ不在。
 

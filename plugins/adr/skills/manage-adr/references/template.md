@@ -6,11 +6,10 @@ superseded-by:
 
 <!--
 状態の記述規約:
-- 状態は上記 front-matter（status / validity / superseded-by）が唯一の権威。本文に `## Status` 節を置かない。
-  front-matter が唯一の権威である以上、本文の状態記述は定義上すべて重複であり、遷移時に取り残されて drift の源になるため。
+- 本文に `## Status` 節を置かない。front-matter を唯一の権威とする規約とその理由は「ADR の状態モデルと識別子規約」に従い、本雛形に再掲しない。
 - front-matter 内には値の説明・トレーリングコメントを書かない（純粋な `key: value` のみ、lint パーサが行全体を値として取り込むため）。
 - 値域（各軸の値とその定義）は本雛形に再掲しない。
-- 遷移表・front-matter スキーマの必須ルールは本雛形に再掲しない。
+- 合法な front-matter を表す状態の型は本雛形に再掲しない。
 - 遷移（承認・上書き・廃止・却下）の実施手順は manage-adr スキルを参照。
 - 承認軸（status）と有効性軸（validity）を別フィールドへ分けているのは、1つの欄へ2軸を混在させると
   承認の歴史事実（承認済み）と現在の効力（有効）が判別できなくなるため。1欄混在の案と、
@@ -48,11 +47,11 @@ superseded-by:
 
 <!--
 表記規約:
-- Supersedes: ADR-YYYYMMDDHHMM-NN-<slug>    （本ADRが旧ADRを全体上書きする場合。旧ADR側 front-matter の superseded-by が本ADRを指す）
-- Superseded by: ADR-YYYYMMDDHHMM-NN-<slug>  （本ADRが後継ADRに全体上書きされた場合。本ADR自身の front-matter superseded-by にも後継の full slug を記載する）
-- Related: ADR-YYYYMMDDHHMM-NN-<slug>        （直接の上書き関係はない関連ADR）
+- Supersedes: ADR-YYYYMMDDHHMM-NN-<slug>
+- Superseded by: ADR-YYYYMMDDHHMM-NN-<slug>
+- Related: ADR-YYYYMMDDHHMM-NN-<slug>
+各語彙の意味・front-matter の superseded-by との対応・書式規約と機械検査の範囲は「相互参照の規約」に従い、本雛形に再掲しない。
 該当なしの場合は「該当なし」と記述。関連Issueも併記可（書式: `関連Issue: #<番号>`、複数件はカンマ区切り）
-書式規約と機械検査の範囲は「相互参照の規約」に従う。
 -->
 
 <先行ADR・後継ADR・関連ADRを full slug で列挙。該当なしの場合は「該当なし」と明記>

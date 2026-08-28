@@ -485,11 +485,11 @@ for file in "${sorted[@]}"; do
     # 承認軸が終端（却下）または未承認（提案中）の ADR は有効性軸を持たない。
     if [ "$FM_STATUS" = "提案中" ] || [ "$FM_STATUS" = "却下" ]; then
         if [ -n "$FM_VALIDITY" ]; then
-            printf '%s: status=%s だが validity が空ではありません（値 "%s"。スキーマ表では起票・却下の validity は「（無し）」）\n' "$file" "$FM_STATUS" "$FM_VALIDITY"
+            printf '%s: status=%s だが validity が空ではありません（値 "%s"。提案中・却下 は validity を伴いません）\n' "$file" "$FM_STATUS" "$FM_VALIDITY"
             violations=$((violations + 1))
         fi
         if [ -n "$FM_SUPERSEDED_BY" ]; then
-            printf '%s: status=%s だが superseded-by が空ではありません（値 "%s"。スキーマ表では起票・却下の superseded-by は「（無し）」）\n' "$file" "$FM_STATUS" "$FM_SUPERSEDED_BY"
+            printf '%s: status=%s だが superseded-by が空ではありません（値 "%s"。提案中・却下 は superseded-by を伴いません）\n' "$file" "$FM_STATUS" "$FM_SUPERSEDED_BY"
             violations=$((violations + 1))
         fi
     fi
@@ -500,7 +500,7 @@ for file in "${sorted[@]}"; do
     # 終えた」と定義される。
     if [ "$FM_VALIDITY" = "有効" ] || [ "$FM_VALIDITY" = "廃止済み" ]; then
         if [ -n "$FM_SUPERSEDED_BY" ]; then
-            printf '%s: validity=%s だが superseded-by が空ではありません（値 "%s"。スキーマ表では承認・廃止の superseded-by は「（無し）」）\n' "$file" "$FM_VALIDITY" "$FM_SUPERSEDED_BY"
+            printf '%s: validity=%s だが superseded-by が空ではありません（値 "%s"。superseded-by を伴えるのは 上書き済み だけです）\n' "$file" "$FM_VALIDITY" "$FM_SUPERSEDED_BY"
             violations=$((violations + 1))
         fi
     fi

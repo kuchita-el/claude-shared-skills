@@ -7,7 +7,7 @@ superseded-by: ADR-202608081017-01-abandoned-superseded-by-successor
 
 ## Context
 
-fixture 用。`validity: 廃止済み` でありながら `superseded-by` を持つ ADR。スキーマ表では、廃止行の superseded-by は「（無し）」であり、この組み合わせは表に存在しない。レイヤ1の組み合わせ違反を検出させる。
+fixture 用。`validity: 廃止済み` でありながら `superseded-by` を持つ ADR。superseded-by を伴えるのは 上書き済み だけであり、この組み合わせは合法な状態として構成できない。レイヤ1の組み合わせ違反を検出させる。
 
 決定1 は `廃止済み` を「後継 ADR なしで ADR としての効力を終えた」と定義しており、後継を指す `superseded-by` を持つなら本来は `上書き済み` であるべきで、2軸の意味論に反する。`廃止済み` と `上書き済み` の取り違えを検出する経路の再現。
 
