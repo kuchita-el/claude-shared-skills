@@ -87,7 +87,60 @@
 
 ## 3語彙群の出現箇所一覧
 
-<!-- Task 10 で埋める -->
+**走査面**: 再構成後の参照面11件（`SKILL.md` ＋ references 10本）。同梱スクリプト（`lint-adr.sh` / `gen-adr-index.sh` / `next-adr-id.sh`）は走査面に含めない。実装が自らの検査内容を説明できなくなり、`lint-adr.sh` 冒頭のレイヤ1違反種別の列挙を参照先として要求する側の照合と衝突するためである（同趣旨の裁定が `adr-cross-reference-lint-crosscheck.md` に既にある）。
+
+**出現箇所の単位**: 当該語彙群の値を**列挙または規定する**箇所を1件とする。単一の値を手順文の中で使うだけの行（「`status: 承認済み` と書く」等）は、規約の再定義に当たらないため個別に列挙せず、群ごとに件数で示す。これらはすべて「適用手順のみを述べる記述」に分類される。
+
+ラベルの値域は「正本／正本へのリンク／正本の規約を再定義せず適用手順のみを述べる記述」の3値。
+
+### 群1: 状態値（`提案中`／`承認済み`／`却下`／`有効`／`上書き済み`／`廃止済み`）
+
+| 出現箇所 | ラベル |
+|---|---|
+| `references/adr-model.md`「状態の2軸」の承認軸・有効性軸の2表（値と定義） | **正本** |
+| `references/adr-model.md`「状態の2軸 > 軸の関係」 | 適用手順（正本文書内で値域の使い分けを述べる） |
+| `references/adr-model.md`「front-matter（状態の唯一の権威）」の YAML スキーマ | 適用手順（front-matter をどう書くかの提示） |
+| `references/adr-model.md`「状態の型」の構成子列と制約 | 適用手順（値域を前提に合法な組み合わせを示す） |
+| `SKILL.md`「文脈固有ルール」直後の状態値の記述 | 正本へのリンク（**縮退済み**。値域の列挙を落とし `adr-model.md`「状態の2軸」を指す形へ改めた） |
+| `references/adr-demotion.md`:20 / :102（退役2値を用いた説明） | 適用手順 |
+| `references/cross-references.md`「機械検査の範囲」の検査対象の限定 | 適用手順 |
+| `references/edit-decision.md` の凍結原則の対象の限定 | 適用手順 |
+| `references/transitions.md`「共通: front-matter の書き方」の実行ガード、各遷移節、退役 inbound 点検節 | 適用手順 |
+| `references/template.md` の front-matter 雛形（`status: 提案中`） | 適用手順（生成物の骨格） |
+
+単一値の使用にとどまる行: 121 件（すべて適用手順）。「正本」ラベルは1件。値を再掲するだけの行は0件。
+
+### 群2: 遷移後の front-matter（`status` / `validity` / `superseded-by` の組み合わせ）
+
+| 出現箇所 | ラベル |
+|---|---|
+| `references/adr-model.md`「状態の型」の直和型定義（5構成子と値組） | **正本** |
+| `references/adr-model.md`「型の制約と機械検査の対応」 | 適用手順（型の制約を検査項目へ対応づける） |
+| `SKILL.md`「5遷移」の表 | 適用手順（**縮退済み**。3キーの値組の再掲を落とし、どの構成子へ移す操作かの指名へ改めた） |
+| `SKILL.md`「5遷移」表の直後の1文 | 正本へのリンク（「状態の型」の構成子として構成できる形にする） |
+| `SKILL.md` の `description` と冒頭の概要 | 適用手順（キー名の言及のみで組み合わせを示さない） |
+| `references/transitions.md`「共通: front-matter の書き方」の最終状態の指示 | 正本へのリンク |
+| `references/transitions.md` の起票・承認・上書き・廃止・却下の各手順 | 適用手順（どの順に何へ書くか） |
+| `references/edit-decision.md` 非core の「front-matter は変更しない」 | 適用手順 |
+| `references/template.md` の状態の記述規約 | 正本へのリンク（**縮退済み**。front-matter を唯一の権威とする規約と理由の再掲を落とし正本を指す形へ改めた） |
+| `references/template.md` の front-matter 雛形 | 適用手順（生成物の骨格） |
+
+単一キーの言及にとどまる行: 72 件（すべて適用手順）。「正本」ラベルは1件。値を再掲するだけの行は0件。
+
+### 群3: 相互参照の語彙（`Supersedes:` / `Superseded by:` / `Related:`）
+
+| 出現箇所 | ラベル |
+|---|---|
+| `references/cross-references.md`「関係語彙」の3行の表（語彙と意味） | **正本**（冒頭リードで関係語彙の単一出典であることを明示した） |
+| `references/cross-references.md`「`Related:` の書式規約」「機械検査の範囲」 | 適用手順（`Related:` の書式と検査範囲。語彙の意味を再定義しない） |
+| `SKILL.md`「5遷移」表の上書き行 | 適用手順（どのファイルのどの節へどのラベルを書くか） |
+| `references/transitions.md` 上書き手順2・3、分割手順5・7、締めの相互参照確認 | 適用手順 |
+| `references/adr-model.md`「識別子の一意性」「採番方式」の是正手段 | 適用手順（リネーム時に追随させる対象の列挙） |
+| `references/template.md`「表記規約」 | 正本へのリンク（**縮退済み**。各語彙の意味の再掲を落とし、表記例と正本へのポインタのみを残した） |
+
+単一ラベルの使用にとどまる行: 48 件（すべて適用手順）。「正本」ラベルは1件。値を再掲するだけの行は0件。
+
+**`Supersedes:` / `Superseded by:` の書式要件の扱い**: 語彙（3ラベルとその意味）の正本は `cross-references.md`「関係語彙」の1件だが、`Supersedes:` / `Superseded by:` の**書式要件**（行頭バレット必須・双方向の厳格な一致）と写入手順は `transitions.md` が持つ。両者は別の規範であり、群3 の「語彙」の正本一意性を崩さない。この責務分担は再構成前から同ファイルが明示していたもので、本再構成で動かしていない。
 
 ## `io-examples.md` の4例の規範側の所在
 

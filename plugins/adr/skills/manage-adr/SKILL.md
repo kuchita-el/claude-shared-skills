@@ -26,7 +26,7 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 
 Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行する。Codexにはこのplugin単位hookがないため、ホストにかかわらず各操作後の明示lintを必須とする。Codex側のhook/policy callbackが利用可能になった場合だけ、重複workflowを作らずhost adapterへ移行する。
 
-状態値は日本語ユビキタス言語（`提案中`/`承認済み`/`却下`/`有効`/`上書き済み`/`廃止済み`）、キーは英語。値の説明・トレーリングコメントを front-matter 内に書かない（lint パーサが行全体を値として取り込むため）。
+状態値の値域と各値の定義は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「状態の2軸」に従う（キーは英語の構造的フィールド名、値は日本語ユビキタス言語）。値の説明・トレーリングコメントを front-matter 内に書かない（lint パーサが行全体を値として取り込むため）。
 
 ## 引数
 
@@ -39,11 +39,11 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 
 | 操作 | 概要 |
 |---|---|
-| 起票 | 採番規則で新規 ADR ファイルを生成し `status: 提案中`（`validity`/`superseded-by` は空） |
-| 承認 | `status: 承認済み`・`validity: 有効`（`superseded-by` は空のまま） |
-| 上書き | 旧 ADR に `validity: 上書き済み`・`superseded-by: <後継>`、後継本文 `## 関連ADR` に `Supersedes: <旧>`（双方向）、旧 ADR 本文 `## 関連ADR` に `Superseded by: <後継>` |
-| 廃止 | `validity: 廃止済み`（`superseded-by` は付与しない） |
-| 却下 | `status: 却下`（`validity`・`superseded-by` は付与しない） |
+| 起票 | 採番規則で新規 ADR ファイルを生成し、状態の型の `提案中` 構成子へ置く |
+| 承認 | `有効` 構成子へ移す |
+| 上書き | 旧 ADR を後継を保持する `上書き済み` 構成子へ移し、後継本文 `## 関連ADR` に `Supersedes: <旧>`、旧 ADR 本文 `## 関連ADR` に `Superseded by: <後継>` を書く（双方向） |
+| 廃止 | `廃止済み` 構成子へ移す |
+| 却下 | `却下` 構成子へ移す |
 
 各遷移後の front-matter 最終状態は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「状態の型」の構成子として構成できる形にする。採番規則・写入手順・上書きの双方向相互参照の書き込みは `${CLAUDE_SKILL_DIR}/references/transitions.md` を参照する。ADR 本文へ他文書への参照を書く場合（起票時を含む）は、`${CLAUDE_SKILL_DIR}/references/adr-reference-principle.md` に従う。原 ADR の一部決定だけが反転する 1→N（部分上書き）は、5遷移ではなく下記「分割」を扱う。
 
