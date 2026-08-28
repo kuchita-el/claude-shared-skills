@@ -1,7 +1,7 @@
 ---
 status: 承認済み
-validity: 有効
-superseded-by:
+validity: 上書き済み
+superseded-by: ADR-202608281232-01-subagent-execution-parameter-authoring-side-placement
 ---
 
 # ADR-202607251922-01: サブエージェントの実行パラメータを front-matter で固定し役割ごとの必要水準として選ぶ
@@ -49,6 +49,7 @@ superseded-by:
 
 ## 関連ADR
 
+- Superseded by: ADR-202608281232-01-subagent-execution-parameter-authoring-side-placement（決定の実質を維持したまま、規約の正本の配置を配布物の外＝`docs/references/` へ改めた後継）
 - Related: ADR-202607251922-02-execution-parameter-control-point（実行パラメータの統制点をどこに置くかを扱う独立した core。上書きでない）
 
 ## 変更履歴

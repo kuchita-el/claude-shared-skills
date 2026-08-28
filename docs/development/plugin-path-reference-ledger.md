@@ -31,8 +31,6 @@ This ledger is regenerated when tracked source/config/docs add or move a `plugin
 | CLAUDE.md | 38 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | CLAUDE.md | 61 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | CLAUDE.md | 68 | plugins/dev-workflow | migration | reference | wave-5 | current |
-| CLAUDE.md | 89 | plugins/dev-workflow | migration | reference | wave-5 | current |
-| CLAUDE.md | 93 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | CLAUDE.md | 117 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | README.md | 54 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | README.md | 57 | plugins/dev-workflow | migration | reference | wave-5 | current |

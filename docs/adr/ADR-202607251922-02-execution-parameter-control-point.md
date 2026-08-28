@@ -36,7 +36,7 @@ superseded-by:
 
 ## 関連ADR
 
-- Related: ADR-202607251922-01-subagent-execution-parameter-pinning（実行パラメータをどのような値で固定するかを扱う独立した core。上書きでない）
+- Related: ADR-202608281232-01-subagent-execution-parameter-authoring-side-placement（実行パラメータをどのような値で固定するかを扱う独立した core。上書きでない）
 
 ## 変更履歴
 

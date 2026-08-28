@@ -160,7 +160,7 @@ plugins/writing/
 
 `write-doc` から共有資源を読む経路は `${CLAUDE_SKILL_DIR}` を基点とする。規約は `../../references/`、検査器は `../../scripts/` にあたる。制約4.1により `${CLAUDE_PLUGIN_ROOT}` は使えない。
 
-`doc-reviewer` と `doc-writer` の front-matter には `model` と `effort` を明示する。値の選び方は `plugins/dev-workflow/references/subagent-execution-parameters.md`（サブエージェントの実行パラメータの単一出典）に従う。特に検証役の `effort` を省くと、利用者の環境によってレビュー精度が変わる。
+`doc-reviewer` と `doc-writer` の front-matter には `model` と `effort` を明示する。値の選び方は `docs/references/subagent-execution-parameters.md`（サブエージェントの実行パラメータの単一出典）に従う。特に検証役の `effort` を省くと、利用者の環境によってレビュー精度が変わる。
 
 ### 5.2 基盤スキル `write-doc` の契約
 

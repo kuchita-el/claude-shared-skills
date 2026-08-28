@@ -53,3 +53,4 @@ Related: ADR-202606020010-01-principles-rationale-hub（workflow-design.md の�
 
 - 2026-06-09 正誤更新: チーム規模軸の切り出し先を `workflow-patterns.md`（#118）→ `team-workflow-patterns.md`（#284）へ是正。#118 でスコープを「パターン軸＝変更影響度に限定」と再定義し、チーム規模軸を別ファイルへ分離する決定に伴う前方参照の更新であり、本ADRの主決定（workflow-design.md からのチーム規模別フロー除外）は不変。
 - 2026-08-02: 記録の参照原則に沿い、可変文書を現在の参照先として指していた記述の時点を固定した。決定の骨子・却下理由は不変（#658）。
+- 2026-08-28 注記: 本ADRが 2026-06-09 の正誤更新および関連Issue #118 の記述で例示として挙げている `plugins/dev-workflow/references/workflow-patterns.md` は、実行主体からの参照を持たない孤立ファイルとして削除された（#788。パターンA/B/Cの定義の単一情報源は `docs/principles.md` に現存する）。当時の切り出し先の是正という事実の記録は不変であり、本ADRの主決定（workflow-design.md からのチーム規模別フロー除外）およびチーム規模軸の切り出し先 `team-workflow-patterns.md`（#284、未作成）にも影響しない。例示ファイルが現存しないことのみを注記する（非core 編集）。
