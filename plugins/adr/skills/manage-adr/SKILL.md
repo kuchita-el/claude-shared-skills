@@ -93,7 +93,6 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 - `${CLAUDE_SKILL_DIR}/references/transitions.md` — 5遷移と分割の実行手順・採番規則・双方向相互参照の書き込み・index の再生成
 - `${CLAUDE_SKILL_DIR}/references/edit-decision.md` — core／非core／些末 の判定と `AskUserQuestion` 問い設計・操作分岐、および ADR 本文へ参照を書く／直す際の判定（記録の参照原則。起票時にも適用する）
 - `${CLAUDE_SKILL_DIR}/references/cross-references.md` — `## 関連ADR` の関係語彙・`Related:` の書式規約・機械検査の範囲と是正手段（相互参照を書くときに従う）
-- `${CLAUDE_SKILL_DIR}/references/io-examples.md` — 起票・承認・上書きの入出力例
 
 以降の手順に現れる `<対象ディレクトリ>` の解決（既定と第1引数による上書き）は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「配置」節に従う。
 
