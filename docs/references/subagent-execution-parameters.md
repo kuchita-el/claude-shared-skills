@@ -212,5 +212,5 @@ front-matter による固定を選んだ役割については、各 `agents/{nam
 
 ## 関連
 
-- [ADR-202607251922-01-subagent-execution-parameter-pinning](../adr/ADR-202607251922-01-subagent-execution-parameter-pinning.md)（実行パラメータを固定し、役割ごとの必要水準として値を選ぶ決定）
+- [ADR-202608281232-01-subagent-execution-parameter-authoring-side-placement](../adr/ADR-202608281232-01-subagent-execution-parameter-authoring-side-placement.md)（実行パラメータを固定し、役割ごとの必要水準として値を選ぶ決定。同決定を置いた先行 ADR-202607251922-01 を上書きし、正本の配置を本ファイルへ改めた）
 - [ADR-202607251922-02-execution-parameter-control-point](../adr/ADR-202607251922-02-execution-parameter-control-point.md)（統制点をサブエージェント定義に集約する決定）
