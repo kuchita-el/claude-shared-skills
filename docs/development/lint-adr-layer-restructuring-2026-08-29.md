@@ -108,3 +108,46 @@ L3R-1 が穴であることは、22分岐のメッセージ needle を全40 corp
 | L5-3 | 1 | `invalid/27-h1-id-mismatch` |
 | L5-4 | 2 | `invalid/26-duplicate-adr-id`, `invalid/28-legacy-duplicate-id` |
 | L5-5 | 1 | `invalid/29-missing-adr-prefix` |
+
+## 未被覆分岐の穴埋め（負例 corpus の新設）
+
+L3R-1 の負例として `scripts/fixtures/lint-adr/invalid/34-xref-reverse-dangling/` を新設した。構造整理へ着手する**前**に置いている。後から足すと、当該分岐の退行が基準版との出力照合を素通りし、レイヤ分解で分岐を壊しても差分0のまま通ってしまう。
+
+corpus は ADR 1本と `index.md` だけで構成する。ADR は本文 `## 関連ADR` で実在しない `ADR-202612101034-01-xref-reverse-dangling-absent-old` への `Supersedes:` を宣言する一方、front-matter は合法な組（`status: 承認済み` ＋ `validity: 有効`、`superseded-by` なし）とし、ファイル名・H1・index のいずれもレイヤ1・2・5 を発火させない。**単一原因で違反1件**になる形に保つのは、他レイヤが同時に発火すると L3R-1 を落とす変異が赤にならないためである。
+
+実測した出力は1行・終了コード1で、`invalid/07-xref-reverse-missing`（参照先は実在するが front-matter が追随していない）とは別の分岐へ到達する。
+
+新設後の負例実測は次のとおり。数える対象は「lint が標準出力へ出す行の総数」であり「違反」の語を含む行ではない（レイヤ1のメッセージは `status が空です（…）` 等で「違反」の語を持たないため、語で数えると値が食い違う）。
+
+| 時点 | 負例 corpus 数 | 終了コード1の件数 | 出力行の総数 | 発火0件の分岐 |
+|---|---|---|---|---|
+| 基準版 `c126d72` | 32 | 32 | 36 | 1（L3R-1） |
+| corpus 新設後 | 33 | 33 | 37 | 0 |
+
+負例ディレクトリ名は `01`〜`34` の連番だが `21` が欠番のため、実数は最大番号より1小さい。件数は最大番号ではなく実数で数える。
+
+## 基準版との同一性照合の手順
+
+検査内容が変更前後で同一であることは、正常 corpus の緑同士では示さない（緑同士の一致は検査内容が同一であることの証拠にならない。設計 spec の反証レビュー C-5）。基準版と作業版の双方へ全 corpus を通し、**負例を含めて**標準出力・標準エラーを併合した全文と終了コードを corpus ごとに突き合わせる。
+
+```
+BASE=$(mktemp -d)
+git show c126d72:plugins/adr/scripts/lint-adr.sh > "$BASE/lint-adr.sh"
+git show c126d72:plugins/adr/scripts/gen-adr-index.sh > "$BASE/gen-adr-index.sh"
+diffs=0; total=0
+for c in scripts/fixtures/lint-adr/valid/*/ scripts/fixtures/lint-adr/invalid/*/; do
+  total=$((total+1))
+  o=$(bash "$BASE/lint-adr.sh" "$c" 2>&1; echo "rc=$?")
+  n=$(bash plugins/adr/scripts/lint-adr.sh "$c" 2>&1; echo "rc=$?")
+  [ "$o" = "$n" ] || { diffs=$((diffs+1)); echo "DIFF: $c"; }
+done
+echo "corpora=$total diffs=$diffs"
+```
+
+生成器（`gen-adr-index.sh`）も同じ作業ディレクトリへ取り出す。基準版の `lint-adr.sh` は同梱の生成器を `dirname "$0"` で解決するため、取り出さないとレイヤ2 が生成器不在で落ち、差分が「実装の違い」ではなく「取り出し漏れ」に化ける。
+
+照合は両ストリームを併合して行う。実装が標準エラーへ書くのは対象ディレクトリ不在の1経路のみで、照合対象の corpus はいずれもその経路へ入らない。ストリームの分離は `lint-adr-layers.bats` の存在しないディレクトリを渡すケースが別途担保する。
+
+この照合は構造整理の各段で手で走らせる**一回限りの検証**であり、テストスイートへ常設しない（設計 spec 節4 が上位検証層の再導入を禁じており、常設すると基準版の保持先と版据え置きの問題が新たに生じるため）。
+
+**手順が空振りしないことの確認**: 実装を一切変えていない状態（新設 corpus のみを足した状態）で1回走らせ、`base=c126d72 corpora=41 diffs=0` を得た。以降の各段でこの照合を再実行する。
