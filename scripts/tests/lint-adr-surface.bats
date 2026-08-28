@@ -47,6 +47,14 @@ AC5_SURFACE_FILES=(
 LINT_SCRIPT="$PLUGIN_ROOT/scripts/lint-adr.sh"
 LINT_MODEL="$MANAGE_ADR_DIR/references/adr-model.md"
 
+# ヘッダが名指す `adr-model.md` の見出し（実在を面⑦ が確かめる対象）。見出しの階層を含む
+# 完全な行として持ち、`grep -qxF` で照合する。前方一致にすると、節を降格・改名しても
+# 一致し続ける経路が残る。
+LINT_MODEL_HEADINGS=(
+    '## 状態の型'
+    '### 型の制約と機械検査の対応'
+)
+
 # front-matter の3キー。1行に3つ揃えば、その行は値組を述べている。
 LINT_STATE_KEYS=(status validity superseded-by)
 
@@ -58,9 +66,17 @@ LINT_STATE_VALUES=(提案中 承認済み 却下 有効 上書き済み 廃止�
 LINT_VALUE_ALIASES=(有効性)
 
 # 遷移の名。値と同じ行に現れれば、その行は構成子を1つ書き下している。
-# 値の語を先に落としてから探す（`承認` は `承認済み` の、`上書き` は `上書き済み` の、
-# `廃止` は `廃止済み` の部分文字列であり、落とさないと値の出現を遷移名と誤認する）。
 LINT_TRANSITION_NAMES=(起票 承認 上書き 廃止 却下)
+
+# 遷移名を部分文字列に持つ値。遷移名を探す前に、この3語だけを落とす。落とさないと
+# `承認済み` の出現を遷移名 `承認` と誤認する（`上書き` / `廃止` も同型）。
+#
+# 値を一律に落としてはならない。`却下` は遷移名であると同時に `status` の値でもあるため、
+# 値として先に落とすと遷移名を探す時点で必ず消えており、R7 が `却下` に対して決して
+# 発火しない（5構成子のうち1つが射程から外れる）。`却下` に包含関係は無く、落とす理由が無い。
+# 結果として R7 は `却下` については「その語が行にあること」だけで発火する。遷移名と値が
+# 同一の語である以上、行の上で両者を区別する手段は無い。
+LINT_TRANSITION_SUPERSTRINGS=(承認済み 上書き済み 廃止済み)
 
 # 空欄を表す記法。値組は空の軸を明示するため、1行に2回以上現れる。
 # 裸の「空」は採らない。違反種別の条件式が「非空」「値空」として常用する語であり、
@@ -152,15 +168,23 @@ lint_layer1_block() {
     return 0
 }
 
-# 違反種別の条件式の形をした行か（本文が「<数字>. 」で始まる）。決定2 の「持つ」側であり、
-# 値の共起を見る規則（R5・R7）から除く。
+# 違反種別の条件式の形をした行か（本文が「<数字>. 」で始まり、かつ front-matter のキーを
+# 1つ以上名指す）。決定2 の「持つ」側であり、値の共起を見る規則（R5・R7）から除く。
 #
 # 除外を「範囲」ではなく「行の形」で判定するのは、範囲にすると免除領域そのものが無検査の
 # 書き込み先になるためである。範囲の終端を空コメント行に置けば、その1行を消すだけで免除が
-# 隣の段落まで広がり、そこへ置いた値組が緑で通る。行の形なら免除は条件式1行に閉じ、
-# 番号を付けて値組を書いても、免除の掛からない R6（値域の再宣言）が受ける。
+# 隣の段落まで広がり、そこへ置いた値組が緑で通る。行の形なら免除は条件式1行に閉じる。
+#
+# ただし番号の形だけでは足りない。番号付き列挙はこのブロックの既存の体裁（違反種別8件）で
+# あり、削除した遷移表を1行1構成子の番号付きで書き戻す形が、そのまま免除の形と一致する。
+# 回避を試みなくても踏む。行に割ると1行の値は1〜2語にしかならないため、免除を持たない
+# R6（閾値 LINT_VALUE_DOMAIN_MIN 語）にも届かず緑で通る。
+# キーの名指しを AND すると、違反種別8件は `status` / `validity` / `superseded-by` の
+# いずれかを必ず名指すため免除は保たれ、キーを持たない構成子の列挙は免除されない。
 lint_is_violation_kind_line() {
-    case "$1" in
+    local body="$1" nkey="$2"
+    [ "$nkey" -ge 1 ] || return 1
+    case "$body" in
         [0-9]'. '* | [0-9][0-9]'. '*) return 0 ;;
     esac
     return 1
@@ -200,14 +224,12 @@ lint_scan_header() {
             case "$body" in *"$item"*) n_key=$((n_key + 1)) ;; esac
         done
         n_val=0
-        novals="$stripped"
         for item in "${LINT_STATE_VALUES[@]}"; do
-            case "$stripped" in
-                *"$item"*)
-                    n_val=$((n_val + 1))
-                    novals="${novals//"$item"/}"
-                    ;;
-            esac
+            case "$stripped" in *"$item"*) n_val=$((n_val + 1)) ;; esac
+        done
+        novals="$stripped"
+        for item in "${LINT_TRANSITION_SUPERSTRINGS[@]}"; do
+            novals="${novals//"$item"/}"
         done
         n_mark=0
         for item in "${LINT_EMPTY_MARKERS[@]}"; do
@@ -244,7 +266,7 @@ lint_scan_header() {
             case "$body" in
                 *合法*: | *合法*：) printf 'R4\t%s\n' "$line" ;;
             esac
-            if ! lint_is_violation_kind_line "$body"; then
+            if ! lint_is_violation_kind_line "$body" "$n_key"; then
                 if [ "$n_val" -ge 2 ]; then
                     printf 'R5\t%s\n' "$line"
                 fi
@@ -650,12 +672,16 @@ lint_collect_absent() {
 
     # 指し先の実在。節名を改名すると、指す側は静かに壊れるだけで誰も赤にならない。
     # `.sh` 内の節名参照は面⑤ の走査面（manage-adr スキル面）に入らないため、ここで見る。
-    if grep -q '^## 状態の型$' "$LINT_MODEL"; then
-        collect_ok "#794: 正本ポインタの指す見出し「状態の型」が adr-model.md に実在する"
-    else
-        collect_fail "#794: 正本ポインタの指す見出し「状態の型」が adr-model.md に実在する" \
-            "$LINT_MODEL に \`## 状態の型\` 見出しが無い"
-    fi
+    # ヘッダから adr-model.md の節を新たに名指したら、LINT_MODEL_HEADINGS へも足す。
+    local heading
+    for heading in "${LINT_MODEL_HEADINGS[@]}"; do
+        if grep -qxF "$heading" "$LINT_MODEL"; then
+            collect_ok "#794: ヘッダが指す見出し \`$heading\` が adr-model.md に実在する"
+        else
+            collect_fail "#794: ヘッダが指す見出し \`$heading\` が adr-model.md に実在する" \
+                "$LINT_MODEL に \`$heading\` 見出しが無い"
+        fi
+    done
 
     lint_collect_absent "$(lint_rule_hits R1 "$scan")" \
         "#794[R1]: ヘッダに、状態の値を伴い区切りを ${LINT_TABLE_SEPARATOR_MIN} 個以上持つ行が無い" \
@@ -674,12 +700,12 @@ lint_collect_absent() {
         "合法な値組は adr-model.md「状態の型」の構成子が定義する。境界事例は違反種別の条件式から読む。"
 
     lint_collect_absent "$(lint_rule_hits R5 "$scan")" \
-        "#794[R5]: レイヤ1 ブロック（違反種別の条件式を除く）に状態の値を2つ以上並べる行が無い" \
+        "#794[R5]: レイヤ1 ブロック（キーを名指す違反種別の条件式を除く）に状態の値を2つ以上並べる行が無い" \
         "値を並べる行は構成子の再掲である。合法な組の定義は adr-model.md「状態の型」が持つ。"
 
     lint_collect_absent "$(lint_rule_hits R7 "$scan")" \
-        "#794[R7]: レイヤ1 ブロック（違反種別の条件式を除く）に遷移名と状態の値を同居させる行が無い" \
-        "遷移名と値を同じ行へ置く記述は構成子を1つ書き下している。1構成子1行へ割っても写しは写しである。"
+        "#794[R7]: レイヤ1 ブロック（キーを名指す違反種別の条件式を除く）に遷移名と状態の値を同居させる行が無い" \
+        "遷移名と値を同じ行へ置く記述は構成子を1つ書き下している。1構成子1行へ割っても写しは写しである。\`却下\` は遷移名と値が同一の語であり、その語があれば発火する。"
 
     lint_collect_absent "$(lint_rule_hits R6 "$scan")" \
         "#794[R6]: ヘッダに状態の値を ${LINT_VALUE_DOMAIN_MIN} つ以上並べる行が無い" \
