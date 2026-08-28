@@ -214,14 +214,14 @@ load_stem_pattern() {
 
     run_sut "$CORPUS_DIR/invalid/27-h1-id-mismatch"
     collect_rc 1 "(AC3/レイヤ5): H1 の識別子部とファイル名の不整合を検出: exit 1"
-    collect_contains "$output" "H1 整合違反" \
-        '(AC3/レイヤ5): H1 の識別子部とファイル名の不整合を検出: "H1 整合違反" を含む'
+    collect_contains "$output" "H1 整合違反（H1 見出しの識別子部 " \
+        '(AC3/レイヤ5): H1 の識別子部とファイル名の不整合を検出: 不一致を名指しする違反メッセージを含む'
     collect_contains "$output" "ADR-202612061027-01-h1-mismatch.md" \
         '(AC3/レイヤ5): H1 の識別子部とファイル名の不整合を検出: "ADR-202612061027-01-h1-mismatch.md" を含む'
 
     run_sut "$CORPUS_DIR/invalid/33-h1-id-absent"
     collect_rc 1 "(AC3/レイヤ5): H1 に識別子が現れない場合を検出: exit 1"
-    collect_contains "$output" '本文の最初の "# " 見出しに ADR 識別子が見つかりません' \
+    collect_contains "$output" 'H1 整合違反（本文の最初の "# " 見出しに ADR 識別子が見つかりません' \
         '(AC3/レイヤ5): H1 に識別子が現れない場合を検出: 識別子不在を名指しする違反メッセージを含む'
     collect_contains "$output" "ADR-202612111033-01-h1-id-absent.md" \
         '(AC3/レイヤ5): H1 に識別子が現れない場合を検出: "ADR-202612111033-01-h1-id-absent.md"（H1 はあるが識別子を欠く）を含む'

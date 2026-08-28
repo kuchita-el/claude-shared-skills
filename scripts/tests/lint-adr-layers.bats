@@ -55,8 +55,12 @@ LAYER1_INVALID_CASES=(
 
 # 表が空になった（あるいは大きく削られた）まま緑になる経路を塞ぐ下限。面②のループは
 # 反復0回でも collect_finish が成功を返すため、件数そのものを1検査項目として数える。
+# 数える対象はループが実際に走らせた照合の回数であり、配列リテラルの要素数ではない。
+# 宣言だけを読むと、照合ループごと消えても配列さえ残っていれば下限が緑を返し、下限自身が
+# 退行しうる量を観測しなくなる（lint-adr-surface.bats の AC5 下限は実行時に抽出した行数を
+# 下限とループの双方が消費する形であり、それに合わせる）。
 # 下限は名目値（1件）ではなく現在の実数を置く。名目値にすると表が数件まで削られても
-# 緑のまま通り、下限が検査として働かない（lint-adr-surface.bats の AC5 下限と同じ方式）。
+# 緑のまま通り、下限が検査として働かない。
 LAYER1_INVALID_CASE_MIN=11
 
 @test "前提: 被テスト検査器と fixture corpus が存在する" {
@@ -78,22 +82,32 @@ LAYER1_INVALID_CASE_MIN=11
 @test "面②: レイヤ1 不正 front-matter fixture 群の検出" {
     collect_init
 
-    # 照合件数の下限。ループより先に数え、0件反復が緑として通る経路を塞ぐ。
-    if [ "${#LAYER1_INVALID_CASES[@]}" -ge "$LAYER1_INVALID_CASE_MIN" ]; then
-        collect_ok "AC1: 検出対象 fixture の照合件数が下限を満たす（${#LAYER1_INVALID_CASES[@]} 件 / 下限 $LAYER1_INVALID_CASE_MIN 件）"
-    else
-        collect_fail "AC1: 検出対象 fixture の照合件数が下限を満たす" \
-            "照合件数 ${#LAYER1_INVALID_CASES[@]} 件が下限 $LAYER1_INVALID_CASE_MIN 件を下回る（表の欠落か fixture の削減。後者なら本定数を下げる）"
-    fi
-
     local entry name needle rc_label msg_label
+    local matched=0
     for entry in "${LAYER1_INVALID_CASES[@]}"; do
         IFS='|' read -r name needle rc_label msg_label <<<"$entry"
+        # 期待メッセージ欄が空の行は照合として成立しない。collect_contains は空 needle に
+        # 対して常に合格を返すため、空欄のまま残るとその行はメッセージ側の検出力を失う。
+        # 下限にも数えず、行を名指しして落とす。
+        if [ -z "$needle" ]; then
+            collect_fail "AC1: 表の期待メッセージ欄が空ではない（$name）" \
+                "期待メッセージ欄が空。空 needle は常に一致するため、この行のメッセージ照合は検出力を持たない"
+            continue
+        fi
         run_sut "$CORPUS_DIR/invalid/$name"
         # 1件目で打ち切らない。表の全 fixture を同時に壊しても1回の実行で全件出す。
         collect_rc 1 "$rc_label"
         collect_contains "$output" "$needle" "$msg_label"
+        matched=$((matched + 1))
     done
+
+    # 照合件数の下限。ループが実際に走らせた回数を数え、0件反復が緑として通る経路を塞ぐ。
+    if [ "$matched" -ge "$LAYER1_INVALID_CASE_MIN" ]; then
+        collect_ok "AC1: 検出対象 fixture の照合件数が下限を満たす（$matched 件 / 下限 $LAYER1_INVALID_CASE_MIN 件）"
+    else
+        collect_fail "AC1: 検出対象 fixture の照合件数が下限を満たす" \
+            "照合件数 $matched 件が下限 $LAYER1_INVALID_CASE_MIN 件を下回る（表の欠落・照合ループの退行・fixture の削減。最後の場合のみ本定数を下げる）"
+    fi
 
     collect_finish
 }
@@ -133,7 +147,8 @@ LAYER1_INVALID_CASE_MIN=11
 
     run_sut "$CORPUS_DIR/invalid/04-index-drift"
     collect_rc 1 "AC3: index-drift corpus は exit 1"
-    collect_contains "$output" "index 同期違反" "AC3: index-drift corpus の同期違反メッセージ"
+    collect_contains "$output" "index 同期違反（gen-adr-index.sh の出力と一致しません" \
+        "AC3: index-drift corpus の drift を名指しする同期違反メッセージ"
 
     # fixture が index.md を持たないこと自体を検査項目として数える。誰かが index.md を
     # 足すと不在検査の負例が消えるため、その原因が読める形で落とす。
