@@ -17,16 +17,13 @@
 # キー省略と「キーあり値空」は同じ「空」として扱う。
 #
 # レイヤ1（front-matter スキーマ検証）は front-matter が
-# スキーマ必須ルールを満たすことを検証する。必須ルールは
-# 次の遷移表であり、レイヤ1はこの表に無い行を違反として検出する。
-#
-#   | 遷移 | status       | validity   | superseded-by |
-#   |------|--------------|------------|---------------|
-#   | 起票 | 提案中       | （無し）   | （無し）      |
-#   | 承認 | 承認済み     | 有効       | （無し）      |
-#   | 上書き| 承認済み     | 上書き済み | 必須          |
-#   | 廃止 | 承認済み     | 廃止済み   | （無し）      |
-#   | 却下 | 却下         | （無し）   | （無し）      |
+# スキーマ必須ルールを満たすことを検証する。合法な状態の集合の正本は
+# `../skills/manage-adr/references/adr-model.md`「状態の型」であり、
+# レイヤ1 はその型が構成できない状態を違反として検出する。
+# 本ヘッダは合法な状態の集合を独立に定義し直さない。ここが持つのは
+# 「何を検査するか」＝次の違反種別の列挙と、「なぜその検査があるか」＝
+# その採用理由までである。各違反種別がどの型の制約に対応するかは
+# 同文書「型の制約と機械検査の対応」が引ける。
 #
 # レイヤ1違反種別:
 #   1. status 欠落（空）
@@ -34,20 +31,15 @@
 #   3. validity=上書き済み かつ superseded-by 欠落（空）
 #   4. status の値が語彙外（提案中 / 承認済み / 却下 以外）
 #   5. validity の値が語彙外（有効 / 上書き済み / 廃止済み 以外。空は合法）
-#   6. status=提案中 または 却下 かつ validity が非空（表では「（無し）」）
-#   7. status=提案中 または 却下 かつ superseded-by が非空（表では「（無し）」）
-#   8. validity=有効 または 廃止済み かつ superseded-by が非空（表では「（無し）」）
+#   6. status=提案中 または 却下 かつ validity が非空
+#   7. status=提案中 または 却下 かつ superseded-by が非空
+#   8. validity=有効 または 廃止済み かつ superseded-by が非空
 #
 # 種別4・5（語彙）を空判定と別に持つのは、値が非空でも語彙外なら
 # gen-adr-index.sh の `validity: 有効` 完全一致から外れて index から静かに
 # 脱落する一方、空判定だけでは検出できないため（例: 旧英文の `status: Accepted`、
 # `有効` の誤字 `有郊`）。新規 ADR の追加では、コミット済み index と再生成 index の
 # 双方に当該 ADR が載らず一致するため、レイヤ2 も backstop として発火しない。
-#
-# 合法（違反にしない）:
-#   - status=提案中 かつ validity 空 かつ superseded-by 空（起票）
-#   - status=却下 かつ validity 空 かつ superseded-by 空（却下）
-#   - validity=廃止済み かつ superseded-by 無し（廃止）
 #
 # レイヤ2（index 同期）: gen-adr-index.sh を ADR_DIR に対して実行し、
 # その出力を ADR_DIR/index.md と比較する。差分あり、または index.md が
@@ -481,7 +473,7 @@ for file in "${sorted[@]}"; do
         violations=$((violations + 1))
     fi
 
-    # 種別6・7: 起票（提案中）・却下 の行は validity・superseded-by とも「（無し）」。
+    # 種別6・7: 構成子 提案中 / 却下 は validity・superseded-by のいずれも伴わない。
     # 承認軸が終端（却下）または未承認（提案中）の ADR は有効性軸を持たない。
     if [ "$FM_STATUS" = "提案中" ] || [ "$FM_STATUS" = "却下" ]; then
         if [ -n "$FM_VALIDITY" ]; then
@@ -494,7 +486,7 @@ for file in "${sorted[@]}"; do
         fi
     fi
 
-    # 種別8: 承認（有効）・廃止（廃止済み）の行は superseded-by「（無し）」。
+    # 種別8: 構成子 有効 / 廃止済み は superseded-by を伴わない。
     # 後継を指すなら上書き済みであるべきで、有効のままなら原 ADR と後継が
     # 同時に index へ並ぶ。廃止済みは決定1 で「後継 ADR なしで ADR としての効力を
     # 終えた」と定義される。
