@@ -55,7 +55,7 @@ This ledger is regenerated when tracked source/config/docs add or move a `plugin
 | scripts/tests/dev-workflow-refine-contract.bats | 6 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | scripts/tests/dev-workflow-refine-contract.bats | 10 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | scripts/tests/dev-workflow-refine-contract.bats | 22 | plugins/dev-workflow | migration | reference | wave-5 | current |
-| scripts/tests/helpers/common.bash | 32 | plugins/adr | migration | reference | wave-5 | current |
+| scripts/tests/helpers/common.bash | 34 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/gen-adr-index.bats | 2 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/lint-adr-layers.bats | 2 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/lint-adr-stem.bats | 2 | plugins/adr | migration | reference | wave-5 | current |

@@ -60,7 +60,7 @@ Issue #800 の作業記録。設計 spec `docs/superpowers/specs/2026-08-27-adr-
 | L3F-1 | 3 forward | `superseded-by=… に有効な参照先 stem がありません` | `valid/05-xref-list-trailing-comma` | `invalid/11-xref-list-empty-superseded` | `lint-adr-layers.bats` 面⑯ |
 | L3F-2 | 3 forward | `superseded-by=… だが参照先 … が見つかりません` | `valid/04-xref-list` | `invalid/10-xref-list-forward-file-missing` | `lint-adr-layers.bats` 面⑮ |
 | L3F-3 | 3 forward | `… の本文 "## 関連ADR" に "Supersedes: …" が見つかりません` | `valid/02-xref-valid` / `valid/04-xref-list` | `invalid/05-xref-missing` / `invalid/08-xref-list-forward-missing` | `lint-adr-layers.bats` 面⑦・面⑬ |
-| L3R-1 | 3 reverse | `逆方向: 本文 "## 関連ADR" の "Supersedes: …" 宣言の参照先 … が見つかりません` | `valid/02-xref-valid` | **穴（基準版時点で負例なし）** → `invalid/34-xref-reverse-dangling` を新設 | **穴（基準版時点でアサーションなし）** → Task 7 で追加 |
+| L3R-1 | 3 reverse | `逆方向: 本文 "## 関連ADR" の "Supersedes: …" 宣言の参照先 … が見つかりません` | `valid/02-xref-valid` | `invalid/34-xref-reverse-dangling`（本 PR で新設） | `lint-adr-layers.bats` 面⑰（本 PR で新設） |
 | L3R-2 | 3 reverse | `逆方向: … の front-matter superseded-by がそれを指していません` | `valid/02-xref-valid` / `valid/04-xref-list` | `invalid/07-xref-reverse-missing` / `invalid/09-xref-list-reverse-missing` | `lint-adr-layers.bats` 面⑩・面⑭ |
 | L4-1 | 4 | `dangling 参照違反（"## 関連ADR" の Related 参照先 … が見つかりません）` | `valid/06-related-valid` | `invalid/20-related-dangling` | `lint-adr-xref.bats` 面②（正例側は面④） |
 | L4-2 | 4 | `参照先退役違反（"## 関連ADR" の Related 参照先 … は validity=… の退役ADRです）` | `valid/06-related-valid` | `invalid/18-related-retired-no-bullet` / `invalid/19-related-retired-link` / `invalid/22-related-link-label` / `invalid/23-related-dup-report` | `lint-adr-xref.bats` 面①・面③・面⑤（正例側は面④・面⑦） |
@@ -151,3 +151,31 @@ echo "corpora=$total diffs=$diffs"
 この照合は構造整理の各段で手で走らせる**一回限りの検証**であり、テストスイートへ常設しない（設計 spec 節4 が上位検証層の再導入を禁じており、常設すると基準版の保持先と版据え置きの問題が新たに生じるため）。
 
 **手順が空振りしないことの確認**: 実装を一切変えていない状態（新設 corpus のみを足した状態）で1回走らせ、`base=c126d72 corpora=41 diffs=0` を得た。以降の各段でこの照合を再実行する。
+
+## テストの再編と穴埋め
+
+被覆表を根拠に、穴の埋め合わせとレイヤ単位の独立起動を検査する面を置いた。既存アサーションは触っていない（設計 spec 節4 の「4ファイル914行を書き直し」は策定時点の現況に基づく指示であり、そのまま実行すると直前の Issue #793 が投入した被覆と変異実測を作り直すことになるため、被覆表起点の再編と穴埋めへ縮退させている）。
+
+| 面 | ファイル | 何を固定するか |
+|---|---|---|
+| 面⑰ | `scripts/tests/lint-adr-layers.bats` | L3R-1（逆方向で宣言の参照先そのものが不在）の検出。終了コード1と、逆方向・宣言の参照先・不在の参照先名を名指しする違反メッセージ。参照先が実在して front-matter だけが追随していない経路（L3R-2）のメッセージが出ないこと、および他レイヤの違反が混ざらないこと |
+| 面⑱ | `scripts/tests/lint-adr-layers.bats` | レイヤ単位の独立起動。起動しなかったレイヤの違反が出ないこと（両方向）、起動したレイヤの違反は出ること、収集済みの事実を消費する側が偽陽性を出さないこと |
+| 面⑲ | `scripts/tests/lint-adr-layers.bats` | 読み込みだけでは対象ディレクトリ不在の経路へ入らないこと。直接実行では従来どおり終了コード2であること |
+| 面⑧ | `scripts/tests/lint-adr-xref.bats` | レイヤ4 の単独起動。起動したレイヤの違反は出て、起動しなかったレイヤ（レイヤ5）の違反は出ないこと |
+
+### 独立起動の観測の形
+
+読み込みは**部分シェル経由**で行う（共有ヘルパの `run_sut_layer`）。ケース内で直接読み込むと検査器の `set -euo pipefail` が bats 本体のシェルへ漏れ、`nounset` の下で収集型ヘルパの空配列参照が異常終了しうる。部分シェルなら観測できるのは出力と終了コードだけになり、連想配列の中身などの内部状態は見られない。この代償は受け入れ、レイヤ間に検査の依存が無いことを外から確かめる形に留める。
+
+面⑱・面⑧のいずれも、「起動しなかったレイヤの違反が出ない」だけでなく **「起動したレイヤの違反は出る」** を対で置いている。前者だけだと、レイヤ関数の中身を空にする変異でも緑のまま通り、独立性の検査が「何も検査しない」ことの確認へ退化する。
+
+面⑱にはさらに、収集済みの事実を消費する側が偽陽性を出さないことの項を置いた。写像を作る単位が連想配列を関数ローカルで宣言してしまうと後続のレイヤから見えなくなり、双方向が揃った正例 corpus に対して「front-matter superseded-by がそれを指していません」の偽陽性が出る。この経路を負例側の項だけで検出することはできない。
+
+### ケース数の増減
+
+| 時点 | bats ケース総数 | 内訳 |
+|---|---|---|
+| 基準版 `c126d72` | 150 | — |
+| 本 PR 後 | 154 | `lint-adr-layers.bats` に面⑰・面⑱・面⑲の3件、`lint-adr-xref.bats` に面⑧の1件 |
+
+改名（`lint-adr-index.bats` → `gen-adr-index.bats`、`lint-adr-surface.bats` → `manage-adr-surface.bats`）はケース数を動かさない。

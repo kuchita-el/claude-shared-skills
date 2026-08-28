@@ -312,3 +312,108 @@ LAYER1_INVALID_CASE_MIN=11
 
     collect_finish
 }
+
+# 逆方向の相互参照は2つの分岐を持つ。参照先は実在するが front-matter が宣言元を指していない
+# 経路（面⑩・面⑭）と、宣言の参照先ファイルそのものが存在しない経路である。後者は Issue #800 の
+# 被覆表で唯一の未被覆分岐として拾われた。当時の40 corpus のいずれでも発火せず、実装から当該
+# 分岐を落としても全テストが緑のまま通る状態にあった。
+# invalid/34 は単一原因で違反1件になる corpus であり、他レイヤの出力が混ざらないことも
+# 併せて固定する。混ざると、当該分岐を落とす変異でこのケースが赤にならない。
+@test "面⑰: レイヤ3 逆方向で宣言の参照先そのものが不在の検出" {
+    collect_init
+
+    run_sut "$CORPUS_DIR/invalid/34-xref-reverse-dangling"
+    collect_rc 1 "#800: xref-reverse-dangling corpus は exit 1"
+    collect_contains "$output" '相互参照違反（逆方向: 本文 "## 関連ADR" の "Supersedes: ' \
+        "#800: 逆方向の本文宣言起点であることを名指しする違反メッセージ"
+    collect_contains "$output" "宣言の参照先" \
+        "#800: 参照先そのものの不在であることを名指しする違反メッセージ"
+    collect_contains "$output" "ADR-202612101034-01-xref-reverse-dangling-absent-old.md が見つかりません" \
+        "#800: 不在の参照先を名指しする違反メッセージ"
+
+    # 参照先が実在して front-matter だけが追随していない経路（面⑩）とは別の分岐であることを
+    # 固定する。後者のメッセージが出るなら、参照先不在の分岐を通らずに済んでいる。
+    collect_not_contains "$output" "front-matter superseded-by がそれを指していません" \
+        "#800: 参照先が実在する側の逆方向メッセージは出ない"
+
+    # 他レイヤの違反が混ざらないこと（単一原因の corpus であることの固定）
+    collect_not_contains "$output" "index 同期違反" "#800: レイヤ2 の違反が混ざらない"
+    collect_not_contains "$output" "ファイル名形式違反" "#800: レイヤ5（形式）の違反が混ざらない"
+    collect_not_contains "$output" "H1 整合違反" "#800: レイヤ5（H1）の違反が混ざらない"
+    collect_not_contains "$output" "識別子重複違反" "#800: レイヤ5（重複）の違反が混ざらない"
+    collect_not_contains "$output" "参照先退役違反" "#800: レイヤ4（退役）の違反が混ざらない"
+    collect_not_contains "$output" "dangling 参照違反" "#800: レイヤ4（dangling）の違反が混ざらない"
+
+    collect_finish
+}
+
+# ---- レイヤ単位の独立起動 ----
+#
+# Issue #800 の構造整理まで、レイヤ1のループが検査本体と前処理を兼ねており、他レイヤが
+# 消費する事実はそのループ内で副次的に充填されていた。このためレイヤ1を実行せずに他の
+# レイヤを起動できず、レイヤ単位で検査を確かめる手段が無かった。
+# 以下は事実の収集だけを済ませた状態で単一レイヤを起動し、起動したレイヤの違反だけが
+# 出ることを外から確かめる。読み込みは run_sut_layer が部分シェル経由で行う。
+@test "面⑱: 事実の収集だけを済ませた状態で単一レイヤを起動できる" {
+    collect_init
+
+    # 起動しなかったレイヤの違反が出ないこと。invalid/32 はレイヤ2 だけが発火する corpus。
+    run_sut_layer check_layer3_reverse "$CORPUS_DIR/invalid/32-index-missing"
+    collect_rc 0 "#800: index 不在 corpus へレイヤ3 reverse だけを起動できる"
+    collect_contains "$output" "[violations=0]" \
+        "#800: index 不在 corpus でレイヤ3 reverse は違反を数えない"
+    collect_not_contains "$output" "index 同期違反" \
+        "#800: レイヤ3 reverse の単独起動でレイヤ2 の違反は出ない"
+
+    # 逆向き。invalid/34 はレイヤ3 reverse だけが発火する corpus。
+    run_sut_layer check_layer2_index_sync "$CORPUS_DIR/invalid/34-xref-reverse-dangling"
+    collect_rc 0 "#800: 逆方向参照先不在 corpus へレイヤ2 だけを起動できる"
+    collect_contains "$output" "[violations=0]" \
+        "#800: 逆方向参照先不在 corpus でレイヤ2 は違反を数えない"
+    collect_not_contains "$output" "相互参照違反" \
+        "#800: レイヤ2 の単独起動でレイヤ3 の違反は出ない"
+
+    # 単独起動が「何も検査しない」へ退化していないこと。起動したレイヤの違反は出る。
+    # この項が無いと、レイヤ関数の中身を空にする変異でも上の2項が緑のまま通る。
+    run_sut_layer check_layer3_reverse "$CORPUS_DIR/invalid/34-xref-reverse-dangling"
+    collect_rc 0 "#800: 逆方向参照先不在 corpus へレイヤ3 reverse だけを起動できる"
+    collect_contains "$output" "[violations=1]" \
+        "#800: 起動したレイヤの違反は数える"
+    collect_contains "$output" "相互参照違反（逆方向" \
+        "#800: 起動したレイヤの違反は出力する"
+
+    # 前処理結果を消費する側のレイヤが、収集済みの事実を実際に読めていること。
+    # valid/02-xref-valid は双方向が揃った corpus であり、レイヤ3 reverse は参照先の
+    # front-matter superseded-by を写像から読んで一致を確認する。写像を作る単位が
+    # 連想配列を関数ローカルで宣言してしまうと後続のレイヤから見えなくなり、ここが
+    # 「front-matter superseded-by がそれを指していません」の偽陽性として現れる。
+    run_sut_layer check_layer3_reverse "$CORPUS_DIR/valid/02-xref-valid"
+    collect_rc 0 "#800: 双方向一致 corpus へレイヤ3 reverse だけを起動できる"
+    collect_contains "$output" "[violations=0]" \
+        "#800: 収集済みの事実が揃っており偽陽性を出さない"
+    collect_not_contains "$output" "がそれを指していません" \
+        "#800: 写像が見えないことによる偽陽性が出ない"
+
+    collect_finish
+}
+
+# レイヤ単位の起動口は「検査器を読み込んでも検査本体が走らない」ことに依存する。
+# 直接実行と読み込みを分ける判定が壊れると、読み込みだけで対象ディレクトリ不在の
+# 経路へ入って終了し、テスト側がレイヤ関数へ到達できなくなる（面⑱が前提を失う）。
+@test "面⑲: 検査器の読み込みだけでは対象ディレクトリ不在で終了しない" {
+    collect_init
+
+    run bash -c 'source "$1"; printf "[sourced rc=%s]\n" "$?"; printf "[pattern=%s]\n" "${ADR_STEM_PATTERN:-未定義}"' \
+        _ "$SUT" </dev/null
+    collect_rc 0 "#800: 対象ディレクトリを渡さない読み込みが終了コード0で戻る"
+    collect_contains "$output" "[sourced rc=0]" "#800: 読み込み自体が成功する"
+    collect_not_contains "$output" "[pattern=未定義]" "#800: 読み込みで定数定義が得られる"
+    collect_not_contains "$output" "ディレクトリが見つかりません" \
+        "#800: 読み込みでは対象ディレクトリ不在の経路へ入らない"
+
+    # 直接実行時は従来どおり不在で exit 2（面③と同じ経路。判定の両側を1ケース内で押さえる）
+    run_sut "$CORPUS_DIR/invalid/__nonexistent__"
+    collect_rc 2 "#800: 直接実行では対象ディレクトリ不在が exit 2 のまま"
+
+    collect_finish
+}
