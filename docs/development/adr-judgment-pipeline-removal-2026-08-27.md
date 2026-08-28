@@ -83,3 +83,70 @@ ADR 化要否の判定を機械実行する一式（固定題材集合の実行�
 
 Issue #783 AC6 が名指しで根拠を求める 2 件は、上表のうち `ADR-202607230648-01`（例示引用のみ）と `ADR-202608011651-01`（閾値の内製化を自ら反転から除外）である。いずれも変更不要と判定した根拠を上表に記した。
 
+## §3: 検証の記録
+
+### 参照残存の走査（AC2）
+
+削除対象を指すパス断片 5 語（`adr-scoping-cases` / `adr-judgment-contract` / `adr-scoring-thresholds` / `migrate-return-schema` / `return-schema-migration`）で追跡下全体を走査した結果、ヒットしたファイルは 10 件で、いずれも下記の除外集合に属する。これ以外のパスにヒットは 1 件も出ていない。
+
+**Issue #783 AC2 が固定する除外集合 (a)〜(f)**
+
+- **(a) 凍結記録**: `docs/development/test-execution.md` の §6 採点表（`:185`）と §7 移行対応表（`:199`）。いずれも節の範囲（§6 = `:133`-`:191`、§7 = `:192`-`:217`）の内側にあり、同ファイルの他の節にヒットは無い
+- **(b) `docs/development/` 配下の日付付き観測記録**: `docs/development/adr-demotion-cases/2026-08-01-run.md`、`docs/development/adr-destination-branch-measurability-2026-08-23.md`、`docs/development/token-discipline-redesign-2026-08-21.md`
+- **(c) 過去の事実として削除対象を例示引用する箇所**: `docs/distribution-boundary.md`、`docs/adr/ADR-202607230648-01-adr-machinery-plugin-extraction.md`
+- **(d) 本 PR が追跡下へ入れる設計 spec 2 ファイル**: `docs/superpowers/specs/2026-08-27-adr-plugin-simplification-design.md`、`docs/superpowers/specs/2026-08-27-adr-plugin-simplification-review.md`
+- **(e) 本 PR が作成する判定記録ファイル**: `docs/development/adr-judgment-pipeline-removal-2026-08-27.md`（本ファイル）
+- **(f) 本 PR が起票する ADR**: **該当なし**。§1 で起票した `ADR-202608280911-01-adr-judgment-quality-without-machine-verification.md` は本文で削除対象パスを名指していないため、5 語走査にヒットしない。§2 のとおり遷移で生まれた後継 ADR も無い
+
+**プラン独自の「広域走査に伴う対象外」(P1)**（AC2 の除外集合ではない）
+
+- `docs/superpowers/specs/2026-08-10-issue-710-bats-drift-design.md`（`:9`・`:10`・`:28`・`:29`）。マージ済み PR #710 の設計時点の事実の記述であり、現在の指示・規約ではない。本ファイルは AC2 の走査対象カテゴリ（規約文書・スキル定義・エージェント定義・テストランナー）のいずれにも当たらず AC2 の充足判定の射程外であるため、(a)〜(f) には含まれない。追跡下全体へ走査を広げたことに伴う対象外として (a)〜(f) と書き分ける
+
+据え置きの確認として、(a)(b)(c)(P1) の各パスに `git diff` の差分が無いことを確かめた。差分を持つのは (c) のうち `docs/distribution-boundary.md` の陳腐化注記のみである（除外集合は「編集しない」ではなく「残存として数えない」を意味する）。
+
+### 全スイートとガードの状態（AC3）
+
+- `bash scripts/run-tests.sh`: 全 6 スイート成功終了（bats 144 tests / 0 failures、`validate-skills` / `validate-plugin-manifests` / `validate-plugin-versions` / `validate-plugin-portability` / `validate-plugin-path-references` はいずれも ok）
+- 期待テスト一覧と実ファイル集合の双方向照合、TAP のプラン行と結果件数の照合: いずれも不発火
+- 参照台帳の双方向照合: `checked=86 missing=0 stale=0`（照合件数が 0 でないことを含む）
+- プラグイン版の検査: 据え置きの報告・2 manifest 間の不一致の報告のいずれも無し（両者 `0.6.0` で一致）
+- 配布境界の検査・配布物移植性の検査（`壊れた参照` / `2段参照`）: いずれも不発火
+- `bash plugins/adr/scripts/lint-adr.sh docs/adr` を **worktree から明示実行**して exit 0。レイヤ2（index 同期）・レイヤ3（相互参照双方向性）のいずれも発火せず。adr プラグイン同梱ゲートは検査対象を `CLAUDE_PROJECT_DIR` 優先・cwd フォールバックのみで解決し worktree では別ツリーを検査しうるため、その自動実行は充足判定に使っていない
+
+### 残存スイートの skip 使用有無
+
+`scripts/tests/` 配下を 1 回 grep した結果、bats の `skip` コマンドの呼び出しは **0 件**である。ヒットした 4 箇所はいずれも既知の偽陽性で、内訳は次のとおり。
+
+| 箇所 | 内容 |
+|---|---|
+| `scripts/tests/lint-adr-stem.bats:225` | fixture 名 `07-legacy-filename-skipped` の一部 |
+| `scripts/tests/helpers/common.bash:198` | コメント中の `skip`（bats の `skip` が収集型ケースで使えない旨の説明） |
+| `scripts/tests/helpers/common.bash:199` | 関数定義 `collect_skipped` |
+| `scripts/tests/helpers/common.bash:201` | 出力文字列 `# skipped:` |
+
+`collect_skipped` は判定パイプラインの削除により呼び出し元が 0 件になったが、残置している。本 Issue の射程が判定を機械実行する一式の削除であって残存ヘルパーの未使用関数の整理を含まないこと、同関数が削除対象に固有ではない汎用機構であること、未使用関数を検出する検査が存在せず残置が commit ゲートを赤にしないこと、および「単純化の名目で既存のケースを削除しない」ガードレールによる。Issue の制約に従い、常設の skip 計数機構は追加していない。
+
+### 前提の消える OPEN Issue 15 件の処理（AC5）
+
+| 区分 | 件数 | 対象 | 結果 |
+|---|---|---|---|
+| クローズ | 10 | #604 / #606 / #607 / #608 / #719 / #724 / #727 / #747 / #750 / #766 | 各件に本 Issue（#783）へのリンクを含むコメントを添えたうえで not planned でクローズ。全件 `state=CLOSED` / `stateReason=NOT_PLANNED` を照合済み |
+| 再スコープ | 4 | #718 / #720 / #745 / #722 | 新本文のドラフト 4 件を一括提示し、**適用前にユーザーの承認を得てから** `gh issue edit` を実行。適用後に本文を再取得し、受入条件節から廃止対象の機構への依存 4 種（題材の再導出・独立 2 試行・欠陥台帳の更新・検査器サブコマンドとの同期）が消えていること、および指摘していた条文欠陥そのものが残っていることを 1 件ずつ照合済み |
+| 変更なし | 1 | #700 | 状態・本文とも無操作。`state=OPEN`、`updatedAt` は着手前の 2026-08-08 のまま |
+
+再スコープ 4 件で残した条文欠陥は次のとおり。いずれも改訂後の `adr-scoping.md` に現存することを確認した。
+
+- **#718**: A-01（「判定結果の行き先」節の第2分岐が中黒で並べた 2 条件について選言か連言かを明示しない。`adr-scoping.md:143`）／A-03（検査が皆無の場合にどの分岐へ置くかを明示しない。同 `:146`）
+- **#745**: A-04（第1分岐が入口をツール強制の有無で述べる一方、置き場所を資産の種類で述べるため二読みになる）
+- **#720**: 「命名規約の ADR 化基準」節（同 `:161`）の 3 欠陥（類の外延が未定義／タイブレーカーが表自身の例と矛盾／「ツールで自動強制できる」が節内で二時制）と、`ADR-202608011354-01` 決定2 との drift 1 件
+- **#722**: 正本の重複・責務の混在・規範と例の混在の 3 種、規約文書を持たない lint 検査 3 件、`SKILL.md` のレイヤ第二列挙面
+
+なお #718 と #722 については、判定パイプラインの廃止に伴い参照先が変わった箇所を追随させている（値域定義の所在が `adr-judgment-contract.md` から `adr-scoping.md` の同一ファイル内へ移ったこと、#722 の参照面が `.md` 9 本 ＋ `.json` 1 本から `.md` 8 本へ縮んだこと）。#720 と #722 が引用していた検討メモ 2 件（`adr-scoping-case-reduction-2026-08-09.md`・`adr-operation-audit-2026-08-09.md`）は履歴を含めリポジトリに存在しないため、ファイル名の直接引用のみを落とし、主張は本文へ温存した。本 Issue の射程外の既存問題である。
+
+## §4: 射程外・follow-up 候補
+
+本 PR では対処せず、恒久対処を別 Issue の候補として残す事象が 2 件ある。
+
+1. **`adr-commit-gate` の worktree 盲点**: `plugins/adr/hooks/adr-commit-gate:40` は検査対象を `PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"` でのみ解決し、`scripts/hooks/pre-commit-gate.sh:49`-`:71` が受けた 3 候補解決（PreToolUse の JSON が載せる cwd → フックプロセス自身の cwd → `CLAUDE_PROJECT_DIR`）の書き換えを受けていない。このため worktree から commit すると、コミット対象ではない project root の `docs/adr` を検査して緑を返しうる。本 PR では `lint-adr.sh` の明示実行で回避しており、ゲート自体は修正していない（本 Issue の射程は判定パイプラインの廃止と条文への内製化であり、ゲートの対象解決は別事象）
+2. **削除に伴って失われる汎用ガード 1 件**: `scripts/tests/adr-scoping-cases-edge.bats` のアサーション44「配布物（`plugins/adr` 配下）が配布元リポジトリの Issue 番号を含まない」は、被テスト検査器 1 本に閉じず `plugins/adr` 配下全体を走査する汎用ガードだった。同 bats の削除により、配布物へ配布元リポジトリの Issue 番号が混入することを検出する検査はリポジトリから消えている。`scripts/tests/distribution-boundary.bats` の面② が覆う走査語彙 5 語に Issue 番号は含まれず、代替にならない。削除自体は AC1 が命じるため不可避であり、Issue の制約「新たな検査機構を追加しない」に従い代替ガードは新設していない。本 PR 自身が `plugins/adr/skills/manage-adr/references/adr-scoping.md` と `plugins/adr/README.md` を編集する無検査化の初回の当事者にあたるため、両ファイルに Issue 番号を書き込んでいないことを個別に確認した
+
