@@ -100,7 +100,6 @@ EXPECTED_BATS=(
     writing-lint.bats
     writing-contract.bats
     team-migration.bats
-    return-schema-migration.bats
     distribution-boundary.bats
 )
 
