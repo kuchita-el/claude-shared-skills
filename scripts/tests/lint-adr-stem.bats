@@ -202,7 +202,13 @@ load_stem_pattern() {
     collect_finish
 }
 
-# AC3: H1 見出しの識別子部がファイル名の識別子部と一致しない → 違反
+# AC3: H1 整合検査は2つの分岐を持つ。
+# 不一致: H1 見出しの識別子部がファイル名の識別子部と一致しない → 違反。
+# 不在: H1 に識別子が現れない → 違反。条文はこれに「H1 見出しを持たない場合」を含めており、
+# 実装も抽出結果が空であることを一様の判定材料にしている。invalid/33 は「H1 はあるが識別子を
+# 欠く」ファイルと「H1 そのものが無い」ファイルを同梱し、両方の到達経路を1つの corpus で
+# 押さえる（`extract_h1_adr_id` は前者では `# ` 行に当たって抽出に失敗し、後者では `# ` 行に
+# 一度も当たらずループを抜ける）。
 @test "面⑥: H1 整合違反の検出" {
     collect_init
 
@@ -212,6 +218,15 @@ load_stem_pattern() {
         '(AC3/レイヤ5): H1 の識別子部とファイル名の不整合を検出: "H1 整合違反" を含む'
     collect_contains "$output" "ADR-202612061027-01-h1-mismatch.md" \
         '(AC3/レイヤ5): H1 の識別子部とファイル名の不整合を検出: "ADR-202612061027-01-h1-mismatch.md" を含む'
+
+    run_sut "$CORPUS_DIR/invalid/33-h1-id-absent"
+    collect_rc 1 "(AC3/レイヤ5): H1 に識別子が現れない場合を検出: exit 1"
+    collect_contains "$output" '本文の最初の "# " 見出しに ADR 識別子が見つかりません' \
+        '(AC3/レイヤ5): H1 に識別子が現れない場合を検出: 識別子不在を名指しする違反メッセージを含む'
+    collect_contains "$output" "ADR-202612111033-01-h1-id-absent.md" \
+        '(AC3/レイヤ5): H1 に識別子が現れない場合を検出: "ADR-202612111033-01-h1-id-absent.md"（H1 はあるが識別子を欠く）を含む'
+    collect_contains "$output" "ADR-202612121033-01-h1-heading-absent.md" \
+        '(AC3/レイヤ5): H1 に識別子が現れない場合を検出: "ADR-202612121033-01-h1-heading-absent.md"（H1 を持たない）を含む'
 
     collect_finish
 }
