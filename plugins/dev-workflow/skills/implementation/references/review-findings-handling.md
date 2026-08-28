@@ -43,7 +43,7 @@ implementation が Phase 3 の判定に用いる深刻度は2段（ブロッカ�
 
 | レビュー実行経路 | 出力ラベル | 2段初期値 |
 |---|---|---|
-| メインループ自身のセルフレビュー（superpowers 非導入時。`agents/code-reviewer.md` の2段基準に準拠） | ブロッカー | ブロッカー |
+| メインループ自身のセルフレビュー（superpowers 非導入時） | ブロッカー | ブロッカー |
 | 同上 | 改善提案 | 改善提案 |
 | `superpowers:requesting-code-review`（導入時） | Critical | ブロッカー |
 | `superpowers:requesting-code-review`（導入時） | Important | ブロッカー |
