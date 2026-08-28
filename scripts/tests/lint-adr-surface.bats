@@ -43,6 +43,210 @@ AC5_SURFACE_FILES=(
     "$MANAGE_ADR_DIR/references/transitions.md"
 )
 
+# ---- lint-adr.sh のヘッダ走査（面⑥・面⑦ が共有する） ----
+LINT_SCRIPT="$PLUGIN_ROOT/scripts/lint-adr.sh"
+LINT_MODEL="$MANAGE_ADR_DIR/references/adr-model.md"
+
+# front-matter の3キー。1行に3つ揃えば、その行は値組を述べている。
+LINT_STATE_KEYS=(status validity superseded-by)
+
+# `status` / `validity` の値域。値組は必ずこの語のいずれかを伴う。
+LINT_STATE_VALUES=(提案中 承認済み 却下 有効 上書き済み 廃止済み)
+
+# 空欄を表す記法。値組は空の軸を明示するため、1行に2回以上現れる。
+# 裸の「空」は採らない。違反種別の条件式が「非空」「値空」として常用する語であり、
+# 検出語に採ると条件式そのものが落ちる。
+LINT_EMPTY_MARKERS=('（無し）' '（空）')
+
+# 表の区切り。全角も数える。半角だけを見ると、全角へ置き換えた同じ表が素通りする。
+LINT_TABLE_SEPARATORS=('|' '｜')
+
+# 1行に並ぶ状態の値がこの数に達したら、値域そのものの再宣言とみなす。値域は6語しかなく、
+# 5語が並ぶ行は語彙の列挙以外ではありえない。4語に下げると、検査対象を値で限定する
+# レイヤ4・5 の正当な散文（「source は 提案中・却下・廃止済み を含まない（有効 のみ）」）が
+# 落ちる。実測で確かめた境界であり、名目値ではない。
+LINT_VALUE_DOMAIN_MIN=5
+
+# lint-adr.sh のヘッダ（1行目から `set -euo pipefail` の直前まで）を出す。
+lint_header() {
+    sed -n '1,/^set -euo pipefail/p' "$LINT_SCRIPT"
+}
+
+# コメント記号と前後の空白を落とした本文を出す。多バイト文字を含むため、awk の文字クラスを
+# 使わず bash のリテラル部分文字列操作だけで処理する（mawk はバイト単位に分解して誤判定する）。
+lint_comment_body() {
+    local body="${1#\#}"
+    body="${body#"${body%%[![:space:]]*}"}"
+    printf '%s' "${body%"${body##*[![:space:]]}"}"
+}
+
+# 文字列に含まれる部分文字列の出現回数を数える。
+lint_count_occurrences() {
+    # `local a="$1" rest="$a"` と1文で書かない。同一 local 文の右辺は builtin の実行前に
+    # 展開されるため、rest には外側スコープの値（通常は空）が入り、数え上げが常に0になる。
+    local needle="$2" n=0
+    local rest="$1"
+    # 空の needle は rest を縮められず無限ループになる。呼び出し側の配列に空要素が
+    # 混ざるとテストがハングし、失敗としても現れない。
+    [ -n "$needle" ] || { printf '0'; return 0; }
+    while :; do
+        case "$rest" in
+            *"$needle"*) : ;;
+            *) break ;;
+        esac
+        rest="${rest#*"$needle"}"
+        n=$((n + 1))
+    done
+    printf '%s' "$n"
+}
+
+# ヘッダのうち、レイヤ1 の宣言行から レイヤ2 の宣言行の直前までを出す。
+# 一度閉じたら再び開かない。`# レイヤ1` を前方一致で見るため、レイヤが10個目に達すると
+# `# レイヤ10` が再びブロックを開いてしまう。
+lint_layer1_block() {
+    local line inblock=0 closed=0
+    while IFS= read -r line; do
+        case "$line" in
+            '# レイヤ2'*)
+                if [ "$inblock" -eq 1 ]; then
+                    inblock=0
+                    closed=1
+                fi
+                ;;
+            '# レイヤ1'*)
+                if [ "$closed" -eq 0 ]; then
+                    inblock=1
+                fi
+                ;;
+        esac
+        if [ "$inblock" -eq 1 ]; then
+            printf '%s\n' "$line"
+        fi
+    done < <(lint_header)
+    return 0
+}
+
+# ヘッダを1回だけ走査し、規則ごとの当たりを "<規則><TAB><行>" として出す。
+# 規則ごとにヘッダを読み直すと、走査の回数が規則数に比例して増える。
+#
+# 【走査面を2段に分ける理由】
+# レイヤ1 の写しは、削除したときと同じ体裁で戻るとは限らない。ブロックの外へずらす／
+# 表の体裁を外す／ラベルを言い換える、のいずれでも規範の写しは復活する。一方で、
+# 「無いこと」の検査をヘッダ全域へ無条件に掛けると、レイヤ2〜5 の正当な散文まで落ちる
+# （キーを3つ並べて説明する文、`|` を選択肢の区切りに使う文、「（空）」を2回使う文）。
+# レイヤ2〜5 のヘッダ記述は本 Issue の OUT であり、その将来の編集を縛ってはならない。
+#
+#   Tier A（ヘッダ全域）: 値組の構造（区切り・キーの共起・空欄マーカーの反復）を持ち、
+#                         かつ状態の値を伴う行だけを落とす。値を伴わない説明文は当たらない。
+#   Tier B（レイヤ1 ブロックのうち違反種別の列挙を除く範囲）: 状態の値が1行に2つ以上
+#                         現れる行を落とす。この範囲の正当な内容は正本ポインタと採用理由の
+#                         2段落だけであり、いずれも1行あたり値は1つまでで書ける。
+#   Tier C（ヘッダ全域のうち違反種別の列挙を除く範囲）: 状態の値が1行に4つ以上現れる行を
+#                         落とす。値域は6語しかなく、1行に4語以上を並べる記述は値域そのものの
+#                         再宣言に当たる（値域の正本は adr-model.md「状態の2軸」である）。
+#                         Tier B の射程外＝ブロックの外へ、構造的な目印を一切使わずに
+#                         構成子を書き下す経路をここで受ける。
+#
+# 違反種別の列挙を Tier B から外すのは、そこが決定2 の「持つ」側だからである。免除の範囲は
+# ラベル行から本文が空になる行の手前までで、ラベルが失われれば免除は開かず、条件式が
+# Tier B に当たって赤になる（安全側へ倒れる）。
+lint_scan_header() {
+    local line body inblock=0 closed=0 inkinds=0
+    local n_key n_val n_mark n_sep item
+    while IFS= read -r line; do
+        case "$line" in
+            '# レイヤ2'*)
+                if [ "$inblock" -eq 1 ]; then
+                    inblock=0
+                    closed=1
+                fi
+                ;;
+            '# レイヤ1'*)
+                if [ "$closed" -eq 0 ]; then
+                    inblock=1
+                fi
+                ;;
+        esac
+
+        body="$(lint_comment_body "$line")"
+
+        if [ "$inkinds" -eq 1 ] && [ -z "$body" ]; then
+            inkinds=0
+        fi
+        case "$body" in
+            'レイヤ1違反種別:'*) inkinds=1 ;;
+        esac
+
+        n_key=0
+        for item in "${LINT_STATE_KEYS[@]}"; do
+            case "$body" in *"$item"*) n_key=$((n_key + 1)) ;; esac
+        done
+        n_val=0
+        for item in "${LINT_STATE_VALUES[@]}"; do
+            case "$body" in *"$item"*) n_val=$((n_val + 1)) ;; esac
+        done
+        n_mark=0
+        for item in "${LINT_EMPTY_MARKERS[@]}"; do
+            case "$body" in
+                *"$item"*) n_mark=$((n_mark + $(lint_count_occurrences "$body" "$item"))) ;;
+            esac
+        done
+        n_sep=0
+        for item in "${LINT_TABLE_SEPARATORS[@]}"; do
+            case "$body" in
+                *"$item"*) n_sep=$((n_sep + $(lint_count_occurrences "$body" "$item"))) ;;
+            esac
+        done
+
+        if [ "$n_val" -ge 1 ]; then
+            if [ "$n_sep" -ge 2 ]; then
+                printf 'R1\t%s\n' "$line"
+            fi
+            if [ "$n_key" -ge "${#LINT_STATE_KEYS[@]}" ]; then
+                printf 'R2\t%s\n' "$line"
+            fi
+            if [ "$n_mark" -ge 2 ]; then
+                printf 'R3\t%s\n' "$line"
+            fi
+        fi
+
+        case "$body" in
+            *合法*: | *合法*：) printf 'R4\t%s\n' "$line" ;;
+        esac
+
+        if [ "$inkinds" -eq 0 ]; then
+            if [ "$inblock" -eq 1 ] && [ "$n_val" -ge 2 ]; then
+                printf 'R5\t%s\n' "$line"
+            fi
+            if [ "$n_val" -ge "$LINT_VALUE_DOMAIN_MIN" ]; then
+                printf 'R6\t%s\n' "$line"
+            fi
+        fi
+    done < <(lint_header)
+    return 0
+}
+
+# 走査結果から1規則分の当たり行を取り出す。
+lint_rule_hits() {
+    local rule="$1" scan="$2" line
+    while IFS= read -r line; do
+        case "$line" in
+            "$rule"$'\t'*) printf '%s\n' "${line#*$'\t'}" ;;
+        esac
+    done < <(printf '%s\n' "$scan")
+    return 0
+}
+
+# 行数を数える。空文字列は 0 行とする（`printf '%s\n' ""` は 1 行に数えられてしまう）。
+lint_count_lines() {
+    if [ -z "$1" ]; then
+        printf '0'
+    else
+        printf '%s\n' "$1" | wc -l | tr -d ' '
+    fi
+}
+
+
 setup_file() {
     common_setup_file
 }
@@ -331,156 +535,12 @@ ac2_rtrim() {
 # レイヤ1 が報告する規範（合法な状態の集合）の正本は `adr-model.md`「状態の型」であり、
 # ヘッダはその写しを持たない（#794 決定1・決定2）。写しを置いても一致を守る機構は無く、
 # 正本を改訂した側だけが動いて静かに乖離する。削除した遷移表と「合法（違反にしない）」の
-# 列挙の再混入をここで止める。
+# 列挙の再混入をここで止める。走査の型と2段の走査面は `lint_scan_header` が持つ。
 #
 # ブロックの切り出しは行番号ではなくレイヤ宣言行（`# レイヤN`）で行う。行番号で固定すると、
 # ヘッダへ1行足すだけで検査が別の範囲を見る（#787 と同型）。
-#
-# 【走査面をヘッダ全域に取る理由】
-# 写しの再混入は「レイヤ1 ブロックの中に、削除したときと同じ体裁で戻る」とは限らない。
-# ブロックの外へ1つずらす／表の体裁を外す／ラベルを言い換える、のいずれでも規範の写しは
-# 復活する。したがって「無いこと」の検査はすべてヘッダ全域へ掛け、体裁ではなく
-# 値組そのものの形（キーの共起・空欄マーカーの反復・表の区切り）を見る。
-# レイヤ1 ブロックに対しては、正本ポインタと違反種別の列挙が在ること（決定2 の「持つ」側）
-# だけを確かめる。
-LINT_SCRIPT="$PLUGIN_ROOT/scripts/lint-adr.sh"
-LINT_MODEL="$MANAGE_ADR_DIR/references/adr-model.md"
 
-# front-matter の3キー。1行に3つ揃えば、それは値組を述べている行である。
-LINT_STATE_KEYS=(status validity superseded-by)
-
-# 空欄を表す記法。値組は空の軸を明示するため、1行に2回以上現れる。
-LINT_EMPTY_MARKERS=('（無し）' '（空）')
-
-# lint-adr.sh のヘッダ（1行目から `set -euo pipefail` の直前まで）を出す。
-lint_header() {
-    sed -n '1,/^set -euo pipefail/p' "$LINT_SCRIPT"
-}
-
-# ヘッダのうち、レイヤ1 の宣言行から レイヤ2 の宣言行の直前までを出す。
-# 一度閉じたら再び開かない。`# レイヤ1` を前方一致で見るため、レイヤが10個目に達すると
-# `# レイヤ10` が再びブロックを開いてしまう。
-lint_layer1_block() {
-    local line inblock=0 closed=0
-    while IFS= read -r line; do
-        case "$line" in
-            '# レイヤ2'*)
-                if [ "$inblock" -eq 1 ]; then
-                    inblock=0
-                    closed=1
-                fi
-                ;;
-            '# レイヤ1'*)
-                if [ "$closed" -eq 0 ]; then
-                    inblock=1
-                fi
-                ;;
-        esac
-        if [ "$inblock" -eq 1 ]; then
-            printf '%s\n' "$line"
-        fi
-    done < <(lint_header)
-    return 0
-}
-
-# コメント記号と前後の空白を落とした本文を出す。多バイト文字を含むため、awk の文字クラスを
-# 使わず bash のリテラル部分文字列操作だけで処理する（mawk はバイト単位に分解して誤判定する）。
-lint_comment_body() {
-    local body="${1#\#}"
-    body="${body#"${body%%[![:space:]]*}"}"
-    printf '%s' "${body%"${body##*[![:space:]]}"}"
-}
-
-# 文字列に含まれる部分文字列の出現回数を数える。
-lint_count_occurrences() {
-    # `local a="$1" rest="$a"` と1文で書かない。同一 local 文の右辺は builtin の実行前に
-    # 展開されるため、rest には外側スコープの値（通常は空）が入り、数え上げが常に0になる。
-    local needle="$2" n=0
-    local rest="$1"
-    while :; do
-        case "$rest" in
-            *"$needle"*) : ;;
-            *) break ;;
-        esac
-        rest="${rest#*"$needle"}"
-        n=$((n + 1))
-    done
-    printf '%s' "$n"
-}
-
-# 【R1】表の行。本文が `|` を2個以上含む行を出す。行頭の `|` は要求しない。
-# 区切りを行頭に置かない書き方（`遷移 | status | validity | superseded-by`）でも同じ表であり、
-# 体裁の差でガードを抜けさせない。
-lint_scan_table_rows() {
-    local line body
-    while IFS= read -r line; do
-        body="$(lint_comment_body "$line")"
-        if [ "$(lint_count_occurrences "$body" '|')" -ge 2 ]; then
-            printf '%s\n' "$line"
-        fi
-    done < <(lint_header)
-    return 0
-}
-
-# 【R2】3キーを1行で名指す行。値組を述べる行はキーを揃える。
-# 違反種別の条件式は1行あたり2キーまでであり（決定2 が「持つ」と定めた側）、ここに掛からない。
-lint_scan_key_tuples() {
-    local line body k hits
-    while IFS= read -r line; do
-        body="$(lint_comment_body "$line")"
-        hits=0
-        for k in "${LINT_STATE_KEYS[@]}"; do
-            case "$body" in
-                *"$k"*) hits=$((hits + 1)) ;;
-            esac
-        done
-        if [ "$hits" -ge "${#LINT_STATE_KEYS[@]}" ]; then
-            printf '%s\n' "$line"
-        fi
-    done < <(lint_header)
-    return 0
-}
-
-# 【R3】空欄マーカーを1行で2回以上使う行。キー名を伴わず値だけを並べる書き方
-# （`起票 | 提案中 | （無し） | （無し）`）を、表の体裁を外しても落とす。
-lint_scan_empty_marker_tuples() {
-    local line body m total
-    while IFS= read -r line; do
-        body="$(lint_comment_body "$line")"
-        total=0
-        for m in "${LINT_EMPTY_MARKERS[@]}"; do
-            total=$((total + $(lint_count_occurrences "$body" "$m")))
-        done
-        if [ "$total" -ge 2 ]; then
-            printf '%s\n' "$line"
-        fi
-    done < <(lint_header)
-    return 0
-}
-
-# 【R4】合法な値組の列挙を導くラベル行（本文が「合法」を含み `:` で終わる行）。
-# 「空は合法」のような散文は末尾が `:` にならないため拾わない。
-lint_scan_legal_set_labels() {
-    local line body
-    while IFS= read -r line; do
-        body="$(lint_comment_body "$line")"
-        case "$body" in
-            *合法*: | *合法*：) printf '%s\n' "$line" ;;
-        esac
-    done < <(lint_header)
-    return 0
-}
-
-# 行数を数える。空文字列は 0 行とする（`printf '%s\n' ""` は 1 行に数えられてしまう）。
-lint_count_lines() {
-    if [ -z "$1" ]; then
-        printf '0'
-    else
-        printf '%s\n' "$1" | wc -l | tr -d ' '
-    fi
-}
-
-# 「無いこと」の検査を1件分行う。走査結果が空なら合格、1行でもあれば混入した行を添えて失敗。
+# 「無いこと」の検査を1件分行う。当たりが空なら合格、1行でもあれば混入した行を添えて失敗。
 lint_collect_absent() {
     local found="$1" label="$2" detail="$3"
     if [ -z "$found" ]; then
@@ -494,9 +554,10 @@ lint_collect_absent() {
 @test "面⑦: lint-adr.sh ヘッダがレイヤ1 の合法な状態集合を再定義しない" {
     collect_init
 
-    local header block
+    local header block scan
     header="$(lint_header)"
     block="$(lint_layer1_block)"
+    scan="$(lint_scan_header)"
 
     # fail-closed 1: ヘッダの抽出が0行だと、以下の「無いこと」の検査はすべて空振りで
     # 緑になる。抽出結果の非空をここで落とす。
@@ -529,7 +590,8 @@ lint_collect_absent() {
             "ヘッダに \`# レイヤ2\` 宣言が無く、レイヤ1 ブロックの範囲が確定しない"
     fi
 
-    # fail-closed 4: ブロックの抽出が0行なら、以下の「持つ」側の検査が意味を成さない。
+    # fail-closed 4: ブロックの抽出が0行なら、Tier B の走査面が消え、以下の「持つ」側の
+    # 検査も意味を成さない。
     local nblock
     nblock="$(lint_count_lines "$block")"
     if [ "$nblock" -gt 0 ]; then
@@ -539,7 +601,8 @@ lint_collect_absent() {
             "ヘッダに \`# レイヤ1\` 宣言が無く、ブロックの抽出結果が0行"
     fi
 
-    # 決定2 の「持つ」側。抽出が別の範囲へずれた場合もここで落ちる。
+    # 決定2 の「持つ」側。Tier B の免除領域を開くラベルでもあり、失われれば免除が開かず
+    # 違反種別の条件式が Tier B に当たって赤になる（安全側）。
     collect_contains "$block" "レイヤ1違反種別:" \
         "#794: レイヤ1 ブロックが違反種別の列挙を持つ"
 
@@ -556,23 +619,29 @@ lint_collect_absent() {
             "$LINT_MODEL に \`## 状態の型\` 見出しが無い"
     fi
 
-    # 以下はいずれもヘッダ全域が対象である。ブロックの中だけを見る作りにすると、
-    # 写しの置き場所を1つ隣へずらすだけでガードが空振りする。
-    lint_collect_absent "$(lint_scan_table_rows)" \
-        "#794: ヘッダに表の行（区切りを2個以上持つ行）が無い" \
+    lint_collect_absent "$(lint_rule_hits R1 "$scan")" \
+        "#794[R1]: ヘッダに、状態の値を伴う表の行が無い" \
         "合法な状態の集合の正本は adr-model.md「状態の型」であり、ヘッダは表で定義し直さない。"
 
-    lint_collect_absent "$(lint_scan_key_tuples)" \
-        "#794: ヘッダに3キーを1行で並べる行が無い" \
-        "status / validity / superseded-by を1行に揃える記述は値組の再定義である。違反種別の条件式は1行あたり2キーまでで書ける。"
+    lint_collect_absent "$(lint_rule_hits R2 "$scan")" \
+        "#794[R2]: ヘッダに、状態の値を伴い3キーを1行で並べる行が無い" \
+        "status / validity / superseded-by を値とともに1行へ揃える記述は値組の再定義である。違反種別の条件式は1行あたり2キーまでで書ける。"
 
-    lint_collect_absent "$(lint_scan_empty_marker_tuples)" \
-        "#794: ヘッダに空欄マーカーを1行で2回以上使う行が無い" \
+    lint_collect_absent "$(lint_rule_hits R3 "$scan")" \
+        "#794[R3]: ヘッダに、状態の値を伴い空欄マーカーを1行で2回以上使う行が無い" \
         "空の軸を並べて示す記述は、キー名を伴わなくても値組の再定義である。"
 
-    lint_collect_absent "$(lint_scan_legal_set_labels)" \
-        "#794: ヘッダが合法な値組の列挙を導かない" \
+    lint_collect_absent "$(lint_rule_hits R4 "$scan")" \
+        "#794[R4]: ヘッダが合法な値組の列挙を導かない" \
         "合法な値組は adr-model.md「状態の型」の構成子が定義する。境界事例は違反種別の条件式から読む。"
+
+    lint_collect_absent "$(lint_rule_hits R5 "$scan")" \
+        "#794[R5]: レイヤ1 ブロック（違反種別の列挙を除く）に状態の値を2つ以上並べる行が無い" \
+        "当該範囲の正当な内容は正本ポインタと採用理由の2段落だけであり、いずれも1行あたり値は1つまでで書ける。値を並べる行は構成子の再掲である。"
+
+    lint_collect_absent "$(lint_rule_hits R6 "$scan")" \
+        "#794[R6]: ヘッダ（違反種別の列挙を除く）に状態の値を${LINT_VALUE_DOMAIN_MIN}つ以上並べる行が無い" \
+        "値域は6語しかなく、1行にこれだけ並べる記述は値域そのものの再宣言である。値域の正本は adr-model.md「状態の2軸」が持つ。"
 
     collect_finish
 }
