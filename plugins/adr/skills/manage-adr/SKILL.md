@@ -86,7 +86,7 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 
 ## 手順の参照（各 references を直接参照）
 
-- `${CLAUDE_SKILL_DIR}/references/adr-model.md` — 状態の2軸の値域・合法な front-matter を表す状態の型・配置・採番方式（full slug の定義）
+- `${CLAUDE_SKILL_DIR}/references/adr-model.md` — 状態の2軸の値域・合法な front-matter を表す状態の型・配置・採番方式（full slug の定義）・発番スクリプトの契約・index の同期・識別子の一意性・H1 見出しの形式と識別子部の整合・検査項目と正本の対応
 - `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` — ADR 化要否の必要条件・4項目の名称・同点処理・判定する入力の値域と定義・閾値とスコア境界・判定に添える申告・起票のタイミング
 - `${CLAUDE_SKILL_DIR}/references/adr-destination.md` — 判定結果の行き先（ADR 化する側／しない側の分岐）と命名規約の ADR 化基準
 - `${CLAUDE_SKILL_DIR}/references/adr-splitting.md` — 新規に起こす ADR へ何を束ねてよいかの制約
