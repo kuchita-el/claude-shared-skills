@@ -1,6 +1,0 @@
-# CASE-31 の独立2試行（2026-08-16）。
-# 担い手: claude -p --model opus --effort high。題材1件・試行1件につき別起動し、同一入力に対する判定の再現性を測る。
-# 走行範囲: CASE-31 のみ。破棄した試行: なし。試行2は項目3の値域A/Bの読みが試行1と異なった。
-題材ID	試行番号	項目1	項目2	項目3	項目4	行き先	根拠_項目1	根拠_項目2	根拠_項目3	根拠_項目4	参照ファイル一覧	対象文書commit	題材集合commit
-CASE-31	1	0	0	0	0	ADR化しない/実装・テスト資産・操作手順	共有規約ファイル1本のみ。4種の変更・影響・移行はいずれも無い。	影響が及ぶのは1つの作業手順のみ。	規範の文言と採用理由は共有規約ファイル本文にあり、資産種別ごとの否定により値域B。条件1〜3は保持先があるため対象外。	受け入れ側の設定が違反コミットを拒否し作業を止めるため現に阻止。	/tmp/adr-scoping-case-prompt.QOzBlQ.md,plugins/adr/skills/manage-adr/references/adr-scoping.md,plugins/adr/skills/manage-adr/references/adr-judgment-contract.md	03a5b79	8c3c56b
-CASE-31	2	0	0	0	0	ADR化しない/実装・テスト資産・操作手順	共有規約ファイル1本のみ。4種の変更・影響・移行はいずれも無い。	影響が及ぶのは1つの作業手順のみ。	リポジトリ外側の受け入れ側設定が値域Aに当たり、共有規約ファイル本文に文言と理由があるため値域Bも成立。条件1〜3は保持先があるため対象外。	受け入れ側の設定が違反コミットを拒否し作業を止めるため現に阻止。	/tmp/adr-scoping-case-prompt.Kw52Dg.md,plugins/adr/skills/manage-adr/references/adr-scoping.md,plugins/adr/skills/manage-adr/references/adr-judgment-contract.md	03a5b79	8c3c56b
