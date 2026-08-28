@@ -66,7 +66,24 @@
 
 ### レイヤ1違反種別8件 ↔ 型の制約
 
-<!-- Task 3 で埋める -->
+対応表そのものは配布物側（`adr-model.md`「型の制約と機械検査の対応」）に置いた。ここに残すのは、その対応が `plugins/adr/scripts/lint-adr.sh`:31-39 の列挙と過不足なく一致することの照合結果と、既存 fixture による裏づけの有無である。
+
+| # | `lint-adr.sh`:31-39 の違反種別 | 排除する制約 | 専用 fixture |
+|---|---|---|---|
+| 1 | status 欠落（空） | 制約1（すべての構成子が `status` を伴う） | `invalid/01-status-missing`、`invalid/06-multi-violation` |
+| 2 | status=承認済み かつ validity 欠落（空） | 制約2（`承認済み` を伴う3構成子はいずれも `validity` を伴う） | `invalid/02-validity-missing` |
+| 3 | validity=上書き済み かつ superseded-by 欠落（空） | 制約5（`上書き済み` の後継は非空リスト） | `invalid/03-superseded-by-missing`、`invalid/06-multi-violation` |
+| 4 | status の値が語彙外 | 制約6（値は各軸の値域に限る） | `invalid/12-status-unknown-vocab` |
+| 5 | validity の値が語彙外（空は合法） | 制約6（値は各軸の値域に限る） | `invalid/13-validity-unknown-vocab` |
+| 6 | status=提案中 または 却下 かつ validity が非空 | 制約3（`validity` を伴わないのは `提案中` / `却下` だけ） | `invalid/14-proposed-with-validity`、`invalid/15-rejected-with-validity` |
+| 7 | status=提案中 または 却下 かつ superseded-by が非空 | 制約4（`superseded-by` を伴えるのは `上書き済み` だけ） | **無し**（下記） |
+| 8 | validity=有効 または 廃止済み かつ superseded-by が非空 | 制約4（`superseded-by` を伴えるのは `上書き済み` だけ） | `invalid/16-active-with-superseded-by`、`invalid/17-abandoned-with-superseded-by` |
+
+行数8で `lint-adr.sh`:31-39 の列挙と1対1に対応し、対応欄が空の行は0件。制約1〜6 はいずれも少なくとも1件の違反種別へ対応づき、使われない制約も0件である。
+
+**fixture の被覆の欠落（事実の記録。本再構成では埋めない）**: 種別7（`status=提案中` または `却下` かつ `superseded-by` が非空）には専用 fixture が存在しない。`invalid/14`・`invalid/15` は `提案中` / `却下` に `validity` を付けた側（種別6）を、`invalid/16`・`invalid/17` は `有効` / `廃止済み` に `superseded-by` を付けた側（種別8）をそれぞれ固定しており、`提案中` / `却下` に `superseded-by` を付けた組み合わせを固定する fixture はいずれのディレクトリにも無い（`invalid/06-multi-violation` は種別1 と種別3 を持つ）。fixture の追加は本再構成の対象外である（テストの追加は IN に含まれない）。
+
+**型化が合法集合を動かしていないことの担保**: 既存 fixture（`valid` 8種・`invalid` 28種）は本再構成で1件も変更しておらず、`lint-adr.sh` も変更していないため、判定結果は文書編集の前後で必然的に同一である。したがって fixture は「lint の挙動を意図せず動かしていないこと」までを担保し、型化の正しさは上の2表（構成子↔旧表5行、違反種別8件↔制約）の突き合わせが担保する。
 
 ## 3語彙群の出現箇所一覧
 
