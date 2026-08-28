@@ -178,6 +178,11 @@ ADR_STEM_PATTERN='^ADR-[0-9]{4}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])([01][0-9]
 # （形式適合を前提にすると旧形式どうしの重複を取り逃すため）。
 ADR_ID_PATTERN='(ADR-[0-9]+(-[0-9]+)?)'
 
+# レイヤ2 が起動する index 生成器。解決は「読み込み元のパス」を基準にする（cwd 依存回避）。
+# $0 ではなく BASH_SOURCE を使うのは、読み込みだけを行った場合に $0 が読み込み側のシェル名を
+# 指し、生成器を解決できなくなるため。直接実行時の解決結果は $0 基準と同一である。
+GEN_INDEX="$(dirname "${BASH_SOURCE[0]}")/gen-adr-index.sh"
+
 # 値 $1 が第2引数以降の語彙集合に含まれるかを判定する。
 # 戻り値: 含まれれば 0、含まれなければ 1
 in_vocab() {
@@ -462,123 +467,140 @@ collect_facts() {
     done
 }
 
-collect_scan_targets "$ADR_DIR"
-collect_facts
+# ---- 検査レイヤ ----
+#
+# 各レイヤは収集済みの事実（SCAN_TARGETS / FM_FILES / FM_*_BY_STEM）だけを読み、
+# 違反を標準出力へ出してグローバル変数 violations を加算する。レイヤ間に呼び出し依存は
+# 無く、事実の収集さえ済んでいれば任意の1レイヤを他レイヤの検査を実行せずに起動できる。
+# 呼び出し順は下の起動部が持つ（違反の出力順はこの順で決まる）。
 
-violations=0
+# レイヤ1: front-matter スキーマ検証。
+# 入力: FM_FILES / FM_STATUS_BY_STEM / FM_VALIDITY_BY_STEM / FM_SB_BY_STEM
+check_layer1_frontmatter_schema() {
+    local file stem fm_status fm_validity fm_sb
 
-# レイヤ1: front-matter スキーマ検証（検査対象は収集済みの FM_FILES）
-for file in ${FM_FILES[@]+"${FM_FILES[@]}"}; do
-    stem="$(basename "$file" .md)"
-    fm_status="${FM_STATUS_BY_STEM[$stem]:-}"
-    fm_validity="${FM_VALIDITY_BY_STEM[$stem]:-}"
-    fm_sb="${FM_SB_BY_STEM[$stem]:-}"
+    for file in ${FM_FILES[@]+"${FM_FILES[@]}"}; do
+        stem="$(basename "$file" .md)"
+        fm_status="${FM_STATUS_BY_STEM[$stem]:-}"
+        fm_validity="${FM_VALIDITY_BY_STEM[$stem]:-}"
+        fm_sb="${FM_SB_BY_STEM[$stem]:-}"
 
-    # 種別1・4: status の存在と語彙
-    # 空のときは種別1のみを報告する（語彙違反として二重に数えない）
-    if [ -z "$fm_status" ]; then
-        printf '%s: status が空です（front-matter に status キーの値が必要）\n' "$file"
-        violations=$((violations + 1))
-    elif ! in_vocab "$fm_status" "${STATUS_VOCAB[@]}"; then
-        printf '%s: status の値 "%s" が語彙にありません（提案中 / 承認済み / 却下 のいずれかが必要）\n' "$file" "$fm_status"
-        violations=$((violations + 1))
-    fi
-
-    # 種別5: validity の語彙（空は起票・却下で合法のため語彙検査の対象外）
-    if [ -n "$fm_validity" ] && ! in_vocab "$fm_validity" "${VALIDITY_VOCAB[@]}"; then
-        printf '%s: validity の値 "%s" が語彙にありません（有効 / 上書き済み / 廃止済み のいずれか、または空が必要）\n' "$file" "$fm_validity"
-        violations=$((violations + 1))
-    fi
-
-    if [ "$fm_status" = "承認済み" ] && [ -z "$fm_validity" ]; then
-        printf '%s: status=承認済み だが validity が空です（validity キーの値が必要）\n' "$file"
-        violations=$((violations + 1))
-    fi
-
-    if [ "$fm_validity" = "上書き済み" ] && [ -z "$fm_sb" ]; then
-        printf '%s: validity=上書き済み だが superseded-by が空です（superseded-by キーの値が必要）\n' "$file"
-        violations=$((violations + 1))
-    fi
-
-    # 種別6・7: 構成子 提案中 / 却下 は validity・superseded-by のいずれも伴わない。
-    # 承認軸が終端（却下）または未承認（提案中）の ADR は有効性軸を持たない。
-    if [ "$fm_status" = "提案中" ] || [ "$fm_status" = "却下" ]; then
-        if [ -n "$fm_validity" ]; then
-            printf '%s: status=%s だが validity が空ではありません（値 "%s"。提案中・却下 は validity を伴いません）\n' "$file" "$fm_status" "$fm_validity"
+        # 種別1・4: status の存在と語彙
+        # 空のときは種別1のみを報告する（語彙違反として二重に数えない）
+        if [ -z "$fm_status" ]; then
+            printf '%s: status が空です（front-matter に status キーの値が必要）\n' "$file"
+            violations=$((violations + 1))
+        elif ! in_vocab "$fm_status" "${STATUS_VOCAB[@]}"; then
+            printf '%s: status の値 "%s" が語彙にありません（提案中 / 承認済み / 却下 のいずれかが必要）\n' "$file" "$fm_status"
             violations=$((violations + 1))
         fi
-        if [ -n "$fm_sb" ]; then
-            printf '%s: status=%s だが superseded-by が空ではありません（値 "%s"。提案中・却下 は superseded-by を伴いません）\n' "$file" "$fm_status" "$fm_sb"
+
+        # 種別5: validity の語彙（空は起票・却下で合法のため語彙検査の対象外）
+        if [ -n "$fm_validity" ] && ! in_vocab "$fm_validity" "${VALIDITY_VOCAB[@]}"; then
+            printf '%s: validity の値 "%s" が語彙にありません（有効 / 上書き済み / 廃止済み のいずれか、または空が必要）\n' "$file" "$fm_validity"
             violations=$((violations + 1))
         fi
-    fi
 
-    # 種別8: 構成子 有効 / 廃止済み は superseded-by を伴わない。
-    # 後継を指すなら上書き済みであるべきで、有効のままなら原 ADR と後継が
-    # 同時に index へ並ぶ。廃止済みは決定1 で「後継 ADR なしで ADR としての効力を
-    # 終えた」と定義される。
-    if [ "$fm_validity" = "有効" ] || [ "$fm_validity" = "廃止済み" ]; then
-        if [ -n "$fm_sb" ]; then
-            printf '%s: validity=%s だが superseded-by が空ではありません（値 "%s"。superseded-by を伴えるのは 上書き済み だけです）\n' "$file" "$fm_validity" "$fm_sb"
+        if [ "$fm_status" = "承認済み" ] && [ -z "$fm_validity" ]; then
+            printf '%s: status=承認済み だが validity が空です（validity キーの値が必要）\n' "$file"
             violations=$((violations + 1))
         fi
+
+        if [ "$fm_validity" = "上書き済み" ] && [ -z "$fm_sb" ]; then
+            printf '%s: validity=上書き済み だが superseded-by が空です（superseded-by キーの値が必要）\n' "$file"
+            violations=$((violations + 1))
+        fi
+
+        # 種別6・7: 構成子 提案中 / 却下 は validity・superseded-by のいずれも伴わない。
+        # 承認軸が終端（却下）または未承認（提案中）の ADR は有効性軸を持たない。
+        if [ "$fm_status" = "提案中" ] || [ "$fm_status" = "却下" ]; then
+            if [ -n "$fm_validity" ]; then
+                printf '%s: status=%s だが validity が空ではありません（値 "%s"。提案中・却下 は validity を伴いません）\n' "$file" "$fm_status" "$fm_validity"
+                violations=$((violations + 1))
+            fi
+            if [ -n "$fm_sb" ]; then
+                printf '%s: status=%s だが superseded-by が空ではありません（値 "%s"。提案中・却下 は superseded-by を伴いません）\n' "$file" "$fm_status" "$fm_sb"
+                violations=$((violations + 1))
+            fi
+        fi
+
+        # 種別8: 構成子 有効 / 廃止済み は superseded-by を伴わない。
+        # 後継を指すなら上書き済みであるべきで、有効のままなら原 ADR と後継が
+        # 同時に index へ並ぶ。廃止済みは決定1 で「後継 ADR なしで ADR としての効力を
+        # 終えた」と定義される。
+        if [ "$fm_validity" = "有効" ] || [ "$fm_validity" = "廃止済み" ]; then
+            if [ -n "$fm_sb" ]; then
+                printf '%s: validity=%s だが superseded-by が空ではありません（値 "%s"。superseded-by を伴えるのは 上書き済み だけです）\n' "$file" "$fm_validity" "$fm_sb"
+                violations=$((violations + 1))
+            fi
+        fi
+    done
+}
+
+# レイヤ2: index 同期検証。
+# 入力: 対象ディレクトリ（$1）。同梱の index 生成器を起動して出力を index.md と比較する。
+check_layer2_index_sync() {
+    local dir="$1"
+    local index_file="$dir/index.md"
+    local generated current
+
+    if [ ! -f "$index_file" ]; then
+        printf '%s: index 同期違反（index.md が存在しません）\n' "$index_file"
+        violations=$((violations + 1))
+        return 0
     fi
-done
 
-# レイヤ2: index 同期検証
-# 生成器の呼び出しはスクリプト自身の位置からの相対パスで解決する（cwd 依存回避）
-GEN_INDEX="$(dirname "$0")/gen-adr-index.sh"
-INDEX_FILE="$ADR_DIR/index.md"
-
-if [ ! -f "$INDEX_FILE" ]; then
-    printf '%s: index 同期違反（index.md が存在しません）\n' "$INDEX_FILE"
-    violations=$((violations + 1))
-else
-    generated="$(bash "$GEN_INDEX" "$ADR_DIR")"
-    current="$(cat "$INDEX_FILE")"
+    generated="$(bash "$GEN_INDEX" "$dir")"
+    current="$(cat "$index_file")"
     if [ "$generated" != "$current" ]; then
-        printf '%s: index 同期違反（gen-adr-index.sh の出力と一致しません。再生成してください）\n' "$INDEX_FILE"
+        printf '%s: index 同期違反（gen-adr-index.sh の出力と一致しません。再生成してください）\n' "$index_file"
         violations=$((violations + 1))
     fi
-fi
+}
 
-# レイヤ3 forward: front-matter superseded-by 起点で本文 Supersedes 逆参照を照合
-# （照合対象のペアは収集済みの FM_FILES と FM_SB_BY_STEM から同じ順序で導出する。
-#   superseded-by が空の ADR は照合対象を持たないため飛ばす）
-for a_file in ${FM_FILES[@]+"${FM_FILES[@]}"}; do
-    a_stem="$(basename "$a_file" .md)"
-    a_sb="${FM_SB_BY_STEM[$a_stem]:-}"
-    if [ -z "$a_sb" ]; then
-        continue
-    fi
+# レイヤ3 forward: front-matter superseded-by 起点で本文 Supersedes 逆参照を照合。
+# 入力: 対象ディレクトリ（$1）と、収集済みの FM_FILES / FM_SB_BY_STEM。
+# 照合対象のペアは収集済みの事実から同じ順序で導出する（superseded-by が空の ADR は
+# 照合対象を持たないため飛ばす）。
+check_layer3_forward() {
+    local dir="$1"
+    local a_file a_stem a_sb b_stem b_file
 
-    # superseded-by をカンマ分割し、各後継 stem を独立に照合する（リスト値 1→N 対応）
-    split_csv "$a_sb"
+    for a_file in ${FM_FILES[@]+"${FM_FILES[@]}"}; do
+        a_stem="$(basename "$a_file" .md)"
+        a_sb="${FM_SB_BY_STEM[$a_stem]:-}"
+        if [ -z "$a_sb" ]; then
+            continue
+        fi
 
-    # superseded-by は非空だが有効な参照先 stem を1つも含まない（カンマ・空白のみ）
-    # 場合、「validity=上書き済み ⟹ 少なくとも1件の後継が照合される」不変条件が
-    # 崩れるため違反とする（レイヤ1の空判定は raw 値が非空のため通過してしまう）
-    if [ "${#SPLIT_RESULT[@]}" -eq 0 ]; then
-        printf '%s: 相互参照違反（superseded-by=%s に有効な参照先 stem がありません）\n' "$a_file" "$a_sb"
-        violations=$((violations + 1))
-        continue
-    fi
+        # superseded-by をカンマ分割し、各後継 stem を独立に照合する（リスト値 1→N 対応）
+        split_csv "$a_sb"
 
-    for b_stem in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
-        b_file="$ADR_DIR/$b_stem.md"
-
-        if [ ! -f "$b_file" ]; then
-            printf '%s: 相互参照違反（superseded-by=%s だが参照先 %s が見つかりません）\n' "$a_file" "$b_stem" "$b_file"
+        # superseded-by は非空だが有効な参照先 stem を1つも含まない（カンマ・空白のみ）
+        # 場合、「validity=上書き済み ⟹ 少なくとも1件の後継が照合される」不変条件が
+        # 崩れるため違反とする（レイヤ1の空判定は raw 値が非空のため通過してしまう）
+        if [ "${#SPLIT_RESULT[@]}" -eq 0 ]; then
+            printf '%s: 相互参照違反（superseded-by=%s に有効な参照先 stem がありません）\n' "$a_file" "$a_sb"
             violations=$((violations + 1))
             continue
         fi
 
-        if ! body_has_supersedes "$b_file" "$a_stem"; then
-            printf '%s: 相互参照違反（%s の本文 "## 関連ADR" に "Supersedes: %s" が見つかりません）\n' "$a_file" "$b_file" "$a_stem"
-            violations=$((violations + 1))
-        fi
+        for b_stem in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
+            b_file="$dir/$b_stem.md"
+
+            if [ ! -f "$b_file" ]; then
+                printf '%s: 相互参照違反（superseded-by=%s だが参照先 %s が見つかりません）\n' "$a_file" "$b_stem" "$b_file"
+                violations=$((violations + 1))
+                continue
+            fi
+
+            if ! body_has_supersedes "$b_file" "$a_stem"; then
+                printf '%s: 相互参照違反（%s の本文 "## 関連ADR" に "Supersedes: %s" が見つかりません）\n' "$a_file" "$b_file" "$a_stem"
+                violations=$((violations + 1))
+            fi
+        done
     done
-done
+}
 
 # レイヤ3 reverse: 本文 Supersedes 宣言起点で front-matter superseded-by を照合
 # （C の本文が Supersedes: T を宣言するのに、T の front-matter superseded-by
@@ -586,154 +608,191 @@ done
 #   一致確認済みのエッジは reverse 側でも自然に一致するため、ここでは
 #   forward 側で捕捉できない「本文はあるが front-matter が追随していない」
 #   ケースのみが新たに violation として計上される＝二重計上にならない）
-for c_file in ${SCAN_TARGETS[@]+"${SCAN_TARGETS[@]}"}; do
-    extract_body_supersedes "$c_file"
-    c_stem="$(basename "$c_file" .md)"
+# 入力: 対象ディレクトリ（$1）と、収集済みの SCAN_TARGETS / FM_SB_BY_STEM。
+check_layer3_reverse() {
+    local dir="$1"
+    local c_file c_stem t_stem t_file member s
 
-    for t_stem in ${BODY_SUPERSEDES_TARGETS[@]+"${BODY_SUPERSEDES_TARGETS[@]}"}; do
-        t_file="$ADR_DIR/$t_stem.md"
+    for c_file in ${SCAN_TARGETS[@]+"${SCAN_TARGETS[@]}"}; do
+        extract_body_supersedes "$c_file"
+        c_stem="$(basename "$c_file" .md)"
 
-        if [ ! -f "$t_file" ]; then
-            printf '%s: 相互参照違反（逆方向: 本文 "## 関連ADR" の "Supersedes: %s" 宣言の参照先 %s が見つかりません）\n' "$c_file" "$t_stem" "$t_file"
-            violations=$((violations + 1))
+        for t_stem in ${BODY_SUPERSEDES_TARGETS[@]+"${BODY_SUPERSEDES_TARGETS[@]}"}; do
+            t_file="$dir/$t_stem.md"
+
+            if [ ! -f "$t_file" ]; then
+                printf '%s: 相互参照違反（逆方向: 本文 "## 関連ADR" の "Supersedes: %s" 宣言の参照先 %s が見つかりません）\n' "$c_file" "$t_stem" "$t_file"
+                violations=$((violations + 1))
+                continue
+            fi
+
+            # T の superseded-by をリスト分割した集合に c_stem が含まれるかで判定する
+            # （完全一致から集合メンバシップへ。単一値は要素数1集合となり従来と等価＝後方互換）
+            split_csv "${FM_SB_BY_STEM[$t_stem]:-}"
+            member=0
+            for s in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
+                if [ "$s" = "$c_stem" ]; then
+                    member=1
+                    break
+                fi
+            done
+            if [ "$member" -eq 0 ]; then
+                printf '%s: 相互参照違反（逆方向: %s の本文 "## 関連ADR" が "Supersedes: %s" を宣言していますが、%s の front-matter superseded-by がそれを指していません）\n' "$t_file" "$c_file" "$t_stem" "$t_file"
+                violations=$((violations + 1))
+            fi
+        done
+    done
+}
+
+# 入力: 対象ディレクトリ（$1）と、収集済みの SCAN_TARGETS / FM_VALIDITY_BY_STEM。
+# レイヤ4: 有効ADRの Related 参照の退役・dangling 検査
+# （判定単位は書式非依存の先頭 stem 抽出）
+check_layer4_related_references() {
+    local dir="$1"
+    local src_file src_stem t_stem
+
+    for src_file in ${SCAN_TARGETS[@]+"${SCAN_TARGETS[@]}"}; do
+        src_stem="$(basename "$src_file" .md)"
+        # source は有効 ADR のみ（退役・提案中・却下・旧形式は検査対象外）
+        if [ "${FM_VALIDITY_BY_STEM[$src_stem]:-}" != "有効" ]; then
             continue
         fi
 
-        # T の superseded-by をリスト分割した集合に c_stem が含まれるかで判定する
-        # （完全一致から集合メンバシップへ。単一値は要素数1集合となり従来と等価＝後方互換）
-        split_csv "${FM_SB_BY_STEM[$t_stem]:-}"
-        member=0
-        for s in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
-            if [ "$s" = "$c_stem" ]; then
-                member=1
-                break
+        # `## 関連ADR` の Related 参照先: 非存在→dangling、実在かつ上書き済み→参照先退役違反
+        # （後継なしの廃止済みは建設的な是正が無いため対象外。ファイル冒頭のレイヤ4 仕様を参照）
+        extract_body_related "$src_file"
+        for t_stem in ${BODY_RELATED_TARGETS[@]+"${BODY_RELATED_TARGETS[@]}"}; do
+            if [ ! -f "$dir/$t_stem.md" ]; then
+                printf '%s: dangling 参照違反（"## 関連ADR" の Related 参照先 %s が見つかりません）\n' "$src_file" "$t_stem"
+                violations=$((violations + 1))
+            elif in_vocab "${FM_VALIDITY_BY_STEM[$t_stem]:-}" "${RELATED_RETIRED_VALIDITY[@]}"; then
+                printf '%s: 参照先退役違反（"## 関連ADR" の Related 参照先 %s は validity=%s の退役ADRです）\n' "$src_file" "$t_stem" "${FM_VALIDITY_BY_STEM[$t_stem]:-}"
+                violations=$((violations + 1))
             fi
         done
-        if [ "$member" -eq 0 ]; then
-            printf '%s: 相互参照違反（逆方向: %s の本文 "## 関連ADR" が "Supersedes: %s" を宣言していますが、%s の front-matter superseded-by がそれを指していません）\n' "$t_file" "$c_file" "$t_stem" "$t_file"
+    done
+}
+
+# レイヤ5: ファイル名形式・識別子重複・H1 整合、および `ADR-` 接頭辞を欠く誤名の検出。
+# 入力: 対象ディレクトリ（$1）と、収集済みの FM_FILES。
+check_layer5_filename_and_identifier() {
+    local dir="$1"
+    local file stem file_id f
+    local misnamed misnamed_sorted
+
+    # レイヤ5: ファイル名形式・識別子重複・H1 整合
+    # 対象は front-matter を持つ ADR のみ（FM_FILES。レイヤ1 と同一の対象集合）
+
+    # 識別子部ごとの出現ファイルを集計する（重複検査の第1パス）
+    declare -A ID_FILE_COUNT=()
+    declare -A ID_FILE_LIST=()
+
+    for file in ${FM_FILES[@]+"${FM_FILES[@]}"}; do
+        stem="$(basename "$file" .md)"
+
+        # ファイル名形式検査
+        if [[ ! "$stem" =~ $ADR_STEM_PATTERN ]]; then
+            printf '%s: ファイル名形式違反（ADR-YYYYMMDDHHMM-NN-<slug>.md の形式に適合しません。時刻部は暦として妥当な12桁、連番部は2桁、slug は小文字英数字とハイフン）\n' "$file"
+            violations=$((violations + 1))
+        fi
+
+        # 識別子部の抽出（形式違反のファイルからも可能な限り抽出し、重複・H1 整合の
+        # 検査へ回す。抽出できない場合は形式違反として既に報告済みのため両検査を飛ばす）
+        if [[ ! "$stem" =~ ^$ADR_ID_PATTERN ]]; then
+            continue
+        fi
+        file_id="${BASH_REMATCH[1]}"
+
+        ID_FILE_COUNT["$file_id"]=$((${ID_FILE_COUNT["$file_id"]:-0} + 1))
+        if [ -n "${ID_FILE_LIST["$file_id"]:-}" ]; then
+            ID_FILE_LIST["$file_id"]="${ID_FILE_LIST[$file_id]}, $file"
+        else
+            ID_FILE_LIST["$file_id"]="$file"
+        fi
+
+        # H1 整合検査
+        extract_h1_adr_id "$file"
+        if [ -z "$H1_ADR_ID" ]; then
+            printf '%s: H1 整合違反（本文の最初の "# " 見出しに ADR 識別子が見つかりません。ファイル名の識別子部は %s）\n' "$file" "$file_id"
+            violations=$((violations + 1))
+        elif [ "$H1_ADR_ID" != "$file_id" ]; then
+            printf '%s: H1 整合違反（H1 見出しの識別子部 %s がファイル名の識別子部 %s と一致しません）\n' "$file" "$H1_ADR_ID" "$file_id"
             violations=$((violations + 1))
         fi
     done
-done
 
-# レイヤ4: 有効ADRの Related 参照の退役・dangling 検査
-# （判定単位は書式非依存の先頭 stem 抽出）
-for src_file in ${SCAN_TARGETS[@]+"${SCAN_TARGETS[@]}"}; do
-    src_stem="$(basename "$src_file" .md)"
-    # source は有効 ADR のみ（退役・提案中・却下・旧形式は検査対象外）
-    if [ "${FM_VALIDITY_BY_STEM[$src_stem]:-}" != "有効" ]; then
-        continue
-    fi
-
-    # `## 関連ADR` の Related 参照先: 非存在→dangling、実在かつ上書き済み→参照先退役違反
-    # （後継なしの廃止済みは建設的な是正が無いため対象外。ファイル冒頭のレイヤ4 仕様を参照）
-    extract_body_related "$src_file"
-    for t_stem in ${BODY_RELATED_TARGETS[@]+"${BODY_RELATED_TARGETS[@]}"}; do
-        if [ ! -f "$ADR_DIR/$t_stem.md" ]; then
-            printf '%s: dangling 参照違反（"## 関連ADR" の Related 参照先 %s が見つかりません）\n' "$src_file" "$t_stem"
-            violations=$((violations + 1))
-        elif in_vocab "${FM_VALIDITY_BY_STEM[$t_stem]:-}" "${RELATED_RETIRED_VALIDITY[@]}"; then
-            printf '%s: 参照先退役違反（"## 関連ADR" の Related 参照先 %s は validity=%s の退役ADRです）\n' "$src_file" "$t_stem" "${FM_VALIDITY_BY_STEM[$t_stem]:-}"
-            violations=$((violations + 1))
+    # 識別子重複検査（第2パス）。連想配列の走査順は不定のため、ファイル名昇順の
+    # FM_FILES を走査し、各識別子の最初の出現でのみ報告して出力順を決定的にする
+    declare -A ID_REPORTED=()
+    for file in ${FM_FILES[@]+"${FM_FILES[@]}"}; do
+        stem="$(basename "$file" .md)"
+        if [[ ! "$stem" =~ ^$ADR_ID_PATTERN ]]; then
+            continue
         fi
+        file_id="${BASH_REMATCH[1]}"
+
+        if [ "${ID_FILE_COUNT[$file_id]}" -le 1 ] || [ -n "${ID_REPORTED[$file_id]:-}" ]; then
+            continue
+        fi
+        ID_REPORTED["$file_id"]=1
+        printf '%s: 識別子重複違反（識別子 %s を持つ ADR が %d 本あります: %s）\n' "$dir" "$file_id" "${ID_FILE_COUNT[$file_id]}" "${ID_FILE_LIST[$file_id]}"
+        violations=$((violations + 1))
     done
-done
 
-# レイヤ5: ファイル名形式・識別子重複・H1 整合
-# 対象は front-matter を持つ ADR のみ（FM_FILES。レイヤ1 と同一の対象集合）
+    # レイヤ5: `ADR-` 接頭辞を欠く誤名 ADR の検出
+    # 走査対象の収集（および gen-adr-index.sh の走査）は `ADR-*.md` グロブであり、接頭辞を
+    # 欠くファイルはそもそも収集されないため、規約に適合した中身を持っていても全レイヤを
+    # 素通りする。ファイル名を第一級の検査対象に据えるレイヤとしてここだけ穴を残さない。
+    # 判定材料は front-matter の status の値が語彙に属することとする（`status: 承認済み` 等を
+    # 持つ `*.md` は実質的に誤名の ADR である）。README 等が front-matter を持つだけでは
+    # 発火しない水準に絞り、誤検出を避ける。
+    # 出力順は走査対象の収集と同じく LC_ALL=C sort で正規化する（グロブ展開順のままだと
+    # 実行時ロケールの LC_COLLATE に依存し、同一ファイル内で照合順の規約が揃わない）。
+    misnamed=()
+    shopt -s nullglob
+    for file in "$dir"/*.md; do
+        misnamed+=("$file")
+    done
+    shopt -u nullglob
 
-# 識別子部ごとの出現ファイルを集計する（重複検査の第1パス）
-declare -A ID_FILE_COUNT=()
-declare -A ID_FILE_LIST=()
+    misnamed_sorted=()
+    if [ "${#misnamed[@]}" -gt 0 ]; then
+        while IFS= read -r f; do
+            misnamed_sorted+=("$f")
+        done < <(printf '%s\n' "${misnamed[@]}" | LC_ALL=C sort)
+    fi
 
-for file in ${FM_FILES[@]+"${FM_FILES[@]}"}; do
-    stem="$(basename "$file" .md)"
-
-    # ファイル名形式検査
-    if [[ ! "$stem" =~ $ADR_STEM_PATTERN ]]; then
-        printf '%s: ファイル名形式違反（ADR-YYYYMMDDHHMM-NN-<slug>.md の形式に適合しません。時刻部は暦として妥当な12桁、連番部は2桁、slug は小文字英数字とハイフン）\n' "$file"
+    for file in ${misnamed_sorted[@]+"${misnamed_sorted[@]}"}; do
+        case "$(basename "$file")" in
+            ADR-*) continue ;;
+        esac
+        if ! extract_frontmatter "$file"; then
+            continue
+        fi
+        if ! in_vocab "$FM_STATUS" "${STATUS_VOCAB[@]}"; then
+            continue
+        fi
+        printf '%s: ファイル名形式違反（ADR-YYYYMMDDHHMM-NN-<slug>.md の形式に適合しません。front-matter の status が ADR のものですが、ファイル名が "ADR-" 接頭辞を欠くため全レイヤの走査対象から外れます）\n' "$file"
         violations=$((violations + 1))
-    fi
+    done
+}
 
-    # 識別子部の抽出（形式違反のファイルからも可能な限り抽出し、重複・H1 整合の
-    # 検査へ回す。抽出できない場合は形式違反として既に報告済みのため両検査を飛ばす）
-    if [[ ! "$stem" =~ ^$ADR_ID_PATTERN ]]; then
-        continue
-    fi
-    file_id="${BASH_REMATCH[1]}"
+# ---- 起動 ----
+#
+# 走査対象の収集 → 事実の収集 → 各レイヤの呼び出し → 終了コードの決定。
+# 違反の出力順はこの呼び出し順で決まる。
 
-    ID_FILE_COUNT["$file_id"]=$((${ID_FILE_COUNT["$file_id"]:-0} + 1))
-    if [ -n "${ID_FILE_LIST["$file_id"]:-}" ]; then
-        ID_FILE_LIST["$file_id"]="${ID_FILE_LIST[$file_id]}, $file"
-    else
-        ID_FILE_LIST["$file_id"]="$file"
-    fi
+violations=0
 
-    # H1 整合検査
-    extract_h1_adr_id "$file"
-    if [ -z "$H1_ADR_ID" ]; then
-        printf '%s: H1 整合違反（本文の最初の "# " 見出しに ADR 識別子が見つかりません。ファイル名の識別子部は %s）\n' "$file" "$file_id"
-        violations=$((violations + 1))
-    elif [ "$H1_ADR_ID" != "$file_id" ]; then
-        printf '%s: H1 整合違反（H1 見出しの識別子部 %s がファイル名の識別子部 %s と一致しません）\n' "$file" "$H1_ADR_ID" "$file_id"
-        violations=$((violations + 1))
-    fi
-done
+collect_scan_targets "$ADR_DIR"
+collect_facts
 
-# 識別子重複検査（第2パス）。連想配列の走査順は不定のため、ファイル名昇順の
-# FM_FILES を走査し、各識別子の最初の出現でのみ報告して出力順を決定的にする
-declare -A ID_REPORTED=()
-for file in ${FM_FILES[@]+"${FM_FILES[@]}"}; do
-    stem="$(basename "$file" .md)"
-    if [[ ! "$stem" =~ ^$ADR_ID_PATTERN ]]; then
-        continue
-    fi
-    file_id="${BASH_REMATCH[1]}"
-
-    if [ "${ID_FILE_COUNT[$file_id]}" -le 1 ] || [ -n "${ID_REPORTED[$file_id]:-}" ]; then
-        continue
-    fi
-    ID_REPORTED["$file_id"]=1
-    printf '%s: 識別子重複違反（識別子 %s を持つ ADR が %d 本あります: %s）\n' "$ADR_DIR" "$file_id" "${ID_FILE_COUNT[$file_id]}" "${ID_FILE_LIST[$file_id]}"
-    violations=$((violations + 1))
-done
-
-# レイヤ5: `ADR-` 接頭辞を欠く誤名 ADR の検出
-# 走査対象の収集（および gen-adr-index.sh の走査）は `ADR-*.md` グロブであり、接頭辞を
-# 欠くファイルはそもそも収集されないため、規約に適合した中身を持っていても全レイヤを
-# 素通りする。ファイル名を第一級の検査対象に据えるレイヤとしてここだけ穴を残さない。
-# 判定材料は front-matter の status の値が語彙に属することとする（`status: 承認済み` 等を
-# 持つ `*.md` は実質的に誤名の ADR である）。README 等が front-matter を持つだけでは
-# 発火しない水準に絞り、誤検出を避ける。
-# 出力順は走査対象の収集と同じく LC_ALL=C sort で正規化する（グロブ展開順のままだと
-# 実行時ロケールの LC_COLLATE に依存し、同一ファイル内で照合順の規約が揃わない）。
-misnamed=()
-shopt -s nullglob
-for file in "$ADR_DIR"/*.md; do
-    misnamed+=("$file")
-done
-shopt -u nullglob
-
-misnamed_sorted=()
-if [ "${#misnamed[@]}" -gt 0 ]; then
-    while IFS= read -r f; do
-        misnamed_sorted+=("$f")
-    done < <(printf '%s\n' "${misnamed[@]}" | LC_ALL=C sort)
-fi
-
-for file in ${misnamed_sorted[@]+"${misnamed_sorted[@]}"}; do
-    case "$(basename "$file")" in
-        ADR-*) continue ;;
-    esac
-    if ! extract_frontmatter "$file"; then
-        continue
-    fi
-    if ! in_vocab "$FM_STATUS" "${STATUS_VOCAB[@]}"; then
-        continue
-    fi
-    printf '%s: ファイル名形式違反（ADR-YYYYMMDDHHMM-NN-<slug>.md の形式に適合しません。front-matter の status が ADR のものですが、ファイル名が "ADR-" 接頭辞を欠くため全レイヤの走査対象から外れます）\n' "$file"
-    violations=$((violations + 1))
-done
+check_layer1_frontmatter_schema
+check_layer2_index_sync "$ADR_DIR"
+check_layer3_forward "$ADR_DIR"
+check_layer3_reverse "$ADR_DIR"
+check_layer4_related_references "$ADR_DIR"
+check_layer5_filename_and_identifier "$ADR_DIR"
 
 if [ "$violations" -gt 0 ]; then
     exit 1
