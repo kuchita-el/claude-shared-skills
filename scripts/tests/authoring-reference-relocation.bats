@@ -10,6 +10,9 @@ load 'helpers/common'
 #   docs/development/adr-demotion-cases/                             当時の観測記録
 #   docs/superpowers/specs/2026-07-25-subagent-exec-params-design.md 過去spec
 #   docs/qa/plugin-bp-audit-20260722.md                              監査記録
+#   docs/superpowers/specs/2026-08-28-dev-workflow-simplification-*  本搬出の設計spec・レビュー
+#     （搬出前の状態を定量・出典として記録する文書であり、旧パスの引用は当時の観測。
+#       未追跡でmain作業ツリーに置かれるため、除外しないとmain側のrun-testsが赤になる）
 
 @test "搬出先が実在し新パスが CLAUDE.md から引かれている" {
   [ -f "$REPO_ROOT/docs/references/context-budget.md" ]
@@ -49,6 +52,8 @@ load 'helpers/common'
     --exclude-dir=adr-demotion-cases \
     --exclude=2026-07-25-subagent-exec-params-design.md \
     --exclude=plugin-bp-audit-20260722.md \
+    --exclude=2026-08-28-dev-workflow-simplification-design.md \
+    --exclude=2026-08-28-dev-workflow-simplification-review.md \
     -e "$refs/context-budget.md" \
     -e "$refs/subagent-execution-parameters.md" \
     -e "$refs/workflow-patterns.md" \
