@@ -208,9 +208,9 @@ front-matter の値が効くのは、そのサブエージェントが `subagent
 
 ## 現行の値
 
-front-matter による固定を選んだ役割については、各 `agents/{name}.md` の front-matter が権威である。一覧は [README](../README.md) を参照。本ファイルには値を転記しない。水準を呼び出しごとに与える形（選択規則 (ii)、および (iii) のうち Workflow 経路と子プロセス）を採った役割については、水準を与える側が権威であり、front-matter は権威にならない（「水準を実現する手段」節）。(iii) のうち水準別の運搬体を複数枚置く形では、固定側と同じく各運搬体の front-matter が権威である。現行の全定義は固定側にある。
+front-matter による固定を選んだ役割については、各 `agents/{name}.md` の front-matter が権威である。一覧は [README](../../plugins/dev-workflow/README.md) を参照。本ファイルには値を転記しない。水準を呼び出しごとに与える形（選択規則 (ii)、および (iii) のうち Workflow 経路と子プロセス）を採った役割については、水準を与える側が権威であり、front-matter は権威にならない（「水準を実現する手段」節）。(iii) のうち水準別の運搬体を複数枚置く形では、固定側と同じく各運搬体の front-matter が権威である。現行の全定義は固定側にある。
 
 ## 関連
 
-- [ADR-202607251922-01-subagent-execution-parameter-pinning](../../../docs/adr/ADR-202607251922-01-subagent-execution-parameter-pinning.md)（実行パラメータを固定し、役割ごとの必要水準として値を選ぶ決定）
-- [ADR-202607251922-02-execution-parameter-control-point](../../../docs/adr/ADR-202607251922-02-execution-parameter-control-point.md)（統制点をサブエージェント定義に集約する決定）
+- [ADR-202607251922-01-subagent-execution-parameter-pinning](../adr/ADR-202607251922-01-subagent-execution-parameter-pinning.md)（実行パラメータを固定し、役割ごとの必要水準として値を選ぶ決定）
+- [ADR-202607251922-02-execution-parameter-control-point](../adr/ADR-202607251922-02-execution-parameter-control-point.md)（統制点をサブエージェント定義に集約する決定）

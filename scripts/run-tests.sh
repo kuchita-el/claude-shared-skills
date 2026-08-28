@@ -93,6 +93,7 @@ EXPECTED_BATS=(
     dev-workflow-refine-contract.bats
     dev-workflow-plan-contract.bats
     behavior-invariants.bats
+    authoring-reference-relocation.bats
     plugin-boundaries.bats
     dev-workflow-implementation-contract.bats
     writing-lint.bats

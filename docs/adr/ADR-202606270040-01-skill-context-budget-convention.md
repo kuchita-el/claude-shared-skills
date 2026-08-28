@@ -1,6 +1,7 @@
 ---
 status: 承認済み
-validity: 有効
+validity: 上書き済み
+superseded-by: ADR-202608281231-01-context-budget-convention-authoring-side-placement
 ---
 
 # ADR-202606270040-01: スキル実行時のコンテキスト予算規約をプラグイン共有 references で単一出典化する
@@ -38,6 +39,8 @@ CLAUDE.md「スキル設計の token 規律」は当時すでに存在してい�
 - `${CLAUDE_PLUGIN_ROOT}` / `${CLAUDE_SKILL_DIR}` の解決は Claude Code 側の仕様に依存する。将来この置換挙動が変わった場合は本 ADR を再検討する。
 
 ## 関連ADR
+
+- Superseded by: ADR-202608281231-01-context-budget-convention-authoring-side-placement（規約の内容・単一出典性を維持したまま、正本の配置を配布物の外＝`docs/references/` へ改めた後継）
 
 Related: ADR-202606040737-01-dor-shared-resource-consolidation（共有資源をプラグインルート `references/` へ集約する原則。本規約の配置はこれに従う）, ADR-202605250658-01-subagent-claude-md-injection / ADR-202605250838-01-subagent-agents-consolidation（コンテキスト膨張対策の先行点決定。本 ADR はそれらを束ねる傘決定）。関連Issue: #367
 

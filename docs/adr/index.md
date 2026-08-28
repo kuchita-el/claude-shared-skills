@@ -19,7 +19,6 @@
 - [ADR-202606211417-01-human-judgment-observation](./ADR-202606211417-01-human-judgment-observation.md): 「人間判断要観点」の語彙・データ構造（正準用語「判断依頼」の確定）
 - [ADR-202606211859-01-completion-judgment-reach-via-hook](./ADR-202606211859-01-completion-judgment-reach-via-hook.md): completion-judgment.md の原則を素の会話に届ける手段として SessionStart フックを採用する
 - [ADR-202606261847-01-growth-plugin-separation](./ADR-202606261847-01-growth-plugin-separation.md): 内省機能を独立プラグイン growth として分離
-- [ADR-202606270040-01-skill-context-budget-convention](./ADR-202606270040-01-skill-context-budget-convention.md): スキル実行時のコンテキスト予算規約をプラグイン共有 references で単一出典化する
 - [ADR-202606272147-01-plan-issue-plan-no-roundtrip](./ADR-202606272147-01-plan-issue-plan-no-roundtrip.md): plan-issue の plan 本文をメイン context に往復させない生成〜修正ループ
 - [ADR-202606280940-01-agent-granularity-role-type](./ADR-202606280940-01-agent-granularity-role-type.md): エージェント定義の粒度モデル — ロール型（能力／知識ドメイン粒度）を正とする
 - [ADR-202606282107-01-career-decision-model](./ADR-202606282107-01-career-decision-model.md): career 決定モデルの再設計（distill 仮説 ＋ 集約点裁定）
@@ -37,7 +36,6 @@
 - [ADR-202607200856-01-distill-pending-reevaluation-policy](./ADR-202607200856-01-distill-pending-reevaluation-policy.md): distill の pending 候補再評価ポリシー
 - [ADR-202607200858-01-distill-ledger-matching-responsibility-boundary](./ADR-202607200858-01-distill-ledger-matching-responsibility-boundary.md): 台帳突合の責務境界 — distill と promote の線引き
 - [ADR-202607230648-01-adr-machinery-plugin-extraction](./ADR-202607230648-01-adr-machinery-plugin-extraction.md): ADR運用機構を独立プラグイン adr として抽出・配布
-- [ADR-202607251922-01-subagent-execution-parameter-pinning](./ADR-202607251922-01-subagent-execution-parameter-pinning.md): サブエージェントの実行パラメータを front-matter で固定し役割ごとの必要水準として選ぶ
 - [ADR-202607251922-02-execution-parameter-control-point](./ADR-202607251922-02-execution-parameter-control-point.md): 実行パラメータの統制点をサブエージェント定義に集約する
 - [ADR-202607261501-01-adr-edit-mechanism-and-amend-abolition](./ADR-202607261501-01-adr-edit-mechanism-and-amend-abolition.md): ADR の編集機構（3段構え・凍結原則・ADR分割）と Amended 機構の廃止
 - [ADR-202607261503-01-adr-lifecycle-tooling-delegation](./ADR-202607261503-01-adr-lifecycle-tooling-delegation.md): ADR のライフサイクル操作を tooling へ委譲する
@@ -51,3 +49,5 @@
 - [ADR-202608070709-01-adr-related-reference-validity-lint](./ADR-202608070709-01-adr-related-reference-validity-lint.md): 非 Supersede 関係の参照妥当性 lint を要件として定める
 - [ADR-202608070711-01-adr-parked-section-abolition](./ADR-202608070711-01-adr-parked-section-abolition.md): 「保留した決定」セクションを廃止し、射程の限定を働く箇所の散文へ戻す
 - [ADR-202608280911-01-adr-judgment-quality-without-machine-verification](./ADR-202608280911-01-adr-judgment-quality-without-machine-verification.md): ADR 化要否判定の品質は条文の質だけで支え、判定を機械実行する検証装置を持たない
+- [ADR-202608281231-01-context-budget-convention-authoring-side-placement](./ADR-202608281231-01-context-budget-convention-authoring-side-placement.md): スキル実行時のコンテキスト予算規約を作者向け文書として配布物の外へ置く
+- [ADR-202608281232-01-subagent-execution-parameter-authoring-side-placement](./ADR-202608281232-01-subagent-execution-parameter-authoring-side-placement.md): サブエージェント実行パラメータ規約を作者向け文書として配布物の外へ置く

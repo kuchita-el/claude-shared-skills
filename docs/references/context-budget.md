@@ -60,10 +60,10 @@ gh / git 等の生 stdout をメインに残さない。後続処理が必要な
 
 ## 理想形の実例
 
-`refine-issue` 全件モード（`skills/refine-issue/SKILL.md`）が本規約の体現例。メイン側はパス・Issue 番号のみをサブエージェントへ渡し、サブエージェントが必要ファイルを自前 Read し、精査結果を構造化データで返却する。新規・改修スキルはこの型を範とする。
+`refine-issue` 全件モード（`plugins/dev-workflow/skills/refine-issue/SKILL.md`）が本規約の体現例。メイン側はパス・Issue 番号のみをサブエージェントへ渡し、サブエージェントが必要ファイルを自前 Read し、精査結果を構造化データで返却する。新規・改修スキルはこの型を範とする。
 
 ## 関連
 
 - CLAUDE.md「スキル設計の token 規律」（作成時・静的軸。本規約と補完する）
-- `completion-judgment.md` と同様、規約本文を各 SKILL.md へ転記せず、各スキルは本単一出典を参照する
-- [ADR-202606270040-01-skill-context-budget-convention](../../../docs/adr/ADR-202606270040-01-skill-context-budget-convention.md)（本規約を単一出典として確立する決定）
+- `plugins/dev-workflow/references/completion-judgment.md` と同様、規約本文を各 SKILL.md へ転記せず、各スキルは本単一出典を参照する
+- [ADR-202606270040-01-skill-context-budget-convention](../adr/ADR-202606270040-01-skill-context-budget-convention.md)（本規約を単一出典として確立する決定）
