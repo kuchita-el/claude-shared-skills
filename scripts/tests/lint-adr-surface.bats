@@ -34,8 +34,6 @@ AC5_SURFACE_FILES=(
     "$MANAGE_ADR_DIR/references/adr-demotion.md"
     "$MANAGE_ADR_DIR/references/adr-model.md"
     "$MANAGE_ADR_DIR/references/adr-scoping.md"
-    "$MANAGE_ADR_DIR/references/adr-judgment-contract.md"
-    "$MANAGE_ADR_DIR/references/adr-scoring-thresholds.json"
     "$MANAGE_ADR_DIR/references/cross-references.md"
     "$EDIT_DECISION"
     "$MANAGE_ADR_DIR/references/io-examples.md"

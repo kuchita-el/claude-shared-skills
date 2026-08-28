@@ -77,8 +77,6 @@ MSG
 # 同じ方式）。テストファイルを増減させたときは本リストと実行ガイド §1 のスイート表を
 # 更新する（§7 の移行対応表は移行完了時点の凍結記録であり、追随の対象ではない）。
 EXPECTED_BATS=(
-    adr-scoping-cases-basic.bats
-    adr-scoping-cases-edge.bats
     adr-portability.bats
     lint-adr-index.bats
     lint-adr-layers.bats
@@ -100,7 +98,6 @@ EXPECTED_BATS=(
     writing-lint.bats
     writing-contract.bats
     team-migration.bats
-    return-schema-migration.bats
     distribution-boundary.bats
 )
 
