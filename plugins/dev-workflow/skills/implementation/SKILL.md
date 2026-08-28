@@ -151,7 +151,7 @@ implementation は自前の周回統治（リトライ回数・振動検知等�
 
 プランに「テストケース対応表」がある場合、対応表に記載された各テストケースと実際に実装したテスト仕様の整合を確認し、不一致（計画した観点の実装漏れ・AC の意図との乖離）があればブロッカーまたは判断依頼として報告する。
 
-ブランチの完了（PR 作成／マージ／クリーンアップの選択提示）は `superpowers:finishing-a-development-branch` に委譲する（S6・参照機構②）。ただし PR は **既定で Draft 作成**し、その後 dev-workflow 固有の上乗せ層として **CI ゲート**を実行する: まず**猶予付き再ポーリング**で required check の有無を判定し（run 登録ラグを考慮し、猶予窓を通じ不在なら **CI 未設定と確定して即 Ready 化**）、存在すれば `gh pr checks <pr> --watch --required` を `run_in_background` で回して結審を待ち、**緑 → Ready 化＋レビュー依頼 ／ 赤（exit 1）→ Phase 1〜3 修正ループへ差し戻し ／ 判定不能（その他非0）→ 再試行/判断依頼 ／ 収束不能 → エスカレーション** へ分岐する。Draft ＝ CI 未検証、Ready ＝ CI 緑という**コンテンツ状態に基づく判断**であり、feedback「Draft/Ready はコンテンツ状態で判断（一律 Draft 禁止）」と矛盾しない。責務分界（draft 作成不可時の `gh pr create --draft` フォールバック含む）・分岐表・採用方式の根拠・レビュー依頼ルールは `${CLAUDE_SKILL_DIR}/references/phase4-ci-gate.md` を参照。
+ブランチの完了（PR 作成／マージ／クリーンアップの選択提示）は `superpowers:finishing-a-development-branch` に委譲する（S6・参照機構②）。ただし PR は **既定で Draft 作成**し、その後 dev-workflow 固有の上乗せ層として **CI ゲート**を実行する。判断軸は **Draft ＝ CI 未検証／Ready ＝ CI 緑**という**コンテンツ状態に基づく判断**であり、feedback「Draft/Ready はコンテンツ状態で判断（一律 Draft 禁止）」と矛盾しない。check run 有無の判定・待機・終端 exit code による分岐表・責務分界・レビュー依頼ルールは `${CLAUDE_SKILL_DIR}/references/phase4-ci-gate.md` が正本。
 
 接続契約として、PR 本文に以下のセルフレビュー結果サマリを含める（委譲先の出力に上乗せ）:
 
@@ -167,14 +167,9 @@ implementation は自前の周回統治（リトライ回数・振動検知等�
 
 インプット種別が「PRレビュー指摘」のときに走る、指摘の受理から返信までのサイクル。受理判定を **S8** として `superpowers:receiving-code-review` に委譲する（参照機構②）。前半（指摘の取得 → 受理判定 → 深刻度調整 → 作業リスト化）と後半（修正コミット & push → スレッド返信）に分かれる。
 
-**制御フロー（再入構造）**: Phase 5 は Phase 4 の線形な後続ではなく、前半と後半の間に Phase 1〜3 を挟む。
+**制御フロー（再入構造）**: Phase 5 は Phase 4 の線形な後続ではなく、前半と後半の間に Phase 1〜3 を挟む。入口・前半の出口・後半への復帰・後半の CI ゲートという4遷移は `${CLAUDE_SKILL_DIR}/references/review-findings-handling.md` §2.1 が正本。
 
-- **入口**: Phase 0 でインプット種別が「PRレビュー指摘」と判定されたら、Phase 1 の作業リスト消化へ直行せず Phase 5 前半へ入る。
-- **前半の出口**: 深刻度調整でブロッカーと確定した指摘のみを作業リストへ載せ Phase 1 へ渡す。ブロッカーが0件の場合は Phase 1 を経由せず直接後半へ進み、修正コミットが無いため後半の CI ゲート再走行も行わない。確認が要る指摘が残る場合は、ブロッカーが同時に確定していても修正せずエスカレーションへ進む（部分実装して残りを後で聞かない）。
-- **後半への復帰**: Phase 3 の「ブロッカーなし」判定は、Phase 5 起点の場合に限り Phase 4 ではなく **Phase 5 後半**へ抜ける。PR は既に存在するため S6（`finishing-a-development-branch` による PR 作成）へは再入しない。Phase 3 節の既存記述（ブロッカーなし → Phase 4）は Phase 5 起点でない場合の既定として残り、本項はその上に加わる分岐である。
-- **後半の CI ゲート**: 修正コミットを push した後、スレッド返信へ進む前に Phase 4 の CI ゲートを再走行する。射程は `${CLAUDE_SKILL_DIR}/references/phase4-ci-gate.md` の 2.（猶予付き再ポーリング）〜4.（exit code 分岐）で、5.（Ready 化・レビュー依頼）と S6 へは再入しない。Phase 4 と行き先が変わるのは緑のときだけで、緑はスレッド返信へ抜ける（赤→差し戻し／判定不能→再試行・判断依頼／収束不能→エスカレーションは Phase 4 と同一）。
-
-接続契約として、**深刻度調整は指摘の出どころによらず一律に適用する**（`${CLAUDE_SKILL_DIR}/references/review-findings-handling.md` §1）。ただし外部指摘を格下げした場合は格下げの理由を当該指摘のスレッドへ返信し、解決とみなすかどうかの判断を投稿者に残す（自分のセルフレビューが生成した指摘には返信義務が無い）。
+接続契約として、**深刻度調整は指摘の出どころによらず一律に適用する**（同ファイル §1）。格下げした外部指摘への返信義務と解決判断の帰属は同ファイル §1.4 が正本。
 
 詳細手順（指摘の取得コマンド・委譲の入出力・4遷移・返信の投稿手段・エスカレーション接続）は `${CLAUDE_SKILL_DIR}/references/review-findings-handling.md` §2 を参照。
 
@@ -196,8 +191,8 @@ superpowers はソフト依存である（ADR-202606062346-01 方針C）。未�
 
 - **実装の起動・TDD（S3・S4）**: メインループ自身が基本 TDD（失敗するテストを先に書く→最小実装→リファクタリング）で作業リストを消化する。
 - **検証ゲート（S5）**: 型チェック・lint・テストを実行し、証拠を確認してから完了とする（コマンド未許可ならスキップ）。
-- **セルフレビュー（S7）**: メインループ自身がレビュー契約と差分を突き合わせる（深刻度2段は `agents/code-reviewer.md` に準拠、深刻度調整も同様に適用）。
-- **PR化（S6）**: PR 未作成なら `gh pr create --draft` で Draft 作成 → 猶予付き再ポーリングで checks 有無を判定（不在なら即 `gh pr ready`）→ 存在すれば `gh pr checks <pr> --watch --required` を `run_in_background` で待機し exit 0 なら `gh pr ready`＋レビュー依頼／exit 1 なら修正ループへ差し戻し。既存 PR なら変更を push する。委譲が縮退しても Draft → CIゲート → Ready の骨格は保持する（詳細は `${CLAUDE_SKILL_DIR}/references/phase4-ci-gate.md`）。
+- **セルフレビュー（S7）**: メインループ自身がレビュー契約と差分を突き合わせる（深刻度2段は `${CLAUDE_PLUGIN_ROOT}/agents/code-reviewer.md` に準拠、深刻度調整も同様に適用）。
+- **PR化（S6）**: 委譲が縮退しても **Draft → CIゲート → Ready の骨格は保持する**（既存 PR なら変更を push する）。手順は `${CLAUDE_SKILL_DIR}/references/phase4-ci-gate.md` が正本。
 - **受理判定（S8）**: メインループ自身が指摘の技術的妥当性をコード本体で確認し、不明点があれば止める。深刻度調整とスレッド返信は接続契約として保持し、無検証のまま作業リストへ変換しない。
 - **worktree**: Phase 0「ブランチの準備」の通常のブランチ作成手順にフォールバックする。
 
