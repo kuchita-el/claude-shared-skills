@@ -56,7 +56,7 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 - **反転駆動**: 前段の1→N の部分上書きがこれにあたる。部分 core 反転が実際に当たったときに駆動する（要求される）
 - **衛生的分割**: 前段の予防的な分解がこれにあたる。既定（分割しない）に対する**任意**の例外であり、反転駆動と違って要求されない
 
-新規に起こす ADR が独立に反転しうる core を束ねないための制約は `${CLAUDE_SKILL_DIR}/references/adr-scoping.md`「新規 ADR の束ねの制約」節に従う。
+新規に起こす ADR が独立に反転しうる core を束ねないための制約は `${CLAUDE_SKILL_DIR}/references/adr-splitting.md` に従う。
 
 分割は5遷移（front-matter 状態遷移）の一種ではない。決定のファイル間再配置という別軸の構造操作であり、本文編集の core／非core／些末分類でもなくリファクタリングに相当する。終端 front-matter は上書きと同型（原 ADR `validity: 上書き済み`・`superseded-by` に全後継を列挙）だが、後継が複数（1→N）で生存決定の救出を伴う点で上書き（1→1）と操作が異なる。
 
@@ -74,9 +74,9 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 
 ### ADR 化要否の判定（起票の前段）
 
-ある決定を ADR にすべきか、いつ起票するか、命名規約を ADR の対象に含めるかは、却下代替の必要条件と粒度判定基準で判定する。まず当該決定が採らなかった選択肢とその却下理由を持つかを確認し、持たなければ点数を数えず ADR 化しない。持つ場合に粒度判定基準のチェックリストで採点し、判定境界では「書かない」を優先する。4項目の名称・同点処理・行き先に加え、各項目が判定する入力の値域と定義、閾値とスコア境界の数値、および判定結果に添える申告の規律（数えた対象の列挙・発見型短絡の申告・推定で補わないこと）も `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` が単独で持つ。同ファイルのみを参照し、スキル独自の基準を導入しない。
+ある決定を ADR にすべきか、いつ起票するか、命名規約を ADR の対象に含めるかは、却下代替の必要条件と粒度判定基準で判定する。まず当該決定が採らなかった選択肢とその却下理由を持つかを確認し、持たなければ点数を数えず ADR 化しない。持つ場合に粒度判定基準のチェックリストで採点し、判定境界では「書かない」を優先する。4項目の名称・同点処理に加え、各項目が判定する入力の値域と定義、閾値とスコア境界の数値、および判定結果に添える申告の規律（数えた対象の列挙・発見型短絡の申告・推定で補わないこと）は `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` が単独で持つ。判定結果の行き先は `${CLAUDE_SKILL_DIR}/references/adr-destination.md` が単独で持つ。いずれについてもこれらのファイルのみを参照し、スキル独自の基準を導入しない。
 
-要否の判定は起票操作の前段であり、ADR 化すると判断した場合のみ起票（5遷移）へ進む。ただしその行き先は新規 ADR とは限らず、既存 ADR への非core 改訂の側もある（分類の確定は粒度判定ではなく前掲の編集判定フローに従う）。ADR 化しないと判断した対象にも置き場所の一般則がある。いずれの振り分けも前掲の `adr-scoping.md`「判定結果の行き先」節に従う。
+要否の判定は起票操作の前段であり、ADR 化すると判断した場合のみ起票（5遷移）へ進む。ただしその行き先は新規 ADR とは限らず、既存 ADR への非core 改訂の側もある（分類の確定は粒度判定ではなく前掲の編集判定フローに従う）。ADR 化しないと判断した対象にも置き場所の一般則がある。いずれの振り分けも `${CLAUDE_SKILL_DIR}/references/adr-destination.md` に従う。
 
 ### 格下げ判定（既存 ADR を退役させるか）
 
@@ -87,7 +87,9 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 ## 手順の参照（各 references を直接参照）
 
 - `${CLAUDE_SKILL_DIR}/references/adr-model.md` — 状態の2軸の値域・合法な front-matter を表す状態の型・配置・採番方式（full slug の定義）
-- `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` — ADR 化要否の必要条件・4項目の名称・同点処理・判定する入力の値域と定義・閾値とスコア境界・判定に添える申告・起票のタイミング・判定結果の行き先・束ね・命名規約
+- `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` — ADR 化要否の必要条件・4項目の名称・同点処理・判定する入力の値域と定義・閾値とスコア境界・判定に添える申告・起票のタイミング
+- `${CLAUDE_SKILL_DIR}/references/adr-destination.md` — 判定結果の行き先（ADR 化する側／しない側の分岐）と命名規約の ADR 化基準
+- `${CLAUDE_SKILL_DIR}/references/adr-splitting.md` — 新規に起こす ADR へ何を束ねてよいかの制約
 - `${CLAUDE_SKILL_DIR}/references/adr-demotion.md` — 既存 ADR の格下げ（退役）判定の条件・判定形式・安全側の向き・格下げ固有の入力の採否
 - `${CLAUDE_SKILL_DIR}/references/template.md` — 新規 ADR の雛形（front-matter＋見出し骨格。起票時にこの構成へ準拠する）と、`## 変更履歴` 節の配置規約（節を持たない ADR で新設するときに従う単一出典）
 - `${CLAUDE_SKILL_DIR}/references/transitions.md` — 5遷移と分割の実行手順・採番規則・双方向相互参照の書き込み・index の再生成
