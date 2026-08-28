@@ -29,8 +29,10 @@ setup_file() {
 }
 
 # 面②の対象。`<corpus 名>|<期待メッセージ>|<exit ラベル>|<メッセージラベル>`
-# 9 fixture は「front-matter 違反の検出」という単一の検査意図であるため1ケースへ束ね、
+# 各 fixture は「front-matter 違反の検出」という単一の検査意図であるため1ケースへ束ね、
 # fixture ごとの旧ラベルは引数として保持する。
+# 件数の宣言は下の LAYER1_INVALID_CASE_MIN 1箇所に限る。ケース名やコメントへ具体数を
+# 書き写すと、表へ1件足したときに片方だけが古い数のまま残る。
 #
 # 語彙メンバシップ: 値が非空でも正本の語彙に属さなければ違反にする。
 # `gen-adr-index.sh` は `validity: 有効` の完全一致でしか採録しないため、語彙外の値は
@@ -47,7 +49,19 @@ LAYER1_INVALID_CASES=(
     '15-rejected-with-validity|status=却下 だが validity が空ではありません|AC1: 却下 かつ validity 非空: exit 1|AC1: 却下 かつ validity 非空: 違反メッセージ部分一致'
     '16-active-with-superseded-by|validity=有効 だが superseded-by が空ではありません|AC1: 有効 かつ superseded-by 非空: exit 1|AC1: 有効 かつ superseded-by 非空: 違反メッセージ部分一致'
     '17-abandoned-with-superseded-by|validity=廃止済み だが superseded-by が空ではありません|AC1: 廃止済み かつ superseded-by 非空: exit 1|AC1: 廃止済み かつ superseded-by 非空: 違反メッセージ部分一致'
+    '30-proposed-with-superseded-by|status=提案中 だが superseded-by が空ではありません|AC1: 提案中 かつ superseded-by 非空: exit 1|AC1: 提案中 かつ superseded-by 非空: 違反メッセージ部分一致'
+    '31-rejected-with-superseded-by|status=却下 だが superseded-by が空ではありません|AC1: 却下 かつ superseded-by 非空: exit 1|AC1: 却下 かつ superseded-by 非空: 違反メッセージ部分一致'
 )
+
+# 表が空になった（あるいは大きく削られた）まま緑になる経路を塞ぐ下限。面②のループは
+# 反復0回でも collect_finish が成功を返すため、件数そのものを1検査項目として数える。
+# 数える対象はループが実際に走らせた照合の回数であり、配列リテラルの要素数ではない。
+# 宣言だけを読むと、照合ループごと消えても配列さえ残っていれば下限が緑を返し、下限自身が
+# 退行しうる量を観測しなくなる（lint-adr-surface.bats の AC5 下限は実行時に抽出した行数を
+# 下限とループの双方が消費する形であり、それに合わせる）。
+# 下限は名目値（1件）ではなく現在の実数を置く。名目値にすると表が数件まで削られても
+# 緑のまま通り、下限が検査として働かない。
+LAYER1_INVALID_CASE_MIN=11
 
 @test "前提: 被テスト検査器と fixture corpus が存在する" {
     assert_preconditions_met
@@ -65,17 +79,35 @@ LAYER1_INVALID_CASES=(
 }
 
 # invalid corpus は exit 1 ＋ 該当違反種別メッセージの部分一致になること
-@test "面②: レイヤ1 不正 front-matter 9 fixture の検出" {
+@test "面②: レイヤ1 不正 front-matter fixture 群の検出" {
     collect_init
 
     local entry name needle rc_label msg_label
+    local matched=0
     for entry in "${LAYER1_INVALID_CASES[@]}"; do
         IFS='|' read -r name needle rc_label msg_label <<<"$entry"
+        # 期待メッセージ欄が空の行は照合として成立しない。collect_contains は空 needle に
+        # 対して常に合格を返すため、空欄のまま残るとその行はメッセージ側の検出力を失う。
+        # 下限にも数えず、行を名指しして落とす。
+        if [ -z "$needle" ]; then
+            collect_fail "AC1: 表の期待メッセージ欄が空ではない（$name）" \
+                "期待メッセージ欄が空。空 needle は常に一致するため、この行のメッセージ照合は検出力を持たない"
+            continue
+        fi
         run_sut "$CORPUS_DIR/invalid/$name"
-        # 1件目で打ち切らない。9 fixture を同時に壊しても1回の実行で全件出す。
+        # 1件目で打ち切らない。表の全 fixture を同時に壊しても1回の実行で全件出す。
         collect_rc 1 "$rc_label"
         collect_contains "$output" "$needle" "$msg_label"
+        matched=$((matched + 1))
     done
+
+    # 照合件数の下限。ループが実際に走らせた回数を数え、0件反復が緑として通る経路を塞ぐ。
+    if [ "$matched" -ge "$LAYER1_INVALID_CASE_MIN" ]; then
+        collect_ok "AC1: 検出対象 fixture の照合件数が下限を満たす（$matched 件 / 下限 $LAYER1_INVALID_CASE_MIN 件）"
+    else
+        collect_fail "AC1: 検出対象 fixture の照合件数が下限を満たす" \
+            "照合件数 $matched 件が下限 $LAYER1_INVALID_CASE_MIN 件を下回る（表の欠落・照合ループの退行・fixture の削減。最後の場合のみ本定数を下げる）"
+    fi
 
     collect_finish
 }
@@ -106,13 +138,31 @@ LAYER1_INVALID_CASES=(
 
 # ---- レイヤ2（index 同期） ----
 
-# 古い index.md（有効ADRを1件欠く）を同梱した corpus は exit 1 ＋ 同期違反メッセージ
-@test "面⑤: レイヤ2 index drift の検出" {
+# レイヤ2 は index の不一致を2つの経路で検出する。
+# drift: 古い index.md（有効ADRを1件欠く）を同梱した corpus は exit 1 ＋ 同期違反メッセージ。
+# 不在: index.md を持たない corpus も不一致として扱う。生成し忘れた index を「差分が無い」と
+# 読んで緑にしないための経路であり、drift とは別の分岐が担う。
+@test "面⑤: レイヤ2 index 同期違反の検出（drift と不在）" {
     collect_init
 
     run_sut "$CORPUS_DIR/invalid/04-index-drift"
     collect_rc 1 "AC3: index-drift corpus は exit 1"
-    collect_contains "$output" "index 同期違反" "AC3: index-drift corpus の同期違反メッセージ"
+    collect_contains "$output" "index 同期違反（gen-adr-index.sh の出力と一致しません" \
+        "AC3: index-drift corpus の drift を名指しする同期違反メッセージ"
+
+    # fixture が index.md を持たないこと自体を検査項目として数える。誰かが index.md を
+    # 足すと不在検査の負例が消えるため、その原因が読める形で落とす。
+    if [ ! -f "$CORPUS_DIR/invalid/32-index-missing/index.md" ]; then
+        collect_ok "AC3: index-missing corpus が index.md を持たない（fixture の前提）"
+    else
+        collect_fail "AC3: index-missing corpus が index.md を持たない（fixture の前提）" \
+            "index.md が同梱されており、不在検査の負例として働かない"
+    fi
+
+    run_sut "$CORPUS_DIR/invalid/32-index-missing"
+    collect_rc 1 "AC3: index-missing corpus は exit 1"
+    collect_contains "$output" "index 同期違反（index.md が存在しません）" \
+        "AC3: index-missing corpus の不在を名指しする同期違反メッセージ"
 
     collect_finish
 }
