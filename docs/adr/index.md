@@ -50,3 +50,4 @@
 - [ADR-202608061516-01-distribution-boundary-inexecutability-test](./ADR-202608061516-01-distribution-boundary-inexecutability-test.md): 配布境界の第3の判断軸に実行不能性テストを据える
 - [ADR-202608070709-01-adr-related-reference-validity-lint](./ADR-202608070709-01-adr-related-reference-validity-lint.md): 非 Supersede 関係の参照妥当性 lint を要件として定める
 - [ADR-202608070711-01-adr-parked-section-abolition](./ADR-202608070711-01-adr-parked-section-abolition.md): 「保留した決定」セクションを廃止し、射程の限定を働く箇所の散文へ戻す
+- [ADR-202608280911-01-adr-judgment-quality-without-machine-verification](./ADR-202608280911-01-adr-judgment-quality-without-machine-verification.md): ADR 化要否判定の品質は条文の質だけで支え、判定を機械実行する検証装置を持たない
