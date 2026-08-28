@@ -59,15 +59,18 @@ setup_file() {
     common_setup_file
 }
 
-# lint-adr.sh 本体を実行せずにパターン定義だけを取り出す
-# （source すると ADR_DIR 不在で exit 2 になるため、定義行を eval する）。
+# lint-adr.sh 本体を実行せずにパターン定義だけを取り出す。
+# 検査器は直接実行されたときだけ検査本体を走らせるため、読み込みだけなら対象ディレクトリを
+# 指定していなくても終了しない。取得は**部分シェル経由**で行う。ケース内で直接読み込むと
+# 検査器の `set -euo pipefail` が bats 本体のシェルへ漏れ、nounset の下で共有ヘルパの
+# 空配列参照が異常終了しうる。部分シェルなら出力と終了コードだけを観測できる。
 load_stem_pattern() {
-    local pattern_def
-    pattern_def=$(grep -m1 '^ADR_STEM_PATTERN=' "$SUT" || true)
-    if [ -z "$pattern_def" ]; then
+    local value
+    value=$(bash -c 'source "$1"; printf "%s" "${ADR_STEM_PATTERN:-}"' _ "$SUT" 2>/dev/null) || return 1
+    if [ -z "$value" ]; then
         return 1
     fi
-    eval "$pattern_def"
+    ADR_STEM_PATTERN="$value"
     return 0
 }
 

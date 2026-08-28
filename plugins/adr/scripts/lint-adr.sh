@@ -145,14 +145,6 @@
 #   2: ADR_DIR が存在しない
 set -euo pipefail
 
-ADR_DIR="${1:-docs/adr}"
-ADR_DIR="${ADR_DIR%/}"
-
-if [ ! -d "$ADR_DIR" ]; then
-    echo "エラー: ディレクトリが見つかりません: $ADR_DIR" >&2
-    exit 2
-fi
-
 # 状態語彙（front-matter の値側）。
 # 正本の語彙が変わったときの追随点を1箇所に集約する。
 # キーが英語・値が日本語のユビキタス言語なのは、キーが状態概念そのものではなく構造的な
@@ -781,20 +773,34 @@ check_layer5_filename_and_identifier() {
 #
 # 走査対象の収集 → 事実の収集 → 各レイヤの呼び出し → 終了コードの決定。
 # 違反の出力順はこの呼び出し順で決まる。
+#
+# 検査本体を走らせるのは直接実行されたときだけとする。読み込みだけを行った場合は、
+# 対象ディレクトリを指定していなくても終了せず、定数と検査単位の定義が得られる状態で戻る。
+# 判定は「読み込み元のパス」と「起動されたスクリプトのパス」の一致で行う（直接実行なら
+# 両者は同一の文字列になり、読み込みでは $0 が読み込み側のシェルまたはスクリプトを指す）。
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+    ADR_DIR="${1:-docs/adr}"
+    ADR_DIR="${ADR_DIR%/}"
 
-violations=0
+    if [ ! -d "$ADR_DIR" ]; then
+        echo "エラー: ディレクトリが見つかりません: $ADR_DIR" >&2
+        exit 2
+    fi
 
-collect_scan_targets "$ADR_DIR"
-collect_facts
+    violations=0
 
-check_layer1_frontmatter_schema
-check_layer2_index_sync "$ADR_DIR"
-check_layer3_forward "$ADR_DIR"
-check_layer3_reverse "$ADR_DIR"
-check_layer4_related_references "$ADR_DIR"
-check_layer5_filename_and_identifier "$ADR_DIR"
+    collect_scan_targets "$ADR_DIR"
+    collect_facts
 
-if [ "$violations" -gt 0 ]; then
-    exit 1
+    check_layer1_frontmatter_schema
+    check_layer2_index_sync "$ADR_DIR"
+    check_layer3_forward "$ADR_DIR"
+    check_layer3_reverse "$ADR_DIR"
+    check_layer4_related_references "$ADR_DIR"
+    check_layer5_filename_and_identifier "$ADR_DIR"
+
+    if [ "$violations" -gt 0 ]; then
+        exit 1
+    fi
+    exit 0
 fi
-exit 0
