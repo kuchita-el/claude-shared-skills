@@ -33,6 +33,7 @@ AC5_SURFACE_FILES=(
     "$MANAGE_ADR_DIR/SKILL.md"
     "$MANAGE_ADR_DIR/references/adr-demotion.md"
     "$MANAGE_ADR_DIR/references/adr-model.md"
+    "$MANAGE_ADR_DIR/references/adr-reference-principle.md"
     "$MANAGE_ADR_DIR/references/adr-scoping.md"
     "$MANAGE_ADR_DIR/references/cross-references.md"
     "$EDIT_DECISION"
