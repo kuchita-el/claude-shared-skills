@@ -29,8 +29,10 @@ setup_file() {
 }
 
 # 面②の対象。`<corpus 名>|<期待メッセージ>|<exit ラベル>|<メッセージラベル>`
-# 11 fixture は「front-matter 違反の検出」という単一の検査意図であるため1ケースへ束ね、
+# 各 fixture は「front-matter 違反の検出」という単一の検査意図であるため1ケースへ束ね、
 # fixture ごとの旧ラベルは引数として保持する。
+# 件数の宣言は下の LAYER1_INVALID_CASE_MIN 1箇所に限る。ケース名やコメントへ具体数を
+# 書き写すと、表へ1件足したときに片方だけが古い数のまま残る。
 #
 # 語彙メンバシップ: 値が非空でも正本の語彙に属さなければ違反にする。
 # `gen-adr-index.sh` は `validity: 有効` の完全一致でしか採録しないため、語彙外の値は
@@ -73,7 +75,7 @@ LAYER1_INVALID_CASE_MIN=11
 }
 
 # invalid corpus は exit 1 ＋ 該当違反種別メッセージの部分一致になること
-@test "面②: レイヤ1 不正 front-matter 11 fixture の検出" {
+@test "面②: レイヤ1 不正 front-matter fixture 群の検出" {
     collect_init
 
     # 照合件数の下限。ループより先に数え、0件反復が緑として通る経路を塞ぐ。
@@ -88,7 +90,7 @@ LAYER1_INVALID_CASE_MIN=11
     for entry in "${LAYER1_INVALID_CASES[@]}"; do
         IFS='|' read -r name needle rc_label msg_label <<<"$entry"
         run_sut "$CORPUS_DIR/invalid/$name"
-        # 1件目で打ち切らない。11 fixture を同時に壊しても1回の実行で全件出す。
+        # 1件目で打ち切らない。表の全 fixture を同時に壊しても1回の実行で全件出す。
         collect_rc 1 "$rc_label"
         collect_contains "$output" "$needle" "$msg_label"
     done

@@ -70,7 +70,7 @@ Issue #793 の作業記録。PR #792 のレビュー指摘5（負例 fixture の
 
 変異4 は下限アサート自体が空回りしていないことの確認である。下限が無ければ表を削っても、削られた行のアサーションが走らなくなるだけで緑のまま通る。
 
-変異1〜3 では `validate-plugin-versions` も同時に赤になる。これは変異が `plugins/adr/` 配下を触ったことによる版据え置き検出であり、変異の副作用である。本 Issue の成果物は `scripts/` 配下のみを変更しており、この検査には掛からない。
+変異1〜3 では `validate-plugin-versions` も同時に赤になる。これは変異が `plugins/adr/` 配下を触ったことによる版据え置き検出であり、変異の副作用である。本 Issue の成果物は `plugins/` 配下を一切変更していないため、この検査には掛からない。
 
 ### 種別7 の変異がレイヤ3 に空振りしていないこと（AC3）
 
@@ -92,7 +92,7 @@ rc31=0
 | 1 | 3件それぞれに負例 fixture が存在し、違反メッセージと exit 1 をアサートしている | 充足。corpus 30/31（種別7）・32（レイヤ2 不在）・33（レイヤ5 H1 不在）。各面で `collect_rc 1` とメッセージの部分一致を対で置いた |
 | 2 | 各件について変異で対応するテストが赤になることを実測し記録している | 充足。上表の変異1〜3 |
 | 3 | 種別7 の fixture は後継と `Supersedes:` 逆参照を同梱しレイヤ3 を満たし、変異で赤になる原因が種別7 であることを確認している | 充足。変異3 下で両 corpus が exit 0 |
-| 4 | 既存 fixture（valid 8・invalid 28）を変更していない | 充足。`git diff scripts/fixtures/` は空。追加は新規ディレクトリ4件のみ |
+| 4 | 既存 fixture（valid 8・invalid 28）を変更していない | 充足。`git diff origin/main...HEAD --diff-filter=MDR --name-status -- scripts/fixtures/` が空（改変・削除・改名が0件）。`--name-status` 全体でも `scripts/fixtures/` 配下は `A`（追加）のみ |
 | 5 | 照合件数が0件のまま緑になる経路が無い | 充足。面⑤・面⑥は直接起動で構造的に0にならず、面②のループには件数の下限を置いた（変異4 で下限が効くことを確認） |
 | 6 | `bash scripts/run-tests.sh` が exit 0 | 充足。`all suites passed (6 suites)` / 149 tests, 0 failures |
 
