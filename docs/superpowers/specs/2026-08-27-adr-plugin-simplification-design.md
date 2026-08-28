@@ -112,6 +112,7 @@ adrプラグインを「ADR corpus の不変条件を守る小さな機構（dri
 
 - 順序依存: PR1 が先行（判定契約が消えた状態でスキルを再設計する）。PR2 と PR3 は相互に独立
 - 各PRとも Issue を起票してから着手する（`create-issue` → `plan-issue` → `implementation` の既存ワークフローに乗せる）
+- 追随（2026-08-29 / PR3 = Issue #800）: PR3 でテスト資産の帰属を整理し、`lint-adr-index.bats` を `gen-adr-index.bats` へ、`lint-adr-surface.bats` を `manage-adr-surface.bats` へ改名した。節1 の波及修正一覧と反証レビューが旧名で指している bats は、いずれも改名後のこれらを読む
 
 ## 受入条件（全体）
 
