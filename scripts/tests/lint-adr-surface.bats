@@ -325,3 +325,186 @@ ac2_rtrim() {
 
     collect_finish
 }
+
+# ---- lint-adr.sh ヘッダのレイヤ1 ブロック ----
+#
+# レイヤ1 が報告する規範（合法な状態の集合）の正本は `adr-model.md`「状態の型」であり、
+# ヘッダはその写しを持たない（#794 決定1・決定2）。写しを置いても一致を守る機構は無く、
+# 正本を改訂した側だけが動いて静かに乖離する。削除した遷移表の再混入をここで止める。
+#
+# ブロックの切り出しは行番号ではなくレイヤ宣言行（`# レイヤN`）で行う。行番号で固定すると、
+# ヘッダへ1行足すだけで検査が別の範囲を見る（#787 と同型）。
+#
+# 表の検査は2段で持つ。レイヤ1 ブロックには表を一切置かせない（決定2 により、当ブロックに
+# 現れうる表は値組の再定義しかない）。加えてヘッダ全域では、状態の語彙値を含む表の行を
+# 落とす。ブロックの外へ移せば通る作りにすると、写しの置き場所を1つ隣へずらすだけで
+# ガードが空振りするため。レイヤ2〜5 が値の語彙を含まない表を持つことは妨げない。
+LINT_SCRIPT="$PLUGIN_ROOT/scripts/lint-adr.sh"
+
+# `status` / `validity` の値域。表の行がこのいずれかを含めば値組の再掲とみなす。
+LINT_STATE_VOCAB=(提案中 承認済み 却下 有効 上書き済み 廃止済み)
+
+# lint-adr.sh のヘッダ（1行目から `set -euo pipefail` の直前まで）を出す。
+lint_header() {
+    sed -n '1,/^set -euo pipefail/p' "$LINT_SCRIPT"
+}
+
+# ヘッダのうち、レイヤ1 の宣言行から レイヤ2 の宣言行の直前までを出す。
+lint_layer1_block() {
+    local line inblock=0
+    while IFS= read -r line; do
+        case "$line" in
+            '# レイヤ2'*) inblock=0 ;;
+            '# レイヤ1'*) inblock=1 ;;
+        esac
+        if [ "$inblock" -eq 1 ]; then
+            printf '%s\n' "$line"
+        fi
+    done < <(lint_header)
+    return 0
+}
+
+# コメント記号と前後の空白を落とした本文を出す。多バイト文字を含むため、awk の文字クラスを
+# 使わず bash のリテラル部分文字列操作だけで処理する（mawk はバイト単位に分解して誤判定する）。
+lint_comment_body() {
+    local body="${1#\#}"
+    body="${body#"${body%%[![:space:]]*}"}"
+    printf '%s' "${body%"${body##*[![:space:]]}"}"
+}
+
+# 与えられた行群から markdown 表の行（本文が `|` で始まり `|` を含む行）を出す。
+# 第1引数が `vocab` のときは、状態の語彙値を含む行だけへ絞る。
+lint_table_rows() {
+    local mode="$1" line body v
+    while IFS= read -r line; do
+        body="$(lint_comment_body "$line")"
+        case "$body" in
+            '|'*'|'*) : ;;
+            *) continue ;;
+        esac
+        if [ "$mode" != "vocab" ]; then
+            printf '%s\n' "$line"
+            continue
+        fi
+        for v in "${LINT_STATE_VOCAB[@]}"; do
+            case "$body" in
+                *"$v"*)
+                    printf '%s\n' "$line"
+                    break
+                    ;;
+            esac
+        done
+    done
+    return 0
+}
+
+# ブロック内の「合法な値組の列挙」を導くラベル行（本文が「合法」を含み `:` で終わる行）を出す。
+# 「空は合法」のような散文は末尾が `:` にならないため拾わない。
+lint_layer1_legal_set_labels() {
+    local line body
+    while IFS= read -r line; do
+        body="$(lint_comment_body "$line")"
+        case "$body" in
+            *合法*: | *合法*：) printf '%s\n' "$line" ;;
+        esac
+    done < <(lint_layer1_block)
+    return 0
+}
+
+# 行数を数える。空文字列は 0 行とする（`printf '%s\n' ""` は 1 行に数えられてしまう）。
+lint_count_lines() {
+    if [ -z "$1" ]; then
+        printf '0'
+    else
+        printf '%s\n' "$1" | wc -l | tr -d ' '
+    fi
+}
+
+@test "面⑦: lint-adr.sh ヘッダがレイヤ1 の合法な状態集合を再定義しない" {
+    collect_init
+
+    local header block
+    header="$(lint_header)"
+    block="$(lint_layer1_block)"
+
+    # fail-closed 1: ヘッダの抽出が0行だと、以下の「無いこと」の検査はすべて空振りで
+    # 緑になる。抽出結果の非空をここで落とす。
+    local nheader
+    nheader="$(lint_count_lines "$header")"
+    if [ "$nheader" -gt 0 ]; then
+        collect_ok "#794: lint-adr.sh のヘッダを抽出できる（$nheader 行）"
+    else
+        collect_fail "#794: lint-adr.sh のヘッダを抽出できる" \
+            "ヘッダの抽出結果が0行（ファイルが読めないか空）"
+    fi
+
+    # fail-closed 2: 下端の境界。終端の目印が変わると sed は一致せず本文の末尾まで出し、
+    # ヘッダを見ているつもりで実装本体まで見ることになる（範囲が無言で広がる）。
+    local header_last
+    header_last="$(printf '%s\n' "$header" | tail -n 1)"
+    if [ "$header_last" = "set -euo pipefail" ]; then
+        collect_ok "#794: ヘッダの抽出が \`set -euo pipefail\` で閉じている"
+    else
+        collect_fail "#794: ヘッダの抽出が \`set -euo pipefail\` で閉じている" \
+            "抽出の最終行が \"$header_last\" であり、終端の目印に届いていない"
+    fi
+
+    # fail-closed 3: 上端の境界。`# レイヤ2` が無いとブロックがヘッダ末尾まで伸び、
+    # レイヤ1 の範囲を見ているつもりで別の範囲を見ることになる。
+    if printf '%s\n' "$header" | grep -q '^# レイヤ2'; then
+        collect_ok "#794: レイヤ1 ブロックの上端（\`# レイヤ2\` 宣言）がヘッダにある"
+    else
+        collect_fail "#794: レイヤ1 ブロックの上端（\`# レイヤ2\` 宣言）がヘッダにある" \
+            "ヘッダに \`# レイヤ2\` 宣言が無く、レイヤ1 ブロックの範囲が確定しない"
+    fi
+
+    # fail-closed 4: ブロックの抽出が0行なら以下は空振りする。
+    local nblock
+    nblock="$(lint_count_lines "$block")"
+    if [ "$nblock" -gt 0 ]; then
+        collect_ok "#794: レイヤ1 ブロックを抽出できる（$nblock 行）"
+    else
+        collect_fail "#794: レイヤ1 ブロックを抽出できる" \
+            "ヘッダに \`# レイヤ1\` 宣言が無く、ブロックの抽出結果が0行"
+    fi
+
+    # 決定2 の「持つ」側。抽出が別の範囲へずれた場合もここで落ちる。
+    collect_contains "$block" "レイヤ1違反種別:" \
+        "#794: レイヤ1 ブロックが違反種別の列挙を持つ"
+
+    # 決定1: 削除した表の置換先。正本を指すポインタが残っていること。
+    collect_contains "$block" 'adr-model.md`「状態の型」' \
+        "#794: レイヤ1 ブロックが正本（adr-model.md「状態の型」）を指す"
+
+    # 決定1・決定6: 遷移表の再混入ガード。表の体裁で入る限り、語や列の並べ替えに関わらず落ちる。
+    local block_tables
+    block_tables="$(printf '%s\n' "$block" | lint_table_rows all)"
+    if [ -z "$block_tables" ]; then
+        collect_ok "#794: レイヤ1 ブロックに markdown 表の行が無い"
+    else
+        collect_fail "#794: レイヤ1 ブロックに markdown 表の行が無い" \
+            "合法な状態の集合の正本は adr-model.md「状態の型」であり、ヘッダは表で定義し直さない。混入した行: $(printf '%s' "$block_tables" | tr '\n' '/')"
+    fi
+
+    # 同ガードの置き場所ずらし対策。ブロックの外に置いても、状態の語彙値を含む表は落とす。
+    local header_state_tables
+    header_state_tables="$(printf '%s\n' "$header" | lint_table_rows vocab)"
+    if [ -z "$header_state_tables" ]; then
+        collect_ok "#794: ヘッダ全域に状態の語彙値を含む markdown 表の行が無い"
+    else
+        collect_fail "#794: ヘッダ全域に状態の語彙値を含む markdown 表の行が無い" \
+            "レイヤ1 ブロックの外でも値組の再掲は写しである。混入した行: $(printf '%s' "$header_state_tables" | tr '\n' '/')"
+    fi
+
+    # 決定5: 「合法（違反にしない）」列挙の再混入ガード。
+    local legal_labels
+    legal_labels="$(lint_layer1_legal_set_labels)"
+    if [ -z "$legal_labels" ]; then
+        collect_ok "#794: レイヤ1 ブロックが合法な値組の列挙を導かない"
+    else
+        collect_fail "#794: レイヤ1 ブロックが合法な値組の列挙を導かない" \
+            "合法な値組は adr-model.md「状態の型」の構成子が定義する。境界事例は違反種別の条件式から読む。混入した行: $(printf '%s' "$legal_labels" | tr '\n' '/')"
+    fi
+
+    collect_finish
+}
