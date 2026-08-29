@@ -27,7 +27,7 @@ bash scripts/run-tests.sh # テストと検査器を一括実行する
 - `plugins/dev-workflow/skills/{skill-name}/references/` — スキルが参照する補助ファイル（テンプレート、デフォルト定義等）
 - `plugins/dev-workflow/references/` — 複数スキルが共有する参照ファイル（DoRデフォルト定義等。`${CLAUDE_PLUGIN_ROOT}/references/` で参照。詳細は ADR-202606040737-01）
 - `plugins/dev-workflow/agents/{agent-name}.md` — サブエージェント定義（プラグインルートに集約、自動検出される。詳細は ADR-202605250838-01）
-- `plugins/adr/` — ADR 運用機構の配布プラグイン（`scripts/` の drift-lint・index 生成・識別子発番、`hooks/` の commit 前ゲート、`skills/manage-adr/` のライフサイクル操作スキル。#492/#493 で dev-workflow から抽出）
+- `plugins/adr/` — ADR 運用機構の配布プラグイン（`scripts/` の drift-lint・index 生成・識別子発番、`hooks/` の commit 前ゲート、`skills/manage-adr/` のライフサイクル操作スキル。#492/#493 で dev-workflow から抽出）。設計・改修時の規律は `docs/development/adr-plugin-design-guideline.md` が定める
 - `plugins/domain-design/` — Wave 4でdev-workflowから分離したevent-storming/domain-modeling
 - `plugins/dependency-insight/` — Wave 4でdev-workflowから分離したdependency-check
 - `run-claude-local.sh` — ローカル開発用起動スクリプト（Claude の引数を透過するラッパー）
