@@ -126,31 +126,49 @@ run_sut() {
 }
 
 # 被テスト検査器を読み込んで、単一の検査単位（レイヤ関数）だけを起動する。
-# 事実の収集（collect_scan_targets / collect_facts）は済ませたうえで指定の1単位のみを呼び、
-# その単位の違反出力と違反件数を観測する。結果は $status / $output に入る。
+# 事実の収集（collect_scan_targets / collect_facts）を済ませるか省くかを $3 で選び、指定の
+# 1単位のみを呼んで違反出力と違反件数を観測する。結果は $status / $output に入る。
+#
+# 起動の形（レイヤ1 だけが対象ディレクトリを取らないこと）を持つのはここ1箇所に限る。
+# 収集あり・収集なしで別々に写すと、片方だけが実装の引数の変更に追随しない。
 #
 # 読み込みは**部分シェル経由**で行う。ケース内で直接読み込むと検査器の `set -euo pipefail`
 # が bats 本体のシェルへ漏れ、nounset の下で収集型ヘルパの空配列参照が異常終了しうる。
 # 部分シェルなら観測できるのは出力と終了コードだけになり、連想配列の中身などの内部状態は
 # 見られない。この代償を受け入れたうえで、レイヤ間に検査の依存が無いことを外から確かめる。
+# 部分シェルは `set -e` の下にあるため、単位が非0で戻ると `[violations=...]` は出力されない。
 #
-# 引数: $1 レイヤ関数名 / $2 corpus のパス
-run_sut_layer() {
-    local layer="$1" corpus="$2"
+# 引数: $1 レイヤ関数名 / $2 corpus のパス / $3 collect（収集を済ませる）| skip（省く）
+invoke_sut_layer() {
+    local layer="$1" corpus="$2" collection="$3"
     run bash -c '
         set -euo pipefail
         # shellcheck disable=SC1090
         source "$1"
         violations=0
-        collect_scan_targets "$2"
-        collect_facts
+        if [ "$4" = "collect" ]; then
+            collect_scan_targets "$2"
+            collect_facts
+        fi
         if [ "$3" = "check_layer1_frontmatter_schema" ]; then
             "$3"
         else
             "$3" "$2"
         fi
         printf "[violations=%s]\n" "$violations"
-    ' _ "$SUT" "$corpus" "$layer" </dev/null
+    ' _ "$SUT" "$corpus" "$layer" "$collection" </dev/null
+}
+
+# 事実の収集を済ませたうえでの単独起動（規定どおりの使い方）。
+# 引数: $1 レイヤ関数名 / $2 corpus のパス
+run_sut_layer() {
+    invoke_sut_layer "$1" "$2" collect
+}
+
+# 事実の収集を省いた単独起動（契約違反）。検査を実行せず理由つきで非0に戻ることを
+# 観測するために使う。引数: $1 レイヤ関数名 / $2 corpus のパス
+run_sut_layer_uncollected() {
+    invoke_sut_layer "$1" "$2" skip
 }
 
 # 直前の run_sut の exit code を、渡されたラベルで収集する。
