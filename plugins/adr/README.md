@@ -4,7 +4,7 @@ ADR（アーキテクチャ決定記録）の運用機構を配布する Claude 
 
 ## 提供物
 
-- **drift-lint（`scripts/lint-adr.sh`）**: ADR corpus が満たすべき機械検査可能な不変条件を検査する。front-matter スキーマ（状態語彙・有効性語彙・遷移整合）、有効性 index との整合、ADR 間参照（上書き関係の双方向性、`Related:` の参照先の生存性・実在性）、ファイル名と識別子の規約適合および識別子の一意性と H1 見出しとの整合が対象。
+- **drift-lint（`scripts/lint-adr.sh`）**: ADR 群（対象ディレクトリ配下の全 ADR と有効性 index の総体）が満たすべき機械検査可能な不変条件を検査する。front-matter スキーマ（状態語彙・有効性語彙・遷移整合）、有効性 index との整合、ADR 間参照（上書き関係の双方向性、`Related:` の参照先の生存性・実在性）、ファイル名と識別子の規約適合および識別子の一意性と H1 見出しとの整合が対象。
 - **有効性 index 生成（`scripts/gen-adr-index.sh`）**: `validity: 有効` の ADR を抽出して index を生成する。
 - **識別子の発番（`scripts/next-adr-id.sh`）**: 起票時刻（分粒度・ローカル時刻）と同一時刻部内の連番から、次に起票する ADR の識別子 `ADR-YYYYMMDDHHMM-NN` を発番する。連番の算出対象を同一時刻部のファイルに限るため、並行するブランチがそれぞれ発番しても識別子が衝突しない。
 - **commit 前ゲート（`hooks/`）**: `git commit` 時に PreToolUse フックとして drift-lint を実行し、違反があれば commit をブロックする（exit 2）。対象リポジトリに ADR ディレクトリが存在しない場合は何もしない（no-op）。
