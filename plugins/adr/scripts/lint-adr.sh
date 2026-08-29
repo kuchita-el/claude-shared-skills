@@ -399,6 +399,29 @@ extract_h1_adr_id() {
     done <"$file"
 }
 
+# ---- 収集の完了印 ----
+#
+# 収集単位が収集を終えた時点で立て、収集済みの事実を消費する単位が起動時に検査する。
+# 印が無いと、空配列参照の退避形（`${ARR[@]+"${ARR[@]}"}`）と連想配列の既定値（`[key]:-`）が
+# 「収集していない」と「収集した結果が0件」を同じ値へ畳むため、走査集合が一度も作られて
+# いない状態が「検査したが違反なし」と区別できない。印はその2つを分ける唯一の材料である。
+SCAN_TARGETS_COLLECTED=0
+FACTS_COLLECTED=0
+
+# 収集済みの印が立っていることを要求する。立っていなければ理由を標準エラーへ出して非0で
+# 戻り、未収集での起動が「検査したが違反なし」として合格を返すこと（fail-open）を防ぐ。
+# 戻り値: 印が立っていれば 0、立っていなければ 2（起動の誤り。検査を実行した 0 と区別する）
+# 引数: $1 起動された単位の名前 / $2 印の値 / $3 印を立てる収集単位の名前
+require_collected() {
+    local unit="$1" flag="$2" collector="$3"
+
+    if [ "$flag" != "1" ]; then
+        printf 'エラー: %s は事実の収集を前提とします（%s を先に呼んでください）\n' "$unit" "$collector" >&2
+        return 2
+    fi
+    return 0
+}
+
 # ADR_DIR 配下の `ADR-*.md` をファイル名昇順で収集し、グローバル配列 SCAN_TARGETS へ
 # 格納する（0件なら空配列）。検査は行わず違反を1件も出力しない。
 collect_scan_targets() {
@@ -406,6 +429,9 @@ collect_scan_targets() {
     local f
     local raw=()
 
+    # 走査対象が入れ替わると、そこから導いた事実は古くなる。下流の印をここで倒し、
+    # 収集し直さずにレイヤを起動した場合が未収集と同じ扱いになるようにする。
+    FACTS_COLLECTED=0
     SCAN_TARGETS=()
 
     shopt -s nullglob
@@ -419,6 +445,8 @@ collect_scan_targets() {
             SCAN_TARGETS+=("$f")
         done < <(printf '%s\n' "${raw[@]}" | LC_ALL=C sort)
     fi
+
+    SCAN_TARGETS_COLLECTED=1
 }
 
 # 走査対象のうち front-matter を持つものを選別し、stem をキーとする status /
@@ -437,8 +465,13 @@ collect_scan_targets() {
 # 連想配列は declare -gA で宣言する。関数の中で declare -A とすると関数ローカルになり、
 # 後続のレイヤから見えなくなる。この取り違えは実行時に「参照先が見つかりません」型の
 # 偽陽性として現れる。
+#
+# 前提: collect_scan_targets が済んでいること。走査対象を消費する単位であるため、レイヤと
+# 同じく印を要求する（未収集で呼ぶと FM_FILES が空のまま印だけが立ち、穴が下流へ移る）。
 collect_facts() {
     local file stem
+
+    require_collected collect_facts "$SCAN_TARGETS_COLLECTED" collect_scan_targets || return 2
 
     FM_FILES=()
     declare -gA FM_STATUS_BY_STEM=()
@@ -457,6 +490,8 @@ collect_facts() {
         FM_VALIDITY_BY_STEM["$stem"]="$FM_VALIDITY"
         FM_SB_BY_STEM["$stem"]="$FM_SUPERSEDED_BY"
     done
+
+    FACTS_COLLECTED=1
 }
 
 # ---- 検査レイヤ ----
@@ -465,11 +500,19 @@ collect_facts() {
 # 違反を標準出力へ出してグローバル変数 violations を加算する。レイヤ間に呼び出し依存は
 # 無く、事実の収集さえ済んでいれば任意の1レイヤを他レイヤの検査を実行せずに起動できる。
 # 呼び出し順は下の起動部が持つ（違反の出力順はこの順で決まる）。
+#
+# 収集を済ませずに起動した場合は、検査を実行せず理由を標準エラーへ出して非0で戻る
+# （require_collected）。未収集を「違反なし」と report する経路を残さないための規定であり、
+# レイヤ単位の起動を公開された使い方として位置づける以上、契約違反は合格ではなく誤りとして
+# 現れる必要がある。収集済みの事実を1つも読まないレイヤ2 だけは印を要求しない（対象
+# ディレクトリのみを消費するため、要求しても常に真になる無内容な検査になる）。
 
 # レイヤ1: front-matter スキーマ検証。
 # 入力: FM_FILES / FM_STATUS_BY_STEM / FM_VALIDITY_BY_STEM / FM_SB_BY_STEM
 check_layer1_frontmatter_schema() {
     local file stem fm_status fm_validity fm_sb
+
+    require_collected check_layer1_frontmatter_schema "$FACTS_COLLECTED" collect_facts || return 2
 
     for file in ${FM_FILES[@]+"${FM_FILES[@]}"}; do
         stem="$(basename "$file" .md)"
@@ -531,6 +574,7 @@ check_layer1_frontmatter_schema() {
 
 # レイヤ2: index 同期検証。
 # 入力: 対象ディレクトリ（$1）。同梱の index 生成器を起動して出力を index.md と比較する。
+# 収集済みの事実を読まない唯一のレイヤであり、収集の印を要求しない（上のレイヤ群の規定を参照）。
 check_layer2_index_sync() {
     local dir="$1"
     local index_file="$dir/index.md"
@@ -557,6 +601,8 @@ check_layer2_index_sync() {
 check_layer3_forward() {
     local dir="$1"
     local a_file a_stem a_sb b_stem b_file
+
+    require_collected check_layer3_forward "$FACTS_COLLECTED" collect_facts || return 2
 
     for a_file in ${FM_FILES[@]+"${FM_FILES[@]}"}; do
         a_stem="$(basename "$a_file" .md)"
@@ -605,6 +651,8 @@ check_layer3_reverse() {
     local dir="$1"
     local c_file c_stem t_stem t_file member s
 
+    require_collected check_layer3_reverse "$FACTS_COLLECTED" collect_facts || return 2
+
     for c_file in ${SCAN_TARGETS[@]+"${SCAN_TARGETS[@]}"}; do
         extract_body_supersedes "$c_file"
         c_stem="$(basename "$c_file" .md)"
@@ -643,6 +691,8 @@ check_layer4_related_references() {
     local dir="$1"
     local src_file src_stem t_stem
 
+    require_collected check_layer4_related_references "$FACTS_COLLECTED" collect_facts || return 2
+
     for src_file in ${SCAN_TARGETS[@]+"${SCAN_TARGETS[@]}"}; do
         src_stem="$(basename "$src_file" .md)"
         # source は有効 ADR のみ（退役・提案中・却下・旧形式は検査対象外）
@@ -671,6 +721,10 @@ check_layer5_filename_and_identifier() {
     local dir="$1"
     local file stem file_id f
     local misnamed misnamed_sorted
+
+    # 誤名走査だけは対象ディレクトリを自前で glob するため、印を欠いたまま起動すると
+    # 「3検査が無言で消えたのに出力は出る」状態になりうる。ここで先に止める。
+    require_collected check_layer5_filename_and_identifier "$FACTS_COLLECTED" collect_facts || return 2
 
     # レイヤ5: ファイル名形式・識別子重複・H1 整合
     # 対象は front-matter を持つ ADR のみ（FM_FILES。レイヤ1 と同一の対象集合）
