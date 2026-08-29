@@ -290,13 +290,13 @@ load_stem_pattern() {
         '(AC5/レイヤ5-誤検出回避): front-matter の YAML コメントを H1 と誤認しない: "H1 整合違反" を含まない'
 
     run_sut "$CORPUS_DIR/valid/01-mixed-validity"
-    collect_rc 0 "(AC5/レイヤ5-誤検出回避): 適合の ADR 群では発火しない: exit 0"
+    collect_rc 0 "(AC5/レイヤ5-誤検出回避): 適合する ADR 群では発火しない: exit 0"
     collect_not_contains "$output" "ファイル名形式違反" \
-        '(AC5/レイヤ5-誤検出回避): 適合の ADR 群では発火しない: "ファイル名形式違反" を含まない'
+        '(AC5/レイヤ5-誤検出回避): 適合する ADR 群では発火しない: "ファイル名形式違反" を含まない'
     collect_not_contains "$output" "識別子重複違反" \
-        '(AC5/レイヤ5-誤検出回避): 適合の ADR 群では発火しない: "識別子重複違反" を含まない'
+        '(AC5/レイヤ5-誤検出回避): 適合する ADR 群では発火しない: "識別子重複違反" を含まない'
     collect_not_contains "$output" "H1 整合違反" \
-        '(AC5/レイヤ5-誤検出回避): 適合の ADR 群では発火しない: "H1 整合違反" を含まない'
+        '(AC5/レイヤ5-誤検出回避): 適合する ADR 群では発火しない: "H1 整合違反" を含まない'
 
     collect_finish
 }
