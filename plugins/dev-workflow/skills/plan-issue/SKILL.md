@@ -117,7 +117,7 @@ gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'
 1. `${CLAUDE_SKILL_DIR}/references/plan-prompt.md` をReadし、起動プロンプトの素材とする
 2. `{PLAN_CONTRACT}` を `plan-contract.md` の全文で置換する
 3. `{OUTPUT_FORMAT}` を `plan-output-format.md` の全文で置換する
-4. 素材末尾の「モード別入力ブロック」節は、ステップ1で判定したモードのブロックと全モード共通ブロックだけを残して他モードのブロックを取り除き、各プレースホルダにステップ3〜5で得た値を差し込む
+4. 素材末尾の「モード別入力ブロック」節は、ステップ1で判定したモードのブロックと全モード共通ブロックだけを残して他モードのブロックを取り除く。残したブロックは足場（節見出し `## モード別入力ブロック`・`**通常モード / 固定入力モード:**` 等のモードラベル行・囲みのコードフェンス）を除去し、フェンス内の本文だけをプロンプト末尾へ連結したうえで、各プレースホルダにステップ3〜5で得た値を差し込む
 
 **起動:** Agent tool（`subagent_type: dev-workflow:plan`）で実行する。モデルと effort は定義の frontmatter に従い、呼び出し側では指定しない。Agent toolが使えない場合や起動に失敗した場合は、`${CLAUDE_PLUGIN_ROOT}/agents/plan.md` の定義内容をプロンプト本文へ埋め込んでインラインで直接実行する（インライン実行では preload が効かないため、計画骨格は同定義のフォールバックに従う）。
 
