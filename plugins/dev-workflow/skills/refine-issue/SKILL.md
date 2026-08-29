@@ -128,7 +128,7 @@ DoRチェックは定義ファイルの全項目を1件ずつ列挙し、1件で
 2. プロジェクト固有DoR: `{project_root}/.claude/dor/definition.md`（存在すれば優先）
 3. デフォルトDoR: `{plugin_root}/references/dor-default.md`（プラグイン共有。`{plugin_root}` は上で渡したプラグインルートパス）
 4. 種別プロファイル: プロジェクト固有 `{project_root}/.claude/dor/type-profiles.md`（存在すれば優先）、なければ `{plugin_root}/references/issue-type-profiles.md`（プラグイン共有。DoR と同一の優先順位）
-5. 出力形式テンプレート: `{skill_dir}/references/output-format-batch-subagent.md`（`{OUTPUT_FORMAT}` の置換イメージとして適用）
+5. 出力形式テンプレート: `{skill_dir}/references/output-format-batch.md` の「入口: サブエージェント返却形式」節（同節のみを `{OUTPUT_FORMAT}` の置換イメージとして適用する。出口節・対応表は適用しない）
 6. 担当 Issue 番号それぞれの `{issue_dir}/issue-{number}.json`
 
 サブエージェントは精査結果を構造化データ（YAML/JSON 等）で返却する。
