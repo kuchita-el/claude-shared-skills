@@ -55,19 +55,44 @@ STEM_REJECT=(
     'ADR-2026010110301-01-too-long|(AC1-境界): 不適合 stem を拒否する: ADR-2026010110301-01-too-long'
 )
 
+# 表が空になった（あるいは大きく削られた）まま緑になる経路を塞ぐ下限。面②③のループは
+# 反復0回でも collect_finish が成功を返すため、照合の回数そのものを1検査項目として数える。
+# 数える対象はループが実際に走らせた照合の回数であり、配列リテラルの要素数ではない
+# （宣言を読むと、照合ループごと消えても配列さえ残っていれば下限が緑を返す）。
+# 下限は名目値ではなく現在の実数を置く。lint-adr-layers.bats の LAYER1_INVALID_CASE_MIN と
+# 同型であり、同型の穴が本ファイルにも残っていた。
+# 由来: Issue #800 に対する PR #801 のレビュー指摘1（参考として挙げられた派生）。
+STEM_ACCEPT_MIN=4
+STEM_REJECT_MIN=11
+
+# 照合件数の下限を1件の検査項目として収集する。面②③が同じ形で使う。
+collect_stem_case_min() {
+    local matched="$1" min="$2" label="$3"
+    if [ "$matched" -ge "$min" ]; then
+        collect_ok "$label（$matched 件 / 下限 $min 件）"
+    else
+        collect_fail "$label" \
+            "照合件数 $matched 件が下限 $min 件を下回る（表の欠落・照合ループの退行。表を意図して減らした場合のみ本定数を下げる）"
+    fi
+    return 0
+}
+
 setup_file() {
     common_setup_file
 }
 
-# lint-adr.sh 本体を実行せずにパターン定義だけを取り出す
-# （source すると ADR_DIR 不在で exit 2 になるため、定義行を eval する）。
+# lint-adr.sh 本体を実行せずにパターン定義だけを取り出す。
+# 検査器は直接実行されたときだけ検査本体を走らせるため、読み込みだけなら対象ディレクトリを
+# 指定していなくても終了しない。取得は**部分シェル経由**で行う。ケース内で直接読み込むと
+# 検査器の `set -euo pipefail` が bats 本体のシェルへ漏れ、nounset の下で共有ヘルパの
+# 空配列参照が異常終了しうる。部分シェルなら出力と終了コードだけを観測できる。
 load_stem_pattern() {
-    local pattern_def
-    pattern_def=$(grep -m1 '^ADR_STEM_PATTERN=' "$SUT" || true)
-    if [ -z "$pattern_def" ]; then
+    local value
+    value=$(bash -c 'source "$1"; printf "%s" "${ADR_STEM_PATTERN:-}"' _ "$SUT" 2>/dev/null) || return 1
+    if [ -z "$value" ]; then
         return 1
     fi
-    eval "$pattern_def"
+    ADR_STEM_PATTERN="$value"
     return 0
 }
 
@@ -102,7 +127,7 @@ load_stem_pattern() {
     collect_init
 
     if load_stem_pattern; then
-        local entry stem label
+        local entry stem label matched=0
         for entry in "${STEM_ACCEPT[@]}"; do
             stem="${entry%%|*}"
             label="${entry#*|}"
@@ -111,7 +136,10 @@ load_stem_pattern() {
             else
                 collect_fail "$label" "適合 stem を誤って拒否した"
             fi
+            matched=$((matched + 1))
         done
+        collect_stem_case_min "$matched" "$STEM_ACCEPT_MIN" \
+            "(AC1-境界): 受理側の照合件数が下限を満たす"
     else
         collect_fail "(AC1-境界): ADR_STEM_PATTERN の定義" "定義が見つかりません: $SUT"
     fi
@@ -123,7 +151,7 @@ load_stem_pattern() {
     collect_init
 
     if load_stem_pattern; then
-        local entry stem label
+        local entry stem label matched=0
         for entry in "${STEM_REJECT[@]}"; do
             stem="${entry%%|*}"
             label="${entry#*|}"
@@ -132,7 +160,10 @@ load_stem_pattern() {
             else
                 collect_ok "$label"
             fi
+            matched=$((matched + 1))
         done
+        collect_stem_case_min "$matched" "$STEM_REJECT_MIN" \
+            "(AC1-境界): 拒否側の照合件数が下限を満たす"
     else
         collect_fail "(AC1-境界): ADR_STEM_PATTERN の定義" "定義が見つかりません: $SUT"
     fi

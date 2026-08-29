@@ -38,7 +38,7 @@ setup_file() {
 # fixture を静的に列挙する以上、ディレクトリへ足しただけのファイルは登録されるまで一度も
 # 検査されない（glob で組み立てないことの代償）。登録漏れを検査項目として検出する。
 # ケースを動的生成せず既存の面の内側で数えるため、報告ケース数は入力で変動しない
-# （`lint-adr-surface.bats` 面②と同型の被覆検査）。
+# （`manage-adr-surface.bats` 面②と同型の被覆検査）。
 collect_fixture_coverage() {
     local subdir="$1" registered="$2"
     local prev_nullglob present f base label

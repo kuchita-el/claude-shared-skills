@@ -182,3 +182,32 @@ collect_count() {
 
     collect_finish
 }
+
+# ---- レイヤ単位の独立起動 ----
+#
+# Issue #800 の構造整理まで、レイヤ4 が消費する事実（stem から validity への写像）は
+# レイヤ1 のループ内で副次的に充填されており、レイヤ1 を実行せずにレイヤ4 を起動できなかった。
+# 事実の収集だけを済ませた状態でレイヤ4 だけを起動し、起動したレイヤの違反だけが出ることを
+# 外から確かめる。読み込みは run_sut_layer が部分シェル経由で行う。
+@test "面⑧: レイヤ4 を単独で起動できる" {
+    collect_init
+
+    # 起動したレイヤの違反は出ること。この項が無いと、レイヤ関数の中身を空にする変異でも
+    # 下の「他レイヤの違反が出ない」項が緑のまま通る。
+    run_sut_layer check_layer4_related_references "$CORPUS_DIR/invalid/20-related-dangling"
+    collect_rc 0 "#800: dangling corpus へレイヤ4 だけを起動できる"
+    collect_contains "$output" "dangling 参照違反" \
+        "#800: 起動したレイヤの違反は出力する"
+    collect_contains "$output" "[violations=1]" \
+        "#800: 起動したレイヤの違反は数える"
+
+    # 起動しなかったレイヤの違反は出ないこと。invalid/24 はレイヤ5 だけが発火する corpus。
+    run_sut_layer check_layer4_related_references "$CORPUS_DIR/invalid/24-filename-format-invalid"
+    collect_rc 0 "#800: ファイル名形式違反 corpus へレイヤ4 だけを起動できる"
+    collect_contains "$output" "[violations=0]" \
+        "#800: レイヤ4 の単独起動でレイヤ5 の違反を数えない"
+    collect_not_contains "$output" "ファイル名形式違反" \
+        "#800: レイヤ4 の単独起動でレイヤ5 の違反は出ない"
+
+    collect_finish
+}

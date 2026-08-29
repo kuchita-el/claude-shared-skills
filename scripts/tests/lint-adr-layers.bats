@@ -57,7 +57,7 @@ LAYER1_INVALID_CASES=(
 # 反復0回でも collect_finish が成功を返すため、件数そのものを1検査項目として数える。
 # 数える対象はループが実際に走らせた照合の回数であり、配列リテラルの要素数ではない。
 # 宣言だけを読むと、照合ループごと消えても配列さえ残っていれば下限が緑を返し、下限自身が
-# 退行しうる量を観測しなくなる（lint-adr-surface.bats の AC5 下限は実行時に抽出した行数を
+# 退行しうる量を観測しなくなる（manage-adr-surface.bats の AC5 下限は実行時に抽出した行数を
 # 下限とループの双方が消費する形であり、それに合わせる）。
 # 下限は名目値（1件）ではなく現在の実数を置く。名目値にすると表が数件まで削られても
 # 緑のまま通り、下限が検査として働かない。
@@ -309,6 +309,296 @@ LAYER1_INVALID_CASE_MIN=11
 
     run_sut "$CORPUS_DIR/valid/05-xref-list-trailing-comma"
     collect_rc 0 "(末尾カンマ): 末尾カンマは無害で exit 0: exit 0"
+
+    collect_finish
+}
+
+# 逆方向の相互参照は2つの分岐を持つ。参照先は実在するが front-matter が宣言元を指していない
+# 経路（面⑩・面⑭）と、宣言の参照先ファイルそのものが存在しない経路である。後者は Issue #800 の
+# 被覆表で唯一の未被覆分岐として拾われた。当時の40 corpus のいずれでも発火せず、実装から当該
+# 分岐を落としても全テストが緑のまま通る状態にあった。
+# invalid/34 は単一原因で違反1件になる corpus であり、他レイヤの出力が混ざらないことも
+# 併せて固定する。混ざると、当該分岐を落とす変異でこのケースが赤にならない。
+@test "面⑰: レイヤ3 逆方向で宣言の参照先そのものが不在の検出" {
+    collect_init
+
+    run_sut "$CORPUS_DIR/invalid/34-xref-reverse-dangling"
+    collect_rc 1 "#800: xref-reverse-dangling corpus は exit 1"
+    collect_contains "$output" '相互参照違反（逆方向: 本文 "## 関連ADR" の "Supersedes: ' \
+        "#800: 逆方向の本文宣言起点であることを名指しする違反メッセージ"
+    collect_contains "$output" "宣言の参照先" \
+        "#800: 参照先そのものの不在であることを名指しする違反メッセージ"
+    collect_contains "$output" "ADR-202612101034-01-xref-reverse-dangling-absent-old.md が見つかりません" \
+        "#800: 不在の参照先を名指しする違反メッセージ"
+
+    # 参照先が実在して front-matter だけが追随していない経路（面⑩）とは別の分岐であることを
+    # 固定する。後者のメッセージが出るなら、参照先不在の分岐を通らずに済んでいる。
+    collect_not_contains "$output" "front-matter superseded-by がそれを指していません" \
+        "#800: 参照先が実在する側の逆方向メッセージは出ない"
+
+    # 他レイヤの違反が混ざらないこと（単一原因の corpus であることの固定）
+    collect_not_contains "$output" "index 同期違反" "#800: レイヤ2 の違反が混ざらない"
+    collect_not_contains "$output" "ファイル名形式違反" "#800: レイヤ5（形式）の違反が混ざらない"
+    collect_not_contains "$output" "H1 整合違反" "#800: レイヤ5（H1）の違反が混ざらない"
+    collect_not_contains "$output" "識別子重複違反" "#800: レイヤ5（重複）の違反が混ざらない"
+    collect_not_contains "$output" "参照先退役違反" "#800: レイヤ4（退役）の違反が混ざらない"
+    collect_not_contains "$output" "dangling 参照違反" "#800: レイヤ4（dangling）の違反が混ざらない"
+
+    collect_finish
+}
+
+# ---- レイヤ単位の独立起動 ----
+#
+# Issue #800 の構造整理まで、レイヤ1のループが検査本体と前処理を兼ねており、他レイヤが
+# 消費する事実はそのループ内で副次的に充填されていた。このためレイヤ1を実行せずに他の
+# レイヤを起動できず、レイヤ単位で検査を確かめる手段が無かった。
+# 以下は事実の収集だけを済ませた状態で単一レイヤを起動し、起動したレイヤの違反だけが
+# 出ることを外から確かめる。読み込みは run_sut_layer が部分シェル経由で行う。
+@test "面⑱: 事実の収集だけを済ませた状態で単一レイヤを起動できる" {
+    collect_init
+
+    # 起動しなかったレイヤの違反が出ないこと。invalid/32 はレイヤ2 だけが発火する corpus。
+    run_sut_layer check_layer3_reverse "$CORPUS_DIR/invalid/32-index-missing"
+    collect_rc 0 "#800: index 不在 corpus へレイヤ3 reverse だけを起動できる"
+    collect_contains "$output" "[violations=0]" \
+        "#800: index 不在 corpus でレイヤ3 reverse は違反を数えない"
+    collect_not_contains "$output" "index 同期違反" \
+        "#800: レイヤ3 reverse の単独起動でレイヤ2 の違反は出ない"
+
+    # 逆向き。invalid/34 はレイヤ3 reverse だけが発火する corpus。
+    run_sut_layer check_layer2_index_sync "$CORPUS_DIR/invalid/34-xref-reverse-dangling"
+    collect_rc 0 "#800: 逆方向参照先不在 corpus へレイヤ2 だけを起動できる"
+    collect_contains "$output" "[violations=0]" \
+        "#800: 逆方向参照先不在 corpus でレイヤ2 は違反を数えない"
+    collect_not_contains "$output" "相互参照違反" \
+        "#800: レイヤ2 の単独起動でレイヤ3 の違反は出ない"
+
+    # 単独起動が「何も検査しない」へ退化していないこと。起動したレイヤの違反は出る。
+    # この項が無いと、レイヤ関数の中身を空にする変異でも上の2項が緑のまま通る。
+    run_sut_layer check_layer3_reverse "$CORPUS_DIR/invalid/34-xref-reverse-dangling"
+    collect_rc 0 "#800: 逆方向参照先不在 corpus へレイヤ3 reverse だけを起動できる"
+    collect_contains "$output" "[violations=1]" \
+        "#800: 起動したレイヤの違反は数える"
+    collect_contains "$output" "相互参照違反（逆方向" \
+        "#800: 起動したレイヤの違反は出力する"
+
+    # 前処理結果を消費する側のレイヤが、収集済みの事実を実際に読めていること。
+    # valid/02-xref-valid は双方向が揃った corpus であり、レイヤ3 reverse は参照先の
+    # front-matter superseded-by を写像から読んで一致を確認する。写像を作る単位が
+    # 連想配列を関数ローカルで宣言してしまうと後続のレイヤから見えなくなり、ここが
+    # 「front-matter superseded-by がそれを指していません」の偽陽性として現れる。
+    run_sut_layer check_layer3_reverse "$CORPUS_DIR/valid/02-xref-valid"
+    collect_rc 0 "#800: 双方向一致 corpus へレイヤ3 reverse だけを起動できる"
+    collect_contains "$output" "[violations=0]" \
+        "#800: 収集済みの事実が揃っており偽陽性を出さない"
+    collect_not_contains "$output" "がそれを指していません" \
+        "#800: 写像が見えないことによる偽陽性が出ない"
+
+    collect_finish
+}
+
+# レイヤ単位の起動口は「検査器を読み込んでも検査本体が走らない」ことに依存する。
+# 直接実行と読み込みを分ける判定が壊れると、読み込みだけで対象ディレクトリ不在の
+# 経路へ入って終了し、テスト側がレイヤ関数へ到達できなくなる（面⑱が前提を失う）。
+@test "面⑲: 検査器の読み込みだけでは対象ディレクトリ不在で終了しない" {
+    collect_init
+
+    run bash -c 'source "$1"; printf "[sourced rc=%s]\n" "$?"; printf "[pattern=%s]\n" "${ADR_STEM_PATTERN:-未定義}"' \
+        _ "$SUT" </dev/null
+    collect_rc 0 "#800: 対象ディレクトリを渡さない読み込みが終了コード0で戻る"
+    collect_contains "$output" "[sourced rc=0]" "#800: 読み込み自体が成功する"
+    collect_not_contains "$output" "[pattern=未定義]" "#800: 読み込みで定数定義が得られる"
+    collect_not_contains "$output" "ディレクトリが見つかりません" \
+        "#800: 読み込みでは対象ディレクトリ不在の経路へ入らない"
+
+    # 直接実行時は従来どおり不在で exit 2（面③と同じ経路。判定の両側を1ケース内で押さえる）
+    run_sut "$CORPUS_DIR/invalid/__nonexistent__"
+    collect_rc 2 "#800: 直接実行では対象ディレクトリ不在が exit 2 のまま"
+
+    collect_finish
+}
+
+# ---- FM_FILES を読む単位の独立起動 ----
+#
+# 面⑱ が押さえる単位は SCAN_TARGETS を読む2つ（レイヤ2・レイヤ3 reverse）に限られ、
+# lint-adr-xref.bats 面⑧ を足してもレイヤ4 までである。collect_facts が構築する FM_FILES を
+# 読む3単位（レイヤ1・レイヤ3 forward・レイヤ5）は1つも独立起動されておらず、Issue #800 が
+# 解いた結合そのもの——ある単位のループが前処理を兼ね、他の単位が消費する事実をそのループ内で
+# 副次的に充填する——を FM_FILES について再導入しても全ケースが緑のまま通った。
+# 3単位それぞれが、他の単位を実行せずに自分の違反だけを出すことをここで固定する。
+# 由来: Issue #800 に対する PR #801 のレビュー指摘1。
+@test "面⑳: FM_FILES を読む3単位がそれぞれ独立に起動できる" {
+    collect_init
+
+    # レイヤ1。invalid/01 はレイヤ1 だけが発火する corpus。
+    run_sut_layer check_layer1_frontmatter_schema "$CORPUS_DIR/invalid/01-status-missing"
+    collect_rc 0 "#800: status 欠落 corpus へレイヤ1 だけを起動できる"
+    collect_contains "$output" "[violations=1]" "#800: レイヤ1 の単独起動が違反を数える"
+    collect_contains "$output" "status が空です" "#800: レイヤ1 の単独起動が違反を出力する"
+
+    # レイヤ3 forward。invalid/05 はレイヤ3 forward だけが発火する corpus。
+    run_sut_layer check_layer3_forward "$CORPUS_DIR/invalid/05-xref-missing"
+    collect_rc 0 "#800: 相互参照欠落 corpus へレイヤ3 forward だけを起動できる"
+    collect_contains "$output" "[violations=1]" "#800: レイヤ3 forward の単独起動が違反を数える"
+    collect_contains "$output" 'に "Supersedes:' "#800: レイヤ3 forward の単独起動が違反を出力する"
+
+    # レイヤ5。invalid/24 はレイヤ5 だけが発火する corpus。
+    run_sut_layer check_layer5_filename_and_identifier "$CORPUS_DIR/invalid/24-filename-format-invalid"
+    collect_rc 0 "#800: ファイル名形式違反 corpus へレイヤ5 だけを起動できる"
+    collect_contains "$output" "[violations=1]" "#800: レイヤ5 の単独起動が違反を数える"
+    collect_contains "$output" "ファイル名形式違反" "#800: レイヤ5 の単独起動が違反を出力する"
+
+    # 逆向き。起動しなかった単位の違反は出ない。FM_FILES の充填をどれか1単位の中へ戻す
+    # 変異は、その単位を起動しない下の2件のいずれかで必ず赤になる。
+    run_sut_layer check_layer5_filename_and_identifier "$CORPUS_DIR/invalid/01-status-missing"
+    collect_rc 0 "#800: status 欠落 corpus へレイヤ5 だけを起動できる"
+    collect_contains "$output" "[violations=0]" "#800: status 欠落 corpus でレイヤ5 は違反を数えない"
+    collect_not_contains "$output" "status が空です" "#800: レイヤ5 の単独起動でレイヤ1 の違反は出ない"
+
+    run_sut_layer check_layer1_frontmatter_schema "$CORPUS_DIR/invalid/24-filename-format-invalid"
+    collect_rc 0 "#800: ファイル名形式違反 corpus へレイヤ1 だけを起動できる"
+    collect_contains "$output" "[violations=0]" "#800: ファイル名形式違反 corpus でレイヤ1 は違反を数えない"
+    collect_not_contains "$output" "ファイル名形式違反" "#800: レイヤ1 の単独起動でレイヤ5 の違反は出ない"
+
+    collect_finish
+}
+
+# ---- 違反の出力順 ----
+#
+# 起動部は「違反の出力順はこの呼び出し順で決まる」と宣言し、Issue #800 もこれを不変条件へ
+# 挙げる。しかし負例 corpus は35本目を置くまで、違反が2件以上出る3本（06・28・33）が
+# いずれも同一レイヤ内の違反であり、レイヤ間の相対順序をどのアサーションも観測していなかった。
+# 関数抽出後は起動部の2行を入れ替えるだけで順序が壊れる（基準版では同じ破壊に100行規模の
+# ブロック移動を要した）。6単位を1本ずつ同時に発火させる corpus で全5境界を固定する。
+# 由来: Issue #800 に対する PR #801 のレビュー指摘2。
+#
+# `<needle>|<単位名>` を起動部の呼び出し順に並べる。needle は単位を一意に決める断片であり
+# 互いに包含関係を持たない（レイヤ3 の2単位は `に "Supersedes:` と `（逆方向:` で分かれる。
+# 共通する `相互参照違反` を needle に採ると、どちらの行にも一致して順序を観測できない）。
+LAYER_ORDER_NEEDLES=(
+    'status が空です|レイヤ1'
+    'index 同期違反|レイヤ2'
+    'の本文 "## 関連ADR" に "Supersedes:|レイヤ3 forward'
+    '相互参照違反（逆方向:|レイヤ3 reverse'
+    '参照先退役違反|レイヤ4'
+    'ファイル名形式違反|レイヤ5'
+)
+
+# 表が空になった（あるいは削られた）まま緑になる経路を塞ぐ下限。数える対象はループが実際に
+# 出力の中から見つけた単位の数であり、配列リテラルの要素数ではない。下限は名目値ではなく
+# corpus が実際に発火させる実数を置く。
+LAYER_ORDER_UNIT_MIN=6
+
+@test "面㉑: 違反の出力順が起動部の呼び出し順で決まる" {
+    collect_init
+
+    run_sut "$CORPUS_DIR/invalid/35-layer-order"
+    collect_rc 1 "#800: 6単位同時発火 corpus が exit 1"
+    collect_equals "${#lines[@]}" "$LAYER_ORDER_UNIT_MIN" \
+        "#800: 6単位同時発火 corpus の出力が1単位1件になっている"
+
+    local entry needle unit i idx matched=0 prev_idx=-1 prev_unit=""
+    for entry in "${LAYER_ORDER_NEEDLES[@]}"; do
+        needle="${entry%%|*}"
+        unit="${entry##*|}"
+
+        idx=-1
+        for i in "${!lines[@]}"; do
+            if [[ "${lines[$i]}" == *"$needle"* ]]; then
+                idx="$i"
+                break
+            fi
+        done
+
+        if [ "$idx" -lt 0 ]; then
+            collect_fail "#800: $unit の違反が出力に現れる" \
+                "needle \"$needle\" が出力に無い / output: $output"
+            continue
+        fi
+        collect_ok "#800: $unit の違反が出力に現れる"
+        matched=$((matched + 1))
+
+        if [ -n "$prev_unit" ]; then
+            if [ "$idx" -gt "$prev_idx" ]; then
+                collect_ok "#800: $unit の違反が $prev_unit の違反より後に出る"
+            else
+                collect_fail "#800: $unit の違反が $prev_unit の違反より後に出る" \
+                    "$unit は $prev_idx 行目の $prev_unit より後ろに無い（$idx 行目）/ output: $output"
+            fi
+        fi
+
+        prev_idx="$idx"
+        prev_unit="$unit"
+    done
+
+    if [ "$matched" -ge "$LAYER_ORDER_UNIT_MIN" ]; then
+        collect_ok "#800: 順序を観測した単位数が下限を満たす（$matched 件 / 下限 $LAYER_ORDER_UNIT_MIN 件）"
+    else
+        collect_fail "#800: 順序を観測した単位数が下限を満たす" \
+            "観測件数 $matched 件が下限 $LAYER_ORDER_UNIT_MIN 件を下回る（表の欠落・照合ループの退行・corpus の縮小）"
+    fi
+
+    collect_finish
+}
+
+# ---- 収集を欠いた起動 ----
+#
+# レイヤ単位の起動を公開された使い方として位置づけた以上、その前提（事実の収集）を欠いた
+# 起動は「検査したが違反なし」ではなく誤りとして現れる必要がある。構造整理の直後は、空配列
+# 参照の退避形と連想配列の既定値が「未収集」と「対象0件」を同じ値へ畳み、事実を読む5単位の
+# すべてが無言で違反0件・exit 0 を返していた。レイヤ5 は誤名走査だけが走るため、corpus に
+# よっては出力まで出て「レイヤは動いている」ように見える経路もあった。
+# 由来: Issue #800 に対する PR #801 のレビュー指摘3。
+#
+# `<レイヤ関数名>|<単位名>`。収集済みの事実を読む5単位をすべて並べる。
+UNCOLLECTED_GUARDED_LAYERS=(
+    'check_layer1_frontmatter_schema|レイヤ1'
+    'check_layer3_forward|レイヤ3 forward'
+    'check_layer3_reverse|レイヤ3 reverse'
+    'check_layer4_related_references|レイヤ4'
+    'check_layer5_filename_and_identifier|レイヤ5'
+)
+
+# 照合件数の下限。ループが実際に起動した単位の数を数える。
+UNCOLLECTED_GUARDED_LAYER_MIN=5
+
+@test "面㉒: 収集を欠いたレイヤ起動が合格を返さない" {
+    collect_init
+
+    local entry layer unit matched=0
+    for entry in "${UNCOLLECTED_GUARDED_LAYERS[@]}"; do
+        layer="${entry%%|*}"
+        unit="${entry##*|}"
+
+        # corpus は invalid/29 を使う。レイヤ5 が誤名走査だけで出力を出せる唯一の corpus で
+        # あり、「出力が出る＝レイヤが動いている」という誤読の余地を残さない。
+        run_sut_layer_uncollected "$layer" "$CORPUS_DIR/invalid/29-missing-adr-prefix"
+        collect_rc 2 "#800: $unit は収集を欠いた起動を非0で拒む"
+        collect_contains "$output" "事実の収集を前提とします" \
+            "#800: $unit は収集を欠いた起動の理由を出す"
+        collect_not_contains "$output" "[violations=" \
+            "#800: $unit は収集を欠いた起動で違反件数を報告しない"
+        matched=$((matched + 1))
+    done
+
+    if [ "$matched" -ge "$UNCOLLECTED_GUARDED_LAYER_MIN" ]; then
+        collect_ok "#800: 収集を要求する単位の照合件数が下限を満たす（$matched 件 / 下限 $UNCOLLECTED_GUARDED_LAYER_MIN 件）"
+    else
+        collect_fail "#800: 収集を要求する単位の照合件数が下限を満たす" \
+            "照合件数 $matched 件が下限 $UNCOLLECTED_GUARDED_LAYER_MIN 件を下回る（表の欠落・照合ループの退行）"
+    fi
+
+    # レイヤ2 は収集済みの事実を読まないため印を要求しない。要求する側と要求しない側を
+    # 1ケース内で押さえ、「全単位が一律に拒む」という誤った一般化を防ぐ。要求を一律へ
+    # 広げる変更はここで赤になる。
+    run_sut_layer_uncollected check_layer2_index_sync "$CORPUS_DIR/invalid/32-index-missing"
+    collect_rc 0 "#800: レイヤ2 は収集を欠いても起動できる"
+    collect_contains "$output" "[violations=1]" "#800: レイヤ2 は収集なしでも自分の違反を数える"
+
+    # 収集を経た起動は従来どおり検査を実行する（印そのものが検査を殺していないこと）。
+    run_sut_layer check_layer5_filename_and_identifier "$CORPUS_DIR/invalid/29-missing-adr-prefix"
+    collect_rc 0 "#800: 収集を済ませたレイヤ5 の単独起動は従来どおり通る"
+    collect_contains "$output" "[violations=1]" "#800: 収集を済ませたレイヤ5 は違反を数える"
 
     collect_finish
 }

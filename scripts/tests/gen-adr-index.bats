@@ -25,7 +25,7 @@ setup_file() {
 
 # 退避済みの exit code を、渡されたラベルで収集する。
 # 緑経路でも必ず collect_ok を呼ぶ（失敗時にしか数えない形は、旧ランナーの欠陥として
-# lint-adr-surface.bats が名指ししているものと同型であり、報告の分母を失敗の種類で
+# manage-adr-surface.bats が名指ししているものと同型であり、報告の分母を失敗の種類で
 # 揺らがせる）。layers / xref / stem が持つ collect_rc と同じ形である。
 collect_saved_rc() {
     local key="$1" expect="$2" label="$3" rc
