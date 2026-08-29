@@ -109,11 +109,16 @@ gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'
 
 ### 6. plan サブエージェントによるプラン作成
 
-ステップ2のレビュー基準・ステップ3のIssue情報（またはフリーテキスト補足指示）・ステップ4のベースブランチ・ステップ5で解決したプランファイルパスを統合したプロンプトを構築し、plan サブエージェントを起動する。サブエージェントは渡された解決済みパスへプラン本文を直接 Write し、メインへはパス＋構造化サマリのみを返す（plan 本文全文はメイン context に載せない）。
+ステップ3のIssue情報（またはフリーテキスト補足指示）・ステップ4のベースブランチ・ステップ5で解決したプランファイルパスを差し込んだプロンプトを構築し、plan サブエージェントを起動する。サブエージェントは渡された解決済みパスへプラン本文を直接 Write し、メインへはパス＋構造化サマリのみを返す（plan 本文全文はメイン context に載せない）。
 
-プロンプト中の `{PLAN_CONTRACT}` は `plan-contract.md` の全文で置換する。
+**プロンプトの組み立て:**
 
-**プロンプト構築・サブエージェント起動の詳細手順**: `${CLAUDE_SKILL_DIR}/references/agent-prompt-construction.md` を参照（3 種モード別テンプレート、起動手順、フォールバック）。
+1. `${CLAUDE_SKILL_DIR}/references/plan-prompt.md` をReadし、起動プロンプトの素材とする
+2. `{PLAN_CONTRACT}` を `plan-contract.md` の全文で置換する
+3. `{OUTPUT_FORMAT}` を `plan-output-format.md` の全文で置換する
+4. 素材末尾の「モード別入力ブロック」節は、ステップ1で判定したモードのブロックと全モード共通ブロックだけを残して他モードのブロックを取り除き、各プレースホルダにステップ3〜5で得た値を差し込む
+
+**起動:** Agent tool（`subagent_type: dev-workflow:plan`）で実行する。モデルと effort は定義の frontmatter に従い、呼び出し側では指定しない。Agent toolが使えない場合や起動に失敗した場合は、`${CLAUDE_PLUGIN_ROOT}/agents/plan.md` の定義内容をプロンプト本文へ埋め込んでインラインで直接実行する（インライン実行では preload が効かないため、計画骨格は同定義のフォールバックに従う）。
 
 ### 7. レビュアーエージェントによるレビュー → 修正ループ（最大2周）
 
@@ -135,7 +140,7 @@ Agent tool（`subagent_type: dev-workflow:plan-reviewer`）で起動する。モ
 **7c. レビュー結果の処理:**
 
 - レビュー結果が `PASS` → ステップ8へ
-- レビュー結果が `FAIL` → メインが Edit するのではなく、**新しい plan エージェントインスタンスを編集モードで起動**し、プランファイルのパス＋レビュアーの指摘テーブルを渡して修正させる（エージェントが自前で Read → 該当箇所を Edit → 変更サマリを返却。plan 本文はメインに載らない）。修正後 7b に戻る（最大2周）。ここで渡すプランファイルのパスは、ステップ5で `${CLAUDE_PLUGIN_ROOT}/references/plan-location-resolution.md` の解決順序に従って解決した解決ディレクトリ内のパスを用いる（編集は in-place で行い、現作業ディレクトリへコピーしない）
+- レビュー結果が `FAIL` → メインが Edit するのではなく、**新しい plan エージェントインスタンスを編集モードで起動**し（Agent tool の `subagent_type: dev-workflow:plan`。起動できない場合のフォールバックは生成モードと同様）、プランファイルのパス＋レビュアーの指摘テーブルを渡して修正させる（エージェントが自前で Read → 該当箇所を Edit → 変更サマリを返却。plan 本文はメインに載らない）。修正後 7b に戻る（最大2周）。ここで渡すプランファイルのパスは、ステップ5で `${CLAUDE_PLUGIN_ROOT}/references/plan-location-resolution.md` の解決順序に従って解決した解決ディレクトリ内のパスを用いる（編集は in-place で行い、現作業ディレクトリへコピーしない）
 
 **ループ終了条件:**
 
