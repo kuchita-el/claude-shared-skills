@@ -8,7 +8,7 @@
 
 ## 参照する定義の解決
 
-本プロンプトが名指すDoR定義・種別プロファイルの節（「サイズ判定ロジック」「Ready 判定基準」「受入条件の検証可能性・客観性 判定基準」「適正な抽象度 判定基準」「HOW混入指摘の種別分岐」等）は、採用した定義ファイルの中で解決する。採用したのがプロジェクト固有定義（`{project_root}/.claude/dor/definition.md` / `{project_root}/.claude/dor/type-profiles.md`）で、かつ当該節がその中に存在しない場合は、**その節に限り**プラグイン共有デフォルト（`{plugin_root}/references/dor-default.md` / `{plugin_root}/references/issue-type-profiles.md`）の同名節へフォールバックして解決する。プロジェクト固有定義が共通項目への追加だけを記している場合に、参照した判定基準が解決先を持たなくなるのを防ぐための縮退規定である。
+本プロンプトが名指すDoR定義・種別プロファイルの節（「サイズ判定ロジック」「Ready 判定基準」「受入条件の検証可能性・客観性 判定基準」「適正な抽象度 判定基準」「HOW混入指摘の種別分岐」等）は、採用した定義ファイルの中で解決する。採用したのがプロジェクト固有定義（`{project_root}/.claude/dor/definition.md` / `{project_root}/.claude/dor/type-profiles.md`）で、かつ当該節がその中に存在しない場合は、**その節に限り**プラグイン共有デフォルト（`{plugin_root}/references/dor-default.md` / `{plugin_root}/references/issue-type-profiles.md`）の同名節へフォールバックして解決する。プロジェクト固有定義が共通項目への追加だけを記している場合に、参照した判定基準が解決先を持たなくなるのを防ぐための縮退規定である。なお本規定は精査側（本ファイル）と作成側（`create-issue/SKILL.md`）の2箇所で持つ。両スキルは互いのファイルを読まず、共有 references/ へ1本化すると両スキルの読み込みリスト（`refine-issue/SKILL.md` は1件モード・全件モードで2箇所）へ追加が要り、重複の置き場所がリスト側へ移るだけで数が減らないため、規定側の重複を選んでいる。
 
 ## サイズ判定
 
