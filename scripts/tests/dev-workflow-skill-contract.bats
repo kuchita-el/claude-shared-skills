@@ -46,6 +46,14 @@ DW_MD_MIN=25
 # 単一出典として検査する needle 群の件数の下限。
 NEEDLE_GROUP_MIN=4
 
+# 走査した reference ファイル件数の下限。実測20本。
+REFERENCE_MIN=20
+
+# 参照元（SKILL.md ・エージェント定義）の件数の下限。実測12本（skills 4 ＋ agents 8）。
+# 参照到達性は「reference が誰かから引かれているか」を測るため、参照元が丸ごと消えると
+# 判定が空振りする。参照元側にも下限を置き、エージェント定義の消失を赤にする。
+SOURCE_MIN=12
+
 # ---- 走査 ----
 
 dw_skill_files() {
@@ -68,8 +76,18 @@ dw_reference_sources() {
     find "$DW_ROOT/agents" -maxdepth 1 -name '*.md' -type f
 }
 
-# 走査した reference ファイル件数の下限。実測20本。
-REFERENCE_MIN=20
+# スキルごとの必須ツール。`<スキル名>|<ツール>|<ツール>…` の形を取る。
+#
+# これはハーネス側のツール語彙の網羅列挙ではない。各スキルの手順が実際に実行する操作の
+# **最小集合**であり、部分集合として含まれることだけを要求する。ツールの追加は赤にならず、
+# 必須のものを落としたときだけ赤になるため、ハーネスが新ツールを足しても陳腐化しない。
+# 形式的妥当性（空でない・`Bash(` が閉じる・重複が無い）とは射程が異なり、そちらは
+# 語彙を持たない検査、こちらはスキル固有の権限の欠落を見る検査である。
+dw_required_tools() {
+    printf '%s\n' \
+        'create-issue|Read|AskUserQuestion|Write|Bash(gh issue create*)' \
+        'refine-issue|Bash(gh issue view*)|Bash(bash *skills/refine-issue/scripts/prepare-issues.sh*)|Agent'
+}
 
 # 単一出典の needle 群。1行が1群で、`群名|needle|needle|…` の形を取る。
 # 群の全構成要素が共起するファイルが DW_ROOT 配下でちょうど1件であることを検査する。
@@ -106,13 +124,39 @@ dw_frontmatter_end() {
     grep -n '^---$' "$1" | sed -n '2p' | cut -d: -f1
 }
 
-# front-matter 内の単一行スカラの値。値を囲む引用符は剥がす
-# （YAML の値として実際に評価される文字列を数えるため。引用の有無で字数判定が
-# 2字ぶん変わると、規律と無関係な回避が境界近傍で成立する）。
+# front-matter 内のスカラ値。値を囲む引用符は剥がす（YAML の値として実際に評価される
+# 文字列を数えるため。引用の有無で字数判定が2字ぶん変わると、規律と無関係な回避が
+# 境界近傍で成立する）。
+#
+# 値がブロックスカラ指示子（`>` / `|` と chomp・indent 修飾）または空で、後続に
+# インデント継続行がある場合は、それらを連結して1つの値として返す。同一行しか読まない
+# 実装だと、`description: >-` と書いて次行以降へ長文を置くだけで字数の規律を回避できる
+# （引用符を剥がす決定が塞いだのと同型の穴が別の形で残る）。
 dw_fm_value() {
     local file="$1" fm_end="$2" key="$3" v
-    v="$(sed -n "1,${fm_end}p" "$file" | grep -m1 "^${key}:" || true)"
-    v="${v#"${key}":}"
+    v="$(awk -v fmend="$fm_end" -v key="$key" '
+        function trim(s) { sub(/^[ \t]+/, "", s); sub(/[ \t]+$/, "", s); return s }
+        NR > fmend { exit }
+        !inblock && index($0, key ":") == 1 {
+            val = trim(substr($0, length(key) + 2))
+            if (val == "" || val ~ /^[>|][0-9]*[-+]?$/) { inblock = 1; buf = ""; next }
+            print val
+            exit
+        }
+        inblock {
+            if ($0 ~ /^[ \t]/) {
+                line = trim($0)
+                if (buf == "") { buf = line } else { buf = buf " " line }
+                next
+            }
+            # exit は END を走らせる。先に inblock を落とさないと END でも同じ値が
+            # 出力され、値が2倍に数えられる（400字が801字になる）。
+            inblock = 0
+            print buf
+            exit
+        }
+        END { if (inblock) print buf }
+    ' "$file")"
     v="${v#"${v%%[![:space:]]*}"}"
     v="${v%"${v##*[![:space:]]}"}"
     if [ "${#v}" -ge 2 ]; then
@@ -132,17 +176,41 @@ dw_char_count() {
 }
 
 # front-matter の allowed-tools のリスト項目。`#` で始まるコメント行は除く。
+#
+# ブロック形（`allowed-tools:` の次行から `  - Read`）とフロー形（`allowed-tools: Read, Grep`
+# および `[Read, Grep]`）の双方を受ける。ブロック形しか受けない実装だと、配布物が
+# フロー形を正当に採った瞬間に「リスト項目が0件」で赤くなり、赤の原因が配布物の誤りか
+# 検査の未対応かを判別できない。フロー形の分割は括弧の深さを見て行う。
+# `Bash(gh api repos/*/pulls/*, x)` のような括弧内のカンマで項目が割れると、
+# 閉じ括弧の欠落として誤検出されるためである。
 dw_allowed_tools() {
     local file="$1" fm_end="$2"
     awk -v fmend="$fm_end" '
+        function trim(s) { sub(/^[ \t]+/, "", s); sub(/[ \t]+$/, "", s); return s }
+        function emit_flow(val,   i, ch, depth, item) {
+            sub(/^\[/, "", val); sub(/\]$/, "", val)
+            depth = 0; item = ""
+            for (i = 1; i <= length(val); i++) {
+                ch = substr(val, i, 1)
+                if (ch == "(") { depth++ }
+                else if (ch == ")") { depth-- }
+                if (ch == "," && depth == 0) { print trim(item); item = ""; continue }
+                item = item ch
+            }
+            print trim(item)
+        }
         NR > fmend { exit }
-        /^allowed-tools:[ \t]*$/ { inlist = 1; next }
+        !inlist && index($0, "allowed-tools:") == 1 {
+            val = trim(substr($0, 15))
+            if (val == "") { inlist = 1; next }
+            emit_flow(val)
+            exit
+        }
         inlist && /^[^ \t]/ { inlist = 0 }
         inlist && /^[ \t]*#/ { next }
         inlist && /^[ \t]*-/ {
             sub(/^[ \t]*-[ \t]*/, "")
-            sub(/[ \t]+$/, "")
-            print
+            print trim($0)
             next
         }
     ' "$file"
@@ -152,7 +220,7 @@ dw_allowed_tools() {
 # （語彙の正本がリポジトリ内に無く、ハーネス側が新ツールを足した瞬間に赤くなって、
 # 赤の原因が配布物の誤りかテストの陳腐化か判別できなくなるため）。
 dw_collect_allowed_tools() {
-    local file="$1" fm_end="$2" rel="$3"
+    local file="$1" fm_end="$2" rel="$3" dir="$4"
     local -a items=()
     mapfile -t items < <(dw_allowed_tools "$file" "$fm_end")
 
@@ -193,6 +261,21 @@ dw_collect_allowed_tools() {
     else
         collect_fail "allowed-tools に重複が無い: $rel" "重複 $bad_dup 件"
     fi
+
+    # スキル固有の必須ツールが宣言されているか（部分集合検査）。
+    local line name tool
+    local -a want=()
+    while IFS= read -r line; do
+        name="${line%%|*}"
+        [ "$name" = "$dir" ] || continue
+        IFS='|' read -r -a want <<<"$line"
+        for tool in "${want[@]:1}"; do
+            case "$seen" in
+                *"|$tool|"*) collect_ok "必須ツールを宣言する: $rel -> $tool" ;;
+                *) collect_fail "必須ツールを宣言する: $rel -> $tool" "allowed-tools に無い" ;;
+            esac
+        done
+    done < <(dw_required_tools)
     return 0
 }
 
@@ -241,7 +324,7 @@ dw_collect_scanned() {
             fi
         fi
 
-        dw_collect_allowed_tools "$f" "$fm_end" "$rel"
+        dw_collect_allowed_tools "$f" "$fm_end" "$rel" "$dir"
     done
 
     dw_collect_scanned "$scanned" "$SKILL_MIN" "走査した SKILL.md の件数"
@@ -348,6 +431,14 @@ dw_collect_scanned() {
         collect_finish
         return
     fi
+
+    # 参照元側にも下限を置く。参照元が丸ごと消えると判定が空振りするため、被参照側の
+    # 走査件数だけでは「到達できている」ことの根拠にならない。
+    local sources=0 s
+    for s in "${srcs[@]}"; do
+        sources=$((sources + 1))
+    done
+    dw_collect_scanned "$sources" "$SOURCE_MIN" "走査した参照元（SKILL.md ・エージェント定義）の件数"
 
     local scanned=0 r rel base
     for r in ${refs[@]+"${refs[@]}"}; do

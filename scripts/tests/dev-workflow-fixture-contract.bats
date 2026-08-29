@@ -56,6 +56,40 @@ collect_scanned_min() {
     return 0
 }
 
+# 系統ディレクトリを実際に列挙して件数の下限を判定し、あわせて期待する名前が
+# 実在することを1件ずつ確かめる。
+#
+# 名前を並べた for ループの回数を数えても、それはテスト側のリテラルを数えているだけで
+# fixture の実体を測っていない（系統ごと消えてもカウンタは下限を満たす）。走査は必ず
+# find の出力に対して行う。名前の固定を併せて置くのは、fixture が別名へ移ったときに
+# 件数だけでは検出できないためである（旧テストは名前を固定していた）。
+#
+# 引数: $1 系統ディレクトリ / $2 系統名 / $3.. 期待する fixture 名
+collect_system_fixtures() {
+    local root="$1" system="$2"
+    shift 2
+    local -a expected=("$@")
+
+    local -a dirs=()
+    mapfile -t dirs < <(find "$root" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+
+    local scanned=0 d
+    for d in ${dirs[@]+"${dirs[@]}"}; do
+        scanned=$((scanned + 1))
+    done
+    collect_scanned_min "$scanned" "${#expected[@]}" "走査した $system fixture の件数"
+
+    local name
+    for name in "${expected[@]}"; do
+        if [ -d "$root/$name" ]; then
+            collect_ok "fixture が実在する: $system/$name"
+        else
+            collect_fail "fixture が実在する: $system/$name" "ディレクトリが無い"
+        fi
+    done
+    return 0
+}
+
 @test "fixture 走査: 全ディレクトリが非空の期待値ファイルを持ち JSON は構文として妥当である" {
     collect_init
     local -a dirs=()
@@ -100,19 +134,19 @@ collect_scanned_min() {
 @test "create 系: 停止2件が書き込みを伴わず停止し 非停止1件が生成物を持つ" {
     collect_init
     local root="$FIXTURE_ROOT/create"
-    local scanned=0 name
+    local name
+
+    collect_system_fixtures "$root" create missing-ac rejected complete
 
     # 停止系。decision が stop で、未解決項目を持ち、書き込みが1件も無いことを
     # 3条件の共起として要求する（どれか1つでも欠ければ赤になる）。
     for name in missing-ac rejected; do
-        scanned=$((scanned + 1))
         collect_jq "$root/$name/expected.json" \
             '.decision == "stop" and (.unresolved | length > 0) and (.writes | length == 0)' \
             "停止契約が成立する: create/$name"
     done
 
     # 非停止系。停止しない側の正例であり、生成物が空でなく受入条件の節を持つ。
-    scanned=$((scanned + 1))
     local complete="$root/complete/expected.md"
     if [ -s "$complete" ]; then
         collect_ok "生成物が非空: create/complete"
@@ -121,18 +155,19 @@ collect_scanned_min() {
         collect_fail "生成物が非空: create/complete" "expected.md が無いか0バイト"
     fi
 
-    collect_scanned_min "$scanned" 3 "走査した create fixture の件数"
     collect_finish
 }
 
 @test "refine 系: status が Ready 境界の2値を取り host adapter の注入とフォールバックが対で固定される" {
     collect_init
     local root="$FIXTURE_ROOT/refine"
-    local scanned=0 name
+    local name
+
+    collect_system_fixtures "$root" refine \
+        single-ready single-not-ready single-codex-injected single-codex-main-fallback
 
     # status の値域。Ready / Not Ready のいずれかであることを4件すべてに要求する。
     for name in single-ready single-not-ready single-codex-injected single-codex-main-fallback; do
-        scanned=$((scanned + 1))
         collect_jq "$root/$name/expected.json" \
             '.status == "Ready" or .status == "Not Ready"' \
             "status が Ready 境界の2値を取る: refine/$name"
@@ -155,12 +190,15 @@ collect_scanned_min() {
         '.execution == "main-fallback"' \
         "フォールバック側の execution が固定される: refine/single-codex-main-fallback"
 
-    collect_scanned_min "$scanned" 4 "走査した refine fixture の件数"
     collect_finish
 }
 
 @test "implementation 系: 未解決を含む全 fixture が Ready を拒否する" {
     collect_init
+
+    collect_system_fixtures "$FIXTURE_ROOT/implementation" implementation \
+        ac-unresolved review-blocker ci-red ci-unknown dependency-missing
+
     local -a files=()
     mapfile -t files < <(find "$FIXTURE_ROOT/implementation" -mindepth 2 -maxdepth 2 -name 'expected.json' -type f | sort)
 
@@ -178,6 +216,9 @@ collect_scanned_min() {
 
 @test "plan 系: レビュー往復の上限で判断依頼へ抜ける境界が固定される" {
     collect_init
+
+    collect_system_fixtures "$FIXTURE_ROOT/plan" plan reviewer-fail-twice
+
     local f="$FIXTURE_ROOT/plan/reviewer-fail-twice/expected.json"
 
     collect_jq "$f" '.status == "decision-request"' "上限到達で判断依頼へ抜ける: plan/reviewer-fail-twice"
