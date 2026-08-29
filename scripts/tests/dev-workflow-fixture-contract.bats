@@ -183,12 +183,18 @@ collect_system_fixtures() {
         "Not Ready 側が未解決項目を持つ: refine/single-not-ready"
 
     # host adapter witness。注入とフォールバックを対で読む。
+    #
+    # execution だけを固定して status を上の値域検査（Ready または Not Ready）に委ねると、
+    # 2件の status を入れ替えても両方を Ready に揃えても緑で通る。値域検査は「いずれかで
+    # 合格」の形であり、個々の fixture が持つ意味を固定しない。fixture 名が主張する
+    # 「注入されて Ready へ到達する」「フォールバックして Not Ready に留まる」を、
+    # execution と status の共起として1件ずつ固定する。
     collect_jq "$root/single-codex-injected/expected.json" \
-        '.execution == "injected"' \
-        "注入側の execution が固定される: refine/single-codex-injected"
+        '.execution == "injected" and .status == "Ready"' \
+        "注入側の execution と status が対で固定される: refine/single-codex-injected"
     collect_jq "$root/single-codex-main-fallback/expected.json" \
-        '.execution == "main-fallback"' \
-        "フォールバック側の execution が固定される: refine/single-codex-main-fallback"
+        '.execution == "main-fallback" and .status == "Not Ready"' \
+        "フォールバック側の execution と status が対で固定される: refine/single-codex-main-fallback"
 
     collect_finish
 }

@@ -65,9 +65,11 @@ dw_md_files() {
 }
 
 # 参照到達性の被参照側（reference ファイル）。
+# 深さを固定しない。`skills/*/references/sub/*.md` のような入れ子を走査から外すと、
+# そこへ置いた孤立ファイルが検出されない無検査の置き場所になる。
 dw_reference_files() {
-    find "$DW_ROOT/skills" -mindepth 3 -maxdepth 3 -path '*/references/*' -name '*.md' -type f
-    find "$DW_ROOT/references" -maxdepth 1 -name '*.md' -type f
+    find "$DW_ROOT/skills" -path '*/references/*' -name '*.md' -type f
+    find "$DW_ROOT/references" -name '*.md' -type f
 }
 
 # 参照到達性の参照元側（SKILL.md とエージェント定義）。
@@ -186,6 +188,11 @@ dw_char_count() {
 dw_allowed_tools() {
     local file="$1" fm_end="$2"
     awk -v fmend="$fm_end" '
+        # 値末尾のインラインコメントを落とす。YAML の平文スカラは空白＋# で終わるため、
+        # 剥がさないと `- Bash(gh issue create*)    # 説明` が閉じ括弧の無い項目として
+        # 誤検出される。この体裁はプロジェクト CLAUDE.md の Skill Definition Format が
+        # 例示しており、回避を試みずに踏む書式である。
+        function strip_comment(s) { sub(/[ \t]+#.*$/, "", s); return s }
         function trim(s) { sub(/^[ \t]+/, "", s); sub(/[ \t]+$/, "", s); return s }
         function emit_flow(val,   i, ch, depth, item) {
             sub(/^\[/, "", val); sub(/\]$/, "", val)
@@ -201,7 +208,7 @@ dw_allowed_tools() {
         }
         NR > fmend { exit }
         !inlist && index($0, "allowed-tools:") == 1 {
-            val = trim(substr($0, 15))
+            val = trim(strip_comment(substr($0, 15)))
             if (val == "") { inlist = 1; next }
             emit_flow(val)
             exit
@@ -209,8 +216,9 @@ dw_allowed_tools() {
         inlist && /^[^ \t]/ { inlist = 0 }
         inlist && /^[ \t]*#/ { next }
         inlist && /^[ \t]*-/ {
-            sub(/^[ \t]*-[ \t]*/, "")
-            print trim($0)
+            line = $0
+            sub(/^[ \t]*-[ \t]*/, "", line)
+            print trim(strip_comment(line))
             next
         }
     ' "$file"
@@ -420,6 +428,15 @@ dw_collect_scanned() {
 # 赤の意味が「孤立が生じた」から「数え直しが要る」へ濁る。判定は「到達元が1件以上あるか」
 # に置き、参照が2件以上あるファイルの参照を1件削っても緑のままであることを対の変異で
 # 確かめる。
+#
+# 【親相対の references 参照を禁じる射程】
+# 旧テストは create / refine の SKILL.md に対して「一段参照に留まる」ことを要求していた。
+# その規定のうち2段参照は validate-plugin-portability.sh が引き継いでいるが、親を遡る
+# 参照はどの検査器も持たない（同スクリプトが拒むのは配布元へ戻る ../packages/ と
+# ../dist/ だけである）。ここでは reference へ至る親相対のパスを禁じる。
+# 親相対そのものの全面禁止は採らない。plan-issue の SKILL.md が深刻度の値域の解決元として
+# エージェント定義を親経由で正当に指しており、全面禁止は配布物の変更を要求してしまう。
+# この残差（references 以外への親相対参照）は本ケースの射程外である。
 @test "参照到達性: reference ファイルがいずれも SKILL.md またはエージェント定義から引かれている" {
     collect_init
     local -a refs=() srcs=()
@@ -453,5 +470,25 @@ dw_collect_scanned() {
     done
 
     dw_collect_scanned "$scanned" "$REFERENCE_MIN" "走査した reference ファイルの件数"
+
+    # 親を遡って reference を指す参照を禁じる（旧テストの「一段参照に留まる」の残余）。
+    local -a skills=()
+    mapfile -t skills < <(dw_skill_files)
+    local checked=0 f rel fm_end hits
+    for f in ${skills[@]+"${skills[@]}"}; do
+        checked=$((checked + 1))
+        rel="${f#"$REPO_ROOT"/}"
+        fm_end="$(dw_frontmatter_end "$f")"
+        [ -n "$fm_end" ] || fm_end=0
+        hits="$(sed -n "$((fm_end + 1)),\$p" "$f" |
+            grep -cE '\.\./[A-Za-z0-9_./{}$-]*references/' || true)"
+        if [ "$hits" -eq 0 ]; then
+            collect_ok "親相対の references 参照が無い: $rel"
+        else
+            collect_fail "親相対の references 参照が無い: $rel" "$hits 行が該当"
+        fi
+    done
+    dw_collect_scanned "$checked" "$SKILL_MIN" "親相対参照を検査した SKILL.md の件数"
+
     collect_finish
 }
