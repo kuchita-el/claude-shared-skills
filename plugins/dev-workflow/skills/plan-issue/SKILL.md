@@ -31,7 +31,7 @@ plan サブエージェント（計画骨格を superpowers `writing-plans` へ�
 Issue番号を起点とする**通常モード**のほか、Issueを立てずにフリーテキストの補足指示だけでプランを作成する**Issueなしモード**を備える。
 
 **出力と範囲**: 計画対象・設計成果物・停止条件・変更境界は上記の実行ルールで判定する。
-計画出力とサブエージェント用promptの必須資産は `${CLAUDE_SKILL_DIR}/references/plan-output-format.md`、`${CLAUDE_SKILL_DIR}/references/plan-prompt.md` を直接参照する。
+計画出力とサブエージェント用promptの必須資産は `${CLAUDE_SKILL_DIR}/references/plan-contract.md`、`${CLAUDE_SKILL_DIR}/references/plan-output-format.md`、`${CLAUDE_SKILL_DIR}/references/plan-prompt.md` を直接参照する。
 
 ## 引数
 
@@ -59,14 +59,15 @@ Issue番号を起点とする**通常モード**のほか、Issueを立てずに
 
 **通常モードの場合の分割計画判定**: 通常モードと判定された後、補足指示等に分割要求（「分割」「複数 PR」「split」等）がある場合は分割モードに入る。分割モード内で `docs/plans/issue-{番号}-plan.md`（分割計画マスター）の有無により初回/N回目をさらに判定する。詳細手順は `${CLAUDE_SKILL_DIR}/references/split-plan-procedure.md` を参照。
 
-### 2. レビュー基準の読み込み
+### 2. 規範とレビュー基準の読み込み
 
-以下の順序でReadツールで読み込み、両方の内容をマージしてレビュー基準とする:
+以下の順序でReadツールで読み込み、3点の内容をマージして規範とレビュー基準とする:
 
-1. **デフォルト（必須）**: `${CLAUDE_SKILL_DIR}/references/review-guide-default.md`
-2. **プロジェクト固有（任意）**: `{プロジェクトルート}/.claude/plan-issue/review-guide.md`
+1. **規範（必須）**: `${CLAUDE_SKILL_DIR}/references/plan-contract.md`（プラン成果物の値域・構造・多重度・既定文言の正本）
+2. **検査観点（必須）**: `${CLAUDE_SKILL_DIR}/references/review-guide-default.md`
+3. **プロジェクト固有（任意）**: `{プロジェクトルート}/.claude/plan-issue/review-guide.md`
 
-デフォルトは常に読み込む。プロジェクト固有ファイルが存在する場合（Readが成功した場合）、その内容を追加のレビュー観点として加える。
+規範と検査観点は常に読み込む。プロジェクト固有ファイルが存在する場合（Readが成功した場合）、その内容を追加のレビュー観点として加える。
 
 ### 3. Issue情報の取得
 
@@ -123,7 +124,7 @@ gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'
 登録済みサブエージェント（`subagent_type: dev-workflow:plan-reviewer`）に渡すプロンプトを構築する。以下を本文に含める:
 
 - **プランファイルのパス**: ステップ5で解決し、ステップ6でエージェントが Write したプランファイルのパス
-- **レビュー基準**: ステップ2で読み込んだレビュー基準の全文（デフォルト＋プロジェクト固有）
+- **規範とレビュー基準**: ステップ2で読み込んだ3点（規範・検査観点・プロジェクト固有基準）の全文
 
 **7b. レビュアーエージェントの起動:**
 
