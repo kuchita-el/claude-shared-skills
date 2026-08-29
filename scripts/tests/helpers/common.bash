@@ -23,7 +23,7 @@
 # bats は setup_file が失敗するとそのファイルの全ケースを `not ok N setup_file failed` の
 # 1件へ潰す。報告総数が失敗の有無で変動し、総数固定（AC5）とケース間の失敗非波及（AC4）に
 # 直接反する。よって common_setup_file は判定を一切行わず、常に return 0 で終わる。
-# 前提不成立（corpus 不在・検査器不在）は記録するだけにし、判定は各 .bats が1件だけ持つ
+# 前提不成立（ADR 群不在・検査器不在）は記録するだけにし、判定は各 .bats が1件だけ持つ
 # 前提不成立ケース（assert_preconditions_met）が行う。
 
 bats_require_minimum_version 1.5.0
@@ -39,12 +39,12 @@ FIXTURES_DIR="$REPO_ROOT/scripts/fixtures"
 # 各 .bats はファイル冒頭で対象を変数として宣言し、setup_file から common_setup_file を呼ぶ。
 #
 #   SUT                — 既定で起動する被テスト検査器の絶対パス（省略可）
-#   CORPORA            — `<キー>|<corpus の絶対パス>[|<検査器の絶対パス>]` の配列（省略可）
+#   CORPORA            — `<キー>|<ADR 群の絶対パス>[|<検査器の絶対パス>]` の配列（省略可）
 #                        キーは退避ファイル名になるため、英数字・ハイフン・アンダースコアのみ。
 #                        第3フィールドを省くと SUT を使う。
 #   PRECONDITION_PATHS — 存在していなければならないパスの配列（省略可）
 #
-# CORPORA を空にすれば起動はスキップされる。corpus が @test ごとに固有で事前起動を共有
+# CORPORA を空にすれば起動はスキップされる。ADR 群が @test ごとに固有で事前起動を共有
 # できない場合はこの経路を使い、ケース内で `run` により直接起動する。
 
 # 前提不成立を記録する。判定はしない。
@@ -80,7 +80,7 @@ common_setup_file() {
             continue
         fi
         if [ ! -e "$corpus" ]; then
-            record_precondition "corpus が無い（key=$key）: $corpus"
+            record_precondition "ADR 群が無い（key=$key）: $corpus"
             continue
         fi
 
@@ -138,7 +138,7 @@ run_sut() {
 # 見られない。この代償を受け入れたうえで、レイヤ間に検査の依存が無いことを外から確かめる。
 # 部分シェルは `set -e` の下にあるため、単位が非0で戻ると `[violations=...]` は出力されない。
 #
-# 引数: $1 レイヤ関数名 / $2 corpus のパス / $3 collect（収集を済ませる）| skip（省く）
+# 引数: $1 レイヤ関数名 / $2 ADR 群のパス / $3 collect（収集を済ませる）| skip（省く）
 invoke_sut_layer() {
     local layer="$1" corpus="$2" collection="$3"
     run bash -c '
@@ -160,13 +160,13 @@ invoke_sut_layer() {
 }
 
 # 事実の収集を済ませたうえでの単独起動（規定どおりの使い方）。
-# 引数: $1 レイヤ関数名 / $2 corpus のパス
+# 引数: $1 レイヤ関数名 / $2 ADR 群のパス
 run_sut_layer() {
     invoke_sut_layer "$1" "$2" collect
 }
 
 # 事実の収集を省いた単独起動（契約違反）。検査を実行せず理由つきで非0に戻ることを
-# 観測するために使う。引数: $1 レイヤ関数名 / $2 corpus のパス
+# 観測するために使う。引数: $1 レイヤ関数名 / $2 ADR 群のパス
 run_sut_layer_uncollected() {
     invoke_sut_layer "$1" "$2" skip
 }

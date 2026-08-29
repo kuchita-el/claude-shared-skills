@@ -12,10 +12,10 @@
 #
 # 【配置について】テストと fixture を配布物外へ置く境界は docs/distribution-boundary.md が定める。
 #
-# corpus は fixture ごとに異なり事前起動を共有できないため、共有 setup_file の CORPORA は
+# ADR 群は fixture ごとに異なり事前起動を共有できないため、共有 setup_file の CORPORA は
 # 空にし、検査器の起動は各ケース内で bats 組み込みの `run` により行う
 # （helpers/common.bash の「検査器の起動の型」に従う。素の `out=$(bash …)` は errexit 下で
-#  exit 1 を期待する invalid corpus の初回反復で abort し、集約報告が全滅する）。
+#  exit 1 を期待する invalid の ADR 群の初回反復で abort し、集約報告が全滅する）。
 
 load 'helpers/common'
 
@@ -28,7 +28,7 @@ setup_file() {
     common_setup_file
 }
 
-# 面②の対象。`<corpus 名>|<期待メッセージ>|<exit ラベル>|<メッセージラベル>`
+# 面②の対象。`<ADR 群名>|<期待メッセージ>|<exit ラベル>|<メッセージラベル>`
 # 各 fixture は「front-matter 違反の検出」という単一の検査意図であるため1ケースへ束ね、
 # fixture ごとの旧ラベルは引数として保持する。
 # 件数の宣言は下の LAYER1_INVALID_CASE_MIN 1箇所に限る。ケース名やコメントへ具体数を
@@ -63,22 +63,22 @@ LAYER1_INVALID_CASES=(
 # 緑のまま通り、下限が検査として働かない。
 LAYER1_INVALID_CASE_MIN=11
 
-@test "前提: 被テスト検査器と fixture corpus が存在する" {
+@test "前提: 被テスト検査器と fixture の ADR 群が存在する" {
     assert_preconditions_met
 }
 
 # ---- レイヤ1 ----
 
-# valid corpus は違反0件で exit 0 になること
+# valid の ADR 群は違反0件で exit 0 になること
 # （旧形式スキップ・却下/提案中/廃止済みが合法であることを含む）
-@test "面①: レイヤ1 valid corpus が exit 0" {
+@test "面①: レイヤ1 valid の ADR 群が exit 0" {
     collect_init
     run_sut "$CORPUS_DIR/valid/01-mixed-validity"
-    collect_rc 0 "AC1: valid corpus(01-mixed-validity) は exit 0"
+    collect_rc 0 "AC1: valid の ADR 群(01-mixed-validity) は exit 0"
     collect_finish
 }
 
-# invalid corpus は exit 1 ＋ 該当違反種別メッセージの部分一致になること
+# invalid の ADR 群は exit 1 ＋ 該当違反種別メッセージの部分一致になること
 @test "面②: レイヤ1 不正 front-matter fixture 群の検出" {
     collect_init
 
@@ -139,30 +139,30 @@ LAYER1_INVALID_CASE_MIN=11
 # ---- レイヤ2（index 同期） ----
 
 # レイヤ2 は index の不一致を2つの経路で検出する。
-# drift: 古い index.md（有効ADRを1件欠く）を同梱した corpus は exit 1 ＋ 同期違反メッセージ。
-# 不在: index.md を持たない corpus も不一致として扱う。生成し忘れた index を「差分が無い」と
+# drift: 古い index.md（有効ADRを1件欠く）を同梱した ADR 群は exit 1 ＋ 同期違反メッセージ。
+# 不在: index.md を持たない ADR 群も不一致として扱う。生成し忘れた index を「差分が無い」と
 # 読んで緑にしないための経路であり、drift とは別の分岐が担う。
 @test "面⑤: レイヤ2 index 同期違反の検出（drift と不在）" {
     collect_init
 
     run_sut "$CORPUS_DIR/invalid/04-index-drift"
-    collect_rc 1 "AC3: index-drift corpus は exit 1"
+    collect_rc 1 "AC3: index-drift の ADR 群は exit 1"
     collect_contains "$output" "index 同期違反（gen-adr-index.sh の出力と一致しません" \
-        "AC3: index-drift corpus の drift を名指しする同期違反メッセージ"
+        "AC3: index-drift の ADR 群の drift を名指しする同期違反メッセージ"
 
     # fixture が index.md を持たないこと自体を検査項目として数える。誰かが index.md を
     # 足すと不在検査の負例が消えるため、その原因が読める形で落とす。
     if [ ! -f "$CORPUS_DIR/invalid/32-index-missing/index.md" ]; then
-        collect_ok "AC3: index-missing corpus が index.md を持たない（fixture の前提）"
+        collect_ok "AC3: index-missing の ADR 群が index.md を持たない（fixture の前提）"
     else
-        collect_fail "AC3: index-missing corpus が index.md を持たない（fixture の前提）" \
+        collect_fail "AC3: index-missing の ADR 群が index.md を持たない（fixture の前提）" \
             "index.md が同梱されており、不在検査の負例として働かない"
     fi
 
     run_sut "$CORPUS_DIR/invalid/32-index-missing"
-    collect_rc 1 "AC3: index-missing corpus は exit 1"
+    collect_rc 1 "AC3: index-missing の ADR 群は exit 1"
     collect_contains "$output" "index 同期違反（index.md が存在しません）" \
-        "AC3: index-missing corpus の不在を名指しする同期違反メッセージ"
+        "AC3: index-missing の ADR 群の不在を名指しする同期違反メッセージ"
 
     collect_finish
 }
@@ -171,37 +171,37 @@ LAYER1_INVALID_CASE_MIN=11
 @test "面⑥: レイヤ2 追加後も valid が通り続ける" {
     collect_init
     run_sut "$CORPUS_DIR/valid/01-mixed-validity"
-    collect_rc 0 "AC3: valid corpus(01-mixed-validity) はレイヤ2追加後も exit 0"
+    collect_rc 0 "AC3: valid の ADR 群(01-mixed-validity) はレイヤ2追加後も exit 0"
     collect_finish
 }
 
 # ---- レイヤ3（相互参照双方向性） ----
 
-# superseded-by=B を持つが B の本文に Supersedes 逆参照が無い corpus は
+# superseded-by=B を持つが B の本文に Supersedes 逆参照が無い ADR 群は
 # exit 1 ＋ 相互参照違反メッセージ
 @test "面⑦: レイヤ3 相互参照の欠落検出" {
     collect_init
 
     run_sut "$CORPUS_DIR/invalid/05-xref-missing"
-    collect_rc 1 "AC2: xref-missing corpus は exit 1"
-    collect_contains "$output" "相互参照違反" "AC2: xref-missing corpus の相互参照違反メッセージ"
+    collect_rc 1 "AC2: xref-missing の ADR 群は exit 1"
+    collect_contains "$output" "相互参照違反" "AC2: xref-missing の ADR 群の相互参照違反メッセージ"
 
     collect_finish
 }
 
-# 相互参照検証専用の valid corpus（双方向一致ペア＋入れ子バレット例＋未知ラベル例）は exit 0
+# 相互参照検証専用の valid ADR 群（双方向一致ペア＋入れ子バレット例＋未知ラベル例）は exit 0
 @test "面⑧: レイヤ3 正しい相互参照が通る" {
     collect_init
     run_sut "$CORPUS_DIR/valid/02-xref-valid"
-    collect_rc 0 "AC2: xref-valid corpus(02-xref-valid) は exit 0"
+    collect_rc 0 "AC2: xref-valid の ADR 群(02-xref-valid) は exit 0"
     collect_finish
 }
 
 # valid 01-mixed-validity はレイヤ3 追加後も exit 0 を維持すること
-@test "面⑨: レイヤ3 追加後も validity 混在 corpus が通る" {
+@test "面⑨: レイヤ3 追加後も validity 混在の ADR 群が通る" {
     collect_init
     run_sut "$CORPUS_DIR/valid/01-mixed-validity"
-    collect_rc 0 "AC2: valid corpus(01-mixed-validity) はレイヤ3追加後も exit 0"
+    collect_rc 0 "AC2: valid の ADR 群(01-mixed-validity) はレイヤ3追加後も exit 0"
     collect_finish
 }
 
@@ -232,7 +232,7 @@ LAYER1_INVALID_CASE_MIN=11
 
 # ---- レイヤ3: list-aware N対1 検査 ----
 #
-# 呼び出し群は同じ汎用ランナー（旧 run_xref_list_case）から呼ばれていたが、corpus ごとに
+# 呼び出し群は同じ汎用ランナー（旧 run_xref_list_case）から呼ばれていたが、ADR 群ごとに
 # 検査意図が異なるため束ねず、面⑫〜⑯へ分けて割り当てる。
 
 # AC1: リスト値の正常分割（A・B 両ファイル存在＋双方が本文逆参照）は違反0件で exit 0
@@ -315,15 +315,15 @@ LAYER1_INVALID_CASE_MIN=11
 
 # 逆方向の相互参照は2つの分岐を持つ。参照先は実在するが front-matter が宣言元を指していない
 # 経路（面⑩・面⑭）と、宣言の参照先ファイルそのものが存在しない経路である。後者は Issue #800 の
-# 被覆表で唯一の未被覆分岐として拾われた。当時の40 corpus のいずれでも発火せず、実装から当該
+# 被覆表で唯一の未被覆分岐として拾われた。当時の40本の ADR 群のいずれでも発火せず、実装から当該
 # 分岐を落としても全テストが緑のまま通る状態にあった。
-# invalid/34 は単一原因で違反1件になる corpus であり、他レイヤの出力が混ざらないことも
+# invalid/34 は単一原因で違反1件になる ADR 群であり、他レイヤの出力が混ざらないことも
 # 併せて固定する。混ざると、当該分岐を落とす変異でこのケースが赤にならない。
 @test "面⑰: レイヤ3 逆方向で宣言の参照先そのものが不在の検出" {
     collect_init
 
     run_sut "$CORPUS_DIR/invalid/34-xref-reverse-dangling"
-    collect_rc 1 "#800: xref-reverse-dangling corpus は exit 1"
+    collect_rc 1 "#800: xref-reverse-dangling の ADR 群は exit 1"
     collect_contains "$output" '相互参照違反（逆方向: 本文 "## 関連ADR" の "Supersedes: ' \
         "#800: 逆方向の本文宣言起点であることを名指しする違反メッセージ"
     collect_contains "$output" "宣言の参照先" \
@@ -336,7 +336,7 @@ LAYER1_INVALID_CASE_MIN=11
     collect_not_contains "$output" "front-matter superseded-by がそれを指していません" \
         "#800: 参照先が実在する側の逆方向メッセージは出ない"
 
-    # 他レイヤの違反が混ざらないこと（単一原因の corpus であることの固定）
+    # 他レイヤの違反が混ざらないこと（単一原因の ADR 群であることの固定）
     collect_not_contains "$output" "index 同期違反" "#800: レイヤ2 の違反が混ざらない"
     collect_not_contains "$output" "ファイル名形式違反" "#800: レイヤ5（形式）の違反が混ざらない"
     collect_not_contains "$output" "H1 整合違反" "#800: レイヤ5（H1）の違反が混ざらない"
@@ -357,38 +357,38 @@ LAYER1_INVALID_CASE_MIN=11
 @test "面⑱: 事実の収集だけを済ませた状態で単一レイヤを起動できる" {
     collect_init
 
-    # 起動しなかったレイヤの違反が出ないこと。invalid/32 はレイヤ2 だけが発火する corpus。
+    # 起動しなかったレイヤの違反が出ないこと。invalid/32 はレイヤ2 だけが発火する ADR 群。
     run_sut_layer check_layer3_reverse "$CORPUS_DIR/invalid/32-index-missing"
-    collect_rc 0 "#800: index 不在 corpus へレイヤ3 reverse だけを起動できる"
+    collect_rc 0 "#800: index 不在の ADR 群へレイヤ3 reverse だけを起動できる"
     collect_contains "$output" "[violations=0]" \
-        "#800: index 不在 corpus でレイヤ3 reverse は違反を数えない"
+        "#800: index 不在の ADR 群でレイヤ3 reverse は違反を数えない"
     collect_not_contains "$output" "index 同期違反" \
         "#800: レイヤ3 reverse の単独起動でレイヤ2 の違反は出ない"
 
-    # 逆向き。invalid/34 はレイヤ3 reverse だけが発火する corpus。
+    # 逆向き。invalid/34 はレイヤ3 reverse だけが発火する ADR 群。
     run_sut_layer check_layer2_index_sync "$CORPUS_DIR/invalid/34-xref-reverse-dangling"
-    collect_rc 0 "#800: 逆方向参照先不在 corpus へレイヤ2 だけを起動できる"
+    collect_rc 0 "#800: 逆方向参照先不在の ADR 群へレイヤ2 だけを起動できる"
     collect_contains "$output" "[violations=0]" \
-        "#800: 逆方向参照先不在 corpus でレイヤ2 は違反を数えない"
+        "#800: 逆方向参照先不在の ADR 群でレイヤ2 は違反を数えない"
     collect_not_contains "$output" "相互参照違反" \
         "#800: レイヤ2 の単独起動でレイヤ3 の違反は出ない"
 
     # 単独起動が「何も検査しない」へ退化していないこと。起動したレイヤの違反は出る。
     # この項が無いと、レイヤ関数の中身を空にする変異でも上の2項が緑のまま通る。
     run_sut_layer check_layer3_reverse "$CORPUS_DIR/invalid/34-xref-reverse-dangling"
-    collect_rc 0 "#800: 逆方向参照先不在 corpus へレイヤ3 reverse だけを起動できる"
+    collect_rc 0 "#800: 逆方向参照先不在の ADR 群へレイヤ3 reverse だけを起動できる"
     collect_contains "$output" "[violations=1]" \
         "#800: 起動したレイヤの違反は数える"
     collect_contains "$output" "相互参照違反（逆方向" \
         "#800: 起動したレイヤの違反は出力する"
 
     # 前処理結果を消費する側のレイヤが、収集済みの事実を実際に読めていること。
-    # valid/02-xref-valid は双方向が揃った corpus であり、レイヤ3 reverse は参照先の
+    # valid/02-xref-valid は双方向が揃った ADR 群であり、レイヤ3 reverse は参照先の
     # front-matter superseded-by を写像から読んで一致を確認する。写像を作る単位が
     # 連想配列を関数ローカルで宣言してしまうと後続のレイヤから見えなくなり、ここが
     # 「front-matter superseded-by がそれを指していません」の偽陽性として現れる。
     run_sut_layer check_layer3_reverse "$CORPUS_DIR/valid/02-xref-valid"
-    collect_rc 0 "#800: 双方向一致 corpus へレイヤ3 reverse だけを起動できる"
+    collect_rc 0 "#800: 双方向一致の ADR 群へレイヤ3 reverse だけを起動できる"
     collect_contains "$output" "[violations=0]" \
         "#800: 収集済みの事実が揃っており偽陽性を出さない"
     collect_not_contains "$output" "がそれを指していません" \
@@ -430,34 +430,34 @@ LAYER1_INVALID_CASE_MIN=11
 @test "面⑳: FM_FILES を読む3単位がそれぞれ独立に起動できる" {
     collect_init
 
-    # レイヤ1。invalid/01 はレイヤ1 だけが発火する corpus。
+    # レイヤ1。invalid/01 はレイヤ1 だけが発火する ADR 群。
     run_sut_layer check_layer1_frontmatter_schema "$CORPUS_DIR/invalid/01-status-missing"
-    collect_rc 0 "#800: status 欠落 corpus へレイヤ1 だけを起動できる"
+    collect_rc 0 "#800: status 欠落の ADR 群へレイヤ1 だけを起動できる"
     collect_contains "$output" "[violations=1]" "#800: レイヤ1 の単独起動が違反を数える"
     collect_contains "$output" "status が空です" "#800: レイヤ1 の単独起動が違反を出力する"
 
-    # レイヤ3 forward。invalid/05 はレイヤ3 forward だけが発火する corpus。
+    # レイヤ3 forward。invalid/05 はレイヤ3 forward だけが発火する ADR 群。
     run_sut_layer check_layer3_forward "$CORPUS_DIR/invalid/05-xref-missing"
-    collect_rc 0 "#800: 相互参照欠落 corpus へレイヤ3 forward だけを起動できる"
+    collect_rc 0 "#800: 相互参照欠落の ADR 群へレイヤ3 forward だけを起動できる"
     collect_contains "$output" "[violations=1]" "#800: レイヤ3 forward の単独起動が違反を数える"
     collect_contains "$output" 'に "Supersedes:' "#800: レイヤ3 forward の単独起動が違反を出力する"
 
-    # レイヤ5。invalid/24 はレイヤ5 だけが発火する corpus。
+    # レイヤ5。invalid/24 はレイヤ5 だけが発火する ADR 群。
     run_sut_layer check_layer5_filename_and_identifier "$CORPUS_DIR/invalid/24-filename-format-invalid"
-    collect_rc 0 "#800: ファイル名形式違反 corpus へレイヤ5 だけを起動できる"
+    collect_rc 0 "#800: ファイル名形式違反の ADR 群へレイヤ5 だけを起動できる"
     collect_contains "$output" "[violations=1]" "#800: レイヤ5 の単独起動が違反を数える"
     collect_contains "$output" "ファイル名形式違反" "#800: レイヤ5 の単独起動が違反を出力する"
 
     # 逆向き。起動しなかった単位の違反は出ない。FM_FILES の充填をどれか1単位の中へ戻す
     # 変異は、その単位を起動しない下の2件のいずれかで必ず赤になる。
     run_sut_layer check_layer5_filename_and_identifier "$CORPUS_DIR/invalid/01-status-missing"
-    collect_rc 0 "#800: status 欠落 corpus へレイヤ5 だけを起動できる"
-    collect_contains "$output" "[violations=0]" "#800: status 欠落 corpus でレイヤ5 は違反を数えない"
+    collect_rc 0 "#800: status 欠落の ADR 群へレイヤ5 だけを起動できる"
+    collect_contains "$output" "[violations=0]" "#800: status 欠落の ADR 群でレイヤ5 は違反を数えない"
     collect_not_contains "$output" "status が空です" "#800: レイヤ5 の単独起動でレイヤ1 の違反は出ない"
 
     run_sut_layer check_layer1_frontmatter_schema "$CORPUS_DIR/invalid/24-filename-format-invalid"
-    collect_rc 0 "#800: ファイル名形式違反 corpus へレイヤ1 だけを起動できる"
-    collect_contains "$output" "[violations=0]" "#800: ファイル名形式違反 corpus でレイヤ1 は違反を数えない"
+    collect_rc 0 "#800: ファイル名形式違反の ADR 群へレイヤ1 だけを起動できる"
+    collect_contains "$output" "[violations=0]" "#800: ファイル名形式違反の ADR 群でレイヤ1 は違反を数えない"
     collect_not_contains "$output" "ファイル名形式違反" "#800: レイヤ1 の単独起動でレイヤ5 の違反は出ない"
 
     collect_finish
@@ -466,10 +466,10 @@ LAYER1_INVALID_CASE_MIN=11
 # ---- 違反の出力順 ----
 #
 # 起動部は「違反の出力順はこの呼び出し順で決まる」と宣言し、Issue #800 もこれを不変条件へ
-# 挙げる。しかし負例 corpus は35本目を置くまで、違反が2件以上出る3本（06・28・33）が
+# 挙げる。しかし負例の ADR 群は35本目を置くまで、違反が2件以上出る3本（06・28・33）が
 # いずれも同一レイヤ内の違反であり、レイヤ間の相対順序をどのアサーションも観測していなかった。
 # 関数抽出後は起動部の2行を入れ替えるだけで順序が壊れる（基準版では同じ破壊に100行規模の
-# ブロック移動を要した）。6単位を1本ずつ同時に発火させる corpus で全5境界を固定する。
+# ブロック移動を要した）。6単位を1本ずつ同時に発火させる ADR 群で全5境界を固定する。
 # 由来: Issue #800 に対する PR #801 のレビュー指摘2。
 #
 # `<needle>|<単位名>` を起動部の呼び出し順に並べる。needle は単位を一意に決める断片であり
@@ -486,16 +486,16 @@ LAYER_ORDER_NEEDLES=(
 
 # 表が空になった（あるいは削られた）まま緑になる経路を塞ぐ下限。数える対象はループが実際に
 # 出力の中から見つけた単位の数であり、配列リテラルの要素数ではない。下限は名目値ではなく
-# corpus が実際に発火させる実数を置く。
+# ADR 群が実際に発火させる実数を置く。
 LAYER_ORDER_UNIT_MIN=6
 
 @test "面㉑: 違反の出力順が起動部の呼び出し順で決まる" {
     collect_init
 
     run_sut "$CORPUS_DIR/invalid/35-layer-order"
-    collect_rc 1 "#800: 6単位同時発火 corpus が exit 1"
+    collect_rc 1 "#800: 6単位同時発火の ADR 群が exit 1"
     collect_equals "${#lines[@]}" "$LAYER_ORDER_UNIT_MIN" \
-        "#800: 6単位同時発火 corpus の出力が1単位1件になっている"
+        "#800: 6単位同時発火の ADR 群の出力が1単位1件になっている"
 
     local entry needle unit i idx matched=0 prev_idx=-1 prev_unit=""
     for entry in "${LAYER_ORDER_NEEDLES[@]}"; do
@@ -535,7 +535,7 @@ LAYER_ORDER_UNIT_MIN=6
         collect_ok "#800: 順序を観測した単位数が下限を満たす（$matched 件 / 下限 $LAYER_ORDER_UNIT_MIN 件）"
     else
         collect_fail "#800: 順序を観測した単位数が下限を満たす" \
-            "観測件数 $matched 件が下限 $LAYER_ORDER_UNIT_MIN 件を下回る（表の欠落・照合ループの退行・corpus の縮小）"
+            "観測件数 $matched 件が下限 $LAYER_ORDER_UNIT_MIN 件を下回る（表の欠落・照合ループの退行・ADR 群の縮小）"
     fi
 
     collect_finish
@@ -546,7 +546,7 @@ LAYER_ORDER_UNIT_MIN=6
 # レイヤ単位の起動を公開された使い方として位置づけた以上、その前提（事実の収集）を欠いた
 # 起動は「検査したが違反なし」ではなく誤りとして現れる必要がある。構造整理の直後は、空配列
 # 参照の退避形と連想配列の既定値が「未収集」と「対象0件」を同じ値へ畳み、事実を読む5単位の
-# すべてが無言で違反0件・exit 0 を返していた。レイヤ5 は誤名走査だけが走るため、corpus に
+# すべてが無言で違反0件・exit 0 を返していた。レイヤ5 は誤名走査だけが走るため、ADR 群に
 # よっては出力まで出て「レイヤは動いている」ように見える経路もあった。
 # 由来: Issue #800 に対する PR #801 のレビュー指摘3。
 #
@@ -570,7 +570,7 @@ UNCOLLECTED_GUARDED_LAYER_MIN=5
         layer="${entry%%|*}"
         unit="${entry##*|}"
 
-        # corpus は invalid/29 を使う。レイヤ5 が誤名走査だけで出力を出せる唯一の corpus で
+        # ADR 群は invalid/29 を使う。レイヤ5 が誤名走査だけで出力を出せる唯一の ADR 群で
         # あり、「出力が出る＝レイヤが動いている」という誤読の余地を残さない。
         run_sut_layer_uncollected "$layer" "$CORPUS_DIR/invalid/29-missing-adr-prefix"
         collect_rc 2 "#800: $unit は収集を欠いた起動を非0で拒む"
