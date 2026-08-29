@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 # ADR index 生成（plugins/adr/scripts/gen-adr-index.sh）のテスト。
 #
-# scripts/fixtures/lint-adr/valid/ の共有 corpus に対して gen-adr-index.sh を起動し、
+# scripts/fixtures/lint-adr/valid/ の共有 ADR 群に対して gen-adr-index.sh を起動し、
 # 列挙対象の絞り込みと validity 抽出の正規化を検査する。
 #
 # 【配置について】テストと fixture を配布物外へ置く境界は docs/distribution-boundary.md が定める。
@@ -38,7 +38,7 @@ collect_saved_rc() {
     return 0
 }
 
-@test "前提: 被テスト検査器と fixture corpus が存在する" {
+@test "前提: 被テスト検査器と fixture の ADR 群が存在する" {
     assert_preconditions_met
 }
 

@@ -11,7 +11,7 @@ superseded-by: ADR-202602050902-01-xref-nested-new
 
 ## Context
 
-fixture 用。相互参照検証専用 corpus（02-xref-valid）の旧 ADR。
+fixture 用。相互参照検証専用の ADR 群（02-xref-valid）の旧 ADR。
 後継 ADR-202602050902-01-xref-nested-new の本文が入れ子（インデント）バレットで
 Supersedes を宣言する双方向一致ペア。
 

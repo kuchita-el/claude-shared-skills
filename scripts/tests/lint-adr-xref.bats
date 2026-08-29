@@ -15,7 +15,7 @@
 #
 # 【配置について】テストと fixture を配布物外へ置く境界は docs/distribution-boundary.md が定める。
 #
-# corpus は fixture ごとに異なり事前起動を共有できないため、共有 setup_file の CORPORA は
+# ADR 群は fixture ごとに異なり事前起動を共有できないため、共有 setup_file の CORPORA は
 # 空にし、検査器の起動は各ケース内で bats 組み込みの `run` により行う。
 
 load 'helpers/common'
@@ -42,7 +42,7 @@ collect_count() {
     return 0
 }
 
-@test "前提: 被テスト検査器と fixture corpus が存在する" {
+@test "前提: 被テスト検査器と fixture の ADR 群が存在する" {
     assert_preconditions_met
 }
 
@@ -195,15 +195,15 @@ collect_count() {
     # 起動したレイヤの違反は出ること。この項が無いと、レイヤ関数の中身を空にする変異でも
     # 下の「他レイヤの違反が出ない」項が緑のまま通る。
     run_sut_layer check_layer4_related_references "$CORPUS_DIR/invalid/20-related-dangling"
-    collect_rc 0 "#800: dangling corpus へレイヤ4 だけを起動できる"
+    collect_rc 0 "#800: dangling の ADR 群へレイヤ4 だけを起動できる"
     collect_contains "$output" "dangling 参照違反" \
         "#800: 起動したレイヤの違反は出力する"
     collect_contains "$output" "[violations=1]" \
         "#800: 起動したレイヤの違反は数える"
 
-    # 起動しなかったレイヤの違反は出ないこと。invalid/24 はレイヤ5 だけが発火する corpus。
+    # 起動しなかったレイヤの違反は出ないこと。invalid/24 はレイヤ5 だけが発火する ADR 群。
     run_sut_layer check_layer4_related_references "$CORPUS_DIR/invalid/24-filename-format-invalid"
-    collect_rc 0 "#800: ファイル名形式違反 corpus へレイヤ4 だけを起動できる"
+    collect_rc 0 "#800: ファイル名形式違反の ADR 群へレイヤ4 だけを起動できる"
     collect_contains "$output" "[violations=0]" \
         "#800: レイヤ4 の単独起動でレイヤ5 の違反を数えない"
     collect_not_contains "$output" "ファイル名形式違反" \

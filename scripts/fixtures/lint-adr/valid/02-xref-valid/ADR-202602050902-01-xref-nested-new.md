@@ -10,7 +10,7 @@ validity: 有効
 
 ## Context
 
-fixture 用。相互参照検証専用 corpus（02-xref-valid）の後継 ADR。
+fixture 用。相互参照検証専用の ADR 群（02-xref-valid）の後継 ADR。
 ADR-202602040902-01-xref-nested-old を上書きする。本文の Supersedes 宣言を
 入れ子（インデント）バレットで記載し、行頭空白を許容する緩和後の
 正規表現が誤検知しないことを確認する。

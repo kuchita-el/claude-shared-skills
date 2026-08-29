@@ -13,7 +13,7 @@ validity: 有効
 fixture 用。後継 ADR-202607021007-01-xref-reverse-missing-new の本文が
 `Supersedes: ADR-202607011007-01-xref-reverse-missing-old` を宣言しているが、
 本ADR側の front-matter 更新（validity: 上書き済み・superseded-by 付与）が
-忘れられている corpus（逆方向の相互参照違反を検出させる）。
+忘れられている ADR 群（逆方向の相互参照違反を検出させる）。
 
 ## Decision
 

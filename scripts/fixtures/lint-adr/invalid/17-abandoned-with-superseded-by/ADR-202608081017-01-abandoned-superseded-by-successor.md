@@ -6,7 +6,7 @@ validity: 有効
 
 ## Context
 
-fixture 用。17-abandoned-with-superseded-by corpus の後継 ADR。ADR-202608071017-01-abandoned-with-superseded-by-decision を上書きする側として本文に `Supersedes:` 逆参照を持ち、レイヤ3を充足させる役割のみを担う。
+fixture 用。17-abandoned-with-superseded-by ADR 群の後継 ADR。ADR-202608071017-01-abandoned-with-superseded-by-decision を上書きする側として本文に `Supersedes:` 逆参照を持ち、レイヤ3を充足させる役割のみを担う。
 
 本 ADR 自身の front-matter は表の承認行（`承認済み` / `有効` / superseded-by 無し）に適合しており、レイヤ1違反を出さない。
 

@@ -6,7 +6,7 @@ validity: 有効
 
 ## Context
 
-fixture 用。31-rejected-with-superseded-by corpus の後継 ADR。ADR-202608111031-01-rejected-with-superseded-by-decision を上書きする側として本文に `Supersedes:` 逆参照を持ち、レイヤ3 を充足させる役割のみを担う。
+fixture 用。31-rejected-with-superseded-by ADR 群の後継 ADR。ADR-202608111031-01-rejected-with-superseded-by-decision を上書きする側として本文に `Supersedes:` 逆参照を持ち、レイヤ3 を充足させる役割のみを担う。
 
 この後継ファイルが無いと、種別7 の分岐を消す変異に対してレイヤ3 の「参照先が見つかりません」が代わりに発火し、変異が空振りする。変異が赤にする原因を種別7 の分岐へ一意に絞るために置いてある。
 

@@ -14,4 +14,4 @@ fixture 用のため実質的な決定内容は無い。
 
 ## Consequences
 
-レイヤ5 は旧形式 ADR を検査せず、corpus 全体が exit 0 で通過する。
+レイヤ5 は旧形式 ADR を検査せず、ADR 群全体が exit 0 で通過する。

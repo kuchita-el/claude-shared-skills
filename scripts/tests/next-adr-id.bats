@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 # ADR 識別子発番器（plugins/adr/scripts/next-adr-id.sh）のテスト。
 #
-# 発番結果を、一時ディレクトリへ組み立てた corpus に対して検証する。
+# 発番結果を、一時ディレクトリへ組み立てた ADR 群に対して検証する。
 # 時刻部は ADR_TIMESTAMP で固定し、実時刻に依存しない検査にする。
 #
 # 「同一時刻部の内側だけを見て最大 + 1 を取る（配置ディレクトリ全体・同日全体は見ない）」という
@@ -11,7 +11,7 @@
 #
 # 【配置について】テストと fixture を配布物外へ置く境界は docs/distribution-boundary.md が定める。
 #
-# corpus はケースごとに一時ディレクトリへ組み立てるため共有できない。よって共有 setup_file の
+# ADR 群はケースごとに一時ディレクトリへ組み立てるため共有できない。よって共有 setup_file の
 # CORPORA は空にし、検査器の起動はケース内で `run` により直接行う（helpers/common.bash の
 # 「検査器の起動の型」に従う）。
 
@@ -60,7 +60,7 @@ next_id() {
     collect_equals "$(next_id "$dir")" "ADR-$TS-01:0" \
         "空ディレクトリでは 01 を発番する"
 
-    # corpus の slug は実運用と同じ複数トークン（ハイフン区切り）にする。単一トークンだけだと
+    # ADR 群の slug は実運用と同じ複数トークン（ハイフン区切り）にする。単一トークンだけだと
     # 連番部の切り出しが最長一致（`${seq%%-*}`）か最短一致（`${seq%-*}`）かを区別できず、
     # 既存 ADR を見落として重複を発番する変異がテストを素通りする。
     dir="$(make_corpus "ADR-$TS-01-cache-layer-replacement.md")"

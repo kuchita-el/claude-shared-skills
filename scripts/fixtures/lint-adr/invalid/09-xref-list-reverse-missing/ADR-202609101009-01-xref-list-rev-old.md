@@ -12,7 +12,7 @@ superseded-by: ADR-202609111009-01-xref-list-rev-new-a, ADR-202609121009-01-xref
 ## Context
 
 fixture 用。superseded-by に A・B のみ列挙するが、列挙されない第三の ADR C が本文で
-Supersedes を宣言する異常系 corpus（09）の分割元 ADR。C 追加時のリスト更新忘れを模す。
+Supersedes を宣言する異常系の ADR 群（09）の分割元 ADR。C 追加時のリスト更新忘れを模す。
 
 ## Decision
 

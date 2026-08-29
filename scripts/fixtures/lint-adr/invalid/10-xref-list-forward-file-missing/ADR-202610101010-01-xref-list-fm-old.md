@@ -12,7 +12,7 @@ superseded-by: ADR-202610111010-01-xref-list-fm-new-a, ADR-202610121010-01-xref-
 ## Context
 
 fixture 用。superseded-by のうち後継A は実ファイルとして存在するが、後継B は
-corpus 内に実ファイルが存在しない（実在しない stem を指す）異常系 corpus（10）の分割元 ADR。
+ADR 群内に実ファイルが存在しない（実在しない stem を指す）異常系の ADR 群（10）の分割元 ADR。
 リスト要素単位のファイル存在チェック（配列展開・ループ境界）を検証する。
 
 ## Decision
