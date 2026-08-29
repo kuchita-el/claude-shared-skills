@@ -111,6 +111,8 @@ gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'
 
 ステップ2のレビュー基準・ステップ3のIssue情報（またはフリーテキスト補足指示）・ステップ4のベースブランチ・ステップ5で解決したプランファイルパスを統合したプロンプトを構築し、plan サブエージェントを起動する。サブエージェントは渡された解決済みパスへプラン本文を直接 Write し、メインへはパス＋構造化サマリのみを返す（plan 本文全文はメイン context に載せない）。
 
+プロンプト中の `{PLAN_CONTRACT}` は `plan-contract.md` の全文で置換する。
+
 **プロンプト構築・サブエージェント起動の詳細手順**: `${CLAUDE_SKILL_DIR}/references/agent-prompt-construction.md` を参照（3 種モード別テンプレート、起動手順、フォールバック）。
 
 ### 7. レビュアーエージェントによるレビュー → 修正ループ（最大2周）
