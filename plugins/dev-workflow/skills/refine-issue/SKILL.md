@@ -20,7 +20,7 @@ Issueの準備状態をDoR（Definition of Ready）に基づいて精査し、�
 1件の詳細精査と全件一括精査の両方に対応。精査はサブエージェントで実行し、メインコンテキストを消費しない。
 
 **出力と範囲**: Issueの対象・精査結果・停止条件・変更境界は上記の実行ルールで判定する。
-精査の粒度判定は `${CLAUDE_SKILL_DIR}/references/delivery-item-granularity.md` を直接参照する。
+精査の粒度判定は `${CLAUDE_SKILL_DIR}/references/refine-prompt.md` の「スコープの妥当性の粒度基準」節を直接参照する。
 
 ## 引数
 
