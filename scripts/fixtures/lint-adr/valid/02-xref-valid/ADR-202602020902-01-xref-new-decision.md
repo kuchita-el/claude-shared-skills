@@ -10,7 +10,7 @@ validity: 有効
 
 ## Context
 
-fixture 用。相互参照検証専用 corpus（02-xref-valid）の後継 ADR。
+fixture 用。相互参照検証専用の ADR 群（02-xref-valid）の後継 ADR。
 ADR-202602010902-01-xref-old-decision を上書きする。
 
 ## Decision

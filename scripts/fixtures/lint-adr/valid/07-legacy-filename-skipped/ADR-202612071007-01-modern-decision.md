@@ -18,4 +18,4 @@ fixture 用のため実質的な決定内容は無い。
 
 ## Consequences
 
-corpus 全体が exit 0 で通過する。
+ADR 群全体が exit 0 で通過する。

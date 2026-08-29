@@ -11,7 +11,7 @@ superseded-by: ,
 
 ## Context
 
-fixture 用。superseded-by がカンマ・空白のみで有効な参照先 stem を1つも含まない病的値の corpus（11）。
+fixture 用。superseded-by がカンマ・空白のみで有効な参照先 stem を1つも含まない病的値の ADR 群（11）。
 レイヤ1の raw 空判定を通過し、かつ forward の分割結果が0件になるため、
 「validity=上書き済み ⟹ 少なくとも1件の後継が照合される」不変条件が崩れる経路を検証する。
 

@@ -11,7 +11,7 @@ superseded-by: ADR-202602020902-01-xref-new-decision
 
 ## Context
 
-fixture 用。相互参照検証専用 corpus（02-xref-valid）の旧 ADR。
+fixture 用。相互参照検証専用の ADR 群（02-xref-valid）の旧 ADR。
 後継 ADR-202602020902-01-xref-new-decision に置き換えられた。
 
 ## Decision

@@ -11,7 +11,7 @@ superseded-by: ADR-202608111008-01-xref-list-fwd-new-a, ADR-202608121008-01-xref
 
 ## Context
 
-fixture 用。リスト値 superseded-by のうち後継Bが本文逆参照（Supersedes）を欠く異常系 corpus（08）の分割元 ADR。
+fixture 用。リスト値 superseded-by のうち後継Bが本文逆参照（Supersedes）を欠く異常系の ADR 群（08）の分割元 ADR。
 
 ## Decision
 

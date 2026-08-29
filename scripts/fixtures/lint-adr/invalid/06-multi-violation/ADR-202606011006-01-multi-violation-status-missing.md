@@ -9,7 +9,7 @@ validity: 有効
 
 ## Context
 
-fixture 用。複数 ADR 同時違反の回帰テスト用 corpus（06-multi-violation）の1件目。
+fixture 用。複数 ADR 同時違反の回帰テスト用の ADR 群（06-multi-violation）の1件目。
 front-matter が `status` キーを持たない。レイヤ1違反1（status 欠落）を検出させる。
 
 ## Decision

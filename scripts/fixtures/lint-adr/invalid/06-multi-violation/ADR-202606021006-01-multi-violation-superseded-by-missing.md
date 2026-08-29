@@ -10,7 +10,7 @@ validity: 上書き済み
 
 ## Context
 
-fixture 用。複数 ADR 同時違反の回帰テスト用 corpus（06-multi-violation）の2件目。
+fixture 用。複数 ADR 同時違反の回帰テスト用の ADR 群（06-multi-violation）の2件目。
 `validity: 上書き済み` だが front-matter が `superseded-by` キーを持たない。
 レイヤ1違反3（validity=上書き済み かつ superseded-by 欠落）を検出させる。
 
