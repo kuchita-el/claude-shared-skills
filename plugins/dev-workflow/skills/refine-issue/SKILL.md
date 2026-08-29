@@ -20,7 +20,7 @@ Issueの準備状態をDoR（Definition of Ready）に基づいて精査し、�
 1件の詳細精査と全件一括精査の両方に対応。精査はサブエージェントで実行し、メインコンテキストを消費しない。
 
 **出力と範囲**: Issueの対象・精査結果・停止条件・変更境界は上記の実行ルールで判定する。
-精査の粒度判定は `${CLAUDE_SKILL_DIR}/references/delivery-item-granularity.md` を直接参照する。
+精査の粒度判定は `${CLAUDE_SKILL_DIR}/references/refine-prompt.md` の「スコープの妥当性の粒度基準」節を直接参照する。
 
 ## 引数
 
@@ -128,7 +128,7 @@ DoRチェックは定義ファイルの全項目を1件ずつ列挙し、1件で
 2. プロジェクト固有DoR: `{project_root}/.claude/dor/definition.md`（存在すれば優先）
 3. デフォルトDoR: `{plugin_root}/references/dor-default.md`（プラグイン共有。`{plugin_root}` は上で渡したプラグインルートパス）
 4. 種別プロファイル: プロジェクト固有 `{project_root}/.claude/dor/type-profiles.md`（存在すれば優先）、なければ `{plugin_root}/references/issue-type-profiles.md`（プラグイン共有。DoR と同一の優先順位）
-5. 出力形式テンプレート: `{skill_dir}/references/output-format-batch-subagent.md`（`{OUTPUT_FORMAT}` の置換イメージとして適用）
+5. 出力形式テンプレート: `{skill_dir}/references/output-format-batch.md` の「入口: サブエージェント返却形式」節（同節のみを `{OUTPUT_FORMAT}` の置換イメージとして適用する。入口節以外＝出口節・対応表は適用しない）
 6. 担当 Issue 番号それぞれの `{issue_dir}/issue-{number}.json`
 
 サブエージェントは精査結果を構造化データ（YAML/JSON 等）で返却する。
@@ -138,4 +138,4 @@ DoRチェックは定義ファイルの全項目を1件ずつ列挙し、1件で
 サブエージェントの結果を以下の通り取り扱う。
 
 - **1件モード**: サブエージェント（手順3で `${CLAUDE_SKILL_DIR}/references/output-format-single.md` の形式に整形済み）の出力をそのまま表示する。
-- **全件モード**: 各サブエージェントの構造化データを集約し、`${CLAUDE_SKILL_DIR}/references/output-format-batch.md` に定義された最終形式で出力する。エラーハンドリング（サブエージェント失敗時の `error` ステータス表示）も同ファイルを参照。
+- **全件モード**: 各サブエージェントの構造化データを集約し、`${CLAUDE_SKILL_DIR}/references/output-format-batch.md` の「出口: 集約後出力形式」節に定義された最終形式で出力する。各列・統計への写像と、サブエージェント失敗時の `error` 行の埋め方は同ファイルの「入口と出口の対応」節に従う。
