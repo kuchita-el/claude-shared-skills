@@ -65,7 +65,7 @@ ADR 化要否の判定は、条文を読む判定主体が散文で結論と根�
 
 ### 3.4 凍結記録・歴史記録は追随の対象から外す
 
-規範は `docs/references/document-permanence.md`（`docs/` 配下の文書の恒久性を定める規約）の §2（ADR 本文を時点の記録として扱い追随の対象から外す）と §6（参照掃きの受入条件で除外集合をパスで明示する）が持ち、`plugins/adr/` の改修でもそのまま従う。本書固有の所在記述として——この扱いは 2026-08-27 のユーザー裁定に由来し、適用例は `docs/development/adr-judgment-pipeline-removal-2026-08-27.md` に在る。
+規範は `docs/references/document-permanence.md`（`docs/` 配下の文書の恒久性を定める規約）の §2（ADR 本文を時点の記録として扱い追随の対象から外す）と §6（参照掃きの受入条件で除外集合をパスで明示する）が持ち、`plugins/adr/` の改修でもそのまま従う。本書固有の記述として残すのは由来と適用例だけである。この扱いは 2026-08-27 のユーザー裁定に由来し、適用例は `docs/development/adr-judgment-pipeline-removal-2026-08-27.md` に在る。
 
 ### 3.5 前提が消える OPEN Issue は、廃止する PR の中で処理する
 
@@ -107,7 +107,7 @@ ADR 化要否の判定は、条文を読む判定主体が散文で結論と根�
 
 規定は `docs/references/document-permanence.md`（`docs/` 配下の文書の恒久性と、恒久文書へ持ち込まない記述を定める規約）§5 が持ち、本書もその適用対象である。本書に固有の適用は、§1 の規模比を値ではなく見方として書くことである。
 
-本書が持たない記述の所在: 廃止時の ADR 化要否判定・既存 ADR の遷移要否・検証の証跡は `docs/development/adr-judgment-pipeline-removal-2026-08-27.md` が持つ。削除対象の一覧と工程分割を持っていたのは当時の設計 spec であり、同 spec は削除済みで git 履歴からのみ取り出せる。
+本書が持たない記述の所在: 廃止時の ADR 化要否判定・既存 ADR の遷移要否・検証の証跡は `docs/development/adr-judgment-pipeline-removal-2026-08-27.md` が持つ。
 
 ## 関連
 
