@@ -1,0 +1,279 @@
+#!/usr/bin/env bats
+load 'helpers/common'
+
+# dev-workflow の fixture が固定している境界を、期待値ファイルの構造として検査する。
+#
+# 【ディレクトリの存在確認を置かない理由】
+# 旧 contract 系は fixture を `[ -d ... ]` で見るだけのケースを持っており、その配下の
+# expected.json は一度も読まれていなかった。中身が壊れても緑で通るため、境界は何も
+# 固定されていない。本ファイルのケースはすべて期待値ファイルの中身を読む。
+#
+# 【停止系と非停止系を対で置く理由】
+# 停止側（decision=stop）だけを検査すると、停止しない側の契約が失われても検出できない。
+# create は停止2件と非停止1件、refine は host adapter の注入とフォールバックを対で読む。
+#
+# 【走査0件を緑にしない】
+# 走査は find の出力を mapfile で受け、走査回数を実行時カウンタで数えて下限をアサートする。
+# 下限は実測値との等値ではない。fixture の正当な追加で赤にせず、縮小（ディレクトリが空に
+# なる・glob が0件へ落ちる）だけを赤にするためである。
+
+FIXTURE_ROOT="$FIXTURES_DIR/dev-workflow"
+
+# 走査件数の下限（実測13件）。
+FIXTURE_MIN=13
+
+# implementation 系の下限。5件それぞれが完了を拒否することに意味がある集合であり、
+# 下限と各件の内容検査の対で担保する。
+IMPL_FIXTURE_MIN=5
+
+dw_fixture_dirs() {
+    find "$FIXTURE_ROOT" -mindepth 2 -maxdepth 2 -type d | sort
+}
+
+# jq のフィルタが真を返すことを収集型で判定する。
+collect_jq() {
+    local file="$1" filter="$2" label="$3"
+    if [ ! -f "$file" ]; then
+        collect_fail "$label" "期待値ファイルが無い: ${file#"$REPO_ROOT"/}"
+        return 0
+    fi
+    if jq -e "$filter" "$file" >/dev/null 2>&1; then
+        collect_ok "$label"
+    else
+        collect_fail "$label" "フィルタが偽: $filter / 実体: $(tr -d '\n' <"$file")"
+    fi
+    return 0
+}
+
+# 走査件数の下限を収集型で判定する。
+collect_scanned_min() {
+    local scanned="$1" min="$2" label="$3"
+    if [ "$scanned" -ge "$min" ]; then
+        collect_ok "$label（下限 $min 件）"
+    else
+        collect_fail "$label（下限 $min 件）" "実測 $scanned 件"
+    fi
+    return 0
+}
+
+# 系統ディレクトリを実際に列挙して件数の下限を判定し、あわせて期待する名前が
+# 実在することを1件ずつ確かめる。
+#
+# 名前を並べた for ループの回数を数えても、それはテスト側のリテラルを数えているだけで
+# fixture の実体を測っていない（系統ごと消えてもカウンタは下限を満たす）。走査は必ず
+# find の出力に対して行う。名前の固定を併せて置くのは、fixture が別名へ移ったときに
+# 件数だけでは検出できないためである（旧テストは名前を固定していた）。
+#
+# 引数: $1 系統ディレクトリ / $2 系統名 / $3.. 期待する fixture 名
+collect_system_fixtures() {
+    local root="$1" system="$2"
+    shift 2
+    local -a expected=("$@")
+
+    local -a dirs=()
+    mapfile -t dirs < <(find "$root" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+
+    local scanned=0 d
+    for d in ${dirs[@]+"${dirs[@]}"}; do
+        scanned=$((scanned + 1))
+    done
+    collect_scanned_min "$scanned" "${#expected[@]}" "走査した $system fixture の件数"
+
+    local name
+    for name in "${expected[@]}"; do
+        if [ -d "$root/$name" ]; then
+            collect_ok "fixture が実在する: $system/$name"
+        else
+            collect_fail "fixture が実在する: $system/$name" "ディレクトリが無い"
+        fi
+    done
+    return 0
+}
+
+@test "fixture 走査: 全ディレクトリが非空の期待値ファイルを持ち JSON は構文として妥当である" {
+    collect_init
+    local -a dirs=()
+    mapfile -t dirs < <(dw_fixture_dirs)
+
+    local scanned=0 d rel n f
+    for d in ${dirs[@]+"${dirs[@]}"}; do
+        scanned=$((scanned + 1))
+        rel="${d#"$REPO_ROOT"/}"
+
+        local -a expected=()
+        mapfile -t expected < <(find "$d" -maxdepth 1 -name 'expected.*' -type f | sort)
+        n="${#expected[@]}"
+        if [ "$n" -eq 0 ]; then
+            collect_fail "期待値ファイルを1つ以上持つ: $rel" "expected.* が無い"
+            continue
+        fi
+        collect_ok "期待値ファイルを1つ以上持つ: $rel"
+
+        for f in "${expected[@]}"; do
+            if [ -s "$f" ]; then
+                collect_ok "期待値ファイルが非空: ${f#"$REPO_ROOT"/}"
+            else
+                collect_fail "期待値ファイルが非空: ${f#"$REPO_ROOT"/}" "0バイト"
+            fi
+            case "$f" in
+                *.json)
+                    if jq -e . "$f" >/dev/null 2>&1; then
+                        collect_ok "JSON として妥当: ${f#"$REPO_ROOT"/}"
+                    else
+                        collect_fail "JSON として妥当: ${f#"$REPO_ROOT"/}" "jq が解釈できない"
+                    fi
+                    ;;
+            esac
+        done
+    done
+
+    collect_scanned_min "$scanned" "$FIXTURE_MIN" "走査した fixture ディレクトリの件数"
+    collect_finish
+}
+
+@test "create 系: 停止2件が書き込みを伴わず停止し 非停止1件が生成物を持つ" {
+    collect_init
+    local root="$FIXTURE_ROOT/create"
+    local name
+
+    collect_system_fixtures "$root" create missing-ac rejected complete
+
+    # 停止系。decision が stop で、未解決項目を持ち、書き込みが1件も無いことを
+    # 3条件の共起として要求する（どれか1つでも欠ければ赤になる）。
+    #
+    # `.writes` は型まで固定する。`length == 0` だけだと `null | length` が 0 を返すため、
+    # キーごと削っても空オブジェクトへ替えても緑で通り、「書き込みが無い」ではなく
+    # 「書き込みの記述が無い」を許してしまう（欠測と真の同一視）。
+    for name in missing-ac rejected; do
+        collect_jq "$root/$name/expected.json" \
+            '.decision == "stop" and (.unresolved | length > 0)
+             and (.writes | type) == "array" and (.writes | length) == 0' \
+            "停止契約が成立する: create/$name"
+    done
+
+    # 停止理由の witness。上の3条件だけだと2件は完全に交換可能で、fixture 名が主張する
+    # 「AC が欠けて止まる」「ユーザーが拒否して止まる」の区別が固定されない。
+    # 停止の理由を `.unresolved` の内容として1件ずつ固定する。
+    collect_jq "$root/missing-ac/expected.json" \
+        '(.unresolved | index("AC")) != null' \
+        "停止理由が AC 欠落である: create/missing-ac"
+    collect_jq "$root/rejected/expected.json" \
+        '(.unresolved | index("user approval")) != null' \
+        "停止理由がユーザー拒否である: create/rejected"
+
+    # 非停止系。停止しない側の正例であり、生成物が空でなく受入条件の節を持つ。
+    local complete="$root/complete/expected.md"
+    if [ -s "$complete" ]; then
+        collect_ok "生成物が非空: create/complete"
+        collect_contains "$(cat "$complete")" '## 受入条件' "生成物が受入条件の節を持つ: create/complete"
+    else
+        collect_fail "生成物が非空: create/complete" "expected.md が無いか0バイト"
+    fi
+
+    collect_finish
+}
+
+@test "refine 系: status が Ready 境界の2値を取り host adapter の注入とフォールバックが対で固定される" {
+    collect_init
+    local root="$FIXTURE_ROOT/refine"
+    local name
+
+    collect_system_fixtures "$root" refine \
+        single-ready single-not-ready single-codex-injected single-codex-main-fallback
+
+    # status の値域。Ready / Not Ready のいずれかであることを4件すべてに要求する。
+    for name in single-ready single-not-ready single-codex-injected single-codex-main-fallback; do
+        collect_jq "$root/$name/expected.json" \
+            '.status == "Ready" or .status == "Not Ready"' \
+            "status が Ready 境界の2値を取る: refine/$name"
+    done
+
+    # Ready 側は充足した検査項目を、Not Ready 側は未解決項目を持つ。
+    # 件数への固定は置かない（未解決項目が2件へ増える正当な更新で赤にしないため）。
+    collect_jq "$root/single-ready/expected.json" \
+        '.status == "Ready" and (.checks | length > 0)' \
+        "Ready 側が充足項目を持つ: refine/single-ready"
+    collect_jq "$root/single-not-ready/expected.json" \
+        '.status == "Not Ready" and (.unresolved | length > 0)' \
+        "Not Ready 側が未解決項目を持つ: refine/single-not-ready"
+
+    # host adapter witness。注入とフォールバックを対で読む。
+    #
+    # execution だけを固定して status を上の値域検査（Ready または Not Ready）に委ねると、
+    # 2件の status を入れ替えても両方を Ready に揃えても緑で通る。値域検査は「いずれかで
+    # 合格」の形であり、個々の fixture が持つ意味を固定しない。fixture 名が主張する
+    # 「注入されて Ready へ到達する」「フォールバックして Not Ready に留まる」を、
+    # execution と status の共起として1件ずつ固定する。
+    collect_jq "$root/single-codex-injected/expected.json" \
+        '.execution == "injected" and .status == "Ready"' \
+        "注入側の execution と status が対で固定される: refine/single-codex-injected"
+    collect_jq "$root/single-codex-main-fallback/expected.json" \
+        '.execution == "main-fallback" and .status == "Not Ready"' \
+        "フォールバック側の execution と status が対で固定される: refine/single-codex-main-fallback"
+
+    collect_finish
+}
+
+@test "implementation 系: 未解決を含む全 fixture が Ready を拒否する" {
+    collect_init
+
+    collect_system_fixtures "$FIXTURE_ROOT/implementation" implementation \
+        ac-unresolved review-blocker ci-red ci-unknown dependency-missing
+
+    local -a files=()
+    mapfile -t files < <(find "$FIXTURE_ROOT/implementation" -mindepth 2 -maxdepth 2 -name 'expected.json' -type f | sort)
+
+    local scanned=0 f rel
+    for f in ${files[@]+"${files[@]}"}; do
+        scanned=$((scanned + 1))
+        rel="${f#"$FIXTURE_ROOT"/}"
+        collect_jq "$f" '.status != "Ready"' "完了を拒否する: $rel"
+        collect_jq "$f" '.status | type == "string" and length > 0' "status が非空の文字列である: $rel"
+    done
+
+    collect_scanned_min "$scanned" "$IMPL_FIXTURE_MIN" "走査した implementation fixture の件数"
+
+    # 拒否理由の witness。上の2条件は5件すべてに同じ形で掛かるため、5件を
+    # `{"status":"x"}` へ潰しても、`ci-red` を `{"status":"unresolved","ci":"green"}` の
+    # ように名前と内容が矛盾する形にしても緑で通る。値域検査は集合の外側を切るだけで、
+    # 個々の fixture が持つ意味を固定しない（refine の codex ペアで同じ形を潰したのと
+    # 同型の穴）。fixture 名が主張する拒否理由を、status と判別フィールドの共起として
+    # 1件ずつ固定する。
+    local impl="$FIXTURE_ROOT/implementation"
+    collect_jq "$impl/ac-unresolved/expected.json" \
+        '.status == "unresolved" and (.ac | length > 0) and any(.ac[]; .status == "unresolved")' \
+        "拒否理由が AC の未解決である: implementation/ac-unresolved"
+    collect_jq "$impl/review-blocker/expected.json" \
+        '.status == "blocked" and (.review | length > 0) and any(.review[]; .status == "blocked")' \
+        "拒否理由がレビューのブロッカーである: implementation/review-blocker"
+    collect_jq "$impl/ci-red/expected.json" \
+        '.status == "unresolved" and .ci == "red"' \
+        "拒否理由が CI の赤である: implementation/ci-red"
+    collect_jq "$impl/ci-unknown/expected.json" \
+        '.status == "unknown" and .ci == "unknown"' \
+        "拒否理由が CI の未判明である: implementation/ci-unknown"
+    collect_jq "$impl/dependency-missing/expected.json" \
+        '.status == "blocked" and .dependency == "missing"' \
+        "拒否理由が依存の欠落である: implementation/dependency-missing"
+
+    collect_finish
+}
+
+@test "plan 系: レビュー往復の上限で判断依頼へ抜ける境界が固定される" {
+    collect_init
+
+    collect_system_fixtures "$FIXTURE_ROOT/plan" plan reviewer-fail-twice
+
+    local f="$FIXTURE_ROOT/plan/reviewer-fail-twice/expected.json"
+
+    collect_jq "$f" '.status == "decision-request"' "上限到達で判断依頼へ抜ける: plan/reviewer-fail-twice"
+
+    # 上限側だけを見る形（`<= 2`）は下限が無く、`0` や `-7` でも緑になる。
+    # ケース名も fixture 名（reviewer-fail-twice）も「2往復して抜ける」ことを主張して
+    # いるのに、「0往復で判断依頼へ抜ける」という別物の期待値へ書き換わっても
+    # 検出しない。witness の値そのものを固定する。
+    collect_jq "$f" '(.reviewRounds | type) == "number" and .reviewRounds == 2' \
+        "レビュー往復が2回であることが固定される: plan/reviewer-fail-twice"
+
+    collect_finish
+}

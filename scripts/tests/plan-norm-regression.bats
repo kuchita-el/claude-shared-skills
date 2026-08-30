@@ -1,19 +1,17 @@
 #!/usr/bin/env bats
-root="$BATS_TEST_DIRNAME/../.."
-@test "planは3入力とAC対応・衝突回避を持つ" {
-  run grep -E 'Issueなし|固定入力|AC.*対応|連番|Codex|decision-request' "$root/plugins/dev-workflow/skills/plan-issue/SKILL.md"
-  [ "$status" -eq 0 ]
-}
-@test "plan reviewerは独立性不足で停止する" {
-  run grep -E '独立汎用sub-agent|独立文脈|定義完全注入|停止' "$root/plugins/dev-workflow/agents/plan-reviewer.md" "$root/plugins/dev-workflow/skills/plan-issue/SKILL.md"
-  [ "$status" -eq 0 ]
-}
-@test "plan fixtures exist" {
-  [ -d "$root/scripts/fixtures/dev-workflow/plan" ]
-}
+load 'helpers/common'
+root="$REPO_ROOT"
 
 # ---------------------------------------------------------------------------
 # Issue #814: プラン規範へ新設した規定の退行検出
+#
+# 【本ファイルを contract 系と分けて置く理由】
+# `dev-workflow-skill-contract.bats` は「文言ではなく構造として観測できる不変条件だけ」を
+# 測ると宣言し、散文の逐語照合を意図して排除している（#813 / PR #816）。本ファイルが測る
+# のは、その決定が対象とした「文言の推敲で赤くなる照合」ではなく、**新設した規定そのもの
+# が言い換えや削除で静かに消えること**の検出である。目的が異なるため同居させず、規範条文
+# の退行検出として独立させる。両者を混ぜると、構造検査の側が散文の推敲で赤くなる状態へ
+# 戻り、#816 の決定が実質的に取り消される。
 #
 # 新設規定ごとの検査要否と判定理由:
 #
