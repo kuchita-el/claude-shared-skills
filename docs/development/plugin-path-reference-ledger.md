@@ -31,7 +31,7 @@ This ledger is regenerated when tracked source/config/docs add or move a `plugin
 | CLAUDE.md | 38 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | CLAUDE.md | 61 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | CLAUDE.md | 68 | plugins/dev-workflow | migration | reference | wave-5 | current |
-| CLAUDE.md | 117 | plugins/dev-workflow | migration | reference | wave-5 | current |
+| CLAUDE.md | 121 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | README.md | 54 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | README.md | 57 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | README.md | 62 | plugins/dev-workflow | migration | reference | wave-5 | current |
@@ -47,6 +47,7 @@ This ledger is regenerated when tracked source/config/docs add or move a `plugin
 | scripts/tests/adr-portability.bats | 22 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/adr-portability.bats | 27 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/dev-workflow-skill-contract.bats | 26 | plugins/dev-workflow | migration | reference | wave-5 | current |
+| scripts/tests/plan-norm-regression.bats | 6 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | scripts/tests/helpers/common.bash | 34 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/gen-adr-index.bats | 2 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/lint-adr-layers.bats | 2 | plugins/adr | migration | reference | wave-5 | current |

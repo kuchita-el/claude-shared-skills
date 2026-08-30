@@ -4,7 +4,9 @@ load 'helpers/common'
 # 作者向け規約2本（context-budget / subagent-execution-parameters）を配布物外へ搬出し、
 # 孤立ファイル workflow-patterns を削除した状態を固定する。
 #
-# 検査は「旧パス文字列がどこにも現れないこと」であり、行番号にも版にも依存しない。
+# 搬出に関する検査は「旧パス文字列がどこにも現れないこと」であり、行番号にも版にも依存しない。
+# 本ファイルは搬出先 docs/references/context-budget.md を走査対象として共有するため、
+# 同ファイル「軸の区別」節の宣言軸数と表のデータ行数の整合検査（Issue #814 の R4）も併せて持つ。
 #
 # 【走査面を git grep（追跡ファイルのみ）に置く理由】
 # grep -R は git の追跡状態を見ず作業ツリーを走査するため、追跡外の下書きが docs/ に
@@ -76,4 +78,117 @@ relocation_scan_scope() {
     "${scope[@]}" ':(exclude)scripts/tests/'
   [ "$status" -eq 0 ]
   [ "${#lines[@]}" -ge 2 ]
+}
+
+# 「軸の区別」節から、宣言された軸数・表に隣接する注記（直前と直後の非空行）・表のデータ行の
+# 軸ラベルを取り出す。NOTE 行が2本、ROW 行がデータ行数ぶん出る。
+axis_section_facts() {
+    awk '
+      /^## / { if (f) { exit } ; if ($0 ~ /^## 軸の区別/) { f = 1 } ; next }
+      f && state == 0 {
+        if ($0 ~ /^\| 軸 \| 出典 \| 縛る対象 \|/) { state = 1 ; next }
+        if ($0 !~ /^[ \t]*$/) { before = $0 }
+        if ($0 ~ /token に関わる規律は/) { decl = $0 }
+        next
+      }
+      f && state == 1 {
+        if ($0 ~ /^\|---/) { next }
+        if ($0 ~ /^\| /) { n = n + 1 ; rows[n] = $0 ; next }
+        state = 2
+      }
+      f && state == 2 {
+        if ($0 !~ /^[ \t]*$/ && after == "") { after = $0 }
+      }
+      END {
+        printf "DECL\t%s\n", decl
+        printf "NOTE\t%s\n", before
+        printf "NOTE\t%s\n", after
+        for (i = 1; i <= n; i++) {
+          line = rows[i]
+          sub(/^\|[ \t]*/, "", line)
+          sub(/[ \t]*\|.*$/, "", line)
+          printf "ROW\t%s\n", line
+        }
+      }
+    ' "$1"
+}
+
+@test "「軸の区別」の宣言軸数と表のデータ行数が一致する" {
+  local doc="$REPO_ROOT/docs/references/context-budget.md"
+  [ -f "$doc" ]
+
+  local -a notes=() labels=()
+  local kind val
+  while IFS=$'\t' read -r kind val; do
+    case "$kind" in
+      DECL) local decl="$val" ;;
+      NOTE) [ -n "$val" ] && notes+=("$val") ;;
+      ROW) labels+=("$val") ;;
+    esac
+  done < <(axis_section_facts "$doc")
+
+  local declared
+  declared="$(printf '%s\n' "${decl-}" | sed -n 's/.*token に関わる規律は\([0-9][0-9]*\)軸ある.*/\1/p' | head -1)"
+  [[ "$declared" =~ ^[0-9]+$ ]] || {
+    echo "軸数の宣言が読み取れない（節・宣言文のいずれかが失われている）"
+    return 1
+  }
+  # 走査面が死んだまま緑になる経路を塞ぐ。データ行0件は整合ではなく走査の失敗である。
+  [ "${#labels[@]}" -gt 0 ] || {
+    echo "軸の表のデータ行が0件（走査面が失われている）"
+    return 1
+  }
+
+  # 除外規則は次の3条件の連言であり、1つでも欠ける注記では当該行を除外しない。
+  #   (1) 位置      注記が表に隣接する（直前・直後のいずれか）
+  #   (2) 逐語名指し 注記が当該行の軸ラベルを逐語で含む
+  #   (3) 除外の明示 注記が「上記の N 軸には数えない」と述べる
+  # 位置条件を直後だけに絞らないのは、同種の表を持つ docs/behavior-invariants.md では
+  # 当該注記が表の直前に置かれているためである。逐語名指しを要求するのは、除外の意図だけを
+  # 述べた曖昧な注記で任意の行が検査を逃れることを防ぐためである。
+  local counted=0 label note excluded
+  for label in "${labels[@]}"; do
+    excluded=0
+    for note in "${notes[@]}"; do
+      case "$note" in
+        *"$label"*) ;;
+        *) continue ;;
+      esac
+      case "$note" in
+        *"上記の${declared}軸には数えない"*) ;;
+        *) continue ;;
+      esac
+      excluded=1
+      break
+    done
+    [ "$excluded" -eq 1 ] || counted=$((counted + 1))
+  done
+
+  [ "$counted" -eq "$declared" ] || {
+    echo "軸数の宣言と表のデータ行数が食い違う: declared=$declared counted=$counted"
+    return 1
+  }
+
+  # 軸数の一致だけでは、作成時（静的）軸へ明記した所有と、原則4 の射程を限定する注記が
+  # 消えても緑のまま通る。いずれも今回の改訂の実体であるため場所を固定して照合する。
+  local owner_row
+  owner_row="$(grep -F '| 作成時（静的） |' "$doc" | head -1)"
+  case "$owner_row" in
+    *'plan-output-format.md'*) ;;
+    *)
+      echo "作成時（静的）軸の出典にプラン出力テンプレートが現れない"
+      return 1
+      ;;
+  esac
+  case "$owner_row" in
+    *'プラン成果物の静的分量'*) ;;
+    *)
+      echo "作成時（静的）軸の縛る対象にプラン成果物の静的分量が現れない"
+      return 1
+      ;;
+  esac
+  grep -qF -e '原則4 の射程との関係' "$doc" || {
+    echo "原則4 の射程を限定する注記が失われている"
+    return 1
+  }
 }

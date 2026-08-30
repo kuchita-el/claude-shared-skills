@@ -91,6 +91,7 @@ EXPECTED_BATS=(
     skill-portability.bats
     dev-workflow-skill-contract.bats
     dev-workflow-fixture-contract.bats
+    plan-norm-regression.bats
     behavior-invariants.bats
     authoring-reference-relocation.bats
     plugin-boundaries.bats
