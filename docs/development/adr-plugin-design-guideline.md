@@ -65,7 +65,7 @@ ADR 化要否の判定は、条文を読む判定主体が散文で結論と根�
 
 ### 3.4 凍結記録・歴史記録は追随の対象から外す
 
-規範は `docs/references/document-permanence.md`（`docs/` 配下の文書の恒久性と、参照掃き・追随の除外を定める規約）§6 が持ち、`plugins/adr/` の改修でもそのまま従う。ADR 本文を時点の記録として扱う判断は 2026-08-27 のユーザー裁定に由来し、適用例は `docs/development/adr-judgment-pipeline-removal-2026-08-27.md` に在る。
+規範は `docs/references/document-permanence.md`（`docs/` 配下の文書の恒久性を定める規約）の §2（ADR 本文を時点の記録として扱い追随の対象から外す）と §6（参照掃きの受入条件で除外集合をパスで明示する）が持ち、`plugins/adr/` の改修でもそのまま従う。本書固有の所在記述として——この扱いは 2026-08-27 のユーザー裁定に由来し、適用例は `docs/development/adr-judgment-pipeline-removal-2026-08-27.md` に在る。
 
 ### 3.5 前提が消える OPEN Issue は、廃止する PR の中で処理する
 
