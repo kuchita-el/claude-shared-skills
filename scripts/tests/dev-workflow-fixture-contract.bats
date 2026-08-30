@@ -140,11 +140,26 @@ collect_system_fixtures() {
 
     # 停止系。decision が stop で、未解決項目を持ち、書き込みが1件も無いことを
     # 3条件の共起として要求する（どれか1つでも欠ければ赤になる）。
+    #
+    # `.writes` は型まで固定する。`length == 0` だけだと `null | length` が 0 を返すため、
+    # キーごと削っても空オブジェクトへ替えても緑で通り、「書き込みが無い」ではなく
+    # 「書き込みの記述が無い」を許してしまう（欠測と真の同一視）。
     for name in missing-ac rejected; do
         collect_jq "$root/$name/expected.json" \
-            '.decision == "stop" and (.unresolved | length > 0) and (.writes | length == 0)' \
+            '.decision == "stop" and (.unresolved | length > 0)
+             and (.writes | type) == "array" and (.writes | length) == 0' \
             "停止契約が成立する: create/$name"
     done
+
+    # 停止理由の witness。上の3条件だけだと2件は完全に交換可能で、fixture 名が主張する
+    # 「AC が欠けて止まる」「ユーザーが拒否して止まる」の区別が固定されない。
+    # 停止の理由を `.unresolved` の内容として1件ずつ固定する。
+    collect_jq "$root/missing-ac/expected.json" \
+        '(.unresolved | index("AC")) != null' \
+        "停止理由が AC 欠落である: create/missing-ac"
+    collect_jq "$root/rejected/expected.json" \
+        '(.unresolved | index("user approval")) != null' \
+        "停止理由がユーザー拒否である: create/rejected"
 
     # 非停止系。停止しない側の正例であり、生成物が空でなく受入条件の節を持つ。
     local complete="$root/complete/expected.md"
@@ -217,6 +232,30 @@ collect_system_fixtures() {
     done
 
     collect_scanned_min "$scanned" "$IMPL_FIXTURE_MIN" "走査した implementation fixture の件数"
+
+    # 拒否理由の witness。上の2条件は5件すべてに同じ形で掛かるため、5件を
+    # `{"status":"x"}` へ潰しても、`ci-red` を `{"status":"unresolved","ci":"green"}` の
+    # ように名前と内容が矛盾する形にしても緑で通る。値域検査は集合の外側を切るだけで、
+    # 個々の fixture が持つ意味を固定しない（refine の codex ペアで同じ形を潰したのと
+    # 同型の穴）。fixture 名が主張する拒否理由を、status と判別フィールドの共起として
+    # 1件ずつ固定する。
+    local impl="$FIXTURE_ROOT/implementation"
+    collect_jq "$impl/ac-unresolved/expected.json" \
+        '.status == "unresolved" and (.ac | length > 0) and any(.ac[]; .status == "unresolved")' \
+        "拒否理由が AC の未解決である: implementation/ac-unresolved"
+    collect_jq "$impl/review-blocker/expected.json" \
+        '.status == "blocked" and (.review | length > 0) and any(.review[]; .status == "blocked")' \
+        "拒否理由がレビューのブロッカーである: implementation/review-blocker"
+    collect_jq "$impl/ci-red/expected.json" \
+        '.status == "unresolved" and .ci == "red"' \
+        "拒否理由が CI の赤である: implementation/ci-red"
+    collect_jq "$impl/ci-unknown/expected.json" \
+        '.status == "unknown" and .ci == "unknown"' \
+        "拒否理由が CI の未判明である: implementation/ci-unknown"
+    collect_jq "$impl/dependency-missing/expected.json" \
+        '.status == "blocked" and .dependency == "missing"' \
+        "拒否理由が依存の欠落である: implementation/dependency-missing"
+
     collect_finish
 }
 
@@ -228,8 +267,13 @@ collect_system_fixtures() {
     local f="$FIXTURE_ROOT/plan/reviewer-fail-twice/expected.json"
 
     collect_jq "$f" '.status == "decision-request"' "上限到達で判断依頼へ抜ける: plan/reviewer-fail-twice"
-    collect_jq "$f" '(.reviewRounds | type) == "number" and .reviewRounds <= 2' \
-        "レビュー往復が上限2以下に収まる: plan/reviewer-fail-twice"
+
+    # 上限側だけを見る形（`<= 2`）は下限が無く、`0` や `-7` でも緑になる。
+    # ケース名も fixture 名（reviewer-fail-twice）も「2往復して抜ける」ことを主張して
+    # いるのに、「0往復で判断依頼へ抜ける」という別物の期待値へ書き換わっても
+    # 検出しない。witness の値そのものを固定する。
+    collect_jq "$f" '(.reviewRounds | type) == "number" and .reviewRounds == 2' \
+        "レビュー往復が2回であることが固定される: plan/reviewer-fail-twice"
 
     collect_finish
 }

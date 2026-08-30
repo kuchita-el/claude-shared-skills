@@ -78,6 +78,52 @@ dw_reference_sources() {
     find "$DW_ROOT/agents" -maxdepth 1 -name '*.md' -type f
 }
 
+# 参照元1件が指す reference ファイルを、解決後の絶対パスとして列挙する。
+#
+# 【basename の出現ではなくパスの解決結果を見る理由】
+# basename を本文中から探す形は「参照」ではなく「言及」を測る。同名の basename を持つ
+# ファイルを別スキル配下へ置くと、他方の参照が自分への参照として数えられ、孤立した
+# ファイルが到達扱いになる。参照を散文の言及（「かつて X.md という補助資料があった」）へ
+# 書き換えても到達扱いのままになる。現在の20本に basename の重複は無いが、
+# `plan-contract.md` / `output-format-single.md` のような一般名は衝突しうる。
+# 解決の基点は配布物が実際に使う2形に対応させる。
+#   `${CLAUDE_SKILL_DIR}/references/…` ・ `{skill_dir}/references/…`   → 参照元のスキル配下
+#   `${CLAUDE_PLUGIN_ROOT}/references/…` ・ `{plugin_root}/references/…` → プラグイン共有
+# エージェント定義は基点を持たず `references/…` と書く（起動時にスキルディレクトリを
+# 渡される契約のため）。参照元だけでは基点を決められないので、この形に限り basename での
+# 解決へ縮退させ、`?/references/<名前>` という印を出す。縮退はこの1形だけに閉じる。
+#
+# 引数: $1 参照元ファイル / $2 参照元のスキルディレクトリ（スキル外の参照元なら空）
+dw_reference_targets() {
+    awk -v skilldir="$2" -v plugroot="$DW_ROOT" '
+        function endswith(s, t) {
+            return length(s) >= length(t) && substr(s, length(s) - length(t) + 1) == t
+        }
+        BEGIN { seg = "references/"; seglen = length(seg) }
+        {
+            line = $0
+            while ((p = index(line, seg)) > 0) {
+                before = substr(line, 1, p - 1)
+                rest = substr(line, p + seglen)
+                line = rest
+                name = ""
+                for (i = 1; i <= length(rest); i++) {
+                    ch = substr(rest, i, 1)
+                    if (ch ~ /[A-Za-z0-9._-]/) { name = name ch } else { break }
+                }
+                if (name !~ /\.md$/) { continue }
+                if (endswith(before, "${CLAUDE_SKILL_DIR}/") || endswith(before, "{skill_dir}/")) {
+                    if (skilldir != "") { print skilldir "/references/" name }
+                } else if (endswith(before, "${CLAUDE_PLUGIN_ROOT}/") || endswith(before, "{plugin_root}/")) {
+                    print plugroot "/references/" name
+                } else {
+                    print "?/references/" name
+                }
+            }
+        }
+    ' "$1"
+}
+
 # スキルごとの必須ツール。`<スキル名>|<ツール>|<ツール>…` の形を取る。
 #
 # これはハーネス側のツール語彙の網羅列挙ではない。各スキルの手順が実際に実行する操作の
@@ -85,10 +131,18 @@ dw_reference_sources() {
 # 必須のものを落としたときだけ赤になるため、ハーネスが新ツールを足しても陳腐化しない。
 # 形式的妥当性（空でない・`Bash(` が閉じる・重複が無い）とは射程が異なり、そちらは
 # 語彙を持たない検査、こちらはスキル固有の権限の欠落を見る検査である。
+#
+# 4スキルすべてに登録を置く。2スキルにしか登録が無いと、登録の無いスキルは
+# `allowed-tools` を `- Read` 1件へ縮退させても4ケースすべてが緑になり、
+# 「必須のものを落としたときだけ赤になる」が登録済みのスキルについてしか成立しない。
+# 登録の無いスキルは検査から静かに外れるため、dw_collect_allowed_tools 側で
+# 「登録がある」こと自体も1件の検査項目として積む（この表から行を削る変異が赤になる）。
 dw_required_tools() {
     printf '%s\n' \
         'create-issue|Read|AskUserQuestion|Write|Bash(gh issue create*)' \
-        'refine-issue|Bash(gh issue view*)|Bash(bash *skills/refine-issue/scripts/prepare-issues.sh*)|Agent'
+        'refine-issue|Bash(gh issue view*)|Bash(bash *skills/refine-issue/scripts/prepare-issues.sh*)|Agent' \
+        'plan-issue|Read|Write|Bash(gh issue view*)|Agent' \
+        'implementation|Read|Edit|Write|Bash(git commit *)|Bash(gh pr create *)|Agent'
 }
 
 # 単一出典の needle 群。1行が1群で、`群名|needle|needle|…` の形を取る。
@@ -130,10 +184,22 @@ dw_frontmatter_end() {
 # 文字列を数えるため。引用の有無で字数判定が2字ぶん変わると、規律と無関係な回避が
 # 境界近傍で成立する）。
 #
-# 値がブロックスカラ指示子（`>` / `|` と chomp・indent 修飾）または空で、後続に
-# インデント継続行がある場合は、それらを連結して1つの値として返す。同一行しか読まない
-# 実装だと、`description: >-` と書いて次行以降へ長文を置くだけで字数の規律を回避できる
-# （引用符を剥がす決定が塞いだのと同型の穴が別の形で残る）。
+# 値の続きは、1行目の形にかかわらずインデント継続行を連結して1つの値として返す。
+# YAML のスカラは、ブロックスカラ指示子（`>` / `|` と chomp・indent 修飾）だけでなく、
+# 平文でも二重引用符でも複数行へ折り返せる。継続を読む条件を「1行目が空または
+# ブロック指示子」に限ると、次の3形がいずれも字数の規律を素通りする。
+#
+#   description: <180字>          ← 平文の折り返し。回避を試みずに踏む（長い値を
+#     <200字>                        読みやすく折り返して書くだけで実値381字が180字になる）
+#   description: "<180字>         ← 二重引用符の複数行
+#     <200字>"
+#   description: >-               ← ブロックスカラの途中の空行。空行は `^[ \t]` に
+#     <180字>                        当たらないため、そこで値が打ち切られる
+#
+#     <200字>
+#
+# したがって継続の判定は「非インデント行が来るまで」に置き、空行は継続を打ち切らない。
+# 連結の区切りは1字（空白）とする。YAML の折り畳みも改行1字へ畳むため、字数が一致する。
 dw_fm_value() {
     local file="$1" fm_end="$2" key="$3" v
     v="$(awk -v fmend="$fm_end" -v key="$key" '
@@ -141,11 +207,15 @@ dw_fm_value() {
         NR > fmend { exit }
         !inblock && index($0, key ":") == 1 {
             val = trim(substr($0, length(key) + 2))
-            if (val == "" || val ~ /^[>|][0-9]*[-+]?$/) { inblock = 1; buf = ""; next }
-            print val
-            exit
+            # ブロックスカラ指示子は値の一部ではないので落とす。
+            if (val ~ /^[>|][0-9]*[-+]?$/) { val = "" }
+            inblock = 1
+            buf = val
+            next
         }
         inblock {
+            # 空行はブロックスカラの段落区切り。ここで打ち切ると後続が読まれない。
+            if ($0 ~ /^[ \t]*$/) { next }
             if ($0 ~ /^[ \t]/) {
                 line = trim($0)
                 if (buf == "") { buf = line } else { buf = buf " " line }
@@ -185,6 +255,15 @@ dw_char_count() {
 # 検査の未対応かを判別できない。フロー形の分割は括弧の深さを見て行う。
 # `Bash(gh api repos/*/pulls/*, x)` のような括弧内のカンマで項目が割れると、
 # 閉じ括弧の欠落として誤検出されるためである。
+#
+# 【項目の引用符を剥がす理由】
+# 項目は YAML のスカラであり、`- "Bash(gh foo*"` のように引用符で囲める。剥がさないと
+# 実際の値と検査が見る文字列がずれ、形式的妥当性の検査が両方向へ壊れる。
+# 偽陰性: `"Bash(gh foo*"` は `Bash(` で始まらないため閉じ括弧の検査のどちらの枝にも
+#         当たらず無検査で抜け、`Read` と `"Read"` は別物と見なされて重複も見逃す。
+# 偽陽性: フロー形でカンマを含む値（`Bash(gh api repos/*/pulls/*, x)`）は YAML 上
+#         引用が必須になるが、その状態では必須ツールの部分集合検査に一致しなくなる。
+# dw_fm_value 側は同じ理由で既に引用符を剥がしており、方針をここで揃える。
 dw_allowed_tools() {
     local file="$1" fm_end="$2"
     awk -v fmend="$fm_end" '
@@ -194,6 +273,21 @@ dw_allowed_tools() {
         # 例示しており、回避を試みずに踏む書式である。
         function strip_comment(s) { sub(/[ \t]+#.*$/, "", s); return s }
         function trim(s) { sub(/^[ \t]+/, "", s); sub(/[ \t]+$/, "", s); return s }
+        # 引用符で囲まれた項目は中身を返す。引用の中の `#` はコメントではないため、
+        # コメント落としは引用でない項目にだけ掛ける。閉じ引用が無い項目は
+        # 引用として解釈せず原文のまま返す（YAML として壊れており、検査で拾わせる）。
+        function dequote(s,   q, i, ch, out) {
+            s = trim(s)
+            q = substr(s, 1, 1)
+            if (q != "\"" && q != "'"'"'") { return trim(strip_comment(s)) }
+            out = ""
+            for (i = 2; i <= length(s); i++) {
+                ch = substr(s, i, 1)
+                if (ch == q) { return out }
+                out = out ch
+            }
+            return trim(strip_comment(s))
+        }
         function emit_flow(val,   i, ch, depth, item) {
             sub(/^\[/, "", val); sub(/\]$/, "", val)
             depth = 0; item = ""
@@ -201,10 +295,10 @@ dw_allowed_tools() {
                 ch = substr(val, i, 1)
                 if (ch == "(") { depth++ }
                 else if (ch == ")") { depth-- }
-                if (ch == "," && depth == 0) { print trim(item); item = ""; continue }
+                if (ch == "," && depth == 0) { print dequote(item); item = ""; continue }
                 item = item ch
             }
-            print trim(item)
+            print dequote(item)
         }
         NR > fmend { exit }
         !inlist && index($0, "allowed-tools:") == 1 {
@@ -218,7 +312,7 @@ dw_allowed_tools() {
         inlist && /^[ \t]*-/ {
             line = $0
             sub(/^[ \t]*-[ \t]*/, "", line)
-            print trim(strip_comment(line))
+            print dequote(line)
             next
         }
     ' "$file"
@@ -271,11 +365,14 @@ dw_collect_allowed_tools() {
     fi
 
     # スキル固有の必須ツールが宣言されているか（部分集合検査）。
-    local line name tool
+    # 登録の無いスキルは部分集合検査が1件も走らないまま緑で抜けるため、登録の不在
+    # そのものを違反として積む。緑の意味を「必須ツールを持つ」に保つための対である。
+    local line name tool registered=0
     local -a want=()
     while IFS= read -r line; do
         name="${line%%|*}"
         [ "$name" = "$dir" ] || continue
+        registered=1
         IFS='|' read -r -a want <<<"$line"
         for tool in "${want[@]:1}"; do
             case "$seen" in
@@ -284,6 +381,11 @@ dw_collect_allowed_tools() {
             esac
         done
     done < <(dw_required_tools)
+    if [ "$registered" -eq 1 ]; then
+        collect_ok "必須ツールの登録がある: $rel"
+    else
+        collect_fail "必須ツールの登録がある: $rel" "dw_required_tools に $dir の行が無く部分集合検査が走らない"
+    fi
     return 0
 }
 
@@ -357,7 +459,9 @@ dw_collect_scanned() {
             continue
         fi
 
-        total="$(wc -l <"$f" | tr -d '[:space:]')"
+        # 行数は awk の NR で数える。`wc -l` は改行の個数を数えるため、末尾に改行の
+        # 無いファイルで最終行を落とし、上限ちょうど+1行の本文が緑で通る。
+        total="$(awk 'END { print NR }' "$f")"
         body=$((total - fm_end))
         if [ "$body" -le "$BODY_MAX" ]; then
             collect_ok "本文行数が ${BODY_MAX} 行以下: $rel（実測 ${body} 行）"
@@ -457,12 +561,34 @@ dw_collect_scanned() {
     done
     dw_collect_scanned "$sources" "$SOURCE_MIN" "走査した参照元（SKILL.md ・エージェント定義）の件数"
 
+    # 参照元すべてから、解決済みの参照先を集めて到達集合を作る。
+    local reached="" skilldir cited=0 t
+    for s in "${srcs[@]}"; do
+        case "$s" in
+            "$DW_ROOT"/skills/*/SKILL.md) skilldir="$(dirname "$s")" ;;
+            *) skilldir="" ;;
+        esac
+        while IFS= read -r t; do
+            [ -n "$t" ] || continue
+            cited=$((cited + 1))
+            reached="${reached}${t}"$'\n'
+        done < <(dw_reference_targets "$s" "$skilldir")
+    done
+
+    # 到達集合が空でないことを別に確かめる。抽出が壊れて0件になると、以降の判定は
+    # 全件不合格になるため赤にはなるが、赤の意味が「孤立が生じた」から「抽出が壊れた」へ
+    # 変わる。件数の下限を先に置いて原因を切り分けられるようにする。
+    dw_collect_scanned "$cited" "$REFERENCE_MIN" "参照元から抽出した参照の件数"
+
     local scanned=0 r rel base
     for r in ${refs[@]+"${refs[@]}"}; do
         scanned=$((scanned + 1))
         rel="${r#"$REPO_ROOT"/}"
         base="$(basename "$r")"
-        if grep -qlF -e "$base" "${srcs[@]}" 2>/dev/null; then
+        if printf '%s' "$reached" | grep -qxF -e "$r"; then
+            collect_ok "到達元が1件以上ある: $rel"
+        elif printf '%s' "$reached" | grep -qxF -e "?/references/$base"; then
+            # 基点を持たない相対参照（エージェント定義）による縮退到達。
             collect_ok "到達元が1件以上ある: $rel"
         else
             collect_fail "到達元が1件以上ある: $rel" "SKILL.md ・エージェント定義のいずれからも引かれていない"
@@ -474,14 +600,13 @@ dw_collect_scanned() {
     # 親を遡って reference を指す参照を禁じる（旧テストの「一段参照に留まる」の残余）。
     local -a skills=()
     mapfile -t skills < <(dw_skill_files)
-    local checked=0 f rel fm_end hits
+    # 走査面は front-matter を含むファイル全体に取る。本文だけに限ると、front-matter へ
+    # 書いた親相対の参照（`allowed-tools` の Bash パターン等）が無検査の置き場所になる。
+    local checked=0 f rel hits
     for f in ${skills[@]+"${skills[@]}"}; do
         checked=$((checked + 1))
         rel="${f#"$REPO_ROOT"/}"
-        fm_end="$(dw_frontmatter_end "$f")"
-        [ -n "$fm_end" ] || fm_end=0
-        hits="$(sed -n "$((fm_end + 1)),\$p" "$f" |
-            grep -cE '\.\./[A-Za-z0-9_./{}$-]*references/' || true)"
+        hits="$(grep -cE '\.\./[A-Za-z0-9_./{}$-]*references/' "$f" || true)"
         if [ "$hits" -eq 0 ]; then
             collect_ok "親相対の references 参照が無い: $rel"
         else
