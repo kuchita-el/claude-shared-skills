@@ -47,6 +47,7 @@ This ledger is regenerated when tracked source/config/docs add or move a `plugin
 | scripts/tests/adr-portability.bats | 22 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/adr-portability.bats | 27 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/dev-workflow-skill-contract.bats | 26 | plugins/dev-workflow | migration | reference | wave-5 | current |
+| scripts/tests/plan-norm-regression.bats | 6 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | scripts/tests/helpers/common.bash | 34 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/gen-adr-index.bats | 2 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/lint-adr-layers.bats | 2 | plugins/adr | migration | reference | wave-5 | current |
