@@ -52,11 +52,11 @@ This ledger is regenerated when tracked source/config/docs add or move a `plugin
 | scripts/tests/dev-workflow-implementation-contract.bats | 6 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | scripts/tests/dev-workflow-plan-contract.bats | 4 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | scripts/tests/dev-workflow-plan-contract.bats | 8 | plugins/dev-workflow | migration | reference | wave-5 | current |
-| scripts/tests/dev-workflow-plan-contract.bats | 69 | plugins/dev-workflow | migration | reference | wave-5 | current |
-| scripts/tests/dev-workflow-plan-contract.bats | 109 | plugins/dev-workflow | migration | reference | wave-5 | current |
-| scripts/tests/dev-workflow-plan-contract.bats | 159 | plugins/dev-workflow | migration | reference | wave-5 | current |
-| scripts/tests/dev-workflow-plan-contract.bats | 199 | plugins/dev-workflow | migration | reference | wave-5 | current |
-| scripts/tests/dev-workflow-plan-contract.bats | 207 | plugins/dev-workflow | migration | reference | wave-5 | current |
+| scripts/tests/dev-workflow-plan-contract.bats | 77 | plugins/dev-workflow | migration | reference | wave-5 | current |
+| scripts/tests/dev-workflow-plan-contract.bats | 123 | plugins/dev-workflow | migration | reference | wave-5 | current |
+| scripts/tests/dev-workflow-plan-contract.bats | 180 | plugins/dev-workflow | migration | reference | wave-5 | current |
+| scripts/tests/dev-workflow-plan-contract.bats | 220 | plugins/dev-workflow | migration | reference | wave-5 | current |
+| scripts/tests/dev-workflow-plan-contract.bats | 237 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | scripts/tests/dev-workflow-refine-contract.bats | 6 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | scripts/tests/dev-workflow-refine-contract.bats | 10 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | scripts/tests/dev-workflow-refine-contract.bats | 22 | plugins/dev-workflow | migration | reference | wave-5 | current |

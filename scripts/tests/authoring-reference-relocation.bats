@@ -168,4 +168,27 @@ axis_section_facts() {
     echo "軸数の宣言と表のデータ行数が食い違う: declared=$declared counted=$counted"
     return 1
   }
+
+  # 軸数の一致だけでは、作成時（静的）軸へ明記した所有と、原則4 の射程を限定する注記が
+  # 消えても緑のまま通る。いずれも今回の改訂の実体であるため場所を固定して照合する。
+  local owner_row
+  owner_row="$(grep -F '| 作成時（静的） |' "$doc" | head -1)"
+  case "$owner_row" in
+    *'plan-output-format.md'*) ;;
+    *)
+      echo "作成時（静的）軸の出典にプラン出力テンプレートが現れない"
+      return 1
+      ;;
+  esac
+  case "$owner_row" in
+    *'プラン成果物の静的分量'*) ;;
+    *)
+      echo "作成時（静的）軸の縛る対象にプラン成果物の静的分量が現れない"
+      return 1
+      ;;
+  esac
+  grep -qF -e '原則4 の射程との関係' "$doc" || {
+    echo "原則4 の射程を限定する注記が失われている"
+    return 1
+  }
 }
