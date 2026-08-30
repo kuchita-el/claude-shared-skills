@@ -51,3 +51,4 @@
 - [ADR-202608280911-01-adr-judgment-quality-without-machine-verification](./ADR-202608280911-01-adr-judgment-quality-without-machine-verification.md): ADR 化要否判定の品質は条文の質だけで支え、判定を機械実行する検証装置を持たない
 - [ADR-202608281231-01-context-budget-convention-authoring-side-placement](./ADR-202608281231-01-context-budget-convention-authoring-side-placement.md): スキル実行時のコンテキスト予算規約を作者向け文書として配布物の外へ置く
 - [ADR-202608281232-01-subagent-execution-parameter-authoring-side-placement](./ADR-202608281232-01-subagent-execution-parameter-authoring-side-placement.md): サブエージェント実行パラメータ規約を作者向け文書として配布物の外へ置く
+- [ADR-202608301012-01-docs-past-record-abolition](./ADR-202608301012-01-docs-past-record-abolition.md): 過去の記録を `docs/` へ保持せず、恒久的価値のある情報を正本へ移してから削除する
