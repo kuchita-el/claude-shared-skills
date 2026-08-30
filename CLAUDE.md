@@ -90,7 +90,7 @@ Issueサイズ（Small/Medium/Large）に応じてチェック項目が段階的
 
 ## サブエージェントの実行パラメータ
 
-サブエージェントの `model` / `effort` をどこに置き、どのような意図で値を選ぶかは `docs/references/subagent-execution-parameters.md`（ADR-202608281232-01 / ADR-202607251922-02）に単一出典化している。新規サブエージェントを追加する際は `model` と `effort` を front-matter に必ず明示する（本節へ転記しない）。
+サブエージェントの `model` / `effort` をどこに置き、どのような意図で値を選ぶかは `docs/references/subagent-execution-parameters.md`（ADR-202608281232-01 / ADR-202607251922-02）に単一出典化している。新規サブエージェントを追加する際は `model` と `effort` を front-matter へ明示する。これは既定であり、例外に当たる役割と分岐先は出典の選択規則が定める（本節へ転記しない）。
 
 ## 振る舞いの不変条件
 
