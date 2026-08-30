@@ -247,7 +247,7 @@ FAILED: 1/2 suites (6s) -- bats
   - **ゲートは発火する**。起動されたのは project root 側の `pre-commit-gate.sh` であり、その配下で `bash scripts/run-tests.sh` が **cwd=worktree** で走った。worktree 側マーカーも `PWD=worktree` で発火した。観測期間中、cwd が project root のプロセスは1つも現れていない。所要は約6.2秒（プロセス初出から最終出現まで）、commit は exit 0 で通った。
   - **未信頼 worktree での fail-closed**: 1回目は worktree の `mise.toml` が未信頼で bats を解決できず、runner が非0、ゲートが exit 2 で commit をブロックした。runner は `mise exec` に失敗すると PATH へフォールバックする（§4）ため、この環境では PATH 上にも `bats` が無かったことになる。`mise trust --show` で project root=trusted / worktree=untrusted を確認。`mise trust` 後に上記の緑になった。
   - この観測により、#645 時点の §2 の記述（worktree では自動起動が働かないため手動実行が要る）が誤りであることが確定した。
-dev-workflow Wave 3は`dev-workflow-create-contract.bats`、`dev-workflow-refine-contract.bats`、`dev-workflow-plan-contract.bats`、`dev-workflow-implementation-contract.bats`を前段順に実行し、`skill-portability.bats`と各validatorを回帰実行する。fixtureは成果状態とhost adapter witnessを分離する。
+dev-workflow Wave 3は`dev-workflow-skill-contract.bats`と`dev-workflow-fixture-contract.bats`を実行し、`skill-portability.bats`と各validatorを回帰実行する。前者はスキル横断の不変条件（起動契約・規模規律・単一出典・参照到達性）を、後者はfixtureが固定する境界を検査する。スキル別に4本を持つ構成は、単一出典と参照到達性が特定スキルへ帰属しないため2本へ再編した。fixtureは成果状態とhost adapter witnessを分離する。
 
 ## Cross-host Plugin Wave 4（2026-08-12）
 
