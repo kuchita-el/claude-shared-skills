@@ -139,7 +139,7 @@ Phase 1 内でエスカレーション（後述）が発動する場合は、エ
 - **ブロッカーなし**（指摘なし、または改善提案のみ） → Phase 4 へ（**Phase 5 起点の場合のみ復帰先が異なる**。Phase 5 節を参照）
 - **ブロッカーあり** → ブロッカーの指摘を作業リストとして Phase 1（実装）に戻す
 
-各分岐の帰結規定（記載先・戻し方とその根拠）は `${CLAUDE_SKILL_DIR}/references/review-findings-handling.md`§1.1 が正本。
+各分岐の帰結規定（記載先・戻し方とその根拠）は `${CLAUDE_SKILL_DIR}/references/review-findings-handling.md` §1.1 が正本。
 
 implementation は自前の周回統治（リトライ回数・振動検知等）を持たない。反復の制御は委譲先 superpowers のオーケストレーションに委ね、implementation はブロッカー判定→修正／エスカレーションの分岐という接続契約のみを保持する。反復しても収束しない場合（同じ失敗・同じ指摘が解消しない）は、**エスカレーション機構**（後述）へ。「収束しないときは人間に渡す」原則は superpowers の有無に関わらず適用する。
 
