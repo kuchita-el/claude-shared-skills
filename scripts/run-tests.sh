@@ -9,8 +9,10 @@
 #   すると検査が一度も走らないまま commit が通り、しかも警告が出ない
 # - 唯一の例外が claude-plugin-validate である。実体が外部 CLI（claude）であり、手元の
 #   導入形態は利用者ごとに異なって版も揃わないため、mise で版を固定できない。解決できない
-#   場合は SKIPPED として理由を展開し、集計行にも skipped を出したうえで緑にする。
-#   fail-closed の担保は CI 側にあり、CI は claude を導入してから runner を呼ぶ
+#   場合は SKIPPED として理由を展開し、集計行にも skipped を出したうえで緑にする
+# - ただし skip を無条件に許すと、CI が claude を導入し損ねた場合に「一度も走らないまま
+#   緑」になる。担保として RUN_TESTS_REQUIRE_ALL_SUITES=1 を用意し、これが立っている
+#   環境では前提不成立を skip ではなく失敗として扱う。CI はこの値を立てて runner を呼ぶ
 # - 引数でスイートを1本に絞れる（開発時の反復用。既定は全実行）
 #
 # 実行ガイド: docs/development/test-execution.md
@@ -33,9 +35,8 @@ SUITES=(
 
 TESTS_DIR="$REPO_ROOT/scripts/tests"
 
-# run_one がスイートを実行しなかったことを表す終了コード。検査器自身の終了コードと
-# 衝突しない値を選ぶ。
-SKIP_RC=99
+# 前提不成立を skip ではなく失敗として扱うか。CI はこれを立てて呼ぶ（冒頭コメント参照）。
+REQUIRE_ALL_SUITES="${RUN_TESTS_REQUIRE_ALL_SUITES:-0}"
 
 usage() {
     cat <<'USAGE'
@@ -145,6 +146,19 @@ collect_bats_files() {
     return 0
 }
 
+# スイート固有の前提。満たさない場合だけ理由を1行出力する（無出力＝前提を満たす）。
+# 判定を run_one の終了コードへ載せないのは、claude-plugin-validate の実体が外部 CLI で
+# あり、その終了コードの値域を本リポジトリが決められないためである。特定の値を skip の
+# 合図に充てると、CLI が同じ値で失敗したときに実失敗が skip へ化ける。
+suite_precondition_failure() {
+    case "$1" in
+        claude-plugin-validate)
+            command -v claude >/dev/null 2>&1 && return 0
+            echo "claude を PATH 上に解決できない（導入: npm install -g @anthropic-ai/claude-code）"
+            ;;
+    esac
+}
+
 run_one() {
     case "$1" in
         bats) "${BATS_CMD[@]}" --print-output-on-failure "${BATS_FILES[@]}" ;;
@@ -152,17 +166,10 @@ run_one() {
         validate-plugin-manifests) bash scripts/validate-plugin-manifests.sh . ;;
         validate-plugin-portability) bash scripts/validate-plugin-portability.sh . ;;
         validate-plugin-path-references) bash scripts/validate-plugin-path-references.sh . docs/development/plugin-path-reference-ledger.md ;;
-        claude-plugin-validate)
-            # 非 strict で呼ぶ。--strict は version フィールドの欠落を含む警告をエラーへ
-            # 昇格させるが、本リポジトリは版をコミット SHA へ委ねており version を持たない
-            # （ADR-202609061416-01）。
-            if ! command -v claude >/dev/null 2>&1; then
-                echo "claude を解決できないため検査を実行していない（PATH 上に claude が無い）"
-                echo "  CI は npm i -g @anthropic-ai/claude-code で導入してから runner を呼ぶ"
-                return $SKIP_RC
-            fi
-            claude plugin validate .
-            ;;
+        # 非 strict で呼ぶ。--strict は version フィールドの欠落を含む警告をエラーへ昇格
+        # させるが、本リポジトリは版をコミット SHA へ委ねており version を持たない
+        # （ADR-202609061416-01）。
+        claude-plugin-validate) claude plugin validate . ;;
         *)
             echo "run-tests: 実体が未定義のスイートです: $1" >&2
             return 1
@@ -209,6 +216,22 @@ for entry in "${SUITES[@]}"; do
 
     [ -z "$filter" ] || [ "$filter" = "$name" ] || continue
 
+    precondition_failure=$(suite_precondition_failure "$name")
+    if [ -n "$precondition_failure" ]; then
+        ran=$((ran + 1))
+        if [ "$REQUIRE_ALL_SUITES" = "1" ]; then
+            printf '[%-5s] %-20s ... FAILED (前提不成立)\n' "$kind" "$name"
+            printf '    %s| %s\n' "$name" "$precondition_failure"
+            printf '    %s| RUN_TESTS_REQUIRE_ALL_SUITES=1 のため前提不成立を失敗として扱う\n' "$name"
+            failed_names+=("$name")
+        else
+            printf '[%-5s] %-20s ... SKIPPED\n' "$kind" "$name"
+            printf '    %s| %s\n' "$name" "$precondition_failure"
+            skipped_names+=("$name")
+        fi
+        continue
+    fi
+
     log="$work_dir/$name.log"
     start=$SECONDS
     run_one "$name" >"$log" 2>&1
@@ -234,11 +257,7 @@ for entry in "${SUITES[@]}"; do
         fi
     fi
 
-    if [ "$rc" -eq "$SKIP_RC" ]; then
-        printf '[%-5s] %-20s ... SKIPPED (%ds)\n' "$kind" "$name" "$elapsed"
-        sed "s/^/    $name| /" "$log"
-        skipped_names+=("$name")
-    elif [ "$rc" -eq 0 ]; then
+    if [ "$rc" -eq 0 ]; then
         if [ "$name" = "bats" ]; then
             printf '[%-5s] %-20s ... %s (%ds)\n' "$kind" "$name" \
                 "$(grep -c '^ok ' "$log") tests, 0 failures" "$elapsed"

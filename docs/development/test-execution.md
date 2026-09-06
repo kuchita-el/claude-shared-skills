@@ -15,7 +15,7 @@
 | `validate-plugin-path-references` | `scripts/validate-plugin-path-references.sh . docs/development/plugin-path-reference-ledger.md` | plugin path参照台帳の双方向一致 |
 | `claude-plugin-validate` | `claude plugin validate .` | marketplace定義と全plugin manifestのスキーマ検証（非strict） |
 
-`claude-plugin-validate` は実体が外部CLIであり、手元の導入形態が利用者ごとに異なって版も揃わないため、`mise.toml` で版を固定できない。そのため他の検査器と違い、`claude` をPATH上に解決できない場合はSKIPPEDとして理由を展開し、集計行にも `skipped: claude-plugin-validate` を出したうえで緑で終わる。fail-closedの担保はCI側にあり、`.github/workflows/test.yml` が `npm install -g @anthropic-ai/claude-code` でCLIを導入してからrunnerを呼ぶ。skipと実行の双方の経路は `scripts/tests/run-tests-runner.bats` が固定する。`--strict` は採らない。同オプションはversionフィールドの欠落を含む警告をエラーへ昇格させるが、本リポジトリは版をコミットSHAへ委ねておりversionを持たない（ADR-202609061416-01）。
+`claude-plugin-validate` は実体が外部CLIであり、手元の導入形態が利用者ごとに異なって版も揃わないため、`mise.toml` で版を固定できない。そのため他の検査器と違い、`claude` をPATH上に解決できない場合はSKIPPEDとして理由を展開し、集計行にも `skipped: claude-plugin-validate` を出したうえで緑で終わる。fail-closedの担保はCI側にあり、`.github/workflows/test.yml` が版を固定した `npm install -g @anthropic-ai/claude-code@<version>` でCLIを導入したうえで、`RUN_TESTS_REQUIRE_ALL_SUITES=1` を立ててrunnerを呼ぶ。同変数が立っている環境では、runnerは前提不成立をSKIPPEDではなくFAILEDとして扱う。CLIの導入に失敗しても緑で素通りしないための担保である。skip・実行・要求モードの3経路と、CIが同変数を実際に立てていることは `scripts/tests/run-tests-runner.bats` が固定する。`--strict` は採らない。同オプションはversionフィールドの欠落を含む警告をエラーへ昇格させるが、本リポジトリは版をコミットSHAへ委ねておりversionを持たない（ADR-202609061416-01）。
 
 runner はいずれかが失敗しても残りを最後まで実行してから非0で終わる。失敗を1回の実行で出揃わせるためである。成功したスイートの出力は畳み、失敗したスイートの出力だけを展開する（bats については通過ケースの `ok ` 行も畳む）。
 
@@ -30,7 +30,7 @@ runner は commit ゲート（`scripts/hooks/pre-commit-gate.sh`）から起動�
 - 素の端末（Claude Code を介さないシェル）からの `git commit`
 - `git -C <path> commit`（ゲートのヘッダが既知の穴として明記している。ゲートは事故を防ぐガードレールであってセキュリティ境界ではないため、意図的な回避までは塞がない）
 
-**これらの経路で作業する場合は、runner を手動実行する必要がある。** GitHub Actions 等の CI は導入していない（理由は §6 の問い1）。
+**これらの経路で作業する場合は、runner を手動実行する必要がある。** ただし GitHub Actions は 2026-08-10 の `b07cf49` で導入済みであり、pull request と main への push で runner を実行する（`.github/workflows/test.yml`）。したがって素通りするのは push 前のローカル作業に限られる。§6 の問い1 は CI を新設しないと決めていたが、この決定は当該コミットで反転している（同節の追記を参照）。
 
 ### git worktree で作業する場合
 
@@ -142,6 +142,8 @@ FAILED: 1/2 suites (6s) -- bats
 - `plugins/adr/hooks/adr-commit-gate` へテスト全体の実行を足すことは採らない。同フックは ADR 検査へ役割を絞ることを冒頭コメントで明示しており、配布物として利用者のリポジトリでも動く。配布元固有のテストをそこへ足すと、配布先で解決できない参照が生じる。
 
 **受容した犠牲**: 自動起動の射程が Claude Code の Bash ツール経由の commit に限られる（§2）。素の端末からの commit と `git -C` は素通りする。これは手動実行の明記で補う。
+
+**追記（2026-09-06）**: 上の決定「GitHub Actions 等の CI は新設しない」は、2026-08-10 の `b07cf49`（`ci: require test suite on main`）で反転している。受容した犠牲として挙げた「素の端末からの commit が素通りする」は、push 時点で CI が拾う形で実質的に塞がれた。ADR-202609061416-01 に伴い `claude-plugin-validate` を足した際、同スイートだけが fail-closed でないため、その担保を CI 側へ置いた（§1）。CI は現時点で「同じ検査を2箇所で維持する」二重化の側ではなく、ローカルのゲートが覆えない射程を補う側として機能している。上の決定文と判定表は当時の記録として据え置き、現況は本追記と §2 が持つ。
 
 ### 問い2: 実行経路は配布物境界のどちら側に属するか
 
