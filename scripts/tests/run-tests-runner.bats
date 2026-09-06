@@ -14,7 +14,7 @@ load 'helpers/common'
 setup() { RUNNER="$REPO_ROOT/scripts/run-tests.sh"; }
 
 @test "claude を解決できない場合は SKIPPED として理由を展開し緑で終わる" {
-  run env PATH=/usr/bin:/bin bash "$RUNNER" claude-plugin-validate
+  run env RUN_TESTS_REQUIRE_ALL_SUITES=0 PATH=/usr/bin:/bin bash "$RUNNER" claude-plugin-validate
   [ "$status" -eq 0 ]
   [[ "$output" == *"claude-plugin-validate ... SKIPPED"* ]]
   [[ "$output" == *"claude を PATH 上に解決できない"* ]]
@@ -35,7 +35,7 @@ setup() { RUNNER="$REPO_ROOT/scripts/run-tests.sh"; }
   mkdir -p "$stub_dir"
   printf '%s\n' '#!/usr/bin/env bash' 'echo "stub claude: 検査に失敗した"' 'exit 1' >"$stub_dir/claude"
   chmod +x "$stub_dir/claude"
-  run env PATH="$stub_dir:/usr/bin:/bin" bash "$RUNNER" claude-plugin-validate
+  run env RUN_TESTS_REQUIRE_ALL_SUITES=0 PATH="$stub_dir:/usr/bin:/bin" bash "$RUNNER" claude-plugin-validate
   [ "$status" -eq 1 ]
   [[ "$output" == *"claude-plugin-validate ... FAILED"* ]]
   [[ "$output" == *"stub claude: 検査に失敗した"* ]]
@@ -50,7 +50,7 @@ setup() { RUNNER="$REPO_ROOT/scripts/run-tests.sh"; }
   mkdir -p "$stub_dir"
   printf '%s\n' '#!/usr/bin/env bash' 'echo "stub claude: exit 99 で失敗した"' 'exit 99' >"$stub_dir/claude"
   chmod +x "$stub_dir/claude"
-  run env PATH="$stub_dir:/usr/bin:/bin" bash "$RUNNER" claude-plugin-validate
+  run env RUN_TESTS_REQUIRE_ALL_SUITES=0 PATH="$stub_dir:/usr/bin:/bin" bash "$RUNNER" claude-plugin-validate
   [ "$status" -eq 1 ]
   [[ "$output" == *"claude-plugin-validate ... FAILED (exit 99"* ]]
   [[ "$output" != *"SKIPPED"* ]]
