@@ -7,6 +7,10 @@
 # - 成功したスイートの出力は畳み、失敗したスイートの出力だけを展開する
 # - bats を解決できない場合は成功扱いにせず非0で終わる（fail-closed）。スキップして成功に
 #   すると検査が一度も走らないまま commit が通り、しかも警告が出ない
+# - 唯一の例外が claude-plugin-validate である。実体が外部 CLI（claude）であり、手元の
+#   導入形態は利用者ごとに異なって版も揃わないため、mise で版を固定できない。解決できない
+#   場合は SKIPPED として理由を展開し、集計行にも skipped を出したうえで緑にする。
+#   fail-closed の担保は CI 側にあり、CI は claude を導入してから runner を呼ぶ
 # - 引数でスイートを1本に絞れる（開発時の反復用。既定は全実行）
 #
 # 実行ガイド: docs/development/test-execution.md
@@ -24,9 +28,14 @@ SUITES=(
     "validate-plugin-manifests|check"
     "validate-plugin-portability|check"
     "validate-plugin-path-references|check"
+    "claude-plugin-validate|check"
 )
 
 TESTS_DIR="$REPO_ROOT/scripts/tests"
+
+# run_one がスイートを実行しなかったことを表す終了コード。検査器自身の終了コードと
+# 衝突しない値を選ぶ。
+SKIP_RC=99
 
 usage() {
     cat <<'USAGE'
@@ -87,6 +96,7 @@ EXPECTED_BATS=(
     next-adr-id.bats
     plugin-manifests.bats
     plugin-path-references.bats
+    run-tests-runner.bats
     skill-portability.bats
     dev-workflow-skill-contract.bats
     dev-workflow-fixture-contract.bats
@@ -142,6 +152,17 @@ run_one() {
         validate-plugin-manifests) bash scripts/validate-plugin-manifests.sh . ;;
         validate-plugin-portability) bash scripts/validate-plugin-portability.sh . ;;
         validate-plugin-path-references) bash scripts/validate-plugin-path-references.sh . docs/development/plugin-path-reference-ledger.md ;;
+        claude-plugin-validate)
+            # 非 strict で呼ぶ。--strict は version フィールドの欠落を含む警告をエラーへ
+            # 昇格させるが、本リポジトリは版をコミット SHA へ委ねており version を持たない
+            # （ADR-202609061416-01）。
+            if ! command -v claude >/dev/null 2>&1; then
+                echo "claude を解決できないため検査を実行していない（PATH 上に claude が無い）"
+                echo "  CI は npm i -g @anthropic-ai/claude-code で導入してから runner を呼ぶ"
+                return $SKIP_RC
+            fi
+            claude plugin validate .
+            ;;
         *)
             echo "run-tests: 実体が未定義のスイートです: $1" >&2
             return 1
@@ -178,6 +199,7 @@ work_dir=$(mktemp -d) || exit 1
 trap 'rm -rf "$work_dir"' EXIT
 
 failed_names=()
+skipped_names=()
 ran=0
 start_all=$SECONDS
 
@@ -212,7 +234,11 @@ for entry in "${SUITES[@]}"; do
         fi
     fi
 
-    if [ "$rc" -eq 0 ]; then
+    if [ "$rc" -eq "$SKIP_RC" ]; then
+        printf '[%-5s] %-20s ... SKIPPED (%ds)\n' "$kind" "$name" "$elapsed"
+        sed "s/^/    $name| /" "$log"
+        skipped_names+=("$name")
+    elif [ "$rc" -eq 0 ]; then
         if [ "$name" = "bats" ]; then
             printf '[%-5s] %-20s ... %s (%ds)\n' "$kind" "$name" \
                 "$(grep -c '^ok ' "$log") tests, 0 failures" "$elapsed"
@@ -240,11 +266,16 @@ if [ "$ran" -eq 0 ]; then
     exit 1
 fi
 
+skipped_note=""
+if [ "${#skipped_names[@]}" -gt 0 ]; then
+    skipped_note="; skipped: ${skipped_names[*]}"
+fi
+
 if [ "${#failed_names[@]}" -eq 0 ]; then
-    printf 'all suites passed (%d suites, %ds)\n' "$ran" "$elapsed_all"
+    printf 'all suites passed (%d suites, %ds%s)\n' "$ran" "$elapsed_all" "$skipped_note"
     exit 0
 fi
 
-printf 'FAILED: %d/%d suites (%ds) -- %s\n' \
-    "${#failed_names[@]}" "$ran" "$elapsed_all" "${failed_names[*]}"
+printf 'FAILED: %d/%d suites (%ds%s) -- %s\n' \
+    "${#failed_names[@]}" "$ran" "$elapsed_all" "$skipped_note" "${failed_names[*]}"
 exit 1

@@ -30,5 +30,8 @@ jobs:
       - name: Install test tools
         run: mise install
 
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
       - name: Run test suite
         run: bash scripts/run-tests.sh

@@ -4,7 +4,7 @@
 
 ## 1. 何が走るか
 
-実行経路は `scripts/run-tests.sh`（以下 runner）の1本である。runner はBatsと4つのfail-closed検査スイートを順に実行する。
+実行経路は `scripts/run-tests.sh`（以下 runner）の1本である。runner はBatsと5つの検査スイートを順に実行する。うち4つはfail-closedであり、`claude-plugin-validate` だけが例外で、`claude` を解決できない場合はSKIPPEDとして理由を展開し緑で終わる（後述）。
 
 | スイート | 実体 | 内容 |
 |---|---|---|
@@ -13,6 +13,9 @@
 | `validate-plugin-manifests` | `scripts/validate-plugin-manifests.sh .` | marketplace、manifest、README、skill集合の双方向一致 |
 | `validate-plugin-portability` | `scripts/validate-plugin-portability.sh .` | matrix、permission ledger、参照境界 |
 | `validate-plugin-path-references` | `scripts/validate-plugin-path-references.sh . docs/development/plugin-path-reference-ledger.md` | plugin path参照台帳の双方向一致 |
+| `claude-plugin-validate` | `claude plugin validate .` | marketplace定義と全plugin manifestのスキーマ検証（非strict） |
+
+`claude-plugin-validate` は実体が外部CLIであり、手元の導入形態が利用者ごとに異なって版も揃わないため、`mise.toml` で版を固定できない。そのため他の検査器と違い、`claude` をPATH上に解決できない場合はSKIPPEDとして理由を展開し、集計行にも `skipped: claude-plugin-validate` を出したうえで緑で終わる。fail-closedの担保はCI側にあり、`.github/workflows/test.yml` が `npm install -g @anthropic-ai/claude-code` でCLIを導入してからrunnerを呼ぶ。skipと実行の双方の経路は `scripts/tests/run-tests-runner.bats` が固定する。`--strict` は採らない。同オプションはversionフィールドの欠落を含む警告をエラーへ昇格させるが、本リポジトリは版をコミットSHAへ委ねておりversionを持たない（ADR-202609061416-01）。
 
 runner はいずれかが失敗しても残りを最後まで実行してから非0で終わる。失敗を1回の実行で出揃わせるためである。成功したスイートの出力は畳み、失敗したスイートの出力だけを展開する（bats については通過ケースの `ok ` 行も畳む）。
 
@@ -61,6 +64,7 @@ bash scripts/run-tests.sh validate-skills
 bash scripts/run-tests.sh validate-plugin-manifests
 bash scripts/run-tests.sh validate-plugin-portability
 bash scripts/run-tests.sh validate-plugin-path-references
+bash scripts/run-tests.sh claude-plugin-validate
 
 # スイート名の一覧
 bash scripts/run-tests.sh --list
