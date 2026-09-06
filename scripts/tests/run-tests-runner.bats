@@ -96,8 +96,8 @@ workflow_step_facts() {
 }
 
 @test "RUN_TESTS_REQUIRE_ALL_SUITES に 1 / 0 以外を渡すと理由付きで落ちる" {
-  # true / yes / タイポを黙って「skip 可」と解釈すると、要求モードのつもりで立てた運用者が
-  # 検査の走らない緑を受け取る。担保の有無が値の綴りで静かに変わらないことを固定する。
+  # true / yes を黙って「skip 可」と解釈すると、要求モードのつもりで立てた運用者が検査の
+  # 走らない緑を受け取る。担保の有無が値の綴りで静かに変わらないことを固定する。
   run env PATH=/usr/bin:/bin RUN_TESTS_REQUIRE_ALL_SUITES=true bash "$RUNNER" claude-plugin-validate
   [ "$status" -eq 1 ]
   [[ "$output" == *"RUN_TESTS_REQUIRE_ALL_SUITES は 1 か 0 のみ受け付けます"* ]]
