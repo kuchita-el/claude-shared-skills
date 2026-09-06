@@ -48,4 +48,4 @@ Claude Code は、スキル定義と agents 定義の**本文を読み込む時�
 
 - `docs/development/coding-agent-plugin-design-principles.md`（配布プラグイン全件に掛かる設計原則。工場と配布物の資産の別、host 依存方向、正本の一意性を定める）
 - `docs/references/document-permanence.md`（`docs/` 配下へ何を残すかの規約。本文書は恒久文書として §2 の追随義務を負う）
-- `docs/references/cross-host-plugin-conformance.md`（配布プラグインが host 間で満たすべき適合条件）
+- `docs/references/cross-host-plugin-conformance.md`（Claude Code と Codex の host 差分を隠さず plugin 適合性を検査するための契約）
