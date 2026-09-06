@@ -13,6 +13,44 @@ load 'helpers/common'
 
 setup() { RUNNER="$REPO_ROOT/scripts/run-tests.sh"; }
 
+# workflow の steps を step 単位のブロックとして読み、関心のある step の性質を1行の facts に
+# して出す。「その文字列がファイルのどこかに在ること」だけを見ると、env を別の step へ移す・
+# `if: false` を足す・run へ引数を足す、のいずれの変異でも担保が消えたまま緑になる。担保は
+# 「runner を起動するその step に要求モードが載っていること」であり、step との結び付きを見る
+# 必要がある。
+#
+# 読み方は workflow の字下げの形（step は6桁の `- `、step のキーは8桁、env の子は10桁）を
+# 前提にする。形が崩れれば kind が付かず件数が 0 になり、呼び出し側のケースが赤になる。
+workflow_step_facts() {
+  awk '
+    function flush(   i, l, cmd, key, kind, has_if, has_coe, envval) {
+      if (n == 0) return
+      kind = ""; has_if = 0; has_coe = 0; envval = "-"; key = ""
+      for (i = 1; i <= n; i++) {
+        l = block[i]
+        if (l ~ /^      - run:[ \t]/ || l ~ /^        run:[ \t]/) {
+          cmd = l
+          sub(/^[^:]*:[ \t]*/, "", cmd)
+          if (cmd == "bash scripts/run-tests.sh") kind = "runner"
+          else if (cmd ~ /^npm install -g @anthropic-ai\/claude-code@[0-9]+\.[0-9]+\.[0-9]+$/) kind = "install-cli"
+        }
+        if (l ~ /^        if:/) has_if = 1
+        if (l ~ /^        continue-on-error:/) has_coe = 1
+        if (l ~ /^        [A-Za-z_-]+:/) { key = l; sub(/^[ \t]*/, "", key); sub(/:.*$/, "", key) }
+        if (key == "env" && l ~ /^          RUN_TESTS_REQUIRE_ALL_SUITES:[ \t]/) {
+          envval = l
+          sub(/^[^:]*:[ \t]*/, "", envval)
+        }
+      }
+      if (kind != "") printf "%s if=%d continue-on-error=%d require-all-suites=%s\n", kind, has_if, has_coe, envval
+      n = 0
+    }
+    /^      - / { flush() }
+    /^      / { block[++n] = $0 }
+    END { flush() }
+  ' "$1"
+}
+
 @test "claude を解決できない場合は SKIPPED として理由を展開し緑で終わる" {
   run env RUN_TESTS_REQUIRE_ALL_SUITES=0 PATH=/usr/bin:/bin bash "$RUNNER" claude-plugin-validate
   [ "$status" -eq 0 ]
@@ -57,15 +95,71 @@ setup() { RUNNER="$REPO_ROOT/scripts/run-tests.sh"; }
   [[ "$output" != *"skipped:"* ]]
 }
 
-@test "CI が RUN_TESTS_REQUIRE_ALL_SUITES=1 を立てて runner を呼ぶ" {
+@test "RUN_TESTS_REQUIRE_ALL_SUITES に 1 / 0 以外を渡すと理由付きで落ちる" {
+  # true / yes / タイポを黙って「skip 可」と解釈すると、要求モードのつもりで立てた運用者が
+  # 検査の走らない緑を受け取る。担保の有無が値の綴りで静かに変わらないことを固定する。
+  run env PATH=/usr/bin:/bin RUN_TESTS_REQUIRE_ALL_SUITES=true bash "$RUNNER" claude-plugin-validate
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"RUN_TESTS_REQUIRE_ALL_SUITES は 1 か 0 のみ受け付けます"* ]]
+  [[ "$output" != *"SKIPPED"* ]]
+  [[ "$output" != *"all suites passed"* ]]
+}
+
+@test "CI が runner を起動する step で RUN_TESTS_REQUIRE_ALL_SUITES=1 を立てて呼ぶ" {
   workflow="$REPO_ROOT/.github/workflows/test.yml"
   [ -f "$workflow" ]
-  run grep -c 'RUN_TESTS_REQUIRE_ALL_SUITES: "1"' "$workflow"
-  [ "$output" -eq 1 ]
+  run workflow_step_facts "$workflow"
+  [ "$status" -eq 0 ]
+  # runner を起動する step がちょうど1件あり、走ることを妨げる鍵を持たず、その step 自身の
+  # env に要求モードが載っていること。件数まで見るのは、同じ run を持つ step が増えたときに
+  # どちらに env が載っているか分からなくなるため。
+  [ "$(grep -c '^runner ' <<<"$output")" -eq 1 ]
+  [[ "$output" == *'runner if=0 continue-on-error=0 require-all-suites="1"'* ]]
   # 担保は CLI の導入とセットで初めて働く。導入 step が消えれば毎回 FAILED になるが、
   # 版の固定が外れる変異は赤にならないため、ここで固定する。
-  run grep -c 'npm install -g @anthropic-ai/claude-code@[0-9]' "$workflow"
-  [ "$output" -eq 1 ]
+  [ "$(grep -c '^install-cli ' <<<"$output")" -eq 1 ]
+  [[ "$output" == *'install-cli if=0 continue-on-error=0'* ]]
+}
+
+@test "workflow から担保を落とす変異を facts が捉える" {
+  # 上のケースが観測する量（step との結び付き）を動かす変異を並べ、facts が変異ごとに別の
+  # 値へ動くことを示す。文字列の存在だけを見ていた頃は、ここに並ぶ変異1〜3 が緑で通った。
+  workflow="$REPO_ROOT/.github/workflows/test.yml"
+  mutant="$BATS_TEST_TMPDIR/test.yml"
+
+  # 変異1: runner の step へ if: を足し、走らないようにする
+  sed 's|^        run: bash scripts/run-tests.sh$|        if: false\n        run: bash scripts/run-tests.sh|' "$workflow" >"$mutant"
+  run workflow_step_facts "$mutant"
+  [[ "$output" == *'runner if=1'* ]]
+
+  # 変異2: runner の起動に引数を足し、スイートを絞る
+  sed 's|^        run: bash scripts/run-tests.sh$|        run: bash scripts/run-tests.sh bats|' "$workflow" >"$mutant"
+  run workflow_step_facts "$mutant"
+  [ "$(grep -c '^runner ' <<<"$output")" -eq 0 ]
+
+  # 変異3: env を runner の step から CLI 導入の step へ移す
+  awk '
+    /^          RUN_TESTS_REQUIRE_ALL_SUITES: "1"$/ { next }
+    /^        env:$/ { next }
+    { print }
+    /npm install -g @anthropic-ai\/claude-code@/ {
+      print "        env:"
+      print "          RUN_TESTS_REQUIRE_ALL_SUITES: \"1\""
+    }
+  ' "$workflow" >"$mutant"
+  run workflow_step_facts "$mutant"
+  [[ "$output" == *'runner if=0 continue-on-error=0 require-all-suites=-'* ]]
+  [[ "$output" == *'install-cli if=0 continue-on-error=0 require-all-suites="1"'* ]]
+
+  # 変異4: CLI の版の固定を外す
+  sed -E 's|(@anthropic-ai/claude-code)@[0-9.]+|\1|' "$workflow" >"$mutant"
+  run workflow_step_facts "$mutant"
+  [ "$(grep -c '^install-cli ' <<<"$output")" -eq 0 ]
+
+  # 変異5: 要求モードを落とす
+  sed 's|RUN_TESTS_REQUIRE_ALL_SUITES: "1"|RUN_TESTS_REQUIRE_ALL_SUITES: "0"|' "$workflow" >"$mutant"
+  run workflow_step_facts "$mutant"
+  [[ "$output" == *'require-all-suites="0"'* ]]
 }
 
 @test "スイートが一覧と実体の双方に登録されている" {

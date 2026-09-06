@@ -7,9 +7,11 @@
 # - 成功したスイートの出力は畳み、失敗したスイートの出力だけを展開する
 # - bats を解決できない場合は成功扱いにせず非0で終わる（fail-closed）。スキップして成功に
 #   すると検査が一度も走らないまま commit が通り、しかも警告が出ない
-# - 唯一の例外が claude-plugin-validate である。実体が外部 CLI（claude）であり、手元の
-#   導入形態は利用者ごとに異なって版も揃わないため、mise で版を固定できない。解決できない
-#   場合は SKIPPED として理由を展開し、集計行にも skipped を出したうえで緑にする
+# - 唯一の例外が claude-plugin-validate である。実体が外部 CLI（claude）であり、利用者が
+#   各自の方法で既に導入している。mise の npm backend で版を固定する経路は形式上あるが、
+#   採ると手元の claude を mise 管理下の別実体でシャドウすることになるため採らない
+#   （固定できないのではなく、固定しない選択である）。解決できない場合は SKIPPED として
+#   理由を展開し、集計行にも skipped を出したうえで緑にする
 # - ただし skip を無条件に許すと、CI が claude を導入し損ねた場合に「一度も走らないまま
 #   緑」になる。担保として RUN_TESTS_REQUIRE_ALL_SUITES=1 を用意し、これが立っている
 #   環境では前提不成立を skip ではなく失敗として扱う。CI はこの値を立てて runner を呼ぶ
@@ -36,6 +38,9 @@ SUITES=(
 TESTS_DIR="$REPO_ROOT/scripts/tests"
 
 # 前提不成立を skip ではなく失敗として扱うか。CI はこれを立てて呼ぶ（冒頭コメント参照）。
+# 値域は 1 / 0 / 未設定に限り、それ以外は理由を出して落とす。true・yes・変数名のタイポを
+# 黙って「skip 可」と解釈すると、要求モードのつもりで立てた運用者が、検査が一度も走らない
+# まま緑を受け取る。担保の有無が値の綴りで静かに変わる状態を作らない。
 REQUIRE_ALL_SUITES="${RUN_TESTS_REQUIRE_ALL_SUITES:-0}"
 
 usage() {
@@ -185,6 +190,14 @@ case "${1:-}" in
     --list)
         list_suites
         exit 0
+        ;;
+esac
+
+case "$REQUIRE_ALL_SUITES" in
+    0 | 1) ;;
+    *)
+        echo "run-tests: RUN_TESTS_REQUIRE_ALL_SUITES は 1 か 0 のみ受け付けます（受領値: '$REQUIRE_ALL_SUITES'）" >&2
+        exit 1
         ;;
 esac
 
