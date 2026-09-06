@@ -37,11 +37,11 @@ This ledger is regenerated when tracked source/config/docs add or move a `plugin
 | README.md | 62 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | README.md | 66 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | README.md | 112 | plugins/dev-workflow | migration | reference | wave-5 | current |
-| docs/development/test-execution.md | 20 | plugins/writing | migration | reference | wave-5 | current |
-| docs/development/test-execution.md | 53 | plugins/adr | migration | reference | wave-5 | current |
-| docs/development/test-execution.md | 141 | plugins/adr | migration | reference | wave-5 | current |
-| docs/development/test-execution.md | 158 | plugins/adr | migration | reference | wave-5 | current |
-| docs/development/test-execution.md | 162 | plugins/adr | migration | reference | wave-5 | current |
+| docs/development/test-execution.md | 19 | plugins/writing | migration | reference | wave-5 | current |
+| docs/development/test-execution.md | 50 | plugins/adr | migration | reference | wave-5 | current |
+| docs/development/test-execution.md | 138 | plugins/adr | migration | reference | wave-5 | current |
+| docs/development/test-execution.md | 155 | plugins/adr | migration | reference | wave-5 | current |
+| docs/development/test-execution.md | 159 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/lint-domain-doc.sh | 9 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | scripts/tests/adr-portability.bats | 18 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/adr-portability.bats | 22 | plugins/adr | migration | reference | wave-5 | current |
@@ -57,8 +57,6 @@ This ledger is regenerated when tracked source/config/docs add or move a `plugin
 | scripts/tests/next-adr-id.bats | 2 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/plugin-path-references.bats | 12 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/plugin-path-references.bats | 17 | plugins/writing | migration | reference | wave-5 | current |
-| scripts/tests/team-migration.bats | 75 | plugins/dependency-insight | migration | reference | wave-5 | current |
-| scripts/tests/team-migration.bats | 135 | plugins/domain-design | migration | reference | wave-5 | current |
 | scripts/tests/writing-contract.bats | 4 | plugins/writing | migration | reference | wave-5 | current |
 | scripts/tests/writing-contract.bats | 5 | plugins/writing | migration | reference | wave-5 | current |
 | scripts/tests/writing-contract.bats | 9 | plugins/writing | migration | reference | wave-5 | current |

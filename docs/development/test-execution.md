@@ -13,13 +13,10 @@
 | `validate-plugin-manifests` | `scripts/validate-plugin-manifests.sh .` | marketplace、manifest、README、skill集合の双方向一致 |
 | `validate-plugin-portability` | `scripts/validate-plugin-portability.sh .` | matrix、permission ledger、参照境界 |
 | `validate-plugin-path-references` | `scripts/validate-plugin-path-references.sh . docs/development/plugin-path-reference-ledger.md` | plugin path参照台帳の双方向一致 |
-| `team-migration` | `scripts/check-team-migration.sh` / `scripts/tests/team-migration.bats` | Wave 5のrelease集合、旧新対応表、利用者確認、削除gateのロジック検査（fixtureベース） |
 
 runner はいずれかが失敗しても残りを最後まで実行してから非0で終わる。失敗を1回の実行で出揃わせるためである。成功したスイートの出力は畳み、失敗したスイートの出力だけを展開する（bats については通過ケースの `ok ` 行も畳む）。
 
 Writing Wave 2の追加検査は`writing-lint.bats`と`writing-contract.bats`で行う。前者は`lint-ja.sh`のfile/diff、候補、長文、退役ADR境界を検査し、後者はskill/agent、F1/F3/F4/F5正負fixture、最大2回loop、両host matrix、permission ledgerを検査する。Codex agent登録面が利用できない場合の明示起動・degraded手動検査は、`plugins/writing/compatibility.json`へ記録する。
-
-Wave 5のteam migrationでは、`team-migration.bats`で未確認利用者、retain誤追加、core削除をfail-closedに検査し、重複skillは`validate-plugin-manifests.sh`で検査した。`check-team-migration.sh emit-actions`の出力だけを`apply-team-migration.sh`へ渡し、J2承認と全利用者confirmedが揃わない限り`deletePluginIds`は空とする運用とし、外部利用者の確認証拠は推測で埋めず台帳に記録してからvalidateしていた。本番台帳（旧新対応表・利用者確認・rollback台帳）はmigration完了後に削除済みであり、`check-team-migration.sh`のロジックは`team-migration.bats`のfixtureによる回帰検査としてのみ残す。
 
 ## 2. いつ走るか — 自動起動の射程
 

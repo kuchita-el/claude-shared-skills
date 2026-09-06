@@ -96,7 +96,6 @@ EXPECTED_BATS=(
     plugin-boundaries.bats
     writing-lint.bats
     writing-contract.bats
-    team-migration.bats
     distribution-boundary.bats
 )
 
