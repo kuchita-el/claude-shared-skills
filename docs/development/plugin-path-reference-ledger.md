@@ -37,11 +37,11 @@ This ledger is regenerated when tracked source/config/docs add or move a `plugin
 | README.md | 62 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | README.md | 66 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | README.md | 112 | plugins/dev-workflow | migration | reference | wave-5 | current |
-| docs/development/test-execution.md | 21 | plugins/writing | migration | reference | wave-5 | current |
-| docs/development/test-execution.md | 54 | plugins/adr | migration | reference | wave-5 | current |
-| docs/development/test-execution.md | 143 | plugins/adr | migration | reference | wave-5 | current |
-| docs/development/test-execution.md | 160 | plugins/adr | migration | reference | wave-5 | current |
-| docs/development/test-execution.md | 164 | plugins/adr | migration | reference | wave-5 | current |
+| docs/development/test-execution.md | 20 | plugins/writing | migration | reference | wave-5 | current |
+| docs/development/test-execution.md | 53 | plugins/adr | migration | reference | wave-5 | current |
+| docs/development/test-execution.md | 141 | plugins/adr | migration | reference | wave-5 | current |
+| docs/development/test-execution.md | 158 | plugins/adr | migration | reference | wave-5 | current |
+| docs/development/test-execution.md | 162 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/lint-domain-doc.sh | 9 | plugins/dev-workflow | migration | reference | wave-5 | current |
 | scripts/tests/adr-portability.bats | 18 | plugins/adr | migration | reference | wave-5 | current |
 | scripts/tests/adr-portability.bats | 22 | plugins/adr | migration | reference | wave-5 | current |

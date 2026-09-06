@@ -20,8 +20,8 @@ setup() { SUT="$REPO_ROOT/scripts/validate-plugin-manifests.sh"; }
   growth_name=growth
   growth_path="$fixture/plugins/$growth_name"
   mkdir -p "$growth_path/.claude-plugin" "$growth_path/.codex-plugin" "$growth_path/skills/growth-skill"
-  printf '%s\n' '{"name":"growth","version":"0.1.0"}' >"$growth_path/.claude-plugin/plugin.json"
-  printf '%s\n' '{"name":"growth","version":"0.1.0","skills":"./skills/"}' >"$growth_path/.codex-plugin/plugin.json"
+  printf '%s\n' '{"name":"growth"}' >"$growth_path/.claude-plugin/plugin.json"
+  printf '%s\n' '{"name":"growth","skills":"./skills/"}' >"$growth_path/.codex-plugin/plugin.json"
   printf '%s\n' '# growth' >"$growth_path/README.md"
   touch "$growth_path/skills/growth-skill/SKILL.md"
   jq --arg name "$growth_name" --arg source "./plugins/$growth_name" '.plugins += [{"name":$name,"source":$source}]' "$fixture/.claude-plugin/marketplace.json" >"$fixture/.claude-plugin/marketplace.json.next"
@@ -74,25 +74,10 @@ setup() { SUT="$REPO_ROOT/scripts/validate-plugin-manifests.sh"; }
   [ "$status" -eq 1 ]
   [[ "$output" == *"Claude marketplaceに無い: codex-only"* ]]
 }
-@test "manifest version差を報告する" {
-  run bash "$SUT" "$FIXTURES_DIR/plugin-manifests/version-mismatch"
-  [ "$status" -eq 1 ]
-  [[ "$output" == *"version不一致: example"* ]]
-}
 @test "対象0件を成功にしない" {
   run bash "$SUT" "$FIXTURES_DIR/plugin-manifests/empty"
   [ "$status" -eq 1 ]
   [[ "$output" == *"対象pluginが0件"* ]]
-}
-@test "配布物差分とversion据え置きを報告する" {
-  run env PLUGIN_REPO_ROOT="$FIXTURES_DIR/plugin-manifests/unchanged-version" bash "$REPO_ROOT/scripts/validate-plugin-versions.sh" nowhere "$FIXTURES_DIR/plugin-manifests/unchanged-version/changed-paths.txt"
-  [ "$status" -eq 1 ]
-  [[ "$output" == *"version据え置き: example"* ]]
-}
-@test "base refを解決できない場合は成功にしない" {
-  run bash "$REPO_ROOT/scripts/validate-plugin-versions.sh" origin/does-not-exist
-  [ "$status" -eq 1 ]
-  [[ "$output" == *"base refを解決できません"* ]]
 }
 @test "Claude/Codexのskill集合差分を報告する" {
   run bash "$REPO_ROOT/scripts/validate-plugin-manifests.sh" "$FIXTURES_DIR/plugin-manifests/skill-mismatch"

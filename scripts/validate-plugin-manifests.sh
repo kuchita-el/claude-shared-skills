@@ -76,9 +76,6 @@ for name in "${claude_names[@]}"; do
     [ -f "$codex_manifest" ] || fail "Codex manifestが無い: $name"
     if [ -f "$codex_manifest" ]; then
       [ "$(jq -r .name "$codex_manifest" 2>/dev/null)" = "$name" ] || fail "Codex manifest name不一致: $name"
-      if [ "$(jq -r .version "$claude_manifest" 2>/dev/null)" != "$(jq -r .version "$codex_manifest" 2>/dev/null)" ]; then
-        fail "version不一致: $name"
-      fi
       if [ "$(jq -r '.skills // empty' "$codex_manifest" 2>/dev/null)" = "./skills/" ]; then
         [ "${#skills[@]}" -gt 0 ] || fail "検査対象skillが0件: $name"
       fi

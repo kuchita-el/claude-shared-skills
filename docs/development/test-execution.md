@@ -4,14 +4,13 @@
 
 ## 1. 何が走るか
 
-実行経路は `scripts/run-tests.sh`（以下 runner）の1本である。runner はBatsと5つのfail-closed検査スイートを順に実行する。
+実行経路は `scripts/run-tests.sh`（以下 runner）の1本である。runner はBatsと4つのfail-closed検査スイートを順に実行する。
 
 | スイート | 実体 | 内容 |
 |---|---|---|
 | `bats` | `scripts/tests/*.bats` | adr プラグイン同梱の検査器のテスト・配布物外スクリプトのテスト・リポジトリ横断の規約検査・配布物と配布元の一方向性の検査（`scripts/tests/*.bats` の網羅列挙ではない） |
 | `validate-skills` | `scripts/validate-skills.sh` | スキル定義の `allowed-tools` 検査 |
 | `validate-plugin-manifests` | `scripts/validate-plugin-manifests.sh .` | marketplace、manifest、README、skill集合の双方向一致 |
-| `validate-plugin-versions` | `scripts/validate-plugin-versions.sh origin/main` | plugin配下差分時のversion bump |
 | `validate-plugin-portability` | `scripts/validate-plugin-portability.sh .` | matrix、permission ledger、参照境界 |
 | `validate-plugin-path-references` | `scripts/validate-plugin-path-references.sh . docs/development/plugin-path-reference-ledger.md` | plugin path参照台帳の双方向一致 |
 | `team-migration` | `scripts/check-team-migration.sh` / `scripts/tests/team-migration.bats` | Wave 5のrelease集合、旧新対応表、利用者確認、削除gateのロジック検査（fixtureベース） |
@@ -63,7 +62,6 @@ bash scripts/run-tests.sh
 bash scripts/run-tests.sh bats
 bash scripts/run-tests.sh validate-skills
 bash scripts/run-tests.sh validate-plugin-manifests
-bash scripts/run-tests.sh validate-plugin-versions
 bash scripts/run-tests.sh validate-plugin-portability
 bash scripts/run-tests.sh validate-plugin-path-references
 
