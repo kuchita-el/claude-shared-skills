@@ -8,12 +8,12 @@ superseded-by:
 
 ## Context
 
-本リポジトリは main ブランチをそのまま配布面とし、`plugins/` 配下の6プラグインを Claude / Codex 双方の marketplace から相対パス source で配る。プラグイン manifest（`.claude-plugin/plugin.json` / `.codex-plugin/plugin.json`）は 2026-09-06 時点でいずれも `version` フィールドを持ち、その値を繰り上げる規律を人間の判断に委ねていた。
+本リポジトリは main ブランチをそのまま配布面とし、`plugins/` 配下のプラグインを marketplace から相対パス source で配る。Claude 側の marketplace は6プラグイン全件を、Codex 側は `growth` を除く5件を載せる（`growth` は Claude の session jsonl とローカル store に依存するため、`docs/development/plugin-path-reference-ledger.md` が恒久的に Claude 固有として扱うと定めている）。プラグイン manifest（`.claude-plugin/plugin.json` / `.codex-plugin/plugin.json`）は 2026-09-06 時点でいずれも `version` フィールドを持ち、その値を繰り上げる規律を人間の判断に委ねていた。
 
 この構成には次の性質がある（いずれも 2026-09-06 に実測または一次資料で確認した）。
 
-- Claude Code は `version` を更新検出のキャッシュキーとして使う。`version` を持つ manifest では、配布物の中身が変わっても値が据え置かれる限り利用環境へ更新が届かない。`version` を省いた manifest では、プラグイン source のコミット SHA が版として解決され、コミットが進むたびに更新が届く。公式リファレンスは後者の適合先を "internal or team plugins under active development" と述べている
-- Codex は `version` を配布に一切使わない。`codex plugin marketplace upgrade` が git snapshot を取り直してキャッシュを上書きするため、`version` の有無・値によらず更新が届く
+- Claude Code は `version` を更新検出のキャッシュキーとして使う。`version` を持つ manifest では、配布物の中身が変わっても値が据え置かれる限り利用環境へ更新が届かない。`version` を省いた manifest では、プラグイン source のコミット SHA が版として解決されるため、値の据え置きによる未配布が起きない。ここで決まるのは版の解決の仕方だけであり、更新の到達は別である——利用側が marketplace を再取得（`claude plugin update`）して初めて、その時点のコミットが新しい版として届く。公式ドキュメント（`code.claude.com/docs/en/plugin-marketplaces`、2026-09-06 取得）は後者をこう述べている —— "For git-based sources, if you omit `version`, Claude Code uses the source's resolved commit SHA, so users get an update whenever that commit changes; this is the simplest setup for internal or actively developed plugins."
+- Codex は `version` を配布に一切使わない。更新は `codex plugin marketplace upgrade` が marketplace の実体を取り直すことで届き、`version` の有無・値によらない（本リポジトリの現在の登録は local source であり、git source での取り直しの挙動までは確かめていない）
 - 繰り上げの幅（major / minor / patch）を機械的に消費する主体が存在しない。本リポジトリは配布用の git tag を持たず、プラグイン間の依存を版域で宣言する機構も使っていない
 - 据え置きによる未配布は実際に起きていた。旧スキルが実行され続ける事象と、モデル設定変更を「MINOR」と自ら宣言した直後の据え置きが、いずれも観測されている
 - `version` の省略は例外的な構成ではない。Anthropic 公式マーケットプレイスは外部プラグイン 238 件をすべてコミット SHA で固定し、自前プラグイン 53 件のうち 26 件で `version` を省いている
