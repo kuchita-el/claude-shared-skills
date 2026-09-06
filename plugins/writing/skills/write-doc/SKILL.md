@@ -54,7 +54,7 @@ doc-writerにはprofileと共通規約のpathを渡す。素材にない事実�
 起草後、次の形でlintを実行する。
 
 ```text
-bash <plugin-root>/scripts/lint-ja.sh --diff <base> -- <changed-paths>
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/lint-ja.sh --diff <base> -- <changed-paths>
 ```
 
 既存箇所を明示的に確認するときだけ`--file <path>`を使う。lintの一文長違反は未解決として扱う。
