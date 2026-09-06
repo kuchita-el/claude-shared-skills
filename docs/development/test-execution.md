@@ -4,23 +4,24 @@
 
 ## 1. 何が走るか
 
-実行経路は `scripts/run-tests.sh`（以下 runner）の1本である。runner はBatsと5つのfail-closed検査スイートを順に実行する。
+実行経路は `scripts/run-tests.sh`（以下 runner）の1本である。runner はBatsと5つの検査スイートを順に実行する。うち4つはfail-closedであり、`claude-plugin-validate` だけが例外で、`claude` を解決できない場合はSKIPPEDとして理由を展開し緑で終わる（後述）。
 
 | スイート | 実体 | 内容 |
 |---|---|---|
 | `bats` | `scripts/tests/*.bats` | adr プラグイン同梱の検査器のテスト・配布物外スクリプトのテスト・リポジトリ横断の規約検査・配布物と配布元の一方向性の検査（`scripts/tests/*.bats` の網羅列挙ではない） |
 | `validate-skills` | `scripts/validate-skills.sh` | スキル定義の `allowed-tools` 検査 |
 | `validate-plugin-manifests` | `scripts/validate-plugin-manifests.sh .` | marketplace、manifest、README、skill集合の双方向一致 |
-| `validate-plugin-versions` | `scripts/validate-plugin-versions.sh origin/main` | plugin配下差分時のversion bump |
 | `validate-plugin-portability` | `scripts/validate-plugin-portability.sh .` | matrix、permission ledger、参照境界 |
 | `validate-plugin-path-references` | `scripts/validate-plugin-path-references.sh . docs/development/plugin-path-reference-ledger.md` | plugin path参照台帳の双方向一致 |
-| `team-migration` | `scripts/check-team-migration.sh` / `scripts/tests/team-migration.bats` | Wave 5のrelease集合、旧新対応表、利用者確認、削除gateのロジック検査（fixtureベース） |
+| `claude-plugin-validate` | `claude plugin validate .` | marketplace定義と、そこから解決できたClaude側plugin manifestのスキーマ検証（非strict） |
+
+この検査が読むのはmarketplace定義と、そこが `source` で指すClaude側の `plugin.json` だけである。Codex側のmarketplaceとmanifest（`.agents/plugins/marketplace.json` / `.codex-plugin/plugin.json`）は参照されない。両host manifestの整合を見るのは `validate-plugin-manifests` の `name` 一致とskill集合一致であり、本検査はその代わりにならない。marketplaceの項目が解決できなくなった場合、警告もエラーも出ないまま検査対象が静かに縮む（`source` を不在パスへ書き換えると警告件数が減ってrc=0）。この縮みを拾うのは `validate-plugin-manifests` 側である。
+
+`claude-plugin-validate` は実体が外部CLIであり、他の検査器と違って `claude` をPATH上に解決できない場合はSKIPPEDとして理由を展開し、集計行にも `skipped: claude-plugin-validate` を出したうえで緑で終わる。`mise.toml` で版を固定する経路（npm backend）は形式上存在するが採らない——採ると利用者が各自の方法で既に導入している `claude` を、mise管理下の別実体でシャドウすることになる。固定できないのではなく、手元の導入を上書きしない側を選んだ結果である。fail-closedの担保はCI側にあり、`.github/workflows/test.yml` が版を固定した `npm install -g @anthropic-ai/claude-code@<version>` でCLIを導入したうえで、`RUN_TESTS_REQUIRE_ALL_SUITES=1` を立ててrunnerを呼ぶ。同変数が立っている環境では、runnerは前提不成立をSKIPPEDではなくFAILEDとして扱う。CLIの導入に失敗しても緑で素通りしないための担保である。同変数の値域は `1` / `0` / 未設定に限り、それ以外の値（`true`・`yes` 等）はrunnerが理由を出して非0で終わる。要求モードのつもりで立てた値が黙って「skip可」と解釈されると、検査が一度も走らないまま緑を受け取るためである。この検査が掛かるのは値だけであり、変数名を取り違えた場合は未設定と区別がつかないため届かない。skip・実行・要求モードの3経路、値域外の拒否、およびCIがrunnerを起動するそのstepで同変数を立てていることは `scripts/tests/run-tests-runner.bats` が固定する。同ファイルはworkflowをstep単位で読み、`if:` の付与・引数の追加・envの別stepへの移動といった、担保を消しながら文字列としては残る変異を赤にする。`--strict` は採らない。同オプションはversionフィールドの欠落を含む警告をエラーへ昇格させるが、本リポジトリは版をコミットSHAへ委ねておりversionを持たない（ADR-202609061416-01）。
 
 runner はいずれかが失敗しても残りを最後まで実行してから非0で終わる。失敗を1回の実行で出揃わせるためである。成功したスイートの出力は畳み、失敗したスイートの出力だけを展開する（bats については通過ケースの `ok ` 行も畳む）。
 
 Writing Wave 2の追加検査は`writing-lint.bats`と`writing-contract.bats`で行う。前者は`lint-ja.sh`のfile/diff、候補、長文、退役ADR境界を検査し、後者はskill/agent、F1/F3/F4/F5正負fixture、最大2回loop、両host matrix、permission ledgerを検査する。Codex agent登録面が利用できない場合の明示起動・degraded手動検査は、`plugins/writing/compatibility.json`へ記録する。
-
-Wave 5のteam migrationでは、`team-migration.bats`で未確認利用者、retain誤追加、core削除をfail-closedに検査し、重複skillは`validate-plugin-manifests.sh`で検査した。`check-team-migration.sh emit-actions`の出力だけを`apply-team-migration.sh`へ渡し、J2承認と全利用者confirmedが揃わない限り`deletePluginIds`は空とする運用とし、外部利用者の確認証拠は推測で埋めず台帳に記録してからvalidateしていた。本番台帳（旧新対応表・利用者確認・rollback台帳）はmigration完了後に削除済みであり、`check-team-migration.sh`のロジックは`team-migration.bats`のfixtureによる回帰検査としてのみ残す。
 
 ## 2. いつ走るか — 自動起動の射程
 
@@ -31,7 +32,7 @@ runner は commit ゲート（`scripts/hooks/pre-commit-gate.sh`）から起動�
 - 素の端末（Claude Code を介さないシェル）からの `git commit`
 - `git -C <path> commit`（ゲートのヘッダが既知の穴として明記している。ゲートは事故を防ぐガードレールであってセキュリティ境界ではないため、意図的な回避までは塞がない）
 
-**これらの経路で作業する場合は、runner を手動実行する必要がある。** GitHub Actions 等の CI は導入していない（理由は §6 の問い1）。
+**これらの経路で作業する場合は、runner を手動実行する必要がある。** ただし GitHub Actions が pull request と main への push で runner を実行する（`.github/workflows/test.yml`）ため、検査を受けずに済むのは push 前のローカル作業に限られる。二経路の役割分担は §6 の問い1 が定める。
 
 ### git worktree で作業する場合
 
@@ -63,9 +64,9 @@ bash scripts/run-tests.sh
 bash scripts/run-tests.sh bats
 bash scripts/run-tests.sh validate-skills
 bash scripts/run-tests.sh validate-plugin-manifests
-bash scripts/run-tests.sh validate-plugin-versions
 bash scripts/run-tests.sh validate-plugin-portability
 bash scripts/run-tests.sh validate-plugin-path-references
+bash scripts/run-tests.sh claude-plugin-validate
 
 # スイート名の一覧
 bash scripts/run-tests.sh --list
@@ -134,15 +135,18 @@ FAILED: 1/2 suites (6s) -- bats
 
 ### 問い1: 実行経路をどこに置くか
 
-**決定**: 既存の commit ゲート（`scripts/hooks/pre-commit-gate.sh`）の呼び先を全スイート runner へ差し替える。GitHub Actions 等の CI は新設しない。
+**決定**: commit ゲート（`scripts/hooks/pre-commit-gate.sh`）と GitHub Actions（`.github/workflows/test.yml`）の二経路で runner を起動する。ゲートは `git commit` の瞬間に、CI は pull request と main への push の時点に発火する。
 
 **理由**:
 
-- ゲートは既に存在し、`git commit` という「変更が確定する瞬間」に発火する。テストが走る契機としてはこれで足りる。CI を新設すると、同じ検査を2箇所で維持することになる。
-- 本リポジトリはスキル定義とスクリプトの集合であり、ビルド成果物や配布パイプラインを持たない。CI が担う典型的な役割（マトリクス実行・成果物の生成・デプロイ）のいずれも現時点で必要としていない。
+- ゲートは `git commit` という「変更が確定する瞬間」に発火し、手元で赤を出せる。CI はゲートの射程外（素の端末からの commit・`git -C`）を push の時点で拾う。二経路は同じ検査の二重維持ではなく、射程の異なる補い合いである。
+- `claude-plugin-validate` だけが fail-closed の例外であり、その担保（前提不成立を失敗として扱う要求モード）を置ける場所は CI 側にしかない（§1）。
 - `plugins/adr/hooks/adr-commit-gate` へテスト全体の実行を足すことは採らない。同フックは ADR 検査へ役割を絞ることを冒頭コメントで明示しており、配布物として利用者のリポジトリでも動く。配布元固有のテストをそこへ足すと、配布先で解決できない参照が生じる。
+- runner を置いて手動運用のみとすることは採らない。実行が作業者の記憶に依存し、実行経路を定める目的が果たせない。
 
-**受容した犠牲**: 自動起動の射程が Claude Code の Bash ツール経由の commit に限られる（§2）。素の端末からの commit と `git -C` は素通りする。これは手動実行の明記で補う。
+**受容した犠牲**: 手元のゲートが覆うのは Claude Code の Bash ツール経由の commit だけである（§2）。素の端末からの commit と `git -C` は、検出が push 時点の CI まで遅れる。
+
+**ADR 化しない**。`plugins/adr/skills/manage-adr/references/adr-scoping.md` の粒度判定で閾値に達しない（反転に要る修正は起動元2本と本書に限られ、規範の適用先は起動場所だけで、射程内の違反はツールが現に阻止する）。行き先は「ツールで自動強制される規範 → 実装・テスト資産・操作手順」である。規範の実体は `scripts/hooks/pre-commit-gate.sh`・`scripts/run-tests.sh`・`.github/workflows/test.yml` が持ち、採用理由と既知の限界は本節と §2 に置く。
 
 ### 問い2: 実行経路は配布物境界のどちら側に属するか
 
@@ -157,21 +161,7 @@ FAILED: 1/2 suites (6s) -- bats
 
 ### ADR 化要否の判定（2026-08-01）
 
-判定基準は `plugins/adr/skills/manage-adr/references/adr-scoping.md` に従う。必要条件（却下代替が在ること）を先に確認し、成立する場合のみ粒度判定基準4項目で採点した。
-
-#### 問い1
-
-**必要条件: 成立**。却下した選択肢と却下理由が対で特定できる — (a) GitHub Actions による CI の新設（同じ検査を2箇所で維持することになり、かつビルド成果物・配布パイプラインを持たない本リポジトリでは CI の典型的役割が要らない）、(b) `plugins/adr/hooks/adr-commit-gate` へテスト全体の実行を足す（同フックは配布物であり ADR 検査へ役割を絞ることを明示している。配布元固有のテストを足すと配布先で解決できない参照が生じる）、(c) runner を置いて手動運用のみとする（「実行が作業者の記憶に依存する」という本 Issue の課題が解消しない）。
-
-| 項目 | 点 | 判定の根拠 |
-|---|---|---|
-| 1. 後戻りコストが高い | 0 | 反転（CI を新設しゲートから外す）で修正が要るのは `pre-commit-gate.sh` と本書の2本。CI 設定は新規追加であり既存ファイルの修正ではない。非本数条件4種（構造変更・スキーマ変更・配布済み成果物への影響・蓄積データの移行）はいずれも非該当 |
-| 2. 複数の適用先に波及する | 0 | 規範が適用されるのは起動元である commit ゲート1つ。テスト・検査器は起動される側であり、起動場所の規範の適用先ではない |
-| 3. 採用理由が揮発しやすい | 0 | 保持先が `scripts/hooks/pre-commit-gate.sh`（検査・強制の実行を組み込むフック）であり値域(A) を満たす |
-| 4. ツールで自動強制できない | 0 | 射程内（Claude Code の Bash ツール経由の commit）では現に exit 2 で阻止される。射程外の穴があることは「警告どまり」には当たらない |
-| **合計** | **0** | |
-
-**結論: ADR 化しない**（2点以下）。行き先は「ツールで自動強制される規範 → 実装・テスト資産・操作手順」であり、`scripts/hooks/pre-commit-gate.sh`・`scripts/run-tests.sh`・本書（実行手順書）に置く。採用理由と既知の限界（§2 の射程外の穴）は併記済みである。
+判定基準は `plugins/adr/skills/manage-adr/references/adr-scoping.md` に従う。必要条件（却下代替が在ること）を先に確認し、成立する場合のみ粒度判定基準4項目で採点する。問い1 の判定は同問いの節が持つ。
 
 #### 問い2
 

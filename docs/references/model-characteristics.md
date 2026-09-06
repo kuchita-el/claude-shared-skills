@@ -83,7 +83,7 @@ Opus 4.8/4.7 限定のリサーチプレビュー。「同一品質・低レイ�
 | refactorer | sonnet | 3種コーパスで振る舞い不変を実測（#317） |
 | plan | opus | #317 評価対象外。裏付けなし（将来の評価候補） |
 
-この実測結果は §4 の推論的指針（レビュー・検証系→Opus、機械的変換→Sonnet）と整合している。model 設定を変更する際は `docs/dogfood/317-evaluation-methodology.md` の手法で再評価し、`plugin.json` の version を上げること。
+この実測結果は §4 の推論的指針（レビュー・検証系→Opus、機械的変換→Sonnet）と整合している。model 設定を変更する際は `docs/dogfood/317-evaluation-methodology.md` の手法で再評価すること。プラグインの版はコミット SHA が担うため、版の繰り上げは要らない（ADR-202609061416-01）。ただし版を繰り上げないことと変更が利用環境へ届くことは別であり、反映には利用側での marketplace の再取得（Claude は `claude plugin update`、Codex は `codex plugin marketplace upgrade`）が要る。
 
 ## 出典
 

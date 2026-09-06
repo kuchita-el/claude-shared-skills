@@ -30,5 +30,15 @@ jobs:
       - name: Install test tools
         run: mise install
 
+      # 版を固定する。validator の判定が版で変われば、変更と無関係な PR が赤になるため。
+      # 更新は意図した PR で行う。
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code@2.1.263
+
+      # RUN_TESTS_REQUIRE_ALL_SUITES=1 は、claude を解決できない場合に
+      # claude-plugin-validate が SKIPPED で緑を返すことを禁じる。CI が CLI を導入し
+      # 損ねても「一度も走らないまま緑」にならないようにするための担保である。
       - name: Run test suite
         run: bash scripts/run-tests.sh
+        env:
+          RUN_TESTS_REQUIRE_ALL_SUITES: "1"

@@ -7,6 +7,14 @@
 # - 成功したスイートの出力は畳み、失敗したスイートの出力だけを展開する
 # - bats を解決できない場合は成功扱いにせず非0で終わる（fail-closed）。スキップして成功に
 #   すると検査が一度も走らないまま commit が通り、しかも警告が出ない
+# - 唯一の例外が claude-plugin-validate である。実体が外部 CLI（claude）であり、利用者が
+#   各自の方法で既に導入している。mise の npm backend で版を固定する経路は形式上あるが、
+#   採ると手元の claude を mise 管理下の別実体でシャドウすることになるため採らない
+#   （固定できないのではなく、固定しない選択である）。解決できない場合は SKIPPED として
+#   理由を展開し、集計行にも skipped を出したうえで緑にする
+# - ただし skip を無条件に許すと、CI が claude を導入し損ねた場合に「一度も走らないまま
+#   緑」になる。担保として RUN_TESTS_REQUIRE_ALL_SUITES=1 を用意し、これが立っている
+#   環境では前提不成立を skip ではなく失敗として扱う。CI はこの値を立てて runner を呼ぶ
 # - 引数でスイートを1本に絞れる（開発時の反復用。既定は全実行）
 #
 # 実行ガイド: docs/development/test-execution.md
@@ -22,12 +30,19 @@ SUITES=(
     "bats|test"
     "validate-skills|check"
     "validate-plugin-manifests|check"
-    "validate-plugin-versions|check"
     "validate-plugin-portability|check"
     "validate-plugin-path-references|check"
+    "claude-plugin-validate|check"
 )
 
 TESTS_DIR="$REPO_ROOT/scripts/tests"
+
+# 前提不成立を skip ではなく失敗として扱うか。CI はこれを立てて呼ぶ（冒頭コメント参照）。
+# 値域は 1 / 0 / 未設定に限り、それ以外の値は理由を出して落とす。true・yes を黙って
+# 「skip 可」と解釈すると、要求モードのつもりで立てた運用者が、検査が一度も走らないまま
+# 緑を受け取る。担保の有無が値の綴りで静かに変わる状態を作らない（掛かるのは値だけで、
+# 変数名を取り違えた場合は未設定と区別がつかない）。
+REQUIRE_ALL_SUITES="${RUN_TESTS_REQUIRE_ALL_SUITES:-0}"
 
 usage() {
     cat <<'USAGE'
@@ -88,6 +103,7 @@ EXPECTED_BATS=(
     next-adr-id.bats
     plugin-manifests.bats
     plugin-path-references.bats
+    run-tests-runner.bats
     skill-portability.bats
     dev-workflow-skill-contract.bats
     dev-workflow-fixture-contract.bats
@@ -97,7 +113,6 @@ EXPECTED_BATS=(
     plugin-boundaries.bats
     writing-lint.bats
     writing-contract.bats
-    team-migration.bats
     distribution-boundary.bats
 )
 
@@ -137,14 +152,30 @@ collect_bats_files() {
     return 0
 }
 
+# スイート固有の前提。満たさない場合だけ理由を1行出力する（無出力＝前提を満たす）。
+# 判定を run_one の終了コードへ載せないのは、claude-plugin-validate の実体が外部 CLI で
+# あり、その終了コードの値域を本リポジトリが決められないためである。特定の値を skip の
+# 合図に充てると、CLI が同じ値で失敗したときに実失敗が skip へ化ける。
+suite_precondition_failure() {
+    case "$1" in
+        claude-plugin-validate)
+            command -v claude >/dev/null 2>&1 && return 0
+            echo "claude を PATH 上に解決できない（導入: npm install -g @anthropic-ai/claude-code）"
+            ;;
+    esac
+}
+
 run_one() {
     case "$1" in
         bats) "${BATS_CMD[@]}" --print-output-on-failure "${BATS_FILES[@]}" ;;
         validate-skills) bash scripts/validate-skills.sh ;;
         validate-plugin-manifests) bash scripts/validate-plugin-manifests.sh . ;;
-        validate-plugin-versions) bash scripts/validate-plugin-versions.sh "${BASE_REF:-${GITHUB_BASE_REF:-origin/main}}" ;;
         validate-plugin-portability) bash scripts/validate-plugin-portability.sh . ;;
         validate-plugin-path-references) bash scripts/validate-plugin-path-references.sh . docs/development/plugin-path-reference-ledger.md ;;
+        # 非 strict で呼ぶ。--strict は version フィールドの欠落を含む警告をエラーへ昇格
+        # させるが、本リポジトリは版をコミット SHA へ委ねており version を持たない
+        # （ADR-202609061416-01）。
+        claude-plugin-validate) claude plugin validate . ;;
         *)
             echo "run-tests: 実体が未定義のスイートです: $1" >&2
             return 1
@@ -160,6 +191,14 @@ case "${1:-}" in
     --list)
         list_suites
         exit 0
+        ;;
+esac
+
+case "$REQUIRE_ALL_SUITES" in
+    0 | 1) ;;
+    *)
+        echo "run-tests: RUN_TESTS_REQUIRE_ALL_SUITES は 1 か 0 のみ受け付けます（受領値: '$REQUIRE_ALL_SUITES'）" >&2
+        exit 1
         ;;
 esac
 
@@ -181,6 +220,7 @@ work_dir=$(mktemp -d) || exit 1
 trap 'rm -rf "$work_dir"' EXIT
 
 failed_names=()
+skipped_names=()
 ran=0
 start_all=$SECONDS
 
@@ -189,6 +229,22 @@ for entry in "${SUITES[@]}"; do
     kind="${entry#*|}"
 
     [ -z "$filter" ] || [ "$filter" = "$name" ] || continue
+
+    precondition_failure=$(suite_precondition_failure "$name")
+    if [ -n "$precondition_failure" ]; then
+        ran=$((ran + 1))
+        if [ "$REQUIRE_ALL_SUITES" = "1" ]; then
+            printf '[%-5s] %-20s ... FAILED (前提不成立)\n' "$kind" "$name"
+            printf '    %s| %s\n' "$name" "$precondition_failure"
+            printf '    %s| RUN_TESTS_REQUIRE_ALL_SUITES=1 のため前提不成立を失敗として扱う\n' "$name"
+            failed_names+=("$name")
+        else
+            printf '[%-5s] %-20s ... SKIPPED\n' "$kind" "$name"
+            printf '    %s| %s\n' "$name" "$precondition_failure"
+            skipped_names+=("$name")
+        fi
+        continue
+    fi
 
     log="$work_dir/$name.log"
     start=$SECONDS
@@ -243,11 +299,16 @@ if [ "$ran" -eq 0 ]; then
     exit 1
 fi
 
+skipped_note=""
+if [ "${#skipped_names[@]}" -gt 0 ]; then
+    skipped_note="; skipped: ${skipped_names[*]}"
+fi
+
 if [ "${#failed_names[@]}" -eq 0 ]; then
-    printf 'all suites passed (%d suites, %ds)\n' "$ran" "$elapsed_all"
+    printf 'all suites passed (%d suites, %ds%s)\n' "$ran" "$elapsed_all" "$skipped_note"
     exit 0
 fi
 
-printf 'FAILED: %d/%d suites (%ds) -- %s\n' \
-    "${#failed_names[@]}" "$ran" "$elapsed_all" "${failed_names[*]}"
+printf 'FAILED: %d/%d suites (%ds%s) -- %s\n' \
+    "${#failed_names[@]}" "$ran" "$elapsed_all" "$skipped_note" "${failed_names[*]}"
 exit 1

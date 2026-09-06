@@ -11,12 +11,12 @@ validity:
 
 ## Decision
 
-plugin境界は、共有規約とagentsの依存凝集を維持しながら、独立して配布・version管理できるまとまりだけを限定的に分割する。Wave 0では既存plugin名、marketplaceの探索位置、`dev-workflow:<name>` 名前空間を維持し、個別Waveで実測した依存グラフが独立境界を示した場合にのみ後続ADRを起票する。
+plugin境界は、共有規約とagentsの依存凝集を維持しながら、独立して配布できるまとまりだけを限定的に分割する。Wave 0では既存plugin名、marketplaceの探索位置、`dev-workflow:<name>` 名前空間を維持し、個別Waveで実測した依存グラフが独立境界を示した場合にのみ後続ADRを起票する。
 
 ## Alternatives
 
 - 全スキルを個別pluginへ分割する: 共有規約の複製と参照driftを招くため採用しない。
-- `dev-workflow`を一切分割しない: 独立した配布・version単位を表現できないため採用しない。
+- `dev-workflow`を一切分割しない: 独立した配布単位を表現できないため採用しない。
 
 ## Consequences
 

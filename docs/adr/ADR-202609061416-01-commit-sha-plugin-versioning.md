@@ -1,0 +1,51 @@
+---
+status: 承認済み
+validity: 有効
+superseded-by:
+---
+
+# ADR-202609061416-01: プラグインの版をコミット SHA に委ね manifest から version を外す
+
+## Context
+
+本リポジトリは main ブランチをそのまま配布面とし、`plugins/` 配下のプラグインを marketplace から相対パス source で配る。Claude 側の marketplace は6プラグイン全件を、Codex 側は `growth` を除く5件を載せる（`growth` は Claude の session jsonl とローカル store に依存するため、`docs/development/plugin-path-reference-ledger.md` が恒久的に Claude 固有として扱うと定めている）。プラグイン manifest（`.claude-plugin/plugin.json` / `.codex-plugin/plugin.json`）は 2026-09-06 時点でいずれも `version` フィールドを持ち、その値を繰り上げる規律を人間の判断に委ねていた。
+
+この構成には次の性質がある（いずれも 2026-09-06 に実測または一次資料で確認した）。
+
+- Claude Code は `version` を更新検出のキャッシュキーとして使う。`version` を持つ manifest では、配布物の中身が変わっても値が据え置かれる限り利用環境へ更新が届かない。`version` を省いた manifest では、プラグイン source のコミット SHA が版として解決されるため、値の据え置きによる未配布が起きない。ここで決まるのは版の解決の仕方だけであり、更新の到達は別である——利用側が marketplace を再取得（`claude plugin update`）して初めて、その時点のコミットが新しい版として届く。公式ドキュメント（`code.claude.com/docs/en/plugin-marketplaces`、2026-09-06 取得）は後者をこう述べている —— "For git-based sources, if you omit `version`, Claude Code uses the source's resolved commit SHA, so users get an update whenever that commit changes; this is the simplest setup for internal or actively developed plugins."
+- Codex は `version` を配布に一切使わない。更新は `codex plugin marketplace upgrade` が marketplace の実体を取り直すことで届き、`version` の有無・値によらない（本リポジトリの現在の登録は local source であり、git source での取り直しの挙動までは確かめていない）
+- 繰り上げの幅（major / minor / patch）を機械的に消費する主体が存在しない。本リポジトリは配布用の git tag を持たず、プラグイン間の依存を版域で宣言する機構も使っていない
+- 据え置きによる未配布は実際に起きていた。旧スキルが実行され続ける事象と、モデル設定変更を「MINOR」と自ら宣言した直後の据え置きが、いずれも観測されている
+- `version` の省略は例外的な構成ではない。Anthropic 公式マーケットプレイスは外部プラグイン 238 件をすべてコミット SHA で固定し、自前プラグイン 53 件のうち 26 件で `version` を省いている
+
+**射程の限定**: 本 ADR は「幅を読む主体が存在しない」という現況を前提に置く。利用者が起票者本人以外へ広がって繰り上げ幅を判断材料にする読み手が生まれた場合、またはプラグイン間の依存を版域で宣言する機構を採る計画が立った場合は、前提が変わるため本決定を再検討する。その時点で新規 ADR を起こす想定であり、本 ADR はその追随更新の義務を負わない。
+
+## Decision
+
+- `plugins/` 配下の全プラグインについて、Claude 側・Codex 側の両 manifest から `version` フィールドを削除する。射程は特定プラグインではなくプラグイン全件である
+- 版は Claude 側ではプラグイン source のコミット SHA が担う。Codex 側は元から `version` を配布に使わないため、版の担い手を新たに定めない
+- 繰り上げ幅の意味論（major / minor / patch の使い分け）と 1.0 到達条件は定義しない。定義する対象が無くなるためである
+- `version` の有無・値を検査する機構を置かない。フィールドが存在しないことを検査で固定すると、幅の判断を廃した目的に対して新たな遵守対象を作ることになる
+- 配布物 manifest の機械検査には非 strict の `claude plugin validate` を使う。`--strict` は採らない
+
+**却下した代替**（いずれも 2026-09-06 時点の観測に基づく）:
+
+- **`version` を「配布トリガー」と定義し、幅に意味を与えない**: 値が変わったことだけを更新の合図とし、major / minor / patch の使い分けを規定しない案。繰り上げ忘れという失敗モードが人間の注意力への依存として残り続けるため採用しない。加えて、幅に意味を持たせないなら欄そのものが冗長であり、コミット SHA が同じ役割をすでに果たす
+- **公開契約に semver を適用する**: プラグインの公開面（スキル名・引数・出力形式等）を契約と定義し、その変更規模を semver で表す案。幅を読む主体が現在も計画上も存在しないため、読み手のいない表明のために毎 PR で判断コストを払うことになる。また繰り上げ規律の遵守実績が悪く、同じ型の違反を再生産する見込みが高いため採用しない
+- **Phase 完了を minor に対応させる規約を全プラグインへ広げる**: `growth` が持っていた「Phase 完了ごとに minor を上げ、ループ一巡で 1.0.0」という規約を横展開する案。Phase という進行概念を持つのは `growth` だけであり他の5プラグインへ写せない。幅の読み手が存在しない点は上の2案と共通するため採用しない
+- **`claude plugin validate --strict` を CI へ入れる**: 配布物 manifest の検査を強める案。2026-09-06 時点の `--strict` の help は自らの射程を「ランタイムが許容する事柄で落とすモード」と述べており、`version` はランタイム必須フィールドではなかった（必須は `name` のみ）。この検査は公式が並置する2方式のうち Explicit version 側だけを前提としており、コミット SHA 版の側を想定していない。同日に Anthropic 公式マーケットプレイス自身が `--strict` を通らないことも確認した。以上により採用しない
+
+## Consequences
+
+- 繰り上げ幅を毎 PR で判断する運用と、繰り上げ忘れによる未配布という失敗モードが、いずれも判断対象ごと消える
+- 配布物差分に対する版据え置きの検査器と、両 manifest の `version` 一致の検査、およびそれらを固定していたテストと fixture が不要になる
+- 変更の規模を版の幅で表明する手段を失う。変更の性質は Issue・PR・ADR が担う
+- `claude plugin validate --strict` を採用できない。非 strict の検査は未知フィールドや推奨メタデータの欠落を警告に留めるため、そこで検出できたはずの逸脱は検査対象外として残る
+- 本決定は `docs/development/growth/design.md` が 2026-06-28 に確定していたバージョニング規約（Phase 完了ごとに minor、Phase 内の変更は patch、ループ一巡で 1.0.0、版の正は `plugin.json`）を覆す。同規約は ADR ではなく設計文書内の決定事項であり、本 ADR を単一の出典として同文書側を改める
+- 版の解決がコミット SHA に移るため、利用者から見た版は人が読んで意味を汲める文字列でなくなる
+
+## 関連ADR
+
+Related: ADR-202608111725-01-dependency-cohesion-plugin-boundary（plugin 境界の分割単位から version 管理の軸を外した相手。本 ADR の起票時点で `status: 提案中`）
+
+関連Issue: #789, #404, #433

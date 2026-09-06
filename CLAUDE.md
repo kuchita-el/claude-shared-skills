@@ -22,7 +22,7 @@ bash scripts/run-tests.sh # テストと検査器を一括実行する
 ### Repository Structure
 
 - `.claude-plugin/marketplace.json` — マーケットプレイス定義（プラグイン配布用カタログ。リポルート維持。`source: "./plugins/dev-workflow"`）
-- `plugins/dev-workflow/.claude-plugin/plugin.json` — プラグイン定義（名前・バージョン・説明）
+- `plugins/dev-workflow/.claude-plugin/plugin.json` — プラグイン定義（名前・説明。版は持たずコミット SHA が担う。ADR-202609061416-01）
 - `plugins/dev-workflow/skills/{skill-name}/SKILL.md` — 各スキルの定義ファイル（本体）
 - `plugins/dev-workflow/skills/{skill-name}/references/` — スキルが参照する補助ファイル（テンプレート、デフォルト定義等）
 - `plugins/dev-workflow/references/` — 複数スキルが共有する参照ファイル（DoRデフォルト定義等。`${CLAUDE_PLUGIN_ROOT}/references/` で参照。詳細は ADR-202606040737-01）
