@@ -47,7 +47,7 @@ Claudeの`allowed-tools`集合、Codexのsandbox/approval/tool制約集合は、
 
 ### Codex の pluginRoot 注入機構: 確認できる範囲と確認できない範囲
 
-Codex 側がスキルへ pluginRoot を渡し agent 定義を汎用 sub-agent へ注入する機構は、本リポジトリを走査面とする限り部分的にしか確認できない。以下は 2026-09-08（main `fbda68c`）の観測であり、観測条件は Codex 側 manifest（`plugins/*/.codex-plugin/plugin.json`）・`.agents/` 配下・起動ラッパー `run-codex-local.sh` を読んだうえでの判定である。host 側の機構が変われば本節は §2 の追随義務が掛かる対象になる。
+Codex 側がスキルへ pluginRoot を渡し agent 定義を汎用 sub-agent へ注入する機構は、本リポジトリを走査面とする限り部分的にしか確認できない。以下は 2026-09-08（main `fbda68c`）の観測であり、観測条件は Codex 側 manifest（`plugins/*/.codex-plugin/plugin.json`）・`.agents/` 配下・起動ラッパー `run-codex-local.sh` を読んだうえでの判定である。host 側の機構が変われば本節は `docs/references/document-permanence.md` §2（ストック情報の追随義務）が掛かる対象になる。
 
 確認できる範囲。
 
