@@ -23,7 +23,7 @@ allowed-tools:
 - **停止条件**: レビューで未解決の欠落や判断依頼が残る場合はプランをReady扱いにしない。
 - **変更境界**: 指定されたプラン保存先以外の実装や既存設計を変更しない。
 
-Host adapter契約: Claude Codeは `${CLAUDE_PLUGIN_ROOT}` をpluginRootとして解決し、`dev-workflow:plan` と `dev-workflow:plan-reviewer` をnative起動する。Codexはhostが解決したpluginRoot（環境変数名を仮定しない絶対パス）を入力として受け、`{pluginRoot}/agents/plan.md` と `{pluginRoot}/agents/plan-reviewer.md` の定義全文を独立汎用sub-agentへ注入する。plan生成は汎用sub-agent不可時にメインfallbackできるが、reviewerは定義完全注入・独立汎用sub-agent・独立文脈のいずれかが欠ければメインself-reviewせず `decision-request` で停止する。成果には起動metadataを混入しない。
+Host adapter契約: Claude Codeは `dev-workflow:plan` と `dev-workflow:plan-reviewer` を `subagent_type` の名前解決でnative起動する（起動に定義ファイルのパスを要しない）。Codexはhostが解決したpluginRoot（環境変数名を仮定しない絶対パス）を入力として受け、`{pluginRoot}/agents/plan.md` と `{pluginRoot}/agents/plan-reviewer.md` の定義全文を独立汎用sub-agentへ注入する。ステップ2が読み込む深刻度の値域も、Codexでは `{pluginRoot}/agents/code-reviewer.md` を解決元とする。plan生成は汎用sub-agent不可時にメインfallbackできる（この縮退先はステップ6のインライン実行と同一であり、第2の行き先を持たない）が、reviewerは定義完全注入・独立汎用sub-agent・独立文脈のいずれかが欠ければメインself-reviewせず `decision-request` で停止する。成果には起動metadataを混入しない。
 
 Issueの実装プランを作成し、プランファイル（保存先はモードで分岐。ステップ5参照）に保存する。プランには技術設計・タスク分解に加え、AC全項目と対応する**テストケース対応表**を含める。
 plan サブエージェント（計画骨格を superpowers `writing-plans` へ委譲）でプラン作成 → 独立レビュアーエージェントによるレビュー → 修正のループを最大2周実行し、要確認事項をユーザーに質問する。
@@ -65,11 +65,11 @@ Issue番号を起点とする**通常モード**のほか、Issueを立てずに
 
 1. **規範（必須）**: `${CLAUDE_SKILL_DIR}/references/plan-contract.md`（プラン成果物の値域・構造・多重度・既定文言の正本）
 2. **検査観点（必須）**: `${CLAUDE_SKILL_DIR}/references/review-guide-default.md`
-3. **深刻度の値域（必須）**: `code-reviewer.md` の「4. 重大度の分類」節（2段ラベルの名前と意味・タイブレーク規則の正本）。Claudeの解決元は `${CLAUDE_SKILL_DIR}/../../agents/code-reviewer.md`、Codexの解決元はhostから渡された `{pluginRoot}/agents/code-reviewer.md` とする。マージするのは当該節のみ（同節が該当条件の列挙を implementation 系固有と限定する宣言も、限定ごと含める）
+3. **深刻度の値域（必須）**: `code-reviewer.md` の「4. 重大度の分類」節（2段ラベルの名前と意味・タイブレーク規則の正本）。Claudeの解決元は `${CLAUDE_PLUGIN_ROOT}/agents/code-reviewer.md` とする（Codexの解決元は冒頭のHost adapter契約が定める）。マージするのは当該節のみ（同節が該当条件の列挙を implementation 系固有と限定する宣言も、限定ごと含める）
 4. **出力テンプレート（必須）**: `${CLAUDE_SKILL_DIR}/references/plan-output-format.md`（プランの節構成と各節の記入形式のテンプレート）。本ステップを同ファイルの唯一の読み取り点とし、ステップ6のプロンプト組み立てとステップ7aでレビュアーへ渡す資産の双方でこの読み込み結果を用いる
 5. **プロジェクト固有（任意）**: `{プロジェクトルート}/.claude/plan-issue/review-guide.md`
 
-規範・検査観点・深刻度の値域・出力テンプレートは常に読み込む。レビュアーエージェントはプラグインルートを自力で解決する手段を持たないため、深刻度の値域と出力テンプレートは本文としてマージして渡す（パスを渡して読ませない）。プロジェクト固有ファイルが存在する場合（Readが成功した場合）、その内容を追加のレビュー観点として加える。
+規範・検査観点・深刻度の値域・出力テンプレートは常に読み込む。Codexの汎用sub-agentはpluginRootを自力で持たずhostからの注入に依存し、両hostで同じ成果を出すには受け渡し方を揃える必要があるため、深刻度の値域と出力テンプレートは本文としてマージして渡す（パスを渡して読ませない）。プロジェクト固有ファイルが存在する場合（Readが成功した場合）、その内容を追加のレビュー観点として加える。
 
 ### 3. Issue情報の取得
 
@@ -120,7 +120,7 @@ gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'
 3. `{OUTPUT_FORMAT}` を、ステップ2で読み込んだ `plan-output-format.md` の全文で置換する（同ファイルを再度 Read しない）
 4. 素材末尾の「モード別入力ブロック」節は、ステップ1で判定したモードのブロックと全モード共通ブロックだけを残して他モードのブロックを取り除く。残したブロックは足場（節見出し `## モード別入力ブロック`・`**通常モード / 固定入力モード:**` 等のモードラベル行・囲みのコードフェンス）を除去し、フェンス内の本文だけをプロンプト末尾へ連結したうえで、各プレースホルダにステップ3〜5で得た値を差し込む
 
-**起動:** Agent tool（`subagent_type: dev-workflow:plan`）で実行する。モデルと effort は定義の frontmatter に従い、呼び出し側では指定しない。Agent toolが使えない場合や起動に失敗した場合は、`${CLAUDE_PLUGIN_ROOT}/agents/plan.md` の定義内容をプロンプト本文へ埋め込んでインラインで直接実行する（インライン実行では preload が効かないため、計画骨格は同定義のフォールバックに従う）。
+**起動:** Agent tool（`subagent_type: dev-workflow:plan`）で実行する。モデルと effort は定義の frontmatter に従い、呼び出し側では指定しない。Agent toolが使えない場合や起動に失敗した場合は、`${CLAUDE_PLUGIN_ROOT}/agents/plan.md` の定義内容をプロンプト本文へ埋め込んでインラインで直接実行する（これがplan生成の唯一の縮退先であり、冒頭のHost adapter契約がいう「メインfallback」と同一である。インライン実行では preload が効かないため、計画骨格は同定義のフォールバックに従う）。
 
 ### 7. レビュアーエージェントによるレビュー → 修正ループ（最大2周）
 
@@ -137,7 +137,7 @@ gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'
 
 **7b. レビュアーエージェントの起動:**
 
-Agent tool（`subagent_type: dev-workflow:plan-reviewer`）で起動する。モデルと effort は定義の frontmatter に従い、呼び出し側では指定しない。Agent toolが使えない場合、起動に失敗した場合、定義全文を注入できない場合、または独立文脈を保証できない場合は、メインループでself-reviewやinline実行へ縮退せず `decision-request` として停止する。Claudeの定義解決元は `${CLAUDE_PLUGIN_ROOT}/agents/plan-reviewer.md`、Codexの解決元はhostから渡された `{pluginRoot}/agents/plan-reviewer.md` とし、サブエージェント側から再Readさせない。
+Agent tool（`subagent_type: dev-workflow:plan-reviewer`）で起動する。モデルと effort は定義の frontmatter に従い、呼び出し側では指定しない。Agent toolが使えない場合、起動に失敗した場合、定義全文を注入できない場合、または独立文脈を保証できない場合は、メインループでself-reviewやinline実行へ縮退せず `decision-request` として停止する。定義の解決元は冒頭のHost adapter契約が定め、サブエージェント側から再Readさせない。
 
 **7c. レビュー結果の処理:**
 
