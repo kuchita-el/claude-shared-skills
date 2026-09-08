@@ -13,7 +13,7 @@ plan-issue SKILL.md のステップ1（モード判定）から参照される�
 
 ## 分割計画マスターの有無による初回/N回目判定
 
-分割モードと確定した後、**分割計画マスターファイル**（`issue-{番号}-plan.md`）の有無でさらに判定する。マスターの有無は `${CLAUDE_PLUGIN_ROOT}/references/plan-location-resolution.md` の解決順序（現作業ディレクトリの `docs/plans` を先に Glob、見つからなければメイン worktree の `docs/plans` を Glob。メイン worktree ルートの解決方法は当該 reference に従う）で確認し、見つかったディレクトリを**解決ディレクトリ**とする。これにより、別 worktree で実行してもメイン側のマスターを取りこぼして誤って初回モードへ落ち、分割計画を丸ごと再生成してしまう事故を防ぐ:
+分割モードと確定した後、**分割計画マスターファイル**（`issue-{番号}-plan.md`）の有無でさらに判定する。マスターの有無は `plan-location-resolution.md` の解決順序（現作業ディレクトリの `docs/plans` を先に Glob、見つからなければメイン worktree の `docs/plans` を Glob。メイン worktree ルートの解決方法は当該 reference に従う）で確認し、見つかったディレクトリを**解決ディレクトリ**とする。これにより、別 worktree で実行してもメイン側のマスターを取りこぼして誤って初回モードへ落ち、分割計画を丸ごと再生成してしまう事故を防ぐ:
 
 | 分割計画マスターファイルの状態 | 判定 |
 |---|---|

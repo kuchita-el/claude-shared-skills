@@ -817,5 +817,5 @@ distiller が長期間未実行（またはカーソルが過去へ巻き戻さ�
 ## 関連
 
 - [`distill-procedure.md`](distill-procedure.md) — 各例が検証する判定基準の本体
-- `${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` — 入力エントリの `origin`/`expected`/`actual` 欄、および期待結果（仮説）が整合すべき仮説ファイル（`candidates.md`）のメタ欄スキーマ・provenance 規約・upsert 方式
-- `${CLAUDE_PLUGIN_ROOT}/references/learning-store-spec.md` — 仮説見出し・本文が昇格時に残る規範形（1欄スキーマ・記法例）・2空間モデル（scope-hypothesis の値域）
+- `personal-store-spec.md` — 入力エントリの `origin`/`expected`/`actual` 欄、および期待結果（仮説）が整合すべき仮説ファイル（`candidates.md`）のメタ欄スキーマ・provenance 規約・upsert 方式
+- `learning-store-spec.md` — 仮説見出し・本文が昇格時に残る規範形（1欄スキーマ・記法例）・2空間モデル（scope-hypothesis の値域）

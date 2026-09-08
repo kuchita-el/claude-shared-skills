@@ -101,4 +101,4 @@ inbox に新たな仮説 #410（「git restore でファイル復元」を補強
 ## 関連
 
 - [`intake-procedure.md`](intake-procedure.md) — 各段の判定基準・コマンド・本文書式・エラー処理の単一出典
-- [`intake-issue-spec.md`](../../../references/intake-issue-spec.md) — 取り込み Issue の構造・裁定結果の記録形式・不変条件
+- `intake-issue-spec.md` — 取り込み Issue の構造・裁定結果の記録形式・不変条件
