@@ -44,3 +44,20 @@ Claudeの`allowed-tools`集合、Codexのsandbox/approval/tool制約集合は、
 ## dev-workflow portability
 
 中央compatibility matrixの `dev-workflow-*` 行は、`scripts/fixtures/skill-portability/` のwitness JSONと、成果状態を固定する `scripts/fixtures/dev-workflow/` を分離して参照する。validatorは両fixtureを発見し、host、execution mode、期待判定が空でないことを検査する。Codexのagent定義全文readはClaude native起動には要求せず、per-agent read-only非強制は成果契約ではなくpermission ledgerの `degraded` として扱う。
+
+### Codex の pluginRoot 注入機構: 確認できる範囲と確認できない範囲
+
+Codex 側がスキルへ pluginRoot を渡し agent 定義を汎用 sub-agent へ注入する機構は、本リポジトリを走査面とする限り部分的にしか確認できない。以下は 2026-09-08（main `fbda68c`）の観測であり、観測条件は Codex 側 manifest（`plugins/*/.codex-plugin/plugin.json`）・`.agents/` 配下・起動ラッパー `run-codex-local.sh` を読んだうえでの判定である。host 側の機構が変われば本節は `docs/references/document-permanence.md` §2（ストック情報の追随義務）が掛かる対象になる。
+
+確認できる範囲。
+
+- Codex 側 manifest はいずれも `agents` フィールドを持たず、`skills` だけを配布対象として宣言する。Codex にネイティブなサブエージェント機構が無いことの構造的な裏づけであり、agent 定義を汎用 sub-agent へ注入する形を採る理由にあたる
+- Codex marketplace 定義は `.agents/plugins/marketplace.json` に限られ、`.agents/` 配下に他のファイルは無い
+- 起動ラッパー `run-codex-local.sh` が行うのは marketplace 登録と `codex plugin add` の実行だけであり、pluginRoot の解決も定義の注入も行わない
+- execution mode の語彙は `scripts/fixtures/skill-portability/dev-workflow-agent-adapter/compatibility-witness.json` が固定する
+
+確認できない範囲（リポジトリ内に一次資料が無い）。
+
+- host が pluginRoot をどの変数名・どの形式でスキルへ渡すか。配布物側は「環境変数名を仮定しない絶対パス」と書いており、名前を仮定しないという前提そのものが未検証である
+- 注入されるのが定義の全文か一部か。配布物は定義全文の注入を述べるが、そのとおりに動くことを示す観測がリポジトリ内に無い
+- 汎用 sub-agent が独立文脈を持つかどうかの実行時観測。`reviewer-stop` はこれを満たせない場合の縮退として宣言されているが、判定手段は記録されていない
