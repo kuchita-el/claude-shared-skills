@@ -53,3 +53,4 @@
 - [ADR-202608281232-01-subagent-execution-parameter-authoring-side-placement](./ADR-202608281232-01-subagent-execution-parameter-authoring-side-placement.md): サブエージェント実行パラメータ規約を作者向け文書として配布物の外へ置く
 - [ADR-202608301012-01-docs-past-record-abolition](./ADR-202608301012-01-docs-past-record-abolition.md): 過去の記録を `docs/` へ保持せず、恒久的価値のある情報を正本へ移してから削除する
 - [ADR-202609061416-01-commit-sha-plugin-versioning](./ADR-202609061416-01-commit-sha-plugin-versioning.md): プラグインの版をコミット SHA に委ね manifest から version を外す
+- [ADR-202609110017-01-spec-as-code-backbone-transition](./ADR-202609110017-01-spec-as-code-backbone-transition.md): 開発方式の背骨を Spec-as-Code へ転換する
