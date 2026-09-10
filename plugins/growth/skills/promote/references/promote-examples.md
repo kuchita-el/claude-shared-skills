@@ -239,4 +239,4 @@ Markdown 等の長文を CLI オプションに直接渡さない。ファイル
 ## 関連
 
 - [`promote-procedure.md`](promote-procedure.md) — 各例が検証する判定基準の本体
-- `${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` — 仮説ファイル・store のスキーマ、`candidate-status` 状態機械、provenance 規約
+- `personal-store-spec.md` — 仮説ファイル・store のスキーマ、`candidate-status` 状態機械、provenance 規約

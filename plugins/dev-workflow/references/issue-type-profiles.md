@@ -76,6 +76,6 @@ Issueの**種別**に応じて、準備基準（DoR）とテンプレートを�
 DoR（`dor-default.md` / `.claude/dor/definition.md`）と同一の読み込み優先順位に従う（ADR-202606040737-01）:
 
 1. プロジェクト固有: `{project}/.claude/dor/type-profiles.md`（存在すれば優先）
-2. プラグイン共有デフォルト: `${CLAUDE_PLUGIN_ROOT}/references/issue-type-profiles.md`
+2. プラグイン共有デフォルト: `issue-type-profiles.md`（本ファイル）
 
 プロジェクト固有ファイルが読み込めない場合は共有デフォルトにフォールバックする。種別プロファイル資源そのものが読めない場合は、種別差分を適用せずサイズ軸のみで動作する（ソフトデグレード）。
