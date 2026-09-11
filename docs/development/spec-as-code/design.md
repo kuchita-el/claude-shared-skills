@@ -35,19 +35,19 @@
 
 ```mermaid
 flowchart TD
-    subgraph 人間が書く
+    subgraph human["人間が書く"]
         I[intent.md<br/>要求 REQ-xxx・制約・non-goals]
     end
-    subgraph 仕様層 ＝ Single Source of Truth
+    subgraph spec["仕様層 ＝ Single Source of Truth"]
         T[ドメイン型<br/>日本語の型名・値<br/>＝ユビキタス言語辞書]
         E[例テーブル<br/>AC-xxx: 前提/操作/期待<br/>日本語の型付きデータ]
         S[状態遷移表<br/>必要な場合のみ]
     end
-    subgraph 実装層 ＝ エージェントが書く
+    subgraph impl["実装層 ＝ エージェントが書く"]
         C[ドメイン/アプリケーションコード]
         AD[アダプタ層<br/>日本語⇔ASCII 変換]
     end
-    subgraph 生成物
+    subgraph generated["生成物"]
         D1[例の一覧表 Markdown<br/>PdM/デザイナー向け]
         D2[トレーサビリティ表]
         D3[OpenAPI]
