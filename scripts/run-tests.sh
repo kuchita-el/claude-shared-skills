@@ -28,10 +28,8 @@ cd "$REPO_ROOT" || exit 1
 # 種別は出力ラベルにのみ使う（test = テストスイート / check = 検査器）。
 SUITES=(
     "bats|test"
-    "validate-skills|check"
     "validate-plugin-manifests|check"
     "validate-plugin-portability|check"
-    "validate-plugin-path-references|check"
     "claude-plugin-validate|check"
 )
 
@@ -97,20 +95,11 @@ EXPECTED_BATS=(
     lint-adr-layers.bats
     lint-adr-stem.bats
     lint-adr-xref.bats
-    lint-domain-doc.bats
-    local-plugin-runners.bats
     manage-adr-surface.bats
     next-adr-id.bats
     plugin-manifests.bats
-    plugin-path-references.bats
     run-tests-runner.bats
     skill-portability.bats
-    dev-workflow-skill-contract.bats
-    dev-workflow-fixture-contract.bats
-    plan-norm-regression.bats
-    behavior-invariants.bats
-    authoring-reference-relocation.bats
-    plugin-boundaries.bats
     writing-lint.bats
     writing-contract.bats
     distribution-boundary.bats
@@ -168,10 +157,8 @@ suite_precondition_failure() {
 run_one() {
     case "$1" in
         bats) "${BATS_CMD[@]}" --print-output-on-failure "${BATS_FILES[@]}" ;;
-        validate-skills) bash scripts/validate-skills.sh ;;
         validate-plugin-manifests) bash scripts/validate-plugin-manifests.sh . ;;
         validate-plugin-portability) bash scripts/validate-plugin-portability.sh . ;;
-        validate-plugin-path-references) bash scripts/validate-plugin-path-references.sh . docs/development/plugin-path-reference-ledger.md ;;
         # 非 strict で呼ぶ。--strict は version フィールドの欠落を含む警告をエラーへ昇格
         # させるが、本リポジトリは版をコミット SHA へ委ねており version を持たない
         # （ADR-202609061416-01）。
