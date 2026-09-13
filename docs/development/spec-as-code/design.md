@@ -36,36 +36,36 @@
 ```mermaid
 flowchart TD
     subgraph human["人間が書く"]
-        I[intent.md<br/>要求 REQ-xxx・制約・non-goals]
-        L[intent.lock.json<br/>承認台帳<br/>REQ→承認時の本文]
+        I["intent.md<br/>要求 REQ-xxx・制約・non-goals"]
+        L["intent.lock.json<br/>承認台帳<br/>REQ→承認時の本文"]
     end
     subgraph spec["仕様層 ＝ Single Source of Truth"]
-        T[ドメイン型<br/>日本語の型名・値<br/>＝ユビキタス言語辞書]
-        E[例テーブル<br/>EX-xxx: 前提/操作/期待<br/>日本語の型付きデータ]
-        S[状態遷移表<br/>必要な場合のみ]
-        X[決定表<br/>軸の宣言と対象外]
+        T["ドメイン型<br/>日本語の型名・値<br/>＝ユビキタス言語辞書"]
+        E["例テーブル<br/>EX-xxx: 前提/操作/期待<br/>日本語の型付きデータ"]
+        S["状態遷移表<br/>必要な場合のみ"]
+        X["決定表<br/>軸の宣言と対象外"]
     end
     subgraph impl["実装層 ＝ エージェントが書く"]
-        C[ドメイン/アプリケーションコード]
-        AD[アダプタ層<br/>日本語⇔ASCII 変換]
+        C["ドメイン/アプリケーションコード"]
+        AD["アダプタ層<br/>日本語⇔ASCII 変換"]
     end
     subgraph generated["生成物"]
-        D1[例の一覧 Markdown<br/>PdM/デザイナー向け]
-        D2[トレーサビリティ表]
-        D3[OpenAPI]
-        D4[用語集・語の逆引き]
-        D5[決定表 Markdown]
+        D1["例の一覧 Markdown<br/>PdM/デザイナー向け"]
+        D2["トレーサビリティ表"]
+        D3["OpenAPI"]
+        D4["用語集・語の逆引き"]
+        D5["決定表 Markdown"]
     end
-    I -->|エージェントが例を提案<br/>PdM が拒否/承認| E
+    I -->|"エージェントが例を提案<br/>PdM が拒否/承認"| E
     I --> T
-    I -->|承認時の本文を記録| L
+    I -->|"承認時の本文を記録"| L
     T --> E
     S --> E
     T --> X
     S --> X
     E --> X
-    E -->|テストとして実行| C
-    T -->|型検査| C
+    E -->|"テストとして実行"| C
+    T -->|"型検査"| C
     C --> AD
     E --> D1
     X --> D5
