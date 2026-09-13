@@ -12,7 +12,7 @@ token に関わる規律は3軸ある。本規約は**実行時フロー軸**を
 
 | 軸 | 出典 | 縛る対象 |
 |---|---|---|
-| 作成時（静的） | CLAUDE.md「スキル設計の token 規律」、`plugins/dev-workflow/skills/plan-issue/references/plan-output-format.md` | `description` 長・SKILL.md 行数・`allowed-tools` 最小化（スキルという成果物の静的サイズ）と、`plan-issue` が生成するプラン成果物の静的分量（どの記録をプラン本体へ置き、どれを本体外へ分離するか） |
+| 作成時（静的） | CLAUDE.md「スキル設計の token 規律」 | `description` 長・SKILL.md 行数・`allowed-tools` 最小化（スキルという成果物の静的サイズ） |
 | 実行時（フロー） | 本規約 | スキル実行中にメイン context を通過・滞留するデータ（下記5要素） |
 | 実行時（生成・範囲） | `docs/behavior-invariants.md` | 出力・成果物の分量と、作業として踏み込む範囲（どれだけ書くか・どこまでやるか） |
 
@@ -61,12 +61,12 @@ gh / git 等の生 stdout をメインに残さない。後続処理が必要な
 | サブエージェント返却契約の明文化 | 原則3（サブエージェント返却のサマリ化） |
 | SKILL.md 本体の縮退 | 原則4（滞留カテゴリ規則）＋ CLAUDE.md「スキル設計の token 規律」 |
 
-## 理想形の実例
+## 理想形
 
-`refine-issue` 全件モード（`plugins/dev-workflow/skills/refine-issue/SKILL.md`）が本規約の体現例。メイン側はパス・Issue 番号のみをサブエージェントへ渡し、サブエージェントが必要ファイルを自前 Read し、精査結果を構造化データで返却する。新規・改修スキルはこの型を範とする。
+メイン側はパス・識別子のみをサブエージェントへ渡し、サブエージェントが必要ファイルを自前で Read し、結果を構造化データで返却する。メイン context には渡した識別子と返却された構造化データだけが残り、ファイル本文と生の検索結果は通過しない。新規・改修スキルはこの型を範とする。
 
 ## 関連
 
 - CLAUDE.md「スキル設計の token 規律」（作成時・静的軸。本規約と補完する）
-- `plugins/dev-workflow/references/completion-judgment.md` と同様、規約本文を各 SKILL.md へ転記せず、各スキルは本単一出典を参照する
+- 規約本文を各 SKILL.md へ転記せず、各スキルは本単一出典を参照する
 - [ADR-202608281231-01-context-budget-convention-authoring-side-placement](../adr/ADR-202608281231-01-context-budget-convention-authoring-side-placement.md)（本規約を単一出典として確立する決定。単一出典化を決めた先行 ADR-202606270040-01 を上書きし、正本の配置を本ファイルへ改めた）

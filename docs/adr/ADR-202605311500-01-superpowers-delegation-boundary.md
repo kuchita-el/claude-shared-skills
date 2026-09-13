@@ -1,6 +1,6 @@
 ---
 status: 承認済み
-validity: 有効
+validity: 廃止済み
 ---
 
 # ADR-202605311500-01: Delivery実装メカニクスを superpowers に委譲し、dev-workflow は Discovery＋接続契約に縮退する

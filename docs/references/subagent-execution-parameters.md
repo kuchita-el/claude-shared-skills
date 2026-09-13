@@ -190,9 +190,7 @@ Codex 側で役割ごとに水準を固定する器は profile であり、そ�
 
 front-matter の値が効くのは、そのサブエージェントが `subagent_type` 指定で起動された場合に限られる。
 
-本プラグインのスキルが `subagent_type` で起動するのは `plan` / `plan-reviewer` / `issue-refiner` / `issue-refiner-batch` である。`code-reviewer` / `test-designer` / `test-spec-validator` / `refactorer` は定義を持つが、`implementation` からは深刻度基準などの準拠先として参照されるだけで起動されない。実装とレビューは superpowers 側へ委譲されており、`requesting-code-review` は `general-purpose` サブエージェントにテンプレートを流し込む形を採る。
-
-したがってこれら 4 本の値は、利用者が `@agent-dev-workflow:...` で直接起動したときに効く。委譲先を含めた統制は本規約の対象外であり、必要になった時点で別途扱う。
+定義を持つが、どのスキルからも `subagent_type` で起動されない役割がありうる。準拠先として本文から参照されるだけの役割、および実行を外部のスキルへ委譲している役割がこれに当たる。そうした役割の front-matter の値は、利用者が `@agent-{plugin}:{name}` で直接起動したときにだけ効く。委譲先を含めた統制は本規約の対象外であり、必要になった時点で別途扱う。
 
 - 本規約の統制を貫通する経路が1つある。利用者がセッションへ環境変数で被せる経路であり、解決順の最上位に位置する。解決順で front-matter の上位にはもう1つ `model` 引数があるが、そちらは本規約が扱う経路であり（「実装上の制約」節）、統制を貫通するのは環境変数の側だけである。
 - この経路は役割単位では効かず、全サブエージェントに一律に掛かる。
@@ -208,7 +206,7 @@ front-matter の値が効くのは、そのサブエージェントが `subagent
 
 ## 現行の値
 
-front-matter による固定を選んだ役割については、各 `agents/{name}.md` の front-matter が権威である。一覧は [README](../../plugins/dev-workflow/README.md) を参照。本ファイルには値を転記しない。水準を呼び出しごとに与える形（選択規則 (ii)、および (iii) のうち Workflow 経路と子プロセス）を採った役割については、水準を与える側が権威であり、front-matter は権威にならない（「水準を実現する手段」節）。(iii) のうち水準別の運搬体を複数枚置く形では、固定側と同じく各運搬体の front-matter が権威である。現行の全定義は固定側にある。
+front-matter による固定を選んだ役割については、各 `agents/{name}.md` の front-matter が権威である。一覧は各配布物の README を参照。本ファイルには値を転記しない。水準を呼び出しごとに与える形（選択規則 (ii)、および (iii) のうち Workflow 経路と子プロセス）を採った役割については、水準を与える側が権威であり、front-matter は権威にならない（「水準を実現する手段」節）。(iii) のうち水準別の運搬体を複数枚置く形では、固定側と同じく各運搬体の front-matter が権威である。現行の全定義は固定側にある。
 
 ## 関連
 

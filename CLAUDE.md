@@ -68,7 +68,7 @@ allowed-tools:
 
 出力・成果物の分量と作業範囲の規律は `docs/behavior-invariants.md` に単一出典化している。モデル名・モデル版を直書きせず、挙動として観測される不変条件の形で書く。成果物にどの節が存在するかは各出力形式テンプレートの責務であり、節の中身の分量が同文書の責務である。
 
-スキル定義へ「自分が書いたものを自分で読み直せ」型の確認ステップを追加しない。この種の確認は指示がなくても行われるため、重ねて指示すると過剰な検証を誘発する。ただし別文脈が差分・要件を初見で読む独立検証（`code-reviewer` / `plan-reviewer` / `test-spec-validator`）、コマンドを実行して証拠を得る検証ゲート、完了判定における全項目の列挙（`completion-judgment.md`）は対象外であり、削減しない（ADR-202607261002-03）。
+スキル定義へ「自分が書いたものを自分で読み直せ」型の確認ステップを追加しない。この種の確認は指示がなくても行われるため、重ねて指示すると過剰な検証を誘発する。ただし別文脈が差分・要件を初見で読む独立検証、コマンドを実行して証拠を得る検証ゲート、完了判定における全項目の列挙は対象外であり、削減しない（ADR-202607261002-03）。保護対象は特定の資産名ではなく、この3類型で定める。判断基準は「自コンテキストで見落としたものは自コンテキストでは見つからない」であり、新方式の資産が3類型のいずれかに当たるなら同じ保護が掛かる。
 
 ## 横断規約の出典
 
@@ -77,12 +77,6 @@ allowed-tools:
 - `docs/development/coding-agent-plugin-design-principles.md` — 配布プラグイン共通の8設計原則（工場と配布物の資産の別、工場固有の工程を利用者へ課さないこと、独立起動できる能力、成果物の4分類、契約項目、承認の帰属、host 依存方向、正本の一意性）と適用対象・非適用条件。新しいプラグインを起こすとき、既存プラグインへ能力を足すとき
 - `docs/references/subagent-execution-parameters.md` — サブエージェントの `model` / `effort` の置き場と選択規則。新規サブエージェントは front-matter へ両方を明示する
 - `docs/references/document-permanence.md` — `docs/` 配下へ何を残し何を残さないか（恒久文書／過去記録／区分対象外の区分基準）。`docs/principles.md`「ストック情報とフロー情報」の軸へ接続する
-
-## DoR Framework
-
-`create-issue`（作成時の前倒し充足）と `refine-issue`（作成後の精査）が共有する `dev-workflow` 配布物の内部設計である。転換期間中、本リポジトリ自身の開発工程では使わない（ADR-202609110017-01 決定5）。
-
-定義の読み込み優先順位は `{project}/.claude/dor/definition.md`（プロジェクト固有）→ `${CLAUDE_PLUGIN_ROOT}/references/dor-default.md`（プラグイン共有の既定）。Issue サイズ（Small/Medium/Large）に応じてチェック項目が段階的に増える。二軸目として Issue 種別（bug/feature/refactor/spike/chore/docs）を持ち、`{project}/.claude/dor/type-profiles.md` → `${CLAUDE_PLUGIN_ROOT}/references/issue-type-profiles.md` の順で読む（ADR-202606180122-01）。種別ごとに追加必須セクション・AC 形／完了定義・適正な抽象度の厳しさを差別化し、サイズ判定を置換しない。
 
 ## Conventions
 

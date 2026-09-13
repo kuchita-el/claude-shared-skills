@@ -1,6 +1,6 @@
 ---
 status: 承認済み
-validity: 有効
+validity: 廃止済み
 ---
 
 # ADR-202606211859-01: completion-judgment.md の原則を素の会話に届ける手段として SessionStart フックを採用する

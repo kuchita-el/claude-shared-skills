@@ -1,6 +1,6 @@
 ---
 status: 承認済み
-validity: 有効
+validity: 廃止済み
 ---
 
 # ADR-202606272147-01: plan-issue の plan 本文をメイン context に往復させない生成〜修正ループ
