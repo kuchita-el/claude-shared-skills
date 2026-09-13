@@ -103,7 +103,7 @@ CLI では `/fast` でトグルし、ユーザー設定ファイルの `"fastMod
 ## 出典
 
 - https://platform.claude.com/docs/en/about-claude/models/overview.md （§1 のモデル一覧・価格・コンテキスト長・既定 effort・拡張思考の形式、および §3 と §4 が引く「Haiku 4.5 は `effort` 非対応」。2026-09-13 確認）
-- https://code.claude.com/docs/en/fast-mode （§3 の fast mode 仕様。2026-09-13 確認）
+- https://code.claude.com/docs/en/fast-mode （§3 の fast mode 仕様。Team / Enterprise 組織で既定オフであること・Owner による有効化もこの出典。2026-09-13 確認）
 - https://code.claude.com/docs/en/sub-agents （§3 の model/effort フィールド仕様と解決順序。2026-07-22 確認）
 - https://code.claude.com/docs/en/model-config （§3 のエイリアス・フォールバック・effort。2026-07-22 確認）
 - https://claude.com/blog/claude-model-and-effort-level-in-claude-code （§4 の3区分と §2 の Sonnet・Haiku の適性、および §4 の Fable のステップ数に関する記述。2026-07-22 確認）
