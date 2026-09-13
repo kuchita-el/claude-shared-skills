@@ -1,11 +1,6 @@
 #!/usr/bin/env bats
 load 'helpers/common'
 
-@test "skill lintは0件走査を成功にしない" {
-  run bash "$REPO_ROOT/scripts/validate-skills.sh" "$FIXTURES_DIR/skill-portability/empty"
-  [ "$status" -eq 1 ]
-  [[ "$output" == *"検査対象skillが0件"* ]]
-}
 @test "正常なcompatibilityとpermission fixtureを受け入れる" {
   run bash "$REPO_ROOT/scripts/validate-plugin-portability.sh" "$FIXTURES_DIR/skill-portability/valid"
   [ "$status" -eq 0 ]

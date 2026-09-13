@@ -1,6 +1,6 @@
 ---
 status: 承認済み
-validity: 有効
+validity: 廃止済み
 ---
 
 # ADR-202605131437-02: レビュー契約の所在を plan-issue に移行する

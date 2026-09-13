@@ -8,11 +8,9 @@
 
 | スイート | 実体 | 内容 |
 |---|---|---|
-| `bats` | `scripts/tests/*.bats` | adr プラグイン同梱の検査器のテスト・配布物外スクリプトのテスト・リポジトリ横断の規約検査・配布物と配布元の一方向性の検査（`scripts/tests/*.bats` の網羅列挙ではない） |
-| `validate-skills` | `scripts/validate-skills.sh` | スキル定義の `allowed-tools` 検査 |
+| `bats` | `scripts/tests/*.bats` | adr プラグイン同梱の検査器のテスト・writing プラグイン同梱の検査器のテスト・配布物と配布元の一方向性の検査・runner 自身の fail-closed 検査（`scripts/tests/*.bats` の網羅列挙ではない） |
 | `validate-plugin-manifests` | `scripts/validate-plugin-manifests.sh .` | marketplace、manifest、README、skill集合の双方向一致 |
 | `validate-plugin-portability` | `scripts/validate-plugin-portability.sh .` | matrix、permission ledger、参照境界 |
-| `validate-plugin-path-references` | `scripts/validate-plugin-path-references.sh . docs/development/plugin-path-reference-ledger.md` | plugin path参照台帳の双方向一致 |
 | `claude-plugin-validate` | `claude plugin validate .` | marketplace定義と、そこから解決できたClaude側plugin manifestのスキーマ検証（非strict） |
 
 この検査が読むのはmarketplace定義と、そこが `source` で指すClaude側の `plugin.json` だけである。Codex側のmarketplaceとmanifest（`.agents/plugins/marketplace.json` / `.codex-plugin/plugin.json`）は参照されない。両host manifestの整合を見るのは `validate-plugin-manifests` の `name` 一致とskill集合一致であり、本検査はその代わりにならない。marketplaceの項目が解決できなくなった場合、警告もエラーも出ないまま検査対象が静かに縮む（`source` を不在パスへ書き換えると警告件数が減ってrc=0）。この縮みを拾うのは `validate-plugin-manifests` 側である。
@@ -62,10 +60,8 @@ bash scripts/run-tests.sh
 
 # スイートを1本に絞る（開発時の反復用）
 bash scripts/run-tests.sh bats
-bash scripts/run-tests.sh validate-skills
 bash scripts/run-tests.sh validate-plugin-manifests
 bash scripts/run-tests.sh validate-plugin-portability
-bash scripts/run-tests.sh validate-plugin-path-references
 bash scripts/run-tests.sh claude-plugin-validate
 
 # スイート名の一覧
