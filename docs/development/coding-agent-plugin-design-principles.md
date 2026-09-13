@@ -521,4 +521,3 @@ ADR 運用機構の参照面の検査は、`manage-adr` の references 本文を
 - `docs/references/claude-code-plugin-asset-reachability.md`（Claude Code における同梱資産への到達手段の正本。どの走査面でどのパス変数が解決されるかを実測で定める。§6 が面ごとの正規形を決める際に引く事実の出典）
 - `docs/development/adr-plugin-design-guideline.md`（ADR 運用機構の配布プラグインに限った設計ガイドライン。中核と周辺の別、参照面の正本の一意性、同梱スクリプトの実行形を置く面を、1プラグインの範囲で定める。本書の一般形と重なる3節（§1・§2.2・§2.4）の縮退は §2.5 の第1項・第4項が既知の限界として持つ）
 - `docs/behavior-invariants.md`（スキル実行時の生成量と作業範囲の不変条件。契約項目のうち成果物と変更境界に隣接する）
-- `plugins/dev-workflow/references/completion-judgment.md`（完了判定の原則。配布物内に置かれ、読み手に利用者を含む）

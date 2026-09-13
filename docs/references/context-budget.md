@@ -68,5 +68,5 @@ gh / git 等の生 stdout をメインに残さない。後続処理が必要な
 ## 関連
 
 - CLAUDE.md「スキル設計の token 規律」（作成時・静的軸。本規約と補完する）
-- `plugins/dev-workflow/references/completion-judgment.md` と同様、規約本文を各 SKILL.md へ転記せず、各スキルは本単一出典を参照する
+- 規約本文を各 SKILL.md へ転記せず、各スキルは本単一出典を参照する
 - [ADR-202608281231-01-context-budget-convention-authoring-side-placement](../adr/ADR-202608281231-01-context-budget-convention-authoring-side-placement.md)（本規約を単一出典として確立する決定。単一出典化を決めた先行 ADR-202606270040-01 を上書きし、正本の配置を本ファイルへ改めた）

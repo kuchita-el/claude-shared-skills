@@ -52,7 +52,7 @@ token と出力に関わる規律は3軸ある。本規約は**実行時の生�
 ## 関連
 
 - [`docs/references/context-budget.md`](references/context-budget.md)（実行時データフロー軸。本規約と補完関係）
-- `completion-judgment.md`（完了判定の原則。ADR-202607261002-03 が保護対象として明示する）
+- 完了判定における全項目の列挙（ADR-202607261002-03 が保護対象とする3類型の一つ。dev-workflow の退役により配布物内の正本 `completion-judgment.md` を失った。原則1〜3 に対応する規定はユーザースコープの `CLAUDE.md` が持つが、`inquiry` 層の4値決着値は対応物を持たない）
 - CLAUDE.md「スキル設計の token 規律」（作成時・静的軸）
 - CLAUDE.md「振る舞いの不変条件」（同一文脈での再確認をスキル定義へ新たに書き足さない規律。読者はスキル作者であり作成時軸に属する）
 - [ADR-202607261002-01](adr/ADR-202607261002-01-behavior-invariant-description-style.md)（記述様式＝モデル版非依存の不変条件として書く決定）
