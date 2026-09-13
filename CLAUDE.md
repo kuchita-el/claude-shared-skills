@@ -78,12 +78,6 @@ allowed-tools:
 - `docs/references/subagent-execution-parameters.md` — サブエージェントの `model` / `effort` の置き場と選択規則。新規サブエージェントは front-matter へ両方を明示する
 - `docs/references/document-permanence.md` — `docs/` 配下へ何を残し何を残さないか（恒久文書／過去記録／区分対象外の区分基準）。`docs/principles.md`「ストック情報とフロー情報」の軸へ接続する
 
-## DoR Framework
-
-`create-issue`（作成時の前倒し充足）と `refine-issue`（作成後の精査）が共有する `dev-workflow` 配布物の内部設計である。転換期間中、本リポジトリ自身の開発工程では使わない（ADR-202609110017-01 決定5）。
-
-定義の読み込み優先順位は `{project}/.claude/dor/definition.md`（プロジェクト固有）→ `${CLAUDE_PLUGIN_ROOT}/references/dor-default.md`（プラグイン共有の既定）。Issue サイズ（Small/Medium/Large）に応じてチェック項目が段階的に増える。二軸目として Issue 種別（bug/feature/refactor/spike/chore/docs）を持ち、`{project}/.claude/dor/type-profiles.md` → `${CLAUDE_PLUGIN_ROOT}/references/issue-type-profiles.md` の順で読む（ADR-202606180122-01）。種別ごとに追加必須セクション・AC 形／完了定義・適正な抽象度の厳しさを差別化し、サイズ判定を置換しない。
-
 ## Conventions
 
 - ドキュメントおよびスキル内のコメントは日本語で書く
