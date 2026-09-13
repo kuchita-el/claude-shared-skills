@@ -65,6 +65,8 @@ frontmatter の `effort`（`low`〜`max`、モデル依存）でそのサブエ�
 
 価格は Opus 5 / Opus 4.8 とも $10 / $50 per MTok で、1M コンテキストの全域に一律で掛かる。会話の途中で最初に有効化すると、その時点の会話コンテキスト全体へ fast mode の非キャッシュ入力価格が掛かる。有効化するならセッション開始時のほうが安い。標準 Opus とは別のレート制限を持ち、上限に当たると自動的に標準速度へフォールバックする。
 
+利用の前提が 2 つある。**Team / Enterprise 組織では既定でオフであり、Owner による有効化が要る**（未有効化のまま `/fast` を叩くと「組織によって無効化されている」と表示される）。また **Batch API とも Priority Tier のコミットメントとも併用できない**。CI・バッチ処理へ持ち込めないため、fast mode は対話的な作業に閉じたレバーである（いずれも 2026-09-13 に公式ドキュメントで確認）。
+
 CLI では `/fast` でトグルし、ユーザー設定ファイルの `"fastMode": true` でも設定できる。既定では対話セッションでの設定がセッションを跨いで持続し、`"fastModePerSessionOptIn": true` を置くと毎セッション off から始まる。Claude Code v2.1.219 以降、fast mode の既定モデルは Opus 5。利用できるのは Anthropic API とサブスクリプションプラン（usage credits 経由）に限られ、Amazon Bedrock / Google Cloud / Microsoft Foundry / Claude Platform on AWS では利用できない。
 
 ## 4. 作業種別ごとの振り分け指針
@@ -77,9 +79,11 @@ CLI では `/fast` でトグルし、ユーザー設定ファイルの `"fastMod
 | Haiku 4.5 | 能力要件が控えめな素直な作業。公式ドキュメントは探索系サブエージェントの低コスト化例として `model: haiku` を明示している |
 | Fable 5.1 / Opus 5 | 曖昧な問題（サブトルなバグ、未知のドメイン、アーキテクチャ判断） |
 
+公式ブログ由来でもう1点、コスト効率について確認できる記述がある。単価だけでなく試行錯誤の回数を加味すること——Fable は複雑な多段階問題でステップ数が少なく済むため、タスク総コストでは安くなり得る（2026-07-22 確認。先代 Fable 5 についての記述であり、Fable 5.1 では再確認していない）。
+
 **これ以上の細分は本文書が持たない。** model × effort の組み合わせごとの費用対効果は [`model-effort-cost-guide.md`](model-effort-cost-guide.md)（第三者ベンチマークの実測に基づく model × effort の費用対効果ガイド。新設）が扱う。
 
-本節は以前、作業種別11行の推奨表と「コスト効率の考え方」2項目を持っていた。推論に由来する行が第三者実測と突き合わせられない根拠のまま残っていたため、根拠の性格が揃う「公式が明示している範囲」へ畳んだ。
+本節は以前、作業種別11行の推奨表と「コスト効率の考え方」2項目を持っていた。推論に由来する行が第三者実測と突き合わせられない根拠のまま残っていたため、根拠の性格が揃う「公式が明示している範囲」へ畳んだ。畳む対象は推論に由来する行であり、公式ブログ由来の1項目（上の Fable のステップ数）は本節へ残している。もう1項目（`effort` がモデル選択とは別のレバーであること）は `subagent-execution-parameters.md` が「`model` と `effort` は別々の軸である」として規約の側で持つため、本節では重複させない。
 
 **公式 claim と第三者実測が食い違う箇所**: 旧表は「通常の実装 → Sonnet 5」を公式ブログ由来として挙げていた。一方 DeepSWE v1.1 の実測（2026-09-13 時点、113タスク、pass@1 定義）では、`sonnet-5/low` が pass@1 0.305・1回あたり平均コスト $2.19、`opus-5/low` が 0.581・$1.66 である。後者が成功率とコストの双方で前者を上回る。1回で完遂するまでの期待コスト（1回あたり ÷ pass@1）で見ると $7.17 対 $2.86 となる。**ただしこの割り算は、同じ設定での再試行が独立であることを仮定している。同一ベンチの pass@4 実測はこの仮定を否定しており**（`opus-5/high` は実測 87.6% に対し独立仮定の予測 99.5%）**、$7.17 / $2.86 は上限側へ振れた目安である**（[`model-effort-cost-guide.md`](model-effort-cost-guide.md) が同じ但し書きを持つ）。順序の比較には使えるが、額面を持ち出さない。公式 claim を実測が上書きするという関係ではなく、根拠の性格が違う2つが食い違っている事実として扱う。
 
@@ -102,5 +106,6 @@ CLI では `/fast` でトグルし、ユーザー設定ファイルの `"fastMod
 - https://code.claude.com/docs/en/fast-mode （§3 の fast mode 仕様。2026-09-13 確認）
 - https://code.claude.com/docs/en/sub-agents （§3 の model/effort フィールド仕様と解決順序。2026-07-22 確認）
 - https://code.claude.com/docs/en/model-config （§3 のエイリアス・フォールバック・effort。2026-07-22 確認）
-- https://claude.com/blog/claude-model-and-effort-level-in-claude-code （§4 の3区分と §2 の Sonnet・Haiku の適性。2026-07-22 確認）
+- https://claude.com/blog/claude-model-and-effort-level-in-claude-code （§4 の3区分と §2 の Sonnet・Haiku の適性、および §4 の Fable のステップ数に関する記述。2026-07-22 確認）
+- https://platform.claude.com/docs/en/build-with-claude/fast-mode （§3 の Batch API・Priority Tier との併用不可。2026-09-13 確認）
 - https://www.anthropic.com/news/claude-fable-5-mythos-5 （§1 補足と §2 末尾が 2026-07-22 時点として残している Fable 5 / Mythos 5 の記述の根拠。現行世代での再確認はしていない）
