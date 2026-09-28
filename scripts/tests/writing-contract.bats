@@ -82,6 +82,9 @@
   [ "$status" -eq 0 ]
   run grep -E 'status=unresolved' "$root/plugins/writing/skills/write-doc/SKILL.md"
   [ "$status" -eq 0 ]
+  # 2回を待たずに修正を見送る経路も unresolved を返す（evalで status 未出力の終了が観測された経路）。
+  run grep -E '修正を2回待たずに見送る場合も.*status=unresolved' "$root/plugins/writing/skills/write-doc/SKILL.md"
+  [ "$status" -eq 0 ]
 }
 
 @test "allowlistと免除語集合を導入しない" {
