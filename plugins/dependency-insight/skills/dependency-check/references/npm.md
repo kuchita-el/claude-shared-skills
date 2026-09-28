@@ -36,13 +36,13 @@ npm / pnpm / yarn / bun 共通のコマンド対応表。SKILL.mdの各Phaseか�
 
 PMの解決エンジンを使って、目標バージョンをインストールした場合の依存解決エラーを取得する。
 
-| 操作 | npm | pnpm | yarn | bun |
-|---|---|---|---|---|
-| dry-run install | `npm install {pkg}@{ver} --dry-run` | `pnpm add {pkg}@{ver} --dry-run` | `yarn add {pkg}@{ver} --mode update-lockfile` | `bun add {pkg}@{ver} --dry-run` |
+| 操作 | npm | pnpm | bun |
+|---|---|---|---|
+| dry-run install | `npm install {pkg}@{ver} --dry-run` | `pnpm add {pkg}@{ver} --dry-run` | `bun add {pkg}@{ver} --dry-run` |
 
 - **npm**: `--dry-run` は実際のインストールを行わず、依存解決の結果だけを表示する。`ERESOLVE` エラーが出た場合、どのパッケージのpeerDepsが衝突しているかが示される
 - **pnpm**: `--dry-run` で依存解決のプレビューを表示。エラー時はどのpeerDeps要求が満たされないかを表示する
-- **yarn**: v3+では `--mode update-lockfile` でlockfileの更新プレビューを確認できる。依存解決エラー時は衝突の詳細が表示される
 - **bun**: `--dry-run` で依存解決結果をプレビュー表示する
+- **yarn**: `yarn add {pkg}@{ver} --mode update-lockfile` はlockfileへ実際に書き込みを行うため証拠収集の手段には使わない（`--dry-run` 相当のオプションはyarnに無い）。yarnはこの手段の対象外とし、Phase 3b/3cのpeerDeps照合（レジストリの`peerDependencies`と`package.json`の突合）と`yarn why` / `yarn explain peer-requirements`（現在のロックファイル上の既存ピア要件の確認）で代替する
 
 dry-runの出力からエラーが得られない場合は、`npm ls` 等で依存ツリーを確認し、peerDeps不整合を手動で照合する。
