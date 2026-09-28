@@ -68,6 +68,7 @@ reviewerはF1、F3、F4、F5をそれぞれ判定し、`ruleId,severity,evidence
 
 修正は最大2回まで行う。各回で修正、lint、reviewを記録する。
 2回後も指摘が残れば`status=unresolved`と指摘一覧を返し、成功成果として表示しない。
+依頼の明示指示と衝突する等の理由で修正を2回待たずに見送る場合も、指摘が残る限り同じく`status=unresolved`と指摘一覧を返す。
 指摘が無くなった場合だけ`status=passed`と出力pathを返す。
 
 ## host adapter
