@@ -20,11 +20,11 @@ allowed-tools:
 - **対象範囲**: 指定されたADRと許可された遷移・編集分類だけを扱う。
 - **成果物**: front-matter、本文、相互参照をスキーマに沿って必要十分に更新する。
 - **停止条件**: 遷移条件、参照整合、lintのいずれかが未決・不合格なら状態を進めない。
-- **変更境界**: 対象ADR以外を変更せず、別判断を黙って混ぜない。
+- **変更境界**: 対象ADR以外を変更せず、別判断を黙って混ぜない。ただし遷移手順（`transitions.md`「共通: 退役に伴う inbound `Related:` の点検・付け替え」節）が付け替えを指示する相互参照相手（対象ADRを指す他の有効ADRの`Related:`行、非ADR文書）と、自己検証で再生成する`index.md`は、対象ADR以外の変更として許容する。
 
 ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR の編集で、front-matter（`status`/`validity`/`superseded-by`）と `## 関連ADR` の相互参照を正しく書き込む。手順の実体は本スキルが持ち、手作業で組み立てずスキル経由で一貫した状態遷移を実行し、各操作の締めに drift-lint で自己検証する。
 
-Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行する。Codexにはこのplugin単位hookがないため、ホストにかかわらず各操作後の明示lintを必須とする。Codex側のhook/policy callbackが利用可能になった場合だけ、重複workflowを作らずhost adapterへ移行する。
+Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行する。Codexにはこのplugin単位hookがないため、ホストにかかわらず各操作後の明示lintを必須とする。
 
 状態値の値域と各値の定義は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「状態の2軸」に従う（キーは英語の構造的フィールド名、値は日本語ユビキタス言語）。値の説明・トレーリングコメントを front-matter 内に書かない（lint パーサが行全体を値として取り込むため）。
 
@@ -117,4 +117,4 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 
 **フォールバック**: 操作前から対象ディレクトリが exit 1（baseline red）で、本操作と無関係な違反が exit 0 到達を妨げる場合に限り、変更/生成した ADR とその相互参照相手を一時ディレクトリへコピーし、そのディレクトリを対象に手順1〜3を実行してよい（コピーに含めるファイルの規則は `${CLAUDE_SKILL_DIR}/references/transitions.md` を参照）。
 
-**方式の判断と根拠**: 既定を対象ディレクトリの直接検証とし、隔離コピー方式は既定手順から退けた。隔離コピーは「対象ディレクトリ全体の baseline が red で、どれだけ正しく操作しても全体 green にできない」ことを前提とする過渡措置であり、直接 lint すると正しい操作でも exit 0 に到達できない（false negative）ことを避けるためのものだった。front-matter 移行と index 初期生成の完了により baseline が exit 0 となってこの前提が失効したため、隔離方式には相互参照相手を漏らすと自ら false negative を生むという組み立てコストだけが残る。直接検証は操作結果と対象ディレクトリ全体の整合を同時に検査でき、隔離セットの漏れによる誤検知も生じない。ただし baseline が red へ戻った場合の可用性を確保するため、隔離検証は上記フォールバックとして残置する。
+**方式の根拠**: 直接検証を既定とするのは、操作結果と対象ディレクトリ全体の整合を同時に検査でき、隔離コピーのように相互参照相手を漏らして自ら false negative を生むことがないためである。隔離検証は、baseline が red で正しい操作でも exit 0 に到達できない場合の可用性を確保する上記フォールバックに限って用いる。
