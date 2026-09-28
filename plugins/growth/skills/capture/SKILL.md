@@ -48,8 +48,6 @@ store project-id（同仕様の `<project-id>`）の解決手順（`git rev-pars
 printenv CLAUDE_CODE_SESSION_ID
 ```
 
-> Phase 3（hook 自発化）移行時は `CLAUDE_CODE_CHILD_SESSION=1` 環境下での session UUID 解決を要再確認。
-
 **timestamp**（見出しキー。ISO 8601 UTC の capture 実行時刻）:
 
 ```bash

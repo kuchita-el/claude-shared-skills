@@ -16,7 +16,7 @@ allowed-tools:
 - **対象範囲**: candidates.mdの検証済み仮説だけを共有Issueへ昇格する。
 - **成果物**: 通過仮説のIssueとcandidate-statusのpendingからpromotedへの更新を残す。
 - **停止条件**: 検証不通過・起票失敗・status不整合があれば昇格を確定しない。
-- **変更境界**: captures、learnings、未通過候補を変更しない。
+- **変更境界**: captures、learnings は変更しない。candidates の変更は candidate-status の更新に限る（検証不合格の候補は `pending → rejected`、起票成功した候補は `pending → promoted` へ更新。それ以外の項目・本文は変更しない）。
 
 distill が仮説ファイル（`candidates.md`）へ永続化した仮説を検証し、検証を通過したものだけを `gh` で Issue へ自動起票して既存ワークフローへ渡す。起票成功後に候補ファイル（`candidates.md`）の `candidate-status` を `promoted` へ前進させる（`captures.md` は書き換えない）。学習ループ（`[Capture] → [Distill+Route] → [Promote] → [Distribute]`）の Promote 段。
 
@@ -25,13 +25,13 @@ distill が仮説ファイル（`candidates.md`）へ永続化した仮説を検
 - **目的**: 未検証の仮説を検証し（気付きは仮説であり、検証されるまで配布しない）、共有に値するものだけを Issue という揉む場・配布経路へ投入する。検証段が未検証仮説を配布経路に乗せないフィルタになる。
 - **疎結合**: 起票は `gh` での直接起票（`gh issue create --body-file`）で行い、**dev-workflow スキル（create-issue 等）を直接呼び出さない**。起票された Issue は既存の refine-issue / DoR / plan-issue / implementation / PR レビューへ自然に乗る。
 - **起票前ゲートなし（自動起票）**: 検証通過仮説は人間承認ゲートを挟まず自動起票する。起票前ゲートは自動化を阻害し、起票後の既存ワークフローの L2 承認（refine/DoR/PR レビュー）と二重になるため置かない。二段ゲートの L2 は起票後の既存ワークフローが担う。
-- **ルーティング不可知（scope/career 仮説のまま終点）**: 仮説の `scope-hypothesis` ＋ `career-hypothesis` タグ（いずれも distill が付与）を Issue 本文へ**仮説として注記**するだけで、確証も `learnings.md` への物理書き込みもしない。promote は career（昇格先キャリア・宛先 repo）も scope（適用範囲）も確定しない。scope の最終裁定は人間 refine/review（横断解析は Phase 3 の支援どまり）、career の確定（裁定）は集約点（取り込み Issue）が担う（ADR-202606282107-01）。career の決定表は持たない（distill 側へ移設済み）。
+- **ルーティング不可知（scope/career 仮説のまま終点）**: 仮説の `scope-hypothesis` ＋ `career-hypothesis` タグ（いずれも distill が付与）を Issue 本文へ**仮説として注記**するだけで、確証も `learnings.md` への物理書き込みもしない。promote は career（昇格先キャリア・宛先 repo）も scope（適用範囲）も確定しない。scope の最終裁定は人間 refine/review（横断解析は Phase 3 の支援どまり）、career の確定（裁定）は集約点（取り込み Issue）が担う（ADR-202606282107-01）。career の決定表は持たない（決定表は distill-procedure.md が持つ）。
 - **`candidate-status` 前進の主体**: 起票成功後にのみ、起票した候補自身の `candidate-status` を `pending → promoted` へ前進させる（`captures.md` は書き換えない。personal-store-spec.md「冪等性（candidate-status による再提示抑止）」で確定）。起票失敗・仮説棄却・ゲート拒否時は前進させない。
 - **Phase 1 スコープ**: 検証は promote 自身の自己検証（最小）。独立検証エージェント化・マルチエージェントレビュー化は後続 Phase（Phase 4）。
 
 ## 手順
 
-判定基準の詳細は `${CLAUDE_SKILL_DIR}/references/promote-procedure.md` を、worked example は `${CLAUDE_SKILL_DIR}/references/promote-examples.md` を参照する（手順本文を SKILL.md に二重化しない）。
+判定基準の詳細は `${CLAUDE_SKILL_DIR}/references/promote-procedure.md` を常に読む（手順本文を SKILL.md に二重化しない）。worked example（`${CLAUDE_SKILL_DIR}/references/promote-examples.md`）は、規則本文だけで判定がつかないときに該当する例だけを読む。
 
 1. **仮説読取（AC2 消費）**: personal-store-spec.md「project-id とパスの解決手順」で仮説ファイルパス（`~/.claude/projects/<project-id>/growth/candidates.md`）を組み立て、Read で読む。`candidate-status: pending` のエントリのみを対象にする（`rejected` / `promoted` は無視）。未存在・0件は procedure §7 のエラー処理へ。
 2. **検証（AC1・型適応）**: 各仮説を評価する。仮説の `tags` の各要素で検証軸を分岐する（ADR-202607010734-01 D5）——`behavior-diff`（摩擦知）は「予測（次にどんな状況で効くか）」と「検証観点（どの条件で反証されうるか）」（現行どおり）、`decision-record`（判断知）は「復元不能で・まだ有効で・配布価値があるか」（反証条件＝既にリポに記録済み＝復元可能／後に覆された／carry-forward 価値のない一回性）。混在ゾーン（両タグ）は両検証を受け、全タグ合格の仮説のみ後段へ。いずれかのタグが不合格なら仮説全体の `candidate-status` を `rejected` へ更新し後段（起票）へ進めない（procedure §3）。

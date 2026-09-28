@@ -34,7 +34,7 @@ allowed-tools:
 
 ## 手順
 
-判定基準・コマンド・本文書式の詳細は `${CLAUDE_SKILL_DIR}/references/intake-procedure.md` を、worked example は `${CLAUDE_SKILL_DIR}/references/intake-examples.md` を参照する（手順本文を SKILL.md に二重化しない）。取り込み Issue の構造・裁定結果の記録形式・不変条件は `${CLAUDE_PLUGIN_ROOT}/references/intake-issue-spec.md` を参照する。
+判定基準・コマンド・本文書式の詳細は `${CLAUDE_SKILL_DIR}/references/intake-procedure.md` を常に読む（手順本文を SKILL.md に二重化しない）。worked example（`${CLAUDE_SKILL_DIR}/references/intake-examples.md`）は、規則本文だけで判定がつかないときに該当する例だけを読む。取り込み Issue の構造・裁定結果の記録形式・不変条件は `${CLAUDE_PLUGIN_ROOT}/references/intake-issue-spec.md` を参照する。
 
 参照先仕様がさらに参照する判定基準も、このSKILLから直接到達できるようにする。対象は `${CLAUDE_PLUGIN_ROOT}/skills/distill/references/distill-procedure.md`、`${CLAUDE_PLUGIN_ROOT}/skills/promote/references/promote-procedure.md`、`${CLAUDE_PLUGIN_ROOT}/references/learning-store-spec.md`、`${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` である。
 
@@ -64,5 +64,5 @@ inbox 確認: is:open label:growth:promote から3件が外れました。
 - `${CLAUDE_SKILL_DIR}/references/intake-procedure.md` — 各段の判定基準（対象特定・重複検出・裁定提案・承認ゲート・起票/追記・取り込み時クローズ・エラー処理）の単一出典
 - `${CLAUDE_SKILL_DIR}/references/intake-examples.md` — worked example（新規起票／既存合流／承認却下／クローズ失敗時の inbox 維持）
 - `${CLAUDE_PLUGIN_ROOT}/references/intake-issue-spec.md` — 取り込み Issue の構造・裁定結果の記録形式・取り込み時クローズ規約・集約トポロジの不変条件・`growth:intake` ラベル
-- `${CLAUDE_PLUGIN_ROOT}/references/promotion-issue-spec.md` — 入力源 `growth:promote` 仮説 Issue のテンプレート（#382 で再定義予定）
+- `${CLAUDE_PLUGIN_ROOT}/references/promotion-issue-spec.md` — 入力源 `growth:promote` 仮説 Issue のテンプレート（ADR-202606282107-01 準拠）
 - `${CLAUDE_PLUGIN_ROOT}/references/career-spec.md` — career 提案時に参照するキャリア軸の定義（値域・強キャリアの内訳）

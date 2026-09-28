@@ -7,7 +7,7 @@ promote スキルの各段の判定基準の詳細。SKILL.md の手順 overview
 - **目的**: distill が `candidates.md` へ永続化した仮説を検証し、検証を通過したものだけを `gh` で Issue へ自動起票して既存ワークフローへ渡す。起票成功後に候補の `candidate-status` を前進させる。
 - **責務境界**: promote が担うのは「検証 → Route 注記 → 自動起票 → candidate-status 前進」の4段。**promote はルーティング不可知である**——career（昇格先キャリア）も scope（適用範囲）も**確定（裁定）しない**。distill が `candidates.md` に出した `scope-hypothesis` / `career-hypothesis` の両仮説を、昇格 Issue 本文へ**注記として運ぶのみ**（ADR-202606282107-01）。次は**行わない**:
   - 仮説の生成・クラスタ化（distill の責務）
-  - career の Route 判定・決定表評価・キャリアラベル付与（決定表は distill 側＝distill-procedure.md へ移設済み。promote は決定表を持たない）
+  - career の Route 判定・決定表評価・キャリアラベル付与（決定表は distill-procedure.md が持ち、promote は持たない）
   - `learnings.md`（配布物）への物理書き込み（Distribute、Phase 2 の責務）。Route はタグの**注記**までで終端し、物理昇格はしない。
   - dev-workflow スキルの直接呼び出し（疎結合。起票は `gh` 直接のみ）
   - scope / career 仮説タグの確証・真化（仮説のまま終点。scope の最終裁定は人間 refine/review、career の確定は集約点＝取り込み Issue）
@@ -28,7 +28,7 @@ promote スキルの各段の判定基準の詳細。SKILL.md の手順 overview
 
 ### behavior-diff（摩擦知）: 予測・反証
 
-各仮説について以下を添えて評価する（現行どおり。変更なし）:
+各仮説について以下を添えて評価する:
 
 - **予測**: この規範が次にどんな状況で効くか（適用される具体場面）。予測が立てられない＝検証も反証もできない。
 - **検証観点**: どの条件で反証されうるか（反例の形）。反証可能性が無い主張は仮説たりえない。
@@ -56,7 +56,7 @@ promote スキルの各段の判定基準の詳細。SKILL.md の手順 overview
 
 ## 4. Route 注記（tags ＋ scope ＋ career）
 
-合格仮説の `tags` ・`scope-hypothesis` ・`career-hypothesis` を読み、Issue 本文へ**注記**する。**promote はルーティング不可知であり、知識型も両仮説も確定（裁定）せず運ぶだけ**である（注記は記述であって確証ではない）。career の決定表は持たない（決定表は distill 側＝distill-procedure.md へ移設済み）。`learnings.md` へは書かない。
+合格仮説の `tags` ・`scope-hypothesis` ・`career-hypothesis` を読み、Issue 本文へ**注記**する。**promote はルーティング不可知であり、知識型も両仮説も確定（裁定）せず運ぶだけ**である（注記は記述であって確証ではない）。career の決定表は持たない（決定表は distill-procedure.md が持つ）。`learnings.md` へは書かない。
 
 ### 知識型（tags）の注記
 
@@ -106,7 +106,7 @@ Issue 本文に含める career 注記欄の書式:
 検証通過仮説を Issue へ自動起票する。**起票前に人間承認ゲートを置かない**。
 
 1. **本文の組み立て**: Issue 本文を組み立てる。最低限、仮説の見出し・本文（`behavior-diff` は規範差分、`decision-record` は4欄＝`decision`/`rejected-alternatives`/`rationale`/`context`、混在ゾーンは両本文を併記）と §4 の Route 注記欄（知識型 ＋ スコープ ＋ キャリア）を含める。検証段の所見（`behavior-diff` は「予測」「検証観点」、`decision-record` は「復元不能・有効・配布価値」の判定理由。混在ゾーンは両タグの所見）も本文へ記し、下流の refine/review が判断材料にできるようにする。
-2. **本文の受け渡し**: 複数行本文を CLI 引数へ直接渡さず、Write で一時ファイル（例: `/tmp/promote-issue-<連番>.md`）へ書き出してから `--body-file` で渡す（CLAUDE.md 規約。シェルのクォート/ヒアドキュメント制約による破損を避ける）。
+2. **本文の受け渡し**: 複数行本文を CLI 引数へ直接渡さず、Write で一時ファイル（例: `/tmp/promote-issue-<連番>.md`）へ書き出してから `--body-file` で渡す（シェルのクォート/ヒアドキュメント制約による破損を避けるため）。
 3. **起票コマンド**: `gh issue create --title "<見出し>" --body-file <一時ファイル>` で起票する。**dev-workflow スキル（create-issue 等）を呼び出さない**（疎結合。AC3）。ラベル付与等は任意。
 4. **起票後**: 起票された Issue は既存ワークフロー（refine-issue / DoR / plan-issue / PR レビュー）= L2 ゲートに乗る。promote はここで承認を待たず次段（§6）へ進む。
 
