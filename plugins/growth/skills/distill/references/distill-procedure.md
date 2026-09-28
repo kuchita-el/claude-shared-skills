@@ -69,7 +69,7 @@ distill の入力は**処理源**と**参照源**の2種に分離する（処理
 - 突合対象の台帳と、仮説のスコープに応じた解決範囲（祖先を含む）は §7「スコープ別台帳突合」の表を単一出典とする。
 - 参照源には `candidates.md` 自身も含む。既存 pending 仮説を実行時台帳で再評価するため（§7・pending 再評価）。
 
-> **入力契約（AC6）**: distill の入力は処理源（セグメント `captures-*.md`）＋ 参照源（`CLAUDE.md` 2層・`learnings.md`・`candidates.md` 自身）である。参照源は時変であるため、distill は**時間不変性を意図的に手放す**（同一の処理源でも台帳の成文化が進めば出力が変わる。これは #417 の目的そのもの）。台帳を**明示的入力**として宣言することで決定性（同一入力→同一出力）と参照透過性は保持する。手放した再現性は、突合でマッチした台帳ルールへの参照を仮説本文に記録することで監査可能性として回復する（ADR-202607200855-01 決定1・§7）。
+> **入力契約（AC6）**: distill の入力は処理源（セグメント `captures-*.md`）＋ 参照源（`CLAUDE.md` 2層・`${CLAUDE_PLUGIN_ROOT}/learnings.md`・`candidates.md` 自身）である。参照源は時変であるため、distill は**時間不変性を意図的に手放す**（同一の処理源でも台帳の成文化が進めば出力が変わる。これは #417 の目的そのもの）。台帳を**明示的入力**として宣言することで決定性（同一入力→同一出力）と参照透過性は保持する。手放した再現性は、突合でマッチした台帳ルールへの参照を仮説本文に記録することで監査可能性として回復する（ADR-202607200855-01 決定1・§7）。
 
 ## 3. 棄却の合否境界（知識型で分岐）
 
@@ -224,7 +224,7 @@ distill の入力は**処理源**と**参照源**の2種に分離する（処理
 
 | candidate の `scope-hypothesis` | 突合台帳（入れ子＝祖先を含む） |
 |---|---|
-| `universal` | user-global rules（`~/.claude/CLAUDE.md`）・グローバル有効プラグイン同梱 rules/skills・global `learnings.md` |
+| `universal` | user-global rules（`~/.claude/CLAUDE.md`）・グローバル有効プラグイン同梱 rules/skills・global `learnings.md`（`${CLAUDE_PLUGIN_ROOT}/learnings.md`） |
 | `project-local` | 上記 global ＋ プロジェクト rules（project `CLAUDE.md` / `.claude`）・プロジェクト skills・プロジェクト有効プラグイン同梱 |
 
 - **祖先を含む理由**: project-local の振る舞いも global ルールで既に成文化されている場合があるため、project-local 仮説は global 台帳まで遡って突合する。逆に universal 仮説は project 台帳を突合対象にしない（適用範囲が狭い台帳で広い仮説の既知性は判定できない）。
