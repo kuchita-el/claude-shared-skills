@@ -91,6 +91,7 @@ MSG
 # 更新する（§7 の移行対応表は移行完了時点の凍結記録であり、追随の対象ではない）。
 EXPECTED_BATS=(
     adr-portability.bats
+    eval-placement.bats
     gen-adr-index.bats
     lint-adr-layers.bats
     lint-adr-stem.bats
@@ -98,6 +99,7 @@ EXPECTED_BATS=(
     manage-adr-surface.bats
     next-adr-id.bats
     plugin-manifests.bats
+    run-plugin-eval.bats
     run-tests-runner.bats
     skill-portability.bats
     writing-lint.bats

@@ -1,0 +1,8 @@
+---
+# 正しい完了（SKILL.md 手順8・distill-procedure.md §2.1 経年削除節）。horizon 超かつ全エントリ通過済みの
+# captures-2026-01-15.md に rm を発行したか（呼び出しの有無を見る。sandbox で rm が失敗しても合格）。
+type: tool_used
+tool: Bash
+input_match: '\brm\s[^"]*captures-2026-01-15\.md'
+min: 1
+---

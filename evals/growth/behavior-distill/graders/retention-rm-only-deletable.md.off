@@ -1,0 +1,10 @@
+---
+# 正しい完了（distill-procedure.md §2.1 経年削除節 drop 条件）。消してよいバケット（captures-2026-01-15.md）以外に rm を発行していないか。
+# 保持されるべきもの: horizon 境界ちょうど（today−60 日。厳密不等号で保持側）、直近 M 日の処理済み（today−10 日）、
+# 未 distill を含んでいた直近バケット（today−2 日・today−1 日。処理後も直近 M 日のため保持）。
+type: tool_used
+tool: Bash
+input_match: '\brm\s[^"]*captures-(?!2026-01-15\.md)\d{4}-\d{2}-\d{2}\.md'
+min: 0
+max: 0
+---

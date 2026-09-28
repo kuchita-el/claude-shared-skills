@@ -1,0 +1,7 @@
+schema_version: "1.1"
+name: behavior-distill
+context:
+  # 個人ローカル store 一式（captures-*.md・distill-state.md・candidates.md）を
+  # 実行ごとの一時 HOME 配下 ~/.claude/projects/<project-id>/growth/ へ置き、
+  # 作業ディレクトリを git リポジトリ化して project CLAUDE.md（台帳）を置く。
+  scaffold_script: scaffold.sh
