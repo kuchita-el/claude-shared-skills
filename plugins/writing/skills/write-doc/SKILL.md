@@ -37,10 +37,10 @@ allowed-tools:
 ## 規約とprofile
 
 1. `${CLAUDE_PROJECT_DIR}/.claude/writing/type-profiles.md`を読む。
-2. 読めない、または該当種別が無い場合は、plugin内の`references/document-type-profiles.md`を読む。
+2. 読めない、または該当種別が無い場合は、`${CLAUDE_PLUGIN_ROOT}/references/document-type-profiles.md`を読む。
 3. 両方を読めない場合は共通規約の既定値だけを使う。
 
-共通規約は`references/japanese-writing.md`を正本とする。skill本文へ条文を複製しない。
+共通規約は`${CLAUDE_PLUGIN_ROOT}/references/japanese-writing.md`を正本とする。skill本文へ条文を複製しない。
 参照はこのskillから一段までに留め、参照先から別の参照を要求しない。
 
 ## 起草
@@ -72,9 +72,8 @@ reviewerはF1、F3、F4、F5をそれぞれ判定し、`ruleId,severity,evidence
 
 ## host adapter
 
-Claude Codeは登録agentを起動し、CodexはWave 0で利用できる最も狭いadapterまたは手動degraded検査を使う。
+Claude Codeは登録agentを起動し、Codexは利用できる最も狭いadapter、それが無ければ手動degraded検査を使う。
 両hostは`draft→lint→review→修正0/1/2回`の状態と出力契約を共有する。
-adapter差分と縮退条件はpluginの`compatibility.json`とREADMEに記録する。
 
 ## 出力契約
 
