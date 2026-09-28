@@ -21,6 +21,8 @@ runner はいずれかが失敗しても残りを最後まで実行してから�
 
 Writing Wave 2の追加検査は`writing-lint.bats`と`writing-contract.bats`で行う。前者は`lint-ja.sh`のfile/diff、候補、長文、退役ADR境界を検査し、後者はskill/agent、F1/F3/F4/F5正負fixture、最大2回loop、両host matrix、permission ledgerを検査する。Codex agent登録面が利用できない場合の明示起動・degraded手動検査は、`plugins/writing/compatibility.json`へ記録する。
 
+配布プラグインの `claude plugin eval` ケース（`evals/<plugin>/`）は runner に含めない。理由・実行手順・基準値は §9 を参照。
+
 ## 2. いつ走るか — 自動起動の射程
 
 runner は commit ゲート（`scripts/hooks/pre-commit-gate.sh`）から起動される。ゲートは `.claude/settings.json` の PreToolUse フックに登録されており、検査が違反していれば exit 2 で commit をブロックする。
@@ -234,6 +236,64 @@ FAILED: 1/2 suites (6s) -- bats
   - **未信頼 worktree での fail-closed**: 1回目は worktree の `mise.toml` が未信頼で bats を解決できず、runner が非0、ゲートが exit 2 で commit をブロックした。runner は `mise exec` に失敗すると PATH へフォールバックする（§4）ため、この環境では PATH 上にも `bats` が無かったことになる。`mise trust --show` で project root=trusted / worktree=untrusted を確認。`mise trust` 後に上記の緑になった。
   - この観測により、#645 時点の §2 の記述（worktree では自動起動が働かないため手動実行が要る）が誤りであることが確定した。
 dev-workflow Wave 3は`dev-workflow-skill-contract.bats`と`dev-workflow-fixture-contract.bats`を実行し、`skill-portability.bats`と各validatorを回帰実行する。前者はスキル横断の不変条件（起動契約・規模規律・単一出典・参照到達性）を、後者はfixtureが固定する境界を検査する。スキル別に4本を持つ構成は、単一出典と参照到達性が特定スキルへ帰属しないため2本へ再編した。fixtureは成果状態とhost adapter witnessを分離する。
+
+## 9. 配布プラグインの eval（`claude plugin eval`）
+
+配布プラグインのプロンプト（trigger の発火条件・behavior の手順）を変更する作業で、変更前後の挙動の差を再現可能に比べるための手動実行系である（Issue #877）。runner（`bash scripts/run-tests.sh`）には**組み込まない**。eval は課金を伴い、かつログイン済みの子セッション（`claude` の認証情報）を要する。commit ゲート・CIの双方から自動起動される runner にこれを混ぜると、commit のたびに課金が発生し、CI 環境の認証情報整備という別種の前提を背負うことになるため、意図的に外している。
+
+### 9.1 置き場と実行スクリプト
+
+eval ケース（プロンプト・採点器・`scaffold.sh`・`case.yaml`）は配布物 `plugins/<plugin>/` の外、リポジトリ直下 `evals/<plugin>/` に置く。ケースの採点器は本リポジトリ固有の監査所見を名指しており配布先にとって意味を持たないため、`docs/distribution-boundary.md` §2・§3 と同じ判断軸で配布物から外している。一方 `claude plugin eval` は eval の置き場をプラグイン配下に限る（`--eval-dir` はプラグイン配下限定）ため、両立させる実行スクリプト `scripts/run-plugin-eval.sh` を用意した。
+
+```bash
+bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
+```
+
+スクリプトは `plugins/<plugin>/` を一時ディレクトリへ複製し、`evals/<plugin>/` をその複製の `evals/` として配置してから `claude plugin eval <複製先> [引数...]` を呼ぶ。実行後、一時ディレクトリは trap により必ず削除する。`plugins/<plugin>/` と `evals/<plugin>/` の作業ツリーには一切書き込まない。
+
+引数検証: プラグイン名の省略、`plugins/<plugin>/` の不在、`evals/<plugin>/` の不在、`--output-dir`（`--output-dir X` / `--output-dir=X` のどちらの形式も可）の省略を、それぞれ理由付きで拒否する（非0終了）。`--output-dir` を必須にしているのは、省略時の既定の出力先が eval 置き場の下（＝一時ディレクトリ配下）になり、実行後の後始末で結果ごと消えるためである。
+
+**複製先へは `cd` しない。** `claude plugin eval` へは複製先の絶対パスを引数として渡すだけで、後続のユーザー引数（`--output-dir` 等）はそのまま透過する。したがって `--output-dir` に相対パスを渡した場合、その解決基準は「このスクリプトを呼び出した時点の cwd」のままであり、複製先基準へ絶対化する処理は行わない。
+
+`claude` は PATH から解決する（`command -v claude`）。これらの引数検証・複製・配置・後始末・引数透過・終了コード透過は、本物の `claude` を呼ばず PATH 上をスタブに差し替えた `scripts/tests/run-plugin-eval.bats` が検査する。`plugins/` 配下のどのプラグインにも `evals/` が存在しないこと（配布物へ eval ケースを同梱していないこと）は `scripts/tests/eval-placement.bats` が機械検査する。両ファイルとも runner の bats スイートに含まれるため、`bash scripts/run-tests.sh` で走る。
+
+### 9.2 実行条件
+
+- 実行回数は `--runs 3`、`--ablation none`（プラグイン無しの腕は前後比較に要らない）、`--no-publish`、`--trust-plugin`、`--scaffold` を付ける。挙動ケースは `case.yaml` の `scaffold_script` で題材を組み立てるため、`--scaffold` が無いと題材の無い状態で走る（基準値も `--scaffold` 付きで取得した）。**一時複製は実行のたびに新しいディレクトリになるため、`--trust-plugin` を付けない場合の信頼確認プロンプトが毎回出る**
+- `--max-cost-usd` で上限を掛ける
+- モデルは各ケースの front-matter の `model:` に従う。`--model` で一律に上書きしない
+- `adr` と `writing` は `--allow-tools Write Edit Bash` を付ける。許可パターンを限ると、検証ゲートの複合コマンドが確認なしモードで拒否され、挙動が測れない
+- `Bash` を付与する挙動ケース（`adr`・`writing`・`growth`）は、`~/.docker` 内に symlink があると eval 側が起動を拒否する。実行の直前に退避し、終了後に戻す（**この退避はスクリプトが自動化しない。手順として実行者が行う**）
+
+  ```bash
+  mv ~/.docker ~/.docker.eval-off
+  # ここで対象の eval を実行する
+  mv ~/.docker.eval-off ~/.docker
+  ```
+
+- Claude Code のサンドボックス内からは実行しない。サンドボックスが認証情報の読み取りを拒否し、子セッションが未ログイン状態になる
+- `growth` の `behavior-distill` は、eval の実行系が `~/.claude` 配下への書き込みを拒否するため、書き込み成功を前提とする採点器3件（`completion-report-items`・`retention-rm-old-bucket`・`retention-rm-only-deletable`）を `.md.off` で無効化してある。distill の完了報告の全項目列挙はこの eval では測れないため、distill の挙動を変える Issue はこの3件を手動実行で別途確かめる
+- 結果の出力先（`--output-dir`）は追跡外の置き場を指定する。リポジトリ直下 `.local/` は `.gitignore` で無視されるため、例えば `.local/eval-results/<plugin>/` を推奨する
+
+```bash
+mv ~/.docker ~/.docker.eval-off  # Bash 付与ケースのみ
+bash scripts/run-plugin-eval.sh dependency-insight \
+  --runs 3 --ablation none --no-publish --trust-plugin --scaffold \
+  --max-cost-usd 5 --output-dir .local/eval-results/dependency-insight
+mv ~/.docker.eval-off ~/.docker  # Bash 付与ケースのみ
+```
+
+### 9.3 基準値（main 250cf56 時点）
+
+変更前に各ケースを3回実行した合格率。以後の比較はこの値を基準にする。
+
+| プラグイン | 発火判定 | 挙動 | 補足 |
+|---|---|---|---|
+| adr | 1.0 | 1.0 | |
+| dependency-insight | 1.0 | 1.0 | |
+| domain-design | 1.0 | 1.0 | run0 の不合格は採点器 `document-structure` の誤判定で、採点器を直した後の値 |
+| growth | 1.0 | 1.0 | 採点器 `priority-ignores-origin` を llm から regex へ置き換えて取得済み応答へ当て直した値。書き込み成功を前提とする3採点器は無効化中（§9.2） |
+| writing | 1.0 | 1.0 | |
 
 ## Cross-host Plugin Wave 4（2026-08-12）
 

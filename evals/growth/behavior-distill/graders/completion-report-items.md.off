@@ -1,0 +1,7 @@
+---
+# 保護3類型(3)「完了判定における全項目の列挙」の番人（SKILL.md「完了報告」・distill-procedure.md §8 完了報告の列挙）。
+# 最終応答が処理源件数・棄却件数・型内訳・優先度内訳・前進後カーソル・経年削除（削除バケット件数）を含むか。
+type: regex
+target: last_message
+pattern: '^(?=[\s\S]*処理源)(?=[\s\S]*棄却)(?=[\s\S]*behavior-diff)(?=[\s\S]*decision-record)(?=[\s\S]*優先)(?=[\s\S]*カーソル)(?=[\s\S]*削除)'
+---
