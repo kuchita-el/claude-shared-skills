@@ -264,7 +264,8 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
 - モデルは各ケースの front-matter の `model:` に従う。`--model` で一律に上書きしない
 - `adr` と `writing` は `--allow-tools Write Edit Bash` を付ける。許可パターンを限ると、検証ゲートの複合コマンドが確認なしモードで拒否され、挙動が測れない
 - `domain-design` は `--allow-tools Write` を付ける。スキルの `allowed-tools` に Write があっても、eval の子セッションには付与されない。付けないと挙動ケースが成果物を書けずに止まり、不合格になる（基準値は Write・Edit を持つ状態で取得している）
-- `growth` の挙動ケースは Write と Bash の付与を要する（基準値は Bash・Write・Edit を持つ状態で取得している）。基準値取得時の Bash の許可範囲は記録が無いため、growth の是正で計測するときに確定し、本項へ書き足す
+- `growth` は `--allow-tools Write 'Bash(git rev-parse *)' 'Bash(date *)' 'Bash(rm ~/.claude/projects/*/growth/captures-*.md)'` を付ける（Write と、distill の `allowed-tools` と同じ Bash パターン）。基準値は Bash・Write・Edit を持つ状態で取得している
+- `growth` の `behavior-distill` の採点器のうち `cursor-advanced`・`example-entry-hypothesized`・`upsert-preserves-existing` は、拒否された Write の試みの内容で判定する。拒否後に書き込みを試みるかは回ごとに揺れるため、不合格が出たら trace の最終応答で判断の中身を確かめてから退行と判定する
 - 付与の過不足は、結果の trace（`--keep-temp` で残る `trace.jsonl`）の system 行が持つ `tools` の一覧で確かめられる
 - `Bash` を付与する挙動ケース（`adr`・`writing`・`growth`）は、`~/.docker` 内に symlink があると eval 側が起動を拒否する。実行の直前に退避し、終了後に戻す（**この退避はスクリプトが自動化しない。手順として実行者が行う**）
 
