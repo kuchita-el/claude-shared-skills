@@ -273,7 +273,7 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
 
 - Claude Code のサンドボックス内からは実行しない。サンドボックスが認証情報の読み取りを拒否し、子セッションが未ログイン状態になる
 - `growth` の `behavior-distill` は、eval の実行系が `~/.claude` 配下への書き込みを拒否するため、書き込み成功を前提とする採点器3件（`completion-report-items`・`retention-rm-old-bucket`・`retention-rm-only-deletable`）を `.md.off` で無効化してある。distill の完了報告の全項目列挙はこの eval では測れないため、distill の挙動を変える Issue はこの3件を手動実行で別途確かめる
-- 結果の出力先（`--output-dir`）は追跡外の置き場を指定する。リポジトリ直下 `.local/` は `.gitignore` で無視されるため、例えば `.local/eval-results/<plugin>/` を推奨する
+- 結果の出力先（`--output-dir`）は追跡外の置き場を指定する。リポジトリ直下の `.local/eval-results/` は `.gitignore` で無視されるため、`.local/eval-results/<plugin>/` を推奨する
 
 ```bash
 mv ~/.docker ~/.docker.eval-off  # Bash 付与ケースのみ

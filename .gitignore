@@ -8,5 +8,5 @@
 # growth プラグインの個人ローカル store（in-repo dogfooding 用。生捕捉はコミットしない。詳細は plugins/growth/references/personal-store-spec.md）
 plugins/growth/.local/
 
-# 追跡外の作業成果物置き場（例: scripts/run-plugin-eval.sh --output-dir の既定の置き先）
-.local/
+# scripts/run-plugin-eval.sh の結果の推奨出力先（docs/development/test-execution.md §9.2）
+/.local/eval-results/
