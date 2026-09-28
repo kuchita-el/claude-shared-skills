@@ -66,13 +66,24 @@
   [ "$status" -eq 0 ]
 }
 
-@test "reviewerの正負fixtureと最大2回契約が揃う" {
+@test "reviewerの正負fixtureと判定行契約が揃う" {
   root="$BATS_TEST_DIRNAME/../.."
   for rule in f1 f3 f4 f5; do
     [ -f "$root/scripts/fixtures/writing/reviewer/${rule}-valid.md" ]
     [ -f "$root/scripts/fixtures/writing/reviewer/${rule}-invalid.md" ]
   done
-  run grep -E '修正回数0/1/2|2回後もerror|status=unresolved' "$root/plugins/writing/agents/doc-reviewer.md"
+  # doc-reviewerは規則ごとの判定行を全規則分省略せず返し、修正回数と終了判定(status)は持たない。
+  run grep -E '省略しない' "$root/plugins/writing/agents/doc-reviewer.md"
+  [ "$status" -eq 0 ]
+  run grep -E 'status=(passed|unresolved)' "$root/plugins/writing/agents/doc-reviewer.md"
+  [ "$status" -eq 1 ]
+  # 終了判定(最大2回・status)はSKILL.md側に一元化されている。
+  run grep -E '修正は最大2回まで' "$root/plugins/writing/skills/write-doc/SKILL.md"
+  [ "$status" -eq 0 ]
+  run grep -E 'status=unresolved' "$root/plugins/writing/skills/write-doc/SKILL.md"
+  [ "$status" -eq 0 ]
+  # 2回を待たずに修正を見送る経路も unresolved を返す（evalで status 未出力の終了が観測された経路）。
+  run grep -E '修正を2回待たずに見送る場合も.*status=unresolved' "$root/plugins/writing/skills/write-doc/SKILL.md"
   [ "$status" -eq 0 ]
 }
 
