@@ -10,8 +10,8 @@ growth プラグインの学習ループにおいて、複数の `growth:promote
 - **promote 仮説 Issue は配送伝票**: `growth:promote` 仮説 Issue は耐久的な作業単位ではなく、検証通過仮説を inbox へ届ける配送伝票である。取り込み Issue へ吸収された時点でトリアージ完了＝inbox 処理完了として閉じる（ADR-202606282107-01 決定4。「取り込み時クローズ」）。
 - **取り込み Issue は通常の単一 Issue**: 束ね・裁定を終えた取り込み Issue は、通常の単一 Issue として既存ワークフロー（`refine-issue` → `plan-issue` → `implementation` → PR レビュー）を流れ、成果物 PR の closing keyword または手動で閉じる。連鎖クローズの機構は新設しない（後述「取り込み Issue 自身のクローズ」）。
 - **関連仕様との関係**:
-  - [`promotion-issue-spec.md`](promotion-issue-spec.md) — 入力源となる `growth:promote` 仮説 Issue のテンプレートを定義する（ADR-202606282107-01 に合わせ #382 で再定義予定）。本規約はその仮説 Issue を**入力として束ねる**側であり、仮説テンプレート自体は再定義しない。
-  - [`learning-promotion-spec.md`](learning-promotion-spec.md) — learnings.md 行きと裁定された成果を1欄エントリへ翻訳する変換規約（#383）。本規約の**裁定結果を将来の入力境界**として受ける（ラベル filter 依存から裁定結果依存への改訂は #383 側で行う。本規約はその入力となりうる形式を提供する）。
+  - [`promotion-issue-spec.md`](promotion-issue-spec.md) — 入力源となる `growth:promote` 仮説 Issue のテンプレートを定義する（ADR-202606282107-01 準拠）。本規約はその仮説 Issue を**入力として束ねる**側であり、仮説テンプレート自体は再定義しない。
+  - [`learning-promotion-spec.md`](learning-promotion-spec.md) — learnings.md 行きと裁定された成果を1欄エントリへ翻訳する変換規約。本規約の**裁定結果を入力境界**として受ける（ラベル filter 依存ではなく裁定結果依存で入力を絞り込む。本規約はその入力となる形式を提供する）。
 
 ## 取り込み Issue の構造
 
@@ -38,9 +38,9 @@ growth プラグインの学習ループにおいて、複数の `growth:promote
 | **空間** | 公開ゲートの裁定結果（scope 軸を流用。後述「不変条件」） | パブリック / 閉じた |
 | **備考** | distill 仮説の転記や裁定理由（任意） | 自由記述 |
 
-- **career 軸**: #349 D1 の4分類。行2（dev-workflow スキル改善）は ADR-202606282107-01 決定6 により「任意のプラグイン／コミュニティの改善還元 → 当該 repo へ Issue」へ一般化されている。なお `promotion-issue-spec.md`（#382 で再定義予定）が現状まだ行2 を旧表記「dev-workflow への Issue / PR」のまま持つため、#382 再定義前に起票された仮説本文の career 仮説欄には旧表記が残りうる。裁定結果テーブルには上記の新分類名（改善還元 Issue）で記録してよい（仮説側の旧表記に引きずられない）。
+- **career 軸**: #349 D1 の4分類。行2（dev-workflow スキル改善）は ADR-202606282107-01 決定6 により「任意のプラグイン／コミュニティの改善還元 → 当該 repo へ Issue」へ一般化されている。`promotion-issue-spec.md` も行2 を新分類名（改善還元 Issue）で持つため、裁定結果テーブルにも同じ新分類名で記録する。
 - **宛先 repo は記録しない**: 当面は単一 repo 配線であり、仮説 Issue は既に宛先 repo（取り込み Issue が置かれた repo）へ届いている前提に立つ。career を実体化する成果物も同 repo 内に生む。よって裁定結果に宛先 repo 欄は持たせない。集約先が複数になる将来の multi-repo 配線（後述「不変条件」）で再導入余地を残すが、現時点では YAGNI として持たない。
-- **将来の入力境界**: この裁定結果テーブルは、#383（learnings.md 昇格ハンドラ）・#384（残りキャリア）が「ラベル filter 依存」から「取り込み Issue の裁定結果依存」へ改訂される際の入力となる。career 列でハンドラが対象仮説を仕分けられるよう、値は4分類の名称をそのまま記す。
+- **入力境界**: この裁定結果テーブルは、#383（learnings.md 昇格ハンドラ）・#384（残りキャリア）が「ラベル filter 依存」から「取り込み Issue の裁定結果依存」へ改訂される際の入力である。career 列でハンドラが対象仮説を仕分けられるよう、値は4分類の名称をそのまま記す。
 
 ## 取り込み時クローズ
 
@@ -59,7 +59,7 @@ growth プラグインの学習ループにおいて、複数の `growth:promote
 
 - 取り込み Issue は通常の単一 Issue として、**成果物 PR の closing keyword（`Closes #取り込み番号`）または手動クローズ**で閉じる。標準の GitHub 機能の範囲で完結する。
 - 仮説 Issue のクローズは前述「取り込み時クローズ」がスキル実行時に同期的に行う。イベント駆動の連鎖は存在しない。
-- 本 PR ではいかなる GitHub Actions ワークフロー・Hook も追加しない。本規約に準拠する実装が cascade-close 機構を持たないことは、`.github/workflows/` 配下に取り込み連動の追加が無いことで確認できる。
+- growth の配布ファイルは GitHub Actions ワークフロー・Hook を追加しない。本規約に準拠する実装が cascade-close 機構を持たないことは、`.github/workflows/` 配下に取り込み連動の追加が無いことで確認できる。
 
 ## 不変条件（単一 repo 配線でも破らない）
 
@@ -78,10 +78,10 @@ growth プラグインの学習ループにおいて、複数の `growth:promote
 | `growth:intake` | 識別（取り込み Issue 全体） | `#1D76DB` | 集約点を示す青系。inbox 識別子 `growth:promote`（濃緑）と視認上区別する |
 
 - 取り込み Issue は既存 `growth` ラベルと**併用**する（`growth` ＋ `growth:intake`）。`growth` は growth ドメイン全体の識別、`growth:intake` は集約点のサブ識別。
-- **ラベル実体の作成は本 PR では実行しない**。マージ前のリポジトリにラベルを作ると状態を汚すため、実作成は #385（承認フロー配線）またはセットアップ手順の実行時に委譲する（`promotion-issue-spec.md` のラベル方針と同一）。
+- **ラベル実体の作成はセットアップ手順で行う**。intake の `allowed-tools` にラベル作成コマンドは無く、実作成は #385（承認フロー配線）またはセットアップ手順の実行時に委譲する（`promotion-issue-spec.md` のラベル方針と同一）。
 
 ```bash
-# ラベル実体の作成（本 PR では実行しない。セットアップ時に実行する）
+# ラベル実体の作成（セットアップ手順で実行する。intake 自身は作成しない）
 gh label create growth:intake --color 1D76DB --description "取り込み Issue（career 裁定の集約点・識別）"
 ```
 
@@ -89,7 +89,7 @@ gh label create growth:intake --color 1D76DB --description "取り込み Issue�
 
 | 本規約が定義する（IN） | 本規約が定義しない（OUT） |
 |---|---|
-| 取り込み Issue の本文構造（束ね・裁定結果・成果物 task list） | distill / promote の career 仮説（`career-hypothesis`）配線（別 Issue。career の決定責務を distill へ移す実装） |
+| 取り込み Issue の本文構造（束ね・裁定結果・成果物 task list） | distill / promote の career 仮説（`career-hypothesis`）配線（distill-procedure.md §6・promote-procedure.md §4 が担う。career の決定責務を distill へ移す実装） |
 | 裁定結果の記録形式（career・空間のテーブル。宛先 repo を持たない） | 仮説 Issue（`growth:promote`）のテンプレート自体（`promotion-issue-spec.md` #382 が担う） |
 | 取り込み時クローズの手順（リンクコメント ＋ not planned） | 各 career への実書き込み手順（learnings.md 変換 #383 / 残りキャリア #384 / 成果物 PR の作成） |
 | 集約トポロジの不変条件（集約先複数・public 拒否・scope 流用） | privacy ゲートの新設（公開可否 ≠ 広さ。留保。別 Issue） |
@@ -99,6 +99,6 @@ gh label create growth:intake --color 1D76DB --description "取り込み Issue�
 ## 関連
 
 - [`../skills/intake/SKILL.md`](../skills/intake/SKILL.md) — 本規約を実行する取り込みスキル（仮説の束ね・裁定提示・取り込み時クローズ）
-- [`promotion-issue-spec.md`](promotion-issue-spec.md) — 入力源 `growth:promote` 仮説 Issue のテンプレート（#382 で本決定に合わせ再定義予定）
-- [`learning-promotion-spec.md`](learning-promotion-spec.md) — 裁定結果を将来の入力境界とする learnings.md 変換規約（#383）
+- [`promotion-issue-spec.md`](promotion-issue-spec.md) — 入力源 `growth:promote` 仮説 Issue のテンプレート（ADR-202606282107-01 準拠）
+- [`learning-promotion-spec.md`](learning-promotion-spec.md) — 裁定結果を入力境界とする learnings.md 変換規約（#383）
 - ADR-202606282107-01 — career 決定モデルの再設計（distill 仮説 ＋ 集約点裁定）。本規約の決定根拠

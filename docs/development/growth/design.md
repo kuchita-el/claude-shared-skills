@@ -293,6 +293,7 @@ dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 
 ### 実装時に一次確認する事項
 
 - ~~セッションログの保存場所・形式~~ → **#378 で確認済み**。`~/.claude/projects/<project-id>/<session-uuid>.jsonl`（per-project・JSONL・1ファイル1セッション）、既定 30 日でローテ消滅。学習シグナルは全て取得可能、全文走査は実測 0.08 秒。実現可能性＝**条件付き可**（消滅前の抽出・永続化が条件）。詳細は [`session-log-format.md`](session-log-format.md)。
+- **学習シグナルのフィールドマッピング（`capture-signal-spec.md`）の再検証**: 同ファイルの対応表は Claude Code 2.1.150〜2.1.195（調査日 2026-06-27）の観測に基づく版依存スナップショット。フィールド名は session jsonl の公式に文書化されていない内部実装詳細であり版で変わりうるため、実装・改修時は現行版の session jsonl で対応表を再検証する。
 - ~~自発トリガー機構（SessionEnd hook / nightly Routine 等）の発火仕様と取得可能なデータ~~ → **#379 で確認済み**。SessionEnd hook は payload に終了セッションの `session_id`/`transcript_path` を直渡し（単一セッション即時観測に最適、side-effect 専用）。横断解析はローカル実行スケジューラに限られ（**クラウド Routine はローカル `~/.claude/projects/` にアクセスできず不適**）、その具体は環境で分岐する（GUI＝Desktop scheduled task〔macOS/Win のみ〕、CLI/Linux＝OS ネイティブスケジューラ＋`claude -p`、`/loop` はセッション常時起動時のみ）。単一＝hook・横断＝ローカルスケジューラの併存が #350 解析単位に対応。詳細は [`auto-trigger-spec.md`](auto-trigger-spec.md)。
 
 ---

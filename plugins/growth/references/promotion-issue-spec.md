@@ -2,7 +2,7 @@
 
 growth プラグインの学習ループにおいて、`promote` スキル（#348）が検証通過仮説を `gh` で自動起票する際の Issue 本文・ラベルを定義する。本仕様は配布物昇格 Issue の**テンプレート・識別ラベルの単一出典**であり、後続手順（集約点での裁定・各キャリアへの実書き込み）はここで定義した規約を入力として受け取る。
 
-> **career 決定モデルの再設計（ADR-202606282107-01）**: 昇格先キャリアの判定（決定表）は本仕様から **distill 側（distill-procedure.md「career-hypothesis の判定（決定表）」）へ移設**した。distill が仮説単位の `career-hypothesis`（昇格先キャリア＋宛先 repo の仮説）を生成し、promote は**ルーティング不可知**でその仮説を本文注記として運ぶのみとする。career の確定（裁定）は集約点（取り込み Issue）で人間が行う。これに伴い、本仕様は career を確定する決定表を持たず、`promote:*` の4 career ラベルも廃止する（識別ラベル `growth:promote` のみ残す）。
+> **career 決定モデル（ADR-202606282107-01）**: 昇格先キャリアの判定（決定表）は distill 側（distill-procedure.md「career-hypothesis の判定（決定表）」）が持つ。本仕様は決定表を持たない。distill が仮説単位の `career-hypothesis`（昇格先キャリア＋宛先 repo の仮説）を生成し、promote は**ルーティング不可知**でその仮説を本文注記として運ぶのみとする。career の確定（裁定）は集約点（取り込み Issue）で人間が行う。これに伴い、本仕様は career を確定する決定表を持たず、`promote:*` の4 career ラベルも設けない（識別ラベル `growth:promote` のみ持つ）。
 
 ## 位置づけ
 
@@ -12,7 +12,7 @@ growth プラグインの学習ループにおいて、`promote` スキル（#34
 - **関連仕様との関係**:
   - [`learning-store-spec.md`](learning-store-spec.md) — 配布物（`learnings.md`）の**着地先形式**を定義する。昇格 Issue のうち learnings.md 行きのものが最終的に到達する先であり、本仕様はその1欄スキーマ（メタ欄を持たない）を壊さない制約に従う。
   - [`personal-store-spec.md`](personal-store-spec.md) — 昇格 Issue の**入力源**となる仮説ファイル（`candidates.md`）の `scope-hypothesis`（`universal` / `project-local`）・`career-hypothesis`（昇格先キャリア＋宛先 repo 仮説）スキーマを定義する。本仕様のテンプレート「空間」欄・「昇格先キャリア」注記はこれらのタグからマッピングされる。
-  - [`distill-procedure.md`](../skills/distill/references/distill-procedure.md) — `career-hypothesis` の昇格先キャリアを判定する**決定表の移設先（単一出典）**。本仕様から移設した（ADR-202606282107-01）。
+  - [`distill-procedure.md`](../skills/distill/references/distill-procedure.md) — `career-hypothesis` の昇格先キャリアを判定する**決定表の単一出典**。本仕様は決定表を持たない（ADR-202606282107-01）。
 - **promote（#348）との接続**: promote はこの規約を満たす Issue 本文を `--body-file` でプログラム生成し、`gh issue create` で自動起票する。本仕様は promote が起票した Issue の終端規約であり、promote 自身の検証・candidate-status 前進の手順（[`../skills/promote/references/promote-procedure.md`](../skills/promote/references/promote-procedure.md)）には踏み込まない。
 
 ## テンプレート
@@ -21,50 +21,49 @@ growth プラグインの学習ループにおいて、`promote` スキル（#34
 
 ### Issue 本文の構造
 
-昇格 Issue は次の3つを**必須欄**として持つ。いずれも単一値・規定の記法で記入する。
+昇格 Issue は次の4つを**必須欄**として持つ。promote-procedure.md §4・§5 が実際に出力する欄と一致させる。
 
 | 必須欄 | 記入規約 | 記法 |
 |---|---|---|
-| **昇格先キャリア（仮説）** | D1 の4分類（`learnings.md` / `ADR 差分` / `改善還元`（任意プラグイン／コミュニティ） / `強キャリア`）のいずれか＋宛先 repo 仮説。仮説の `career-hypothesis` から**欠落・改変なく**運ぶ**仮説注記**であり、promote は確定しない。最終裁定（career・宛先 repo の確定）は集約点（取り込み Issue）が担う。判定（決定表）は distill 側（distill-procedure.md） | 仮説注記。`<career> / repo: <宛先 repo 仮説>` を本文の `## キャリア` 欄へ転記（promote-procedure §4） |
-| **空間（仮説）** | `パブリック` / `閉じた` の**いずれか1つ**。仮説の `scope-hypothesis` からマッピングする（下記マッピング表）。これも仮説であり最終裁定は refine/review | 単一値 |
-| **振る舞い差分** | 仮説の規範（次回どう違う行動を取るか）。見出し（一文要約）＋理由（なぜその振る舞いを取るか） | 見出し1行＋理由本文（複数行可） |
+| **知識型（tags）** | 仮説の `tags`（`behavior-diff` / `decision-record` の非空部分集合）。摩擦知／判断知の別を示す distill 由来の未確証タグ | `## 知識型` 欄へ記載（promote-procedure §4） |
+| **スコープ（仮説）** | `universal` / `project-local` の**いずれか1つ**。仮説の `scope-hypothesis` をそのまま運ぶ。これも仮説であり最終裁定は refine/review | `## スコープ` 欄へ記載（promote-procedure §4） |
+| **キャリア（仮説）** | D1 の4分類（`learnings.md` / `ADR 差分` / `改善還元`（任意プラグイン／コミュニティ） / `強キャリア`）のいずれか＋宛先 repo 仮説。仮説の `career-hypothesis` から**欠落・改変なく**運ぶ**仮説注記**であり、promote は確定しない。最終裁定（career・宛先 repo の確定）は集約点（取り込み Issue）が担う。判定（決定表）は distill 側（distill-procedure.md） | `<career> / repo: <宛先 repo 仮説>` を `## キャリア` 欄へ転記（promote-procedure §4） |
+| **仮説の見出し・本文** | 仮説の規範（`behavior-diff` は振る舞い差分＝次回どう違う行動を取るか、`decision-record` は4欄、混在ゾーンは両方）。検証段が添えた予測・検証観点等の所見を任意で含めてよい | 見出し1行＋本文（複数行可。promote-procedure §5） |
 
-- 昇格先キャリアと空間はいずれも distill 由来の**仮説注記**であり、promote が確定するものではない（promote はルーティング不可知。ADR-202606282107-01）。career は集約点が、空間は refine/review が最終裁定する。
-- キャリア軸（昇格先＝何の成果物へ）と空間軸（`universal` / `project-local`）は**直交**する。同じ `learnings.md` 行きでもパブリック空間と閉じた空間に分かれうるため、テンプレートは両者を独立した欄として持つ。
-- 加えて、下流の refine/review・集約点が判断材料にできるよう、promote の検証段が添えた「予測（次にどんな状況で効くか）」「検証観点（どの条件で反証されうるか）」を本文に含めてよい（任意。promote-procedure §5 と整合）。
+- 知識型・キャリア・スコープはいずれも distill 由来の**仮説注記**であり、promote が確定するものではない（promote はルーティング不可知。ADR-202606282107-01）。career は集約点が、スコープは refine/review が最終裁定する。
+- キャリア軸（昇格先＝何の成果物へ）とスコープ軸（`universal` / `project-local`）は**直交**する。同じ `learnings.md` 行きでも universal と project-local に分かれうるため、テンプレートは両者を独立した欄として持つ。
 
-### 空間欄のマッピング（promote の `## スコープ` 出力から）
+### スコープ欄のマッピング（promote の `## スコープ` 出力から）
 
-空間欄は、promote が Issue 本文へ出力する `## スコープ`（candidates.md の `scope-hypothesis` タグに基づく。promote-procedure §4）から**欠落・改変なく**マッピングする。対応は次の通り。
+`## スコープ` 欄は、candidates.md の `scope-hypothesis` タグを**欠落・改変なく**運ぶ（promote-procedure §4）。対応は次の通り。
 
-| promote の `scope-hypothesis`（`## スコープ` 出力） | 本テンプレートの空間欄 | 共有境界 |
-|---|---|---|
-| `universal` | `パブリック` | 全世界 × 全プロジェクト（パブリック/グローバル空間 = `learnings.md` 相当） |
-| `project-local` | `閉じた` | チーム / プロジェクト（閉じた空間） |
+| `scope-hypothesis` の値 | 共有境界 |
+|---|---|
+| `universal` | 全世界 × 全プロジェクト（パブリック/グローバル空間 = `learnings.md` 相当） |
+| `project-local` | チーム / プロジェクト（閉じた空間） |
 
-- 空間情報は promote が付した仮説であり、本テンプレートは**保持するのみ**で確証・改変しない。最終裁定は起票後の refine/review が担う（promote-procedure §4 と整合）。
-- マッピングは1対1であり、`universal`→`パブリック`、`project-local`→`閉じた` の2値以外を取らない。
+- スコープ情報は promote が付した仮説であり、本テンプレートは**保持するのみ**で確証・改変しない。最終裁定は起票後の refine/review が担う（promote-procedure §4 と整合）。
+- 値は `universal` / `project-local` の2値以外を取らない。
 
 ### 記入済みサンプル
 
 ```markdown
-## キャリア
-- 昇格先キャリア（仮説・未確証）: learnings.md
-- 宛先 repo（仮説・未確証）: 配布元プラグイン repo（本リポジトリ）
-- 最終裁定（career・宛先 repo の確定）は集約点（取り込み Issue）に委ねる。本タグは Distill の仮説形成観点に基づく仮説。
-
-## 空間
-パブリック
-
-## 振る舞い差分
-### ファイル復元には git restore を使う
-ファイルを復元するとき git checkout ではなく git restore を使う。git checkout はブランチ切り替えと復元が多重定義されており、誤操作で別ブランチへ移る事故を招くため。
+## 知識型
+- tags（distill 由来・未確証の扱い）: [behavior-diff]（摩擦知＝実行可能な振る舞い差分）
 
 ## スコープ
 - 適用範囲（仮説・未確証）: universal（パブリック/グローバル空間 = learnings.md 相当へ向かう仮説）
 - 最終裁定は refine/review に委ねる。本タグは Distill の仮説形成観点に基づく仮説。
 
-## 検証メモ
+## キャリア
+- 昇格先キャリア（仮説・未確証）: learnings.md
+- 宛先 repo（仮説・未確証）: 配布元プラグイン repo（本リポジトリ）
+- 最終裁定（career・宛先 repo の確定）は集約点（取り込み Issue）に委ねる。本タグは Distill の仮説形成観点に基づく仮説。
+
+### ファイル復元には git restore を使う
+ファイルを復元するとき git checkout ではなく git restore を使う。git checkout はブランチ切り替えと復元が多重定義されており、誤操作で別ブランチへ移る事故を招くため。
+
+## 検証メモ（任意。promote-procedure §5 の検証所見）
 - 予測: ファイル復元を伴う全セッションで効く。
 - 検証観点: git restore が使えない古い git バージョン環境では反証されうる。
 ```
@@ -83,7 +82,7 @@ growth プラグインの学習ループにおいて、`promote` スキル（#34
 |---|---|---|---|
 | `growth:promote` | 識別（昇格 Issue 全体／inbox 識別子） | `#0B6E4F` | `growth #0E8A16` 同系の濃緑（teal 寄り）で growth ドメインの昇格ゲートを示す |
 
-> **`promote:*` の4 career ラベルは廃止した**（ADR-202606282107-01 決定事項5）。career の裁定が人間による集約点（取り込み Issue）トリアージへ移り、1つの取り込み Issue が複数仮説を異種 career へ裁定しうるため、1-Issue-1-career-label のルーティング機構は意味を失う。career の結果は実際の成果物（ADR PR / プラグイン Issue / `learnings.md` PR / 強キャリア Issue）として実現し、取り込み Issue の task list が追跡する。4 career ラベルは #385 で未作成のため、これは「作らない」決定であり teardown コストはゼロ。
+> **`promote:*` の4 career ラベルは設けない**（ADR-202606282107-01 決定事項5）。career の裁定が人間による集約点（取り込み Issue）トリアージへ移り、1つの取り込み Issue が複数仮説を異種 career へ裁定しうるため、1-Issue-1-career-label のルーティング機構は意味を失う。career の結果は実際の成果物（ADR PR / プラグイン Issue / `learnings.md` PR / 強キャリア Issue）として実現し、取り込み Issue の task list が追跡する。4 career ラベルは #385 で未作成であり、これは「作らない」決定であり teardown コストはゼロ。
 
 ### 付与規約
 
@@ -101,14 +100,14 @@ gh issue list --label growth:promote --state open
 
 `growth:promote` は inbox 識別子であり、集約点はこのラベルで取り込み対象の仮説 Issue を一括取得する。
 
-**career（昇格先キャリア）も空間（パブリック / 閉じた）もラベルで区別しない**。career の裁定は集約点の人間トリアージが、空間の最終裁定は refine/review が担うため、起票時にラベルで固定しない。後続ハンドラ・集約点がキャリア × 空間で仕分ける場合は、Issue 本文の `## キャリア` 欄・`## 空間` 欄（distill 由来の仮説）を読んで判断材料にする。
+**career（昇格先キャリア）もスコープ（`universal` / `project-local`）もラベルで区別しない**。career の裁定は集約点の人間トリアージが、スコープの最終裁定は refine/review が担うため、起票時にラベルで固定しない。後続ハンドラ・集約点がキャリア × スコープで仕分ける場合は、Issue 本文の `## キャリア` 欄・`## スコープ` 欄（distill 由来の仮説）を読んで判断材料にする。
 
 ### セットアップ手順（ラベル実体の作成）
 
-識別ラベル `growth:promote` の**実体作成は本 PR では実行しない**。マージ前のリポジトリにラベルを作るとリポジトリ状態を汚すため、実作成は #385（inbox 識別子のセットアップへ縮小。ADR-202606282107-01 決定事項5）またはセットアップ手順の実行時に委譲する。本仕様は作成コマンドを掲載するに留める。`promote:*` の4 career ラベルは廃止したため作成しない。
+識別ラベル `growth:promote` の**実体作成はセットアップ手順で行う**。promote の `allowed-tools` にラベル作成コマンドは無く、実作成は #385（inbox 識別子のセットアップへ縮小。ADR-202606282107-01 決定事項5）またはセットアップ手順の実行時に委譲する。本仕様は作成コマンドを掲載するに留める。`promote:*` の4 career ラベルは設けないため作成しない。
 
 ```bash
-# ラベル実体の作成（本 PR では実行しない。セットアップ時に実行する）
+# ラベル実体の作成（セットアップ手順で実行する。promote 自身は作成しない）
 gh label create growth:promote        --color 0B6E4F --description "配布物昇格 Issue（識別／inbox 識別子）"
 ```
 
@@ -117,7 +116,7 @@ gh label create growth:promote        --color 0B6E4F --description "配布物昇
 | 本仕様が定義する（IN） | 本仕様が定義しない（OUT） |
 |---|---|
 | 昇格 Issue のテンプレート（必須欄・空間マッピング・キャリア/スコープ注記・記入サンプル） | 各キャリアへの実書き込み手順（learnings.md / ADR / 改善還元 Issue / 強キャリアへの物理配布。#383/#384） |
-| 識別ラベル `growth:promote`（inbox 識別子・色・付与規約・絞り込みレシピ） | 昇格先キャリアの判定規則（決定表）の定義（distill 側＝distill-procedure.md へ移設。ADR-202606282107-01） |
+| 識別ラベル `growth:promote`（inbox 識別子・色・付与規約・絞り込みレシピ） | 昇格先キャリアの判定規則（決定表）の定義（distill 側＝distill-procedure.md が持つ。ADR-202606282107-01） |
 | learnings.md の1欄スキーマを壊さない制約 | career・宛先 repo の裁定（集約点＝取り込み Issue が担う。promote/本仕様は仮説を運ぶのみ） |
 | 仮説注記（distill 由来の career/scope 仮説）を保持する本文形式 | 集約点（取り込み Issue 規約・取り込みスキル）の新設（別 Issue）。承認フロー・越境ゲートの配線（#385）。ラベル実体の作成（`gh label create` の実行。#385/セットアップ手順へ委譲） |
 

@@ -69,7 +69,7 @@ observation を必ずメタフィールド群の後（エントリ末尾側）�
 |---|---|---|
 | 見出し（`## <timestamp>`） | 必須 | ISO 8601 形式の **capture 実行時刻**（UTC）。1 run で複数観察を記録する場合は run 内序数サフィックス `-NN` を付して一意化する（capture SKILL.md Step 1・ADR-202607112340-01）。provenance の同定キーとカーソルの順序キーを兼ねる |
 | `signal` | 必須 | シグナル種別。値域は「シグナル種別」節を参照 |
-| `session` | 必須 | 由来セッション参照。Claude Code がセッション管理に用いる識別子（UUID 形式）。どのセッションの観察かを辿るため。取得元は Phase 1 実装時に確定する（痕跡種別は `origin` 軸で表し、`session` はセッション同定に限る） |
+| `session` | 必須 | 由来セッション参照。Claude Code がセッション管理に用いる識別子（UUID 形式）。どのセッションの観察かを辿るため。取得元は `printenv CLAUDE_CODE_SESSION_ID`（capture SKILL.md Step 1 の既定手順）（痕跡種別は `origin` 軸で表し、`session` はセッション同定に限る） |
 | `origin` | 必須 | 痕跡種別軸。値域は `tool-result` / `user-utterance` の2値。「痕跡種別」節を参照。`signal` と直交する独立軸 |
 | `expected` | 該当時必須 | 予測。当方が予測した結果。transcript の痕跡（`type=thinking` / `tool_use.input` 等）に基づく**再構成**を可とする（逐語引用に限らない。`actual` との非対称は「生記録性」節を参照）。価値判断・原因分析・改善案は混入させない。フィールドは常設し、手掛かりが無ければ空可 |
 | `actual` | 該当時必須 | 実際。実際に起きた結果。transcript の**逐語断片を含む引用**に限る（要点が transcript に実在する文字列であればよく、地の文で囲んでよい。全文の逐語転記は不要。複数行は代表行の引用または改行を空白へ正規化して単一行に収める。「パース規約」節「引用の単一行畳み込み」を参照）。フィールドは常設し、値は transcript から抽出できる場合に記す（抽出不能なら空可）。「生記録性」節を参照 |
@@ -100,7 +100,7 @@ user-utterance 由来（ユーザーの訂正）の例:
 当方はファイル復元に git checkout を提案したが、ユーザーが git restore を使うよう訂正した。
 ```
 
-`origin: user-utterance` により痕跡種別が user-utterance（ユーザー発話）であることが判別でき、`expected`（予測した結果）と `actual`（実際に起きた結果）が別行で読み取れる。tool-result 由来の対比例は capture SKILL.md の記述例を参照。
+`origin: user-utterance` により痕跡種別が user-utterance（ユーザー発話）であることが判別でき、`expected`（予測した結果）と `actual`（実際に起きた結果）が別行で読み取れる。tool-result 由来の対比例は capture スキルの記述例ファイル `capture-examples.md` を参照。
 
 ## シグナル種別
 
@@ -139,7 +139,7 @@ user-utterance 由来（ユーザーの訂正）の例:
 | `user-utterance` | ユーザー発話（user-utterance）の痕跡。当方の判断・提案の誤りの候補 |
 
 - **`signal` 種別とは直交する独立軸である**。痕跡種別（軸）は signal 5値（訂正/ツール拒否/反復試行/期待違反/客観痕跡）を**置換・改名せず**、それと並ぶ別軸として併存する（AC3）。同一の signal が tool-result 由来でも user-utterance 由来でもありうる（例: `期待違反` はツール結果の食い違いにも、ユーザー指摘による食い違いにも現れる）。
-- この直交性により、下流 Distill は痕跡種別を分類の手掛かりに使える（環境摩擦＝`tool-result` / 判断誤り＝`user-utterance` の既定）。**ただし摩擦/学びの価値を判定する責務は Distill 側にあり、本仕様（capture 側）は痕跡種別の抽出・記録までに限る**（distill 側の分類・重み付けは OUT。capture/distill 責務線引きの ADR 化は distill 側 Issue へ繰り延べる）。
+- この直交性により、痕跡種別は `signal` 種別を置換・改名せず独立の記述メタとして併存する。**下流 Distill は痕跡種別を分類・優先度判断の手掛かりに用いない**（優先度は知識型が決める。ADR-202607010734-01 決定1）。**摩擦/学びの価値を判定する責務は Distill 側にあり、本仕様（capture 側）は痕跡種別の抽出・記録までに限る**（distill 側の分類・重み付けは OUT。capture/distill 責務線引きの ADR 化は distill 側 Issue へ繰り延べる）。
 - **Phase 3 拡張余地**: `客観痕跡` シグナル（git revert / CI 失敗等）は transcript の tool-result でも user-utterance でもない**外部痕跡**であり、本 Phase の2値には収まらない。`客観痕跡` を投入する Phase 3 では、本軸へ外部痕跡向けの痕跡種別値を**追加しうる**（既存2値を破壊しない追加的拡張）。本 Phase は痕跡種別＝transcript 由来の2値として定義する。
 
 ## distill 処理源選択と処理済みカーソル
@@ -189,7 +189,7 @@ user-utterance 由来（ユーザーの訂正）の例:
 
 観測は**有界保持**する。従来の恒久保持方針を改め、retention horizon を超えた古い観測は経年削除して store を有界化する。retention の目的は監査保持（単独利用者ゆえ不要）ではなく、**distiller 改善時にカーソルを巻き戻して retention horizon 内の観測から再導出することを可能にするため**である（ADR-202607121331-01。ADR-202607111014-01 決定4〔旧・観測の恒久保持方針〕を有界保持へ改訂）。改善された distiller が horizon 内の観測から新たなシグナルを拾えるよう直近の観測コーパスを保持する一方、horizon を超えた古い観測はバケット単位で**経年削除**する。
 
-- **retention horizon M**: 直近 M 日（**既定 M=60 日・可変**）。M はドキュメント定数であり、**本節が既定値の単一出典**である。値を変えるには本節を編集し、あわせて restate 箇所（`distill-procedure.md`「経年削除（retention）」節・`distill/SKILL.md`「経年削除」原則と手順8）の `既定 M=60 日` 表記も追随させる（単独利用者ゆえ config 機構は設けない。restate 箇所は spec 参照の注記付き）。
+- **retention horizon M**: 直近 M 日（**既定 M=60 日・可変**）。M はドキュメント定数であり、**本節が既定値の単一出典**である。値を変えるには本節を編集し、あわせて restate 箇所（`distill-procedure.md`「経年削除（retention・distill のみ）」節・`distill/SKILL.md`「経年削除」原則と手順8）の `既定 M=60 日` 表記も追随させる（単独利用者ゆえ config 機構は設けない。restate 箇所は spec 参照の注記付き）。
 - **保持/削除セマンティクス**:
   - **バケット drop 条件** ＝ (バケット内の全エントリがカーソル通過済み) ∧ (バケット日付が horizon より古い ＝ `バケット日付 < today − M` 日)。両条件が真のバケットのみ削除対象。
   - **保持集合** ＝ (直近 M 日のバケット) ∪ (未 distill エントリを含む全バケット)。
@@ -237,7 +237,7 @@ Distill が生成し `promote` が消費する**仮説ファイル**の置き場
 
 仮説は `tags` の各要素により本文スキーマと下流の扱いが分岐する。両知識型は同一の `candidates.md` に同居し、provenance・`candidate-status`・upsert・冪等性・ライフサイクル（promote→Issue）を共有する。`tags` は値域 `{behavior-diff, decision-record}` の非空部分集合であり、単一要素（`[behavior-diff]` / `[decision-record]`）と混在ゾーン（`[behavior-diff, decision-record]`）を取りうる。
 
-- **`behavior-diff`（摩擦知）**: 本文は規範差分（次回どう違う行動を取るか）＋理由。既存ルール台帳との突合・既存ルール再発の N 回カウント（provenance 件数から導出）・強制化の対象（#417 / ADR-202607200855-01）。本型の扱いは従来どおりで変更しない。
+- **`behavior-diff`（摩擦知）**: 本文は規範差分（次回どう違う行動を取るか）＋理由。既存ルール台帳との突合・既存ルール再発の N 回カウント（provenance 件数から導出）・強制化の対象（#417 / ADR-202607200855-01）。
 - **`decision-record`（判断知）**: 本文は文脈付き決定知を構造化した4欄を持つ。behavior-diff 要求（トリガー×振る舞い差分が両方読めること）と N 再発カウントを**免除**する（一回性の設計境界をカウントでなく決定の記録として残す）。
 
   | 欄 | 内容 |
@@ -355,7 +355,7 @@ git status --porcelain plugins/growth/.local/   # 出力が空であること
 |---|---|
 | store の置き場（確定パス・per-project） | Capture の予測誤差検知ロジック本体 |
 | 観測エントリの形式（必須欄・Markdown 形式） | committed 学び置き場（`learnings.md`）への物理昇格（Distribute、Phase 2） |
-| シグナル種別の値域（5値） | 過去セッションログの横断解析（Phase 3） |
+| シグナル種別の値域（摩擦知5値＋判断知4値＝9値） | 過去セッションログの横断解析（Phase 3） |
 | 痕跡種別軸（`origin`）の値域（2値・signal と直交） | 摩擦/判断の分類・重み付け（distill 側。優先度は知識型で決める） |
 | `expected` / `actual` フィールド（該当時必須・transcript 抽出限定） | 客観痕跡向けの痕跡種別値の追加（Phase 3） |
 | distill 処理源選択（provenance 導出 ＋ 処理済みカーソル）・カーソル格納場所（`distill-state.md`）・前進/巻き戻し/欠損規則 | git revert・CI 失敗の取得（Phase 3 以降） |
