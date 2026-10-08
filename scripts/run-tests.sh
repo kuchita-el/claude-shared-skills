@@ -99,6 +99,7 @@ EXPECTED_BATS=(
     manage-adr-surface.bats
     next-adr-id.bats
     plugin-manifests.bats
+    run-codex-local.bats
     run-plugin-eval.bats
     run-tests-runner.bats
     skill-portability.bats

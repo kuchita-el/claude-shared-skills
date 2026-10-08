@@ -123,7 +123,7 @@ cp plugins/dev-workflow/skills/refine-issue/references/dor-default.md /path/to/y
 
 `run-claude-local.sh` はmarketplaceから全6つのplugin-dirを動的に読み込みます。各スキルは `/dev-workflow:{skill-name}`・`/domain-design:{skill-name}`・`/dependency-insight:{skill-name}` などのスコープ付き呼び出しで利用できます。
 
-Codex では `./run-codex-local.sh --model gpt-5.6` を実行し、新しいセッションを開いてください。Superpowers は必須で導入されます。
+Codex では `./run-codex-local.sh --model gpt-5.6` を実行し、新しいセッションを開いてください。開発用のホーム `~/.codex-dev`（`CODEX_LOCAL_HOME` で変更可）に、作業ツリーの今の内容のプラグインと Superpowers が導入されます。日常の `~/.codex` は書き換えません。ログインは `~/.codex/auth.json` へのリンクで共有します。モデルなどの設定は引き継がないため、必要なら引数で渡してください。
 
 テストと検査器は `bash scripts/run-tests.sh` で一括実行します（`mise trust && mise install` がチェックアウトごとに一度必要です。worktree も別のチェックアウトとして扱われます）。実行経路の詳細は [docs/development/test-execution.md](docs/development/test-execution.md) を参照してください。
 

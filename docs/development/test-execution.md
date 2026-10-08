@@ -8,7 +8,7 @@
 
 | スイート | 実体 | 内容 |
 |---|---|---|
-| `bats` | `scripts/tests/*.bats` | adr プラグイン同梱の検査器のテスト・writing プラグイン同梱の検査器のテスト・配布物と配布元の一方向性の検査・runner 自身の fail-closed 検査（`scripts/tests/*.bats` の網羅列挙ではない） |
+| `bats` | `scripts/tests/*.bats` | adr プラグイン同梱の検査器のテスト・writing プラグイン同梱の検査器のテスト・配布物と配布元の一方向性の検査・`run-codex-local.sh` の開発用ホームでの起動・runner 自身の fail-closed 検査（`scripts/tests/*.bats` の網羅列挙ではない） |
 | `validate-plugin-manifests` | `scripts/validate-plugin-manifests.sh .` | marketplace、manifest、README、skill集合の双方向一致 |
 | `validate-plugin-portability` | `scripts/validate-plugin-portability.sh .` | matrix、permission ledger、参照境界 |
 | `claude-plugin-validate` | `claude plugin validate .` | marketplace定義と、そこから解決できたClaude側plugin manifestのスキーマ検証（非strict） |
