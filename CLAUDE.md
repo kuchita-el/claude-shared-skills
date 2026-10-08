@@ -17,7 +17,7 @@ Claude Code 向けの汎用スキルライブラリ。プロジェクト固有�
 
 ```bash
 ./run-claude-local.sh --model opus   # marketplace の全 plugin を読み込んで起動
-./run-codex-local.sh --model gpt-5.6 # Codex 用プラグインと必須の Superpowers を導入して起動
+./run-codex-local.sh --model gpt-5.6 # 開発用のホーム（~/.codex-dev）に、作業ツリーのプラグインと Superpowers を導入して起動（~/.codex は触らない）
 mise trust && mise install           # チェックアウト（worktree 含む）ごとに一度。bats を版固定で導入する
 bash scripts/run-tests.sh            # テストと検査器を一括実行する
 ```

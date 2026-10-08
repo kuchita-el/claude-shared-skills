@@ -53,7 +53,7 @@ Codex 側がスキルへ pluginRoot を渡し agent 定義を汎用 sub-agent �
 
 - Codex 側 manifest はいずれも `agents` フィールドを持たず、`skills` だけを配布対象として宣言する。Codex にネイティブなサブエージェント機構が無いことの構造的な裏づけであり、agent 定義を汎用 sub-agent へ注入する形を採る理由にあたる
 - Codex marketplace 定義は `.agents/plugins/marketplace.json` に限られ、`.agents/` 配下に他のファイルは無い
-- 起動ラッパー `run-codex-local.sh` が行うのは marketplace 登録と `codex plugin add` の実行だけであり、pluginRoot の解決も定義の注入も行わない
+- 起動ラッパー `run-codex-local.sh` が行うのは、開発用の `CODEX_HOME` で、マーケットプレイスの参照先を作業ツリーへ上書きして `codex plugin add` を実行することだけであり、pluginRoot の解決も定義の注入も行わない
 - execution mode の語彙は `scripts/fixtures/skill-portability/dev-workflow-agent-adapter/compatibility-witness.json` が固定する
 
 確認できない範囲（リポジトリ内に一次資料が無い）。
