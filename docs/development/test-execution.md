@@ -4,11 +4,12 @@
 
 ## 1. 何が走るか
 
-実行経路は `scripts/run-tests.sh`（以下 runner）の1本である。runner はBatsと5つの検査スイートを順に実行する。うち4つはfail-closedであり、`claude-plugin-validate` だけが例外で、`claude` を解決できない場合はSKIPPEDとして理由を展開し緑で終わる（後述）。
+実行経路は `scripts/run-tests.sh`（以下 runner）の1本である。runner は下表のスイートを順に実行する。`claude-plugin-validate` と `living-spec` を除くスイートはfail-closedである。この2つは前提のコマンド（`claude`・`pnpm`）を解決できない場合にSKIPPEDとして理由を展開し緑で終わる（CI は要求モードで失敗へ倒す。後述）。
 
 | スイート | 実体 | 内容 |
 |---|---|---|
 | `bats` | `scripts/tests/*.bats` | adr プラグイン同梱の検査器のテスト・writing プラグイン同梱の検査器のテスト・living-spec プラグインの中継（`scripts/run.mjs`）が検査器を見つけられないときの振る舞い・配布物と配布元の一方向性の検査・`run-codex-local.sh` の開発用ホームでの起動・runner 自身の fail-closed 検査（`scripts/tests/*.bats` の網羅列挙ではない） |
+| `living-spec` | `pnpm --dir tools/living-spec test`（依存が入っていなければ先に `pnpm --dir tools/living-spec install --frozen-lockfile`） | living-spec の検査器の規則ごとの見本の照合・入口・描画の試験 |
 | `validate-plugin-manifests` | `scripts/validate-plugin-manifests.sh .` | marketplace、manifest、README、skill集合の双方向一致 |
 | `validate-plugin-portability` | `scripts/validate-plugin-portability.sh .` | matrix、permission ledger、参照境界 |
 | `claude-plugin-validate` | `claude plugin validate .` | marketplace定義と、そこから解決できたClaude側plugin manifestのスキーマ検証（非strict） |
@@ -19,7 +20,7 @@
 
 runner はいずれかが失敗しても残りを最後まで実行してから非0で終わる。失敗を1回の実行で出揃わせるためである。成功したスイートの出力は畳み、失敗したスイートの出力だけを展開する（bats については通過ケースの `ok ` 行も畳む）。
 
-living-spec の検査器はプラグインに含めず、`tools/living-spec` からソースでビルドして使う（生成物 `dist/` は追跡しない）。規則ごとの見本の照合・入口・描画は工場側の試験（`pnpm --dir tools/living-spec install` の後に `pnpm --dir tools/living-spec test`）が持ち、依存の導入が要るため runner に入れない。runner はプラグインの中継が検査器を見つけられないときの振る舞いだけを `living-spec-run.bats` で見る。
+living-spec の検査器はプラグインに含めず、`tools/living-spec` からソースでビルドして使う（生成物 `dist/` は追跡しない）。規則ごとの見本の照合・入口・描画は工場側の試験が持ち、runner の `living-spec` スイートが走らせる（`pnpm` は `mise.toml` が版を固定する）。プラグインの中継の振る舞いは、偽の検査器を使う `living-spec-run.bats` が見る。
 
 Writing Wave 2の追加検査は`writing-lint.bats`と`writing-contract.bats`で行う。前者は`lint-ja.sh`のfile/diff、候補、長文、退役ADR境界を検査し、後者はskill/agent、F1/F3/F4/F5正負fixture、最大2回loop、両host matrix、permission ledgerを検査する。Codex agent登録面が利用できない場合の明示起動・degraded手動検査は、`plugins/writing/compatibility.json`へ記録する。
 

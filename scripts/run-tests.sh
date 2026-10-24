@@ -28,6 +28,7 @@ cd "$REPO_ROOT" || exit 1
 # 種別は出力ラベルにのみ使う（test = テストスイート / check = 検査器）。
 SUITES=(
     "bats|test"
+    "living-spec|test"
     "validate-plugin-manifests|check"
     "validate-plugin-portability|check"
     "claude-plugin-validate|check"
@@ -155,12 +156,26 @@ suite_precondition_failure() {
             command -v claude >/dev/null 2>&1 && return 0
             echo "claude を PATH 上に解決できない（導入: npm install -g @anthropic-ai/claude-code）"
             ;;
+        living-spec)
+            command -v pnpm >/dev/null 2>&1 && return 0
+            echo "pnpm を PATH 上に解決できない（導入: mise install。mise.toml が版を固定する）"
+            ;;
     esac
 }
 
 run_one() {
     case "$1" in
         bats) "${BATS_CMD[@]}" --print-output-on-failure "${BATS_FILES[@]}" ;;
+        # living-spec の検査器（tools/living-spec）の規則ごとの見本・入口・描画の試験。
+        # 依存が入っていなければロックファイルどおりに入れる（CI の初回など。ネットワークが要る）。
+        # 入っていれば入れ直さない。pnpm install は入っていても取得を試み、ネットワークの無い
+        # 環境（サンドボックス内の commit ゲート）で落ちるため。
+        living-spec)
+            if [ ! -d tools/living-spec/node_modules ]; then
+                pnpm --dir tools/living-spec install --frozen-lockfile || return 1
+            fi
+            pnpm --dir tools/living-spec test
+            ;;
         validate-plugin-manifests) bash scripts/validate-plugin-manifests.sh . ;;
         validate-plugin-portability) bash scripts/validate-plugin-portability.sh . ;;
         # 非 strict で呼ぶ。--strict は version フィールドの欠落を含む警告をエラーへ昇格

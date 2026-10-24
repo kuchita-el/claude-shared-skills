@@ -47,7 +47,7 @@ interface Triple {
 }
 
 const keyOf = (t: Triple) => `${t.rule} | ${t.file} | ${t.target}`;
-const dirs = (p: string) => readdirSync(p).filter((n) => statSync(join(p, n)).isDirectory());
+const dirs = (p: string) => readdirSync(p).filter((n) => !n.startsWith('.') && statSync(join(p, n)).isDirectory());
 // 規則の置き場の見本の名前（拡張子を除く）
 const names = (rule: string) =>
   readdirSync(join(examplesDir, rule))

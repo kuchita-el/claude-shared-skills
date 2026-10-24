@@ -10,3 +10,5 @@
 [tools]
 bats = "1.14.0"
 node = "24.16.0"
+# pnpm — tools/living-spec の依存の導入と試験（scripts/run-tests.sh の living-spec スイート）。
+pnpm = "12.5.1"

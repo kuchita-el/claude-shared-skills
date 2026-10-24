@@ -80,7 +80,7 @@ UC 1つにつき1ファイル。雛形は `templates/example.feature`。
 | `duplicate-name` | 表 | 名前の重複（state は（状態モデル, 状態, 遷移UC）の組） | 全体 |
 | `requirement-uc` | 票 | 表題から UC 名を読めない、UC が表に無い、同じ UC の票が複数ある | 全体 |
 | `requirement-reference` | 票 | RDRA 欄の要素が読めない、種類が語彙に無い、名前が表に無い | 全体 |
-| `requirement-name-absent` | 票 | RDRA 欄の名前が同じ行の要求文に現れない | 全体 |
+| `requirement-name-absent` | 票 | RDRA 欄の名前が同じ行の要求文に現れない（読めない要素・語彙に無い種類は `requirement-reference` だけが拾う） | 全体 |
 | `example-syntax` | 例 | Gherkin として読めない | 全体 |
 | `example-feature` | 例 | 機能が無い、機能名が UC の表に無い、同じ UC の機能が複数ある | 全体 |
 | `example-rule-mismatch` | 例 | ルール名が票のどの要求文とも一致しない、ルールの外のシナリオ | 全体 |

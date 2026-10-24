@@ -82,9 +82,11 @@ function referenceProblem(ref: Reference, ctx: TraceContext): string | null {
   return `${ref.kind}『${ref.name}』が表に無い`;
 }
 
-// 名前が要求文に現れるべき部分。状態は状態名の部分だけ。読めない参照・区切りの無い状態は検査しない（null）
+// 名前が要求文に現れるべき部分。状態は状態名の部分だけ。読めない参照・語彙に無い種類・区切りの無い状態は検査しない（null。
+// requirement-reference が拾う。種類が誤っている参照に名前の出現まで問うと、同じ誤りを二重に出す）
 function nameInText(ref: Reference): string | null {
   if (ref.kind === null || ref.name === null) return null;
+  if (!(REQUIREMENT_KINDS as readonly string[]).includes(ref.kind)) return null;
   if (ref.kind === '状態') return splitState(ref.name)?.state ?? null;
   return ref.name;
 }
@@ -278,6 +280,8 @@ export function checkTrace(root: string, ctx: TraceContext): TraceResult {
     for (const r of feature.rules) rulesOfUc.get(feature.name)!.add(r.name);
   }
   for (const { file, feature } of features) {
+    // 名前の無い機能は example-feature が拾う。どの UC の機能か分からず、ルールを突き合わせる先が無い
+    if (feature.name === '') continue;
     const sentences = sentencesOfUc.get(feature.name);
     for (const r of feature.rules) {
       if (sentences === undefined) {
