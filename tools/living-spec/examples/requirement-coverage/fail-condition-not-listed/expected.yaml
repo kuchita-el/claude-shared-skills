@@ -1,3 +1,0 @@
-- rule: requirement-coverage
-  file: docs/requirements/withdraw.md
-  target: 条件:取り下げられる条件

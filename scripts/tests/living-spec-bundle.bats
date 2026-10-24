@@ -6,8 +6,14 @@ load 'helpers/common'
 
 setup() {
   BUNDLE="$REPO_ROOT/plugins/living-spec/scripts/living-spec.mjs"
-  EXAMPLES="$REPO_ROOT/tools/living-spec/examples"
   WORK="$(mktemp -d)"
+}
+
+# 見本（tools/living-spec/examples/<規則>/<名前>.txtar）を $WORK/<規則>/<名前> へ展開し、その根を出す
+example() {
+  local dest="$WORK/$1"
+  node "$REPO_ROOT/tools/living-spec/test/fixture.ts" "$REPO_ROOT/tools/living-spec/examples/$1.txtar" "$dest"
+  printf '%s' "$dest"
 }
 
 teardown() {
@@ -20,21 +26,21 @@ teardown() {
 }
 
 @test "違反の無い表は終了コード 0" {
-  run node "$BUNDLE" check "$EXAMPLES/undefined-reference/pass-all-resolved"
+  run node "$BUNDLE" check "$(example undefined-reference/pass-all-resolved)"
   [ "$status" -eq 0 ]
   [[ "$output" == *"違反なし"* ]]
 }
 
 @test "違反のある表は終了コード 1 で規則名を出す" {
-  run node "$BUNDLE" check "$EXAMPLES/undefined-reference/fail-uc-actor"
+  run node "$BUNDLE" check "$(example undefined-reference/fail-uc-actor)"
   [ "$status" -eq 1 ]
   [[ "$output" == *"[undefined-reference]"* ]]
 }
 
 @test "書き漏らしの向きは --doc-missing だけが出す" {
-  run node "$BUNDLE" check "$EXAMPLES/requirement-missing/fail-uc-without-requirement"
+  run node "$BUNDLE" check "$(example requirement-missing/fail-uc-without-requirement)"
   [ "$status" -eq 0 ]
-  run node "$BUNDLE" check --doc-missing "$EXAMPLES/requirement-missing/fail-uc-without-requirement"
+  run node "$BUNDLE" check --doc-missing "$(example requirement-missing/fail-uc-without-requirement)"
   [ "$status" -eq 1 ]
   [[ "$output" == *"[requirement-missing]"* ]]
 }
@@ -45,10 +51,10 @@ teardown() {
 }
 
 @test "描画は HTML を書き出して場所を出す" {
-  cp -r "$EXAMPLES/undefined-reference/pass-all-resolved/." "$WORK/"
-  run node "$BUNDLE" render "$WORK"
+  root="$(example undefined-reference/pass-all-resolved)"
+  run node "$BUNDLE" render "$root"
   [ "$status" -eq 0 ]
-  [ -f "$WORK/.cache/living-spec/index.html" ]
+  [ -f "$root/.cache/living-spec/index.html" ]
 }
 
 @test "フックは表の置き場の無いリポジトリでは何もしない" {

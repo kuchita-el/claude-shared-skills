@@ -1,3 +1,0 @@
-- rule: undefined-reference
-  file: docs/rdra/condition.yaml
-  target: 条件:提出可能

@@ -1,6 +1,0 @@
-- rule: requirement-uc
-  file: docs/requirements/withdraw.md
-  target: UC:経費申請を取り下げる
-- rule: requirement-uc
-  file: docs/requirements/withdraw-copy.md
-  target: UC:経費申請を取り下げる

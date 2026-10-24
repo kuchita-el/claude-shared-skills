@@ -1,3 +1,0 @@
-- rule: example-limit
-  file: docs/examples/withdraw.feature
-  target: ルール:従業員が経費申請を取り下げるとき、システムは経費申請を作成中へ戻し、前回提出した内容を残さない

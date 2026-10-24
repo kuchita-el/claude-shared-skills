@@ -1,3 +1,0 @@
-- rule: duplicate-name
-  file: docs/rdra/condition.yaml
-  target: 条件:提出可能

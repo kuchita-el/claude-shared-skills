@@ -21,4 +21,8 @@ RDRA_ENTRY="$PWD/plugins/living-spec/scripts/living-spec.mjs" node --test tools/
 
 ## 見本
 
-`examples/<規則>/<pass|fail>-<名前>/` が1件の根。`expected.yaml` に期待する違反の (rule, file, target) を並べ、試験は集合の完全一致を見る。規則ごとに通る見本と落ちる見本を1件以上置く。見本の語は経費精算の題材のまま。
+`examples/<規則>/<pass|fail>-<名前>.txtar` が1件の見本。1件の根に置くファイル（`expected.yaml` と `docs/rdra/*.yaml` 等）を、`-- <根からのパス> --` の行で区切って1つのテキストに束ねてある。試験は `test/fixture.ts` で一時ディレクトリへ展開してから検査器を走らせ、違反の (rule, file, target) の集合が `expected.yaml` と完全一致するかを見る。規則ごとに通る見本と落ちる見本を1件以上置く。見本の語は経費精算の題材のまま。
+
+束ねたのは、見本ごとに表を全部写すとファイル数が膨らみ（115件で約920ファイル）、差分も読みにくいため。却下: 共通の土台の表に見本ごとの差分だけを重ねる形（ファイル数は減るが、1件の見本を読むのに土台と重ね合わせる必要があり、土台を直すと多くの見本の意味が黙って変わる）。
+
+手で展開して見るとき: `node tools/living-spec/test/fixture.ts <見本.txtar> <展開先>`

@@ -1,5 +1,5 @@
-// examples/<規則>/<pass|fail>-<名前>/ を走査し、各見本に検査器を走らせて、
-// (rule, file, target) の集合が expected.yaml と完全一致することを確かめる。
+// examples/<規則>/<pass|fail>-<名前>.txtar を走査し、各見本を展開して検査器を走らせ、
+// (rule, file, target) の集合が見本の expected.yaml と完全一致することを確かめる。
 // 書き漏らしの向きの規則の見本は、checkRepo に checkDocMissing を足して走らせる（規則は DOC_MISSING_RULES）。
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -8,6 +8,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parseDocument } from 'yaml';
 import { checkDocMissing, checkRepo } from '../src/check.ts';
+import { materialize } from './fixture.ts';
 
 const examplesDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'examples');
 
@@ -47,21 +48,35 @@ interface Triple {
 
 const keyOf = (t: Triple) => `${t.rule} | ${t.file} | ${t.target}`;
 const dirs = (p: string) => readdirSync(p).filter((n) => statSync(join(p, n)).isDirectory());
+// 規則の置き場の見本の名前（拡張子を除く）
+const names = (rule: string) =>
+  readdirSync(join(examplesDir, rule))
+    .filter((n) => n.endsWith('.txtar'))
+    .map((n) => n.slice(0, -'.txtar'.length));
+// 見本を展開した根。同じ見本は1度だけ展開する
+const roots = new Map<string, string>();
+const root = (rule: string, name: string) => {
+  const key = `${rule}/${name}`;
+  if (!roots.has(key)) roots.set(key, materialize(join(examplesDir, rule, `${name}.txtar`)));
+  return roots.get(key)!;
+};
 
 test('見本の置き場は規則ごとに通る見本と落ちる見本を1件以上持つ', () => {
   assert.deepEqual(dirs(examplesDir).sort(), [...RULES].sort());
   for (const rule of RULES) {
-    const names = dirs(join(examplesDir, rule));
-    assert.ok(names.some((n) => n.startsWith('pass-')), `${rule}: pass- の見本が無い`);
-    assert.ok(names.some((n) => n.startsWith('fail-')), `${rule}: fail- の見本が無い`);
-    for (const n of names) assert.match(n, /^(pass|fail)-/, `${rule}/${n}: 名前が pass-/fail- で始まらない`);
+    const all = readdirSync(join(examplesDir, rule));
+    for (const n of all) assert.match(n, /\.txtar$/, `${rule}/${n}: 見本は .txtar の1ファイルで置く`);
+    const ns = names(rule);
+    assert.ok(ns.some((n) => n.startsWith('pass-')), `${rule}: pass- の見本が無い`);
+    assert.ok(ns.some((n) => n.startsWith('fail-')), `${rule}: fail- の見本が無い`);
+    for (const n of ns) assert.match(n, /^(pass|fail)-/, `${rule}/${n}: 名前が pass-/fail- で始まらない`);
   }
 });
 
 for (const rule of RULES) {
-  for (const name of dirs(join(examplesDir, rule))) {
+  for (const name of names(rule)) {
     test(`${rule}/${name}`, () => {
-      const dir = join(examplesDir, rule, name);
+      const dir = root(rule, name);
       const doc = parseDocument(readFileSync(join(dir, 'expected.yaml'), 'utf8'));
       assert.equal(doc.errors.length, 0, 'expected.yaml が読めない');
       const expected = (doc.toJS() ?? []) as Triple[];
@@ -83,8 +98,8 @@ for (const rule of RULES) {
 
 test('書き漏らしの向きは checkRepo に含めない', () => {
   for (const rule of [...DOC_MISSING_RULES]) {
-    for (const name of dirs(join(examplesDir, rule))) {
-      const found = checkRepo(join(examplesDir, rule, name)).filter((v) => v.rule === rule);
+    for (const name of names(rule)) {
+      const found = checkRepo(root(rule, name)).filter((v) => v.rule === rule);
       assert.deepEqual(found, [], `${rule}/${name}: checkRepo が ${rule} を出した`);
     }
   }
@@ -92,8 +107,8 @@ test('書き漏らしの向きは checkRepo に含めない', () => {
 
 test('checkDocMissing は要求票・例の書き漏らしの向きの規則だけを返す', () => {
   for (const rule of RULES) {
-    for (const name of dirs(join(examplesDir, rule))) {
-      for (const v of checkDocMissing(join(examplesDir, rule, name))) {
+    for (const name of names(rule)) {
+      for (const v of checkDocMissing(root(rule, name))) {
         assert.ok(DOC_MISSING_RULES.has(v.rule), `${rule}/${name}: checkDocMissing が別の規則 ${v.rule} を出した`);
       }
     }
@@ -101,11 +116,10 @@ test('checkDocMissing は要求票・例の書き漏らしの向きの規則だ�
 });
 
 test('読めない feature ファイルがあると example-missing を出さない（構文の誤りは example-syntax が拾う）', () => {
-  const syntaxDir = join(examplesDir, 'example-syntax');
-  const failing = dirs(syntaxDir).filter((n) => n.startsWith('fail-'));
+  const failing = names('example-syntax').filter((n) => n.startsWith('fail-'));
   assert.ok(failing.length > 0, 'example-syntax の落ちる見本が無い');
   for (const name of failing) {
-    const found = checkDocMissing(join(syntaxDir, name)).filter((v) => v.rule === 'example-missing');
+    const found = checkDocMissing(root('example-syntax', name)).filter((v) => v.rule === 'example-missing');
     assert.deepEqual(found, [], `example-syntax/${name}: 読めない feature があるのに example-missing を出した`);
   }
 });

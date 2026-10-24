@@ -1,3 +1,0 @@
-- rule: unknown-key
-  file: docs/rdra/state.yaml
-  target: 状態:経費申請の状態／作成中

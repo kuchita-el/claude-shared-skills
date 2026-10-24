@@ -1,3 +1,0 @@
-- rule: example-duplicate
-  file: docs/examples/withdraw.feature
-  target: シナリオ:接続詞だけ違う

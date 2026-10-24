@@ -1,3 +1,0 @@
-- rule: unconnected
-  file: docs/rdra/condition.yaml
-  target: 条件:孤立した条件

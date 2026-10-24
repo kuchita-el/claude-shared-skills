@@ -1,3 +1,0 @@
-- rule: requirement-uc
-  file: docs/requirements/other.md
-  target: UC:経費申請を削除する

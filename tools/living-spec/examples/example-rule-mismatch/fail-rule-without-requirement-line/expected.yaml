@@ -1,3 +1,0 @@
-- rule: example-rule-mismatch
-  file: docs/examples/withdraw.feature
-  target: ルール:システムは取り下げを記録する

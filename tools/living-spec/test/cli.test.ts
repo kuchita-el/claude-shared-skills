@@ -7,14 +7,17 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { materialize } from './fixture.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const main = process.env.RDRA_ENTRY ?? join(here, '..', 'src', 'main.ts');
-const passExample = join(here, '..', 'examples', 'unknown-key', 'pass-all-allowed-keys');
+const passExample = materialize(join(here, '..', 'examples', 'unknown-key', 'pass-all-allowed-keys.txtar'));
 // 要求票の無い UC を持つ見本。全体検査には出ず、--doc-missing にだけ出る
-const requirementMissingExample = join(here, '..', 'examples', 'requirement-missing', 'fail-uc-without-requirement');
+const requirementMissingExample = materialize(
+  join(here, '..', 'examples', 'requirement-missing', 'fail-uc-without-requirement.txtar'),
+);
 // 未定義の参照を持つ見本（全体検査で違反が出る）
-const failExample = join(here, '..', 'examples', 'undefined-reference', 'fail-uc-actor');
+const failExample = materialize(join(here, '..', 'examples', 'undefined-reference', 'fail-uc-actor.txtar'));
 
 function run(args: string[], cwd: string, input?: string, env: Record<string, string> = {}) {
   return spawnSync(process.execPath, [main, ...args], { cwd, encoding: 'utf8', input, env: { ...process.env, ...env } });

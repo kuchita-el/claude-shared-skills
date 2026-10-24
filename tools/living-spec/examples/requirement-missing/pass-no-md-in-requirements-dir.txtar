@@ -1,0 +1,25 @@
+-- expected.yaml --
+[]
+-- docs/rdra/actor.yaml --
+- アクター: 従業員
+  役割: 経費を申請する
+  社内外: 社内
+-- docs/rdra/condition.yaml --
+- 条件: 取り下げられる条件
+  条件の説明: 経費申請が提出済みのときだけ取り下げられる
+  状態モデル: 経費申請の状態
+-- docs/rdra/state.yaml --
+- 状態モデル: 経費申請の状態
+  状態: 提出済み
+  遷移UC: 経費申請を取り下げる
+  遷移先状態: 作成中
+- 状態モデル: 経費申請の状態
+  状態: 作成中
+-- docs/rdra/use-case.yaml --
+- UC: 経費申請を取り下げる
+  アクター:
+    - 従業員
+  条件:
+    - 取り下げられる条件
+-- docs/requirements/notes.txt --
+要求票のメモ（.md ではない）

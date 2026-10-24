@@ -1,3 +1,0 @@
-- rule: duplicate-name
-  file: docs/rdra/state.yaml
-  target: 状態:経費申請の状態／提出済

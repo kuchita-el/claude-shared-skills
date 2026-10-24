@@ -1,3 +1,0 @@
-- rule: requirement-name-absent
-  file: docs/requirements/withdraw.md
-  target: 仕様:3

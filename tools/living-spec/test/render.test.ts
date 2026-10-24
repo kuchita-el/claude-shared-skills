@@ -1,4 +1,4 @@
-// 設計の可視化（render.ts）を確かめる。見本の表は test/render/sample/。
+// 設計の可視化（render.ts）を確かめる。見本の表は test/render/sample.txtar。
 // 図の材料（buildView）・Mermaid の文字列（stateChart）・HTML（renderHtml）・CLI とフックの書き出しを見る。
 // 見た目の良し悪しは試験しない（出し手が見て判断する）。
 import assert from 'node:assert/strict';
@@ -8,13 +8,14 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { materialize } from './fixture.ts';
 import { renderHtml, stateChart } from '../src/html.ts';
 import { buildView } from '../src/view.ts';
 import type { StateModelView, UseCaseView, View } from '../src/view.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const sample = join(here, 'render', 'sample');
-const passExample = join(here, '..', 'examples', 'unknown-key', 'pass-all-allowed-keys');
+const sample = materialize(join(here, 'render', 'sample.txtar'));
+const passExample = materialize(join(here, '..', 'examples', 'unknown-key', 'pass-all-allowed-keys.txtar'));
 const main = process.env.RDRA_ENTRY ?? join(here, '..', 'src', 'main.ts');
 const SYMBOL_UC = '名前に<b>&"記号</b>がある';
 

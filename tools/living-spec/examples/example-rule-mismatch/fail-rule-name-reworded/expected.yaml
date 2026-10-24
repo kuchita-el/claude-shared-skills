@@ -1,3 +1,0 @@
-- rule: example-rule-mismatch
-  file: docs/examples/withdraw.feature
-  target: ルール:取り下げられる条件を満たさないとき、システムは取り下げを受け付けない

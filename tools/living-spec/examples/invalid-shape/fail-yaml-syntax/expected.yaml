@@ -1,3 +1,0 @@
-- rule: invalid-shape
-  file: docs/rdra/architecture-characteristic.yaml
-  target: 表:architecture-characteristic.yaml
