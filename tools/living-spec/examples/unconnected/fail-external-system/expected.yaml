@@ -1,0 +1,3 @@
+- rule: unconnected
+  file: docs/rdra/external-system.yaml
+  target: 外部システム:孤立した外部システム

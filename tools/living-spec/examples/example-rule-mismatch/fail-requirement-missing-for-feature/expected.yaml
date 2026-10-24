@@ -1,0 +1,3 @@
+- rule: example-rule-mismatch
+  file: docs/examples/submit.feature
+  target: ルール:従業員が経費申請を提出するとき、システムは提出先へ出す

@@ -106,6 +106,7 @@ EXPECTED_BATS=(
     writing-lint.bats
     writing-contract.bats
     distribution-boundary.bats
+    living-spec-bundle.bats
 )
 
 BATS_FILES=()

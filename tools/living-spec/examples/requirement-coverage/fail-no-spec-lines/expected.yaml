@@ -1,0 +1,6 @@
+- rule: requirement-coverage
+  file: docs/requirements/withdraw.md
+  target: 条件:取り下げられる条件
+- rule: requirement-coverage
+  file: docs/requirements/withdraw.md
+  target: 状態:経費申請の状態／作成中

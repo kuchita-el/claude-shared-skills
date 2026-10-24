@@ -8,7 +8,7 @@
 
 | スイート | 実体 | 内容 |
 |---|---|---|
-| `bats` | `scripts/tests/*.bats` | adr プラグイン同梱の検査器のテスト・writing プラグイン同梱の検査器のテスト・配布物と配布元の一方向性の検査・`run-codex-local.sh` の開発用ホームでの起動・runner 自身の fail-closed 検査（`scripts/tests/*.bats` の網羅列挙ではない） |
+| `bats` | `scripts/tests/*.bats` | adr プラグイン同梱の検査器のテスト・writing プラグイン同梱の検査器のテスト・living-spec プラグインの生成物（`scripts/living-spec.mjs`）の終了コードの契約・配布物と配布元の一方向性の検査・`run-codex-local.sh` の開発用ホームでの起動・runner 自身の fail-closed 検査（`scripts/tests/*.bats` の網羅列挙ではない） |
 | `validate-plugin-manifests` | `scripts/validate-plugin-manifests.sh .` | marketplace、manifest、README、skill集合の双方向一致 |
 | `validate-plugin-portability` | `scripts/validate-plugin-portability.sh .` | matrix、permission ledger、参照境界 |
 | `claude-plugin-validate` | `claude plugin validate .` | marketplace定義と、そこから解決できたClaude側plugin manifestのスキーマ検証（非strict） |
@@ -18,6 +18,8 @@
 `claude-plugin-validate` は実体が外部CLIであり、他の検査器と違って `claude` をPATH上に解決できない場合はSKIPPEDとして理由を展開し、集計行にも `skipped: claude-plugin-validate` を出したうえで緑で終わる。`mise.toml` で版を固定する経路（npm backend）は形式上存在するが採らない——採ると利用者が各自の方法で既に導入している `claude` を、mise管理下の別実体でシャドウすることになる。固定できないのではなく、手元の導入を上書きしない側を選んだ結果である。fail-closedの担保はCI側にあり、`.github/workflows/test.yml` が版を固定した `npm install -g @anthropic-ai/claude-code@<version>` でCLIを導入したうえで、`RUN_TESTS_REQUIRE_ALL_SUITES=1` を立ててrunnerを呼ぶ。同変数が立っている環境では、runnerは前提不成立をSKIPPEDではなくFAILEDとして扱う。CLIの導入に失敗しても緑で素通りしないための担保である。同変数の値域は `1` / `0` / 未設定に限り、それ以外の値（`true`・`yes` 等）はrunnerが理由を出して非0で終わる。要求モードのつもりで立てた値が黙って「skip可」と解釈されると、検査が一度も走らないまま緑を受け取るためである。この検査が掛かるのは値だけであり、変数名を取り違えた場合は未設定と区別がつかないため届かない。skip・実行・要求モードの3経路、値域外の拒否、およびCIがrunnerを起動するそのstepで同変数を立てていることは `scripts/tests/run-tests-runner.bats` が固定する。同ファイルはworkflowをstep単位で読み、`if:` の付与・引数の追加・envの別stepへの移動といった、担保を消しながら文字列としては残る変異を赤にする。`--strict` は採らない。同オプションはversionフィールドの欠落を含む警告をエラーへ昇格させるが、本リポジトリは版をコミットSHAへ委ねておりversionを持たない（ADR-202609061416-01）。
 
 runner はいずれかが失敗しても残りを最後まで実行してから非0で終わる。失敗を1回の実行で出揃わせるためである。成功したスイートの出力は畳み、失敗したスイートの出力だけを展開する（bats については通過ケースの `ok ` 行も畳む）。
+
+living-spec プラグインの検査器は、正本 `tools/living-spec/src` の規則ごとの見本の照合を工場側の試験（`pnpm --dir tools/living-spec install` の後に `pnpm --dir tools/living-spec test`）が持ち、runner は生成物の終了コードの契約だけを `living-spec-bundle.bats` で見る。工場側の試験は依存の導入が要るため runner に入れない。正本を直したら `pnpm --dir tools/living-spec build` で生成物を作り直し、両方を同じコミットに入れる。
 
 Writing Wave 2の追加検査は`writing-lint.bats`と`writing-contract.bats`で行う。前者は`lint-ja.sh`のfile/diff、候補、長文、退役ADR境界を検査し、後者はskill/agent、F1/F3/F4/F5正負fixture、最大2回loop、両host matrix、permission ledgerを検査する。Codex agent登録面が利用できない場合の明示起動・degraded手動検査は、`plugins/writing/compatibility.json`へ記録する。
 

@@ -1,0 +1,3 @@
+- rule: example-feature
+  file: docs/examples/other.feature
+  target: 機能:（名前なし）

@@ -1,0 +1,3 @@
+- rule: example-feature
+  file: docs/examples/empty.feature
+  target: 機能

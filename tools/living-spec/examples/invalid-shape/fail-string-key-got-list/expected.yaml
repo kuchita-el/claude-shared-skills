@@ -1,0 +1,3 @@
+- rule: invalid-shape
+  file: docs/rdra/architecture-characteristic.yaml
+  target: アーキテクチャ特性:監査可能性

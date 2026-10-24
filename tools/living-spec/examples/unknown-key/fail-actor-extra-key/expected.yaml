@@ -1,0 +1,3 @@
+- rule: unknown-key
+  file: docs/rdra/actor.yaml
+  target: アクター:従業員

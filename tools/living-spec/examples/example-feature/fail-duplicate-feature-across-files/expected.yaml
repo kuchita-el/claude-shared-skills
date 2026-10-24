@@ -1,0 +1,6 @@
+- rule: example-feature
+  file: docs/examples/withdraw.feature
+  target: 機能:経費申請を取り下げる
+- rule: example-feature
+  file: docs/examples/withdraw-copy.feature
+  target: 機能:経費申請を取り下げる

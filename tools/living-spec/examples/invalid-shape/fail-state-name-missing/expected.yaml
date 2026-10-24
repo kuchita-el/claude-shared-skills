@@ -1,0 +1,3 @@
+- rule: invalid-shape
+  file: docs/rdra/state.yaml
+  target: 状態:#4

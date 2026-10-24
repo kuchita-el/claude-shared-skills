@@ -1,0 +1,3 @@
+- rule: duplicate-name
+  file: docs/rdra/external-system.yaml
+  target: 外部システム:会計システム

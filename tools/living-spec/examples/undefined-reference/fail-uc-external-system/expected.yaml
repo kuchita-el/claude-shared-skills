@@ -1,0 +1,3 @@
+- rule: undefined-reference
+  file: docs/rdra/use-case.yaml
+  target: UC:経費申請を提出する

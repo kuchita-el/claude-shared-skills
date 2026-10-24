@@ -1,0 +1,3 @@
+- rule: invalid-shape
+  file: docs/rdra/information.yaml
+  target: 情報:経費申請

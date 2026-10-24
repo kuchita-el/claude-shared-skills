@@ -1,0 +1,3 @@
+- rule: duplicate-name
+  file: docs/rdra/actor.yaml
+  target: アクター:従業員

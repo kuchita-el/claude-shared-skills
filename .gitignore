@@ -10,3 +10,6 @@ plugins/growth/.local/
 
 # scripts/run-plugin-eval.sh の結果の推奨出力先（docs/development/test-execution.md §9.2）
 /.local/eval-results/
+
+# tools/living-spec の依存（工場側の試験と build だけが使う）
+tools/living-spec/node_modules/

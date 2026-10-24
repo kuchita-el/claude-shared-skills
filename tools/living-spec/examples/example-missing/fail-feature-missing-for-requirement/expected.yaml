@@ -1,0 +1,3 @@
+- rule: example-missing
+  file: docs/requirements/submit.md
+  target: 仕様:1

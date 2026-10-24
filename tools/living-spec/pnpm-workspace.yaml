@@ -1,0 +1,3 @@
+# esbuild の postinstall は走らせない（本体はプラットフォーム別の optional 依存で入り、build はそれで動く）
+allowBuilds:
+  esbuild: false

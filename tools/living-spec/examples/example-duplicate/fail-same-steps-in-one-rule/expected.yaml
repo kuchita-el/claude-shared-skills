@@ -1,0 +1,3 @@
+- rule: example-duplicate
+  file: docs/examples/withdraw.feature
+  target: シナリオ:もう一度取り下げる

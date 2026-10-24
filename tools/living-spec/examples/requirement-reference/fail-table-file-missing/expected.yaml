@@ -1,0 +1,3 @@
+- rule: requirement-reference
+  file: docs/requirements/withdraw.md
+  target: 仕様:3
