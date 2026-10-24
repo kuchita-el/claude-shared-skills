@@ -78,6 +78,12 @@ allowed-tools:
 - `docs/references/subagent-execution-parameters.md` — サブエージェントの `model` / `effort` の置き場と選択規則。新規サブエージェントは front-matter へ両方を明示する
 - `docs/references/document-permanence.md` — `docs/` 配下へ何を残し何を残さないか（恒久文書／過去記録／区分対象外の区分基準）。`docs/principles.md`「ストック情報とフロー情報」の軸へ接続する
 
+## PR レビューの観点
+
+差分・PR をレビューするときは次の観点を使う。レビュー以外の作業中も、書き手が守る規律として読む。下の取り込み行は、CLAUDE.md を読む全てのレビュワーへ観点を届けるためのものであり、案内文に置き換えない（案内文では読まれる保証がない）。
+
+@.claude/review/criteria.md
+
 ## Conventions
 
 - ドキュメントおよびスキル内のコメントは日本語で書く
