@@ -11,13 +11,29 @@
 - `skills/crosscheck/SKILL.md`: 規則間の矛盾・条件の食い違い・状態遷移の抜けを報告します（直しません）。
 - `skills/view/SKILL.md`: 可視化を描き、開き方を示します。
 - `agents/rule-crosschecker.md`: 表・票・例を初見で読み、矛盾を `id,severity,evidence,why,suggestion` で返します。
-- `scripts/living-spec.mjs`: 検査器と描画（`check [--doc-missing] [根]`・`render [根]`・`hook`）。Node だけで動く1ファイルで、依存の導入は不要です。生成物で、正本は `tools/living-spec/src` です。
+- `scripts/run.mjs`: 検査器を探して呼ぶ中継（`check [--doc-missing] [根]`・`render [根]`・`hook`）。依存を持ちません。検査器そのものはプラグインに含めません（下の「検査器の導入」）。
 - `hooks/hooks.json`: 表・票・例の編集の後に全体検査と描き直しを走らせる PostToolUse フック。
 - `references/templates/`: 要求票と例の雛形。
 
+## 検査器の導入
+
+検査器と描画は、プラグインと分けて、利用するリポジトリが持つ道具として入れます。いまはソースからビルドします。
+
+```bash
+# claude-shared-skills のチェックアウトで
+pnpm --dir tools/living-spec install --frozen-lockfile
+pnpm --dir tools/living-spec build          # tools/living-spec/dist/living-spec.mjs ができる
+
+# 利用するリポジトリで（どちらか）
+npm i -D <claude-shared-skills>/tools/living-spec    # package.json に入れ、CI からも npx living-spec check で走らせる
+export LIVING_SPEC_BIN=<claude-shared-skills>/tools/living-spec/dist/living-spec.mjs   # リポジトリに入れずに使う
+```
+
+中継は `LIVING_SPEC_BIN`、次に根から解決できるパッケージ `@kuchita-el/living-spec` の順に探します。見つからなければ、フックは何もせず、スキルからの呼び出しは導入の手順を出して止まります。
+
 ## 前提
 
-- Node 22 以上（22.23・24.16 で確かめています）。
+- Node 22 以上（22.23・24.16 で確かめています）。ビルドには pnpm が要ります。
 - 可視化の図は Mermaid を jsdelivr から読むため、表示にネットワークが要ります。
 
 ## 契約
@@ -30,7 +46,7 @@
 ## host 差分
 
 - Claude Code: スキル・エージェント・フックのすべてが動きます。
-- Codex: スキルと検査器は動きます。plugin 単位のフックが無いため、編集ごとの自動検査と描き直しはありません。スキルの手順どおり `node scripts/living-spec.mjs check` と `render` を明示的に実行します。突き合わせのエージェントが使えない場合は、別の会話で `agents/rule-crosschecker.md` の指示を与えて実行します。
+- Codex: スキルと検査器は動きます。plugin 単位のフックが無いため、編集ごとの自動検査と描き直しはありません。スキルの手順どおり `node scripts/run.mjs check` と `render`（または導入した検査器の `living-spec check` と `render`）を明示的に実行します。突き合わせのエージェントが使えない場合は、別の会話で `agents/rule-crosschecker.md` の指示を与えて実行します。
 
 ## 機械検査が見ないもの
 

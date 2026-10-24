@@ -3,7 +3,7 @@ description: "RDRA の表・要求票・例の規則どうしの矛盾、条件�
 allowed-tools:
   - Read
   - Agent
-  - Bash(node *scripts/living-spec.mjs*)
+  - Bash(node *scripts/run.mjs*)
 ---
 
 # 規則間の矛盾の突き合わせ
@@ -16,7 +16,7 @@ allowed-tools:
 
 ## 手順
 
-1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/living-spec.mjs" check` を実行する。違反があれば、名前や参照が崩れたままでは意味の突き合わせが空振りするため、違反を示して止まる
+1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/run.mjs" check` を実行する。違反があれば、名前や参照が崩れたままでは意味の突き合わせが空振りするため、違反を示して止まる
 2. 根の `.living-spec.json` から置き場を読む（無ければ既定）
 3. `rule-crosschecker` エージェントへ、根の絶対パス・置き場・焦点だけを渡す。起草の経緯・作り手の意図は渡さない
 4. 返った指摘のうち blocker を2〜3件抜き取り、根拠の path:行 を自分で読んで、指摘どおりの記述があるかを確かめる。食い違えばその旨を報告に付す

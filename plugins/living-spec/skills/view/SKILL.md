@@ -1,14 +1,14 @@
 ---
 description: "RDRA の表・要求票・例から、状態遷移図と UC ごとの縦串（アクター・情報・条件・要求文・例）を1枚の HTML に描いて開き方を示す。要求の可視化・状態遷移図を見たい・設計を俯瞰したいときに使う。"
 allowed-tools:
-  - Bash(node *scripts/living-spec.mjs*)
+  - Bash(node *scripts/run.mjs*)
 ---
 
 # 要求の可視化
 
 ## 手順
 
-1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/living-spec.mjs" render` を根で実行する。書き出した場所（既定 `<根>/.cache/living-spec/index.html`、`.living-spec.json` の `output` で変わる）が標準出力に出る
+1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/run.mjs" render` を根で実行する。書き出した場所（既定 `<根>/.cache/living-spec/index.html`、`.living-spec.json` の `output` で変わる）が標準出力に出る
 2. 終了コード 2 なら、表の置き場が無いか `.living-spec.json` の誤り。標準エラーの内容を示して止まる
 3. 書き出した場所と開き方を示す。開くのは利用者に任せ、ブラウザを自動で起動しない
    - macOS: `open <path>` ／ Linux: `xdg-open <path>` ／ WSL: `explorer.exe "$(wslpath -w <path>)"`（WSL 内のブラウザは日本語のフォントが無いことがある）

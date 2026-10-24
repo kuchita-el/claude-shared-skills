@@ -8,7 +8,7 @@ allowed-tools:
   - Grep
   - Agent
   - AskUserQuestion
-  - Bash(node *scripts/living-spec.mjs*)
+  - Bash(node *scripts/run.mjs*)
 ---
 
 # 要求の構造化
@@ -25,8 +25,9 @@ allowed-tools:
 
 ### 1. 現状を読む
 
+- `node "${CLAUDE_PLUGIN_ROOT}/scripts/run.mjs" check` が終了コード 2 で「検査器が見つからない」と出たら、表示された導入の手順を利用者に示して止まる。検査器なしで構造化を進めない
 - 根の `.living-spec.json` があれば置き場を読む。無ければ既定（`docs/rdra` 等）
-- 表の置き場が既にあれば、表・要求票・例を読み、`node "${CLAUDE_PLUGIN_ROOT}/scripts/living-spec.mjs" check` を実行して出発点の違反を把握する。違反があれば、要求の構造化より先に直すかを利用者に問う
+- 表の置き場が既にあれば、表・要求票・例を読み、`node "${CLAUDE_PLUGIN_ROOT}/scripts/run.mjs" check` を実行して出発点の違反を把握する。違反があれば、要求の構造化より先に直すかを利用者に問う
 - 置き場が無ければ新規に始める。可視化の書き出し先（既定 `.cache/living-spec/`）を `.gitignore` へ足すかを利用者に問う
 
 ### 2. 要求を表へ写す
@@ -53,7 +54,7 @@ allowed-tools:
 
 ### 5. 機械検査を通す
 
-`node "${CLAUDE_PLUGIN_ROOT}/scripts/living-spec.mjs" check` と `check --doc-missing` を実行し、違反を0件にする。PostToolUse フックが入っていれば、表・票・例の編集のたびに全体検査が走り、違反は編集の直後に返る。違反を消すために検査を外したり、規則を緩める書き方へ逃げたりしない。
+`node "${CLAUDE_PLUGIN_ROOT}/scripts/run.mjs" check` と `check --doc-missing` を実行し、違反を0件にする。PostToolUse フックが入っていれば、表・票・例の編集のたびに全体検査が走り、違反は編集の直後に返る。違反を消すために検査を外したり、規則を緩める書き方へ逃げたりしない。
 
 ### 6. 規則間の矛盾を突き合わせる
 
@@ -67,7 +68,7 @@ allowed-tools:
 
 ### 7. 描いて見せる
 
-`node "${CLAUDE_PLUGIN_ROOT}/scripts/living-spec.mjs" render` で可視化を描き、書き出した場所と開き方を `view` スキルの手順で示す。
+`node "${CLAUDE_PLUGIN_ROOT}/scripts/run.mjs" render` で可視化を描き、書き出した場所と開き方を `view` スキルの手順で示す。
 
 ## 出力
 

@@ -13,3 +13,4 @@ plugins/growth/.local/
 
 # tools/living-spec の依存（工場側の試験と build だけが使う）
 tools/living-spec/node_modules/
+tools/living-spec/dist/

@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/living-spec.mjs\" hook"
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/run.mjs\" hook"
           }
         ]
       }

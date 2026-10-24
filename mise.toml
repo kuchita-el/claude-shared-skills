@@ -6,7 +6,7 @@
 # bats — scripts/tests/*.bats を実行するテストフレームワーク。
 # scripts/run-tests.sh が `mise exec` 経由で起動し、解決できない場合は非0で終わる
 # （検査が無言で消えることを避けるための fail-closed）。
-# node — plugins/living-spec/scripts/living-spec.mjs を走らせる（scripts/tests/living-spec-bundle.bats）。
+# node — plugins/living-spec/scripts/run.mjs（検査器を呼ぶ中継）を走らせる（scripts/tests/living-spec-run.bats）。
 [tools]
 bats = "1.14.0"
 node = "24.16.0"

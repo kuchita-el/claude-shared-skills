@@ -1,6 +1,6 @@
 # tools/living-spec
 
-`plugins/living-spec/scripts/living-spec.mjs`（living-spec プラグインの検査器と描画）の正本と、その工場側の試験。配布物は生成物の `living-spec.mjs` だけで、この置き場は配布しない。
+living-spec の検査器と描画（コマンド `living-spec`、パッケージ `@kuchita-el/living-spec`）の正本と、その工場側の試験。プラグイン（`plugins/living-spec`）には含めず、利用者がここからビルドして、利用するリポジトリへ入れる（導入の手順は `plugins/living-spec/README.md`）。npm へは公開していない（`private`）。
 
 書式と検査の規則の正本は `plugins/living-spec/references/format.md`。表のキーと置き場の既定は `src/schema.ts` が持つ。
 
@@ -13,11 +13,11 @@
 ```bash
 pnpm --dir tools/living-spec install --frozen-lockfile
 pnpm --dir tools/living-spec test     # 規則ごとの見本（examples/）の照合・入口・描画
-pnpm --dir tools/living-spec build    # plugins/living-spec/scripts/living-spec.mjs を作り直す
-RDRA_ENTRY="$PWD/plugins/living-spec/scripts/living-spec.mjs" node --test tools/living-spec/test/cli.test.ts tools/living-spec/test/render.test.ts  # 生成物で入口の試験を走らせる
+pnpm --dir tools/living-spec build    # dist/living-spec.mjs（依存を同梱した1ファイル。追跡しない）を作る
+RDRA_ENTRY="$PWD/tools/living-spec/dist/living-spec.mjs" node --test tools/living-spec/test/cli.test.ts tools/living-spec/test/render.test.ts  # ビルドした物で入口の試験を走らせる
 ```
 
-`src/` を直したら build し、生成物を同じコミットに入れる。生成物の終了コードの契約は `scripts/tests/living-spec-bundle.bats` が runner の中で見る。
+`dist/` は追跡しない。`npm i -D` で入れたリポジトリはこの置き場への symlink を持つため、`src/` を直して build し直せば、入れた側にもそのまま効く。
 
 ## 見本
 
