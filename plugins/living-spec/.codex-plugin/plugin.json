@@ -1,0 +1,21 @@
+{
+  "name": "living-spec",
+  "skills": "./skills/",
+  "description": "決めた仕様を矛盾の無い生きた正本として保ち、検査し可視化するCodexプラグイン。",
+  "author": {
+    "name": "Kuchita El"
+  },
+  "repository": "https://github.com/kuchita-el/claude-shared-skills",
+  "interface": {
+    "displayName": "Living Spec",
+    "shortDescription": "仕様の構造化・整合検査・可視化を支援します。",
+    "longDescription": "いまは要求の3層（RDRA の表・EARS の要求票・Gherkin の例）を扱います。要求を構造化し、名前の参照と層間の追跡を検査し、規則間の矛盾を突き合わせ、状態遷移図と UC ごとの縦串を描きます。",
+    "developerName": "Kuchita El",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "defaultPrompt": "この要求を RDRA の表・要求票・例へ構造化し、検査と可視化をしてください。"
+  }
+}

@@ -10,3 +10,11 @@ plugins/growth/.local/
 
 # scripts/run-plugin-eval.sh の結果の推奨出力先（docs/development/test-execution.md §9.2）
 /.local/eval-results/
+
+# Node の依存とその置き場。node_modules はどの階層でも追跡しない。.pnpm-store は、ホームの既定の置き場へ書けないとき
+# （サンドボックス内など）に pnpm がリポジトリの根へ作る
+node_modules/
+.pnpm-store/
+
+# tools/living-spec のビルドの出力（pnpm build で作り直す）
+tools/living-spec/dist/

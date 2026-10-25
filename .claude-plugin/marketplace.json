@@ -27,6 +27,10 @@
     {
       "name": "domain-design",
       "source": "./plugins/domain-design"
+    },
+    {
+      "name": "living-spec",
+      "source": "./plugins/living-spec"
     }
   ]
 }

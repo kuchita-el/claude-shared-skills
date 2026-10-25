@@ -9,7 +9,7 @@ Claude Code 向けの汎用スキルライブラリ。プロジェクト固有�
 本リポジトリの開発方式の背骨は `dev-workflow` の工程から Spec-as-Code 方式へ転換中である（ADR-202609110017-01。方式の設計は `docs/development/spec-as-code/design.md`）。
 
 - 統治機構の縮小作業と新方式プラグインの立ち上げは、`dev-workflow` の工程（Issue・プラン・レビュー契約）を通さず直接コミットで回す。縮小作業は Issue 化しない
-- 存続配布物（growth / domain-design / dependency-insight / adr / writing）の機能変更はこの射程に含めず、従来どおりレビュー契約を通す。利用者へ配る資産の変更が無レビューで入ることを避ける
+- 存続配布物（growth / domain-design / dependency-insight / adr / writing / living-spec）の機能変更はこの射程に含めず、従来どおりレビュー契約を通す。利用者へ配る資産の変更が無レビューで入ることを避ける
 - commit ゲート（`scripts/hooks/pre-commit-gate.sh`）は退行検知として最後まで残す。退行検知はレビュー契約の代替にならない
 - 転換期間は、新方式プラグインが本リポジトリ自身の開発を回せるようになった時点で終える
 
@@ -33,7 +33,7 @@ bash scripts/run-tests.sh            # テストと検査器を一括実行す�
 - `plugins/{plugin}/agents/{agent}.md` — サブエージェント定義。プラグインルートに集約し自動検出させる（ADR-202605250838-01）
 - `run-claude-local.sh` / `run-codex-local.sh` — ローカル起動ラッパー（引数を透過する）
 
-配布物は `adr`（ADR 運用の検査・発番・ライフサイクル操作。設計・改修時の規律は `docs/development/adr-plugin-design-guideline.md` が定める）／`growth`（学習シグナルの捕捉・蒸留・昇格）／`domain-design`（event-storming / domain-modeling）／`dependency-insight`（dependency-check）／`writing`（intent 執筆支援）の5件と、退役予定の `dev-workflow`（ADR-202609110017-01 決定1）。
+配布物は `adr`（ADR 運用の検査・発番・ライフサイクル操作。設計・改修時の規律は `docs/development/adr-plugin-design-guideline.md` が定める）／`growth`（学習シグナルの捕捉・蒸留・昇格）／`domain-design`（event-storming / domain-modeling）／`dependency-insight`（dependency-check）／`writing`（intent 執筆支援）／`living-spec`（仕様の生きた正本。いまは要求の構造化・整合検査・矛盾の突き合わせ・可視化。検査器の正本は `tools/living-spec`）の6件と、退役予定の `dev-workflow`（ADR-202609110017-01 決定1）。
 
 ## スキルの追加と定義形式
 
