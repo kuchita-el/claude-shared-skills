@@ -204,6 +204,13 @@ related_section_position() {
 # 各 source の Related 行が `## 関連ADR` 節の内側にあることを前提として確かめる。1本の source で
 # 節見出しが崩れると、その区分だけが黙って検出力を失うためである。参照先ごとに出力を名指しで
 # 確かめる項は置かない。どの参照先も実在しないため、抽出されれば必ず dangling 違反になり rc=1 で落ちる。
+#
+# 加えて、値を持つ非有効区分（上書き済み・廃止済み）は validity を名指しで固定する。読み飛ばしを
+# 特定の区分へ狭める変異を捉えるには、その区分の source が fixture に残っている必要があるが、提案中・
+# 却下・旧形式は validity が空でこの読み飛ばしでは同一経路のため、値で区別されるのは上書き済みと
+# 廃止済みだけである。この2区分の source が非有効区分どうしの front-matter 漂流（例: 廃止済み →
+# 提案中）で黙って消えると、依然として非有効のまま rc=0 が保たれ、当該区分を狙う変異への検出力が
+# 失われる。空区分（提案中・却下・旧形式）は代表が3本あり、validity では互いに区別できないため固定しない。
 @test "面⑨: 有効でない source の Related は検査しない" {
     collect_init
 
@@ -220,6 +227,13 @@ related_section_position() {
         collect_equals "$(related_section_position "$dir/$src.md" "Related: $target")" "inside" \
             "(source限定): $src が実在しない参照先を指すRelated行が関連ADR節の内側に存在する（行や節見出しが消えると本ケースが自明に成立する）"
     done
+
+    # 値を持つ非有効区分の validity を固定する（上の読み飛ばしで区別されるのはこの2区分のみ）。
+    # 区分の代表が非有効区分どうしの漂流で消えると、その区分を狙う変異への検出力が黙って失われる。
+    collect_equals "$(frontmatter_value "$dir/ADR-202703010907-01-related-src-superseded.md" validity)" "上書き済み" \
+        "(source限定): 上書き済み source の validity が固定されている（上書き済み区分の代表が非有効区分間の漂流で消えないため）"
+    collect_equals "$(frontmatter_value "$dir/ADR-202703030907-01-related-src-abolished.md" validity)" "廃止済み" \
+        "(source限定): 廃止済み source の validity が固定されている（廃止済み区分の代表が非有効区分間の漂流で消えないため）"
 
     run_sut "$dir"
     collect_rc 0 "(source限定): 有効でないsourceのRelatedは検査されない: exit 0"
