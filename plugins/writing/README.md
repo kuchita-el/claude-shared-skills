@@ -27,4 +27,4 @@ F5（主張と根拠の同居）はreviewerの責務であり、lintの機械判
 新規起草と実際に編集する箇所が対象です。既存文書の一括是正、退役ADRの決定本文、allowlist運用は対象外です。
 plugin間のpath参照は作らず、利用側は`writing:write-doc`のsoft dependencyとして呼び出します。
 
-host別の導入位置は両marketplaceの`writing`エントリから解決できます。release時の検証証拠は`docs/development/test-execution.md`にあります。
+host別の導入位置は両marketplaceの`writing`エントリから解決できます。
