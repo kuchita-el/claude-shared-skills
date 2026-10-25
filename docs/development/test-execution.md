@@ -24,7 +24,7 @@ living-spec の検査器はプラグインに含めず、`tools/living-spec` か
 
 Writing Wave 2の追加検査は`writing-lint.bats`と`writing-contract.bats`で行う。前者は`lint-ja.sh`のfile/diff、候補、長文、退役ADR境界を検査し、後者はskill/agent、F1/F3/F4/F5正負fixture、最大2回loop、両host matrix、permission ledgerを検査する。Codex agent登録面が利用できない場合の明示起動・degraded手動検査は、`plugins/writing/compatibility.json`へ記録する。
 
-配布プラグインの `claude plugin eval` ケース（`evals/<plugin>/`）は runner に含めない。理由・実行手順・基準値は §7 を参照。
+配布プラグインの `claude plugin eval` ケース（`evals/<plugin>/`）は runner に含めない。理由と実行手順は §7 を参照。
 
 ## 2. いつ走るか — 自動起動の射程
 
@@ -155,7 +155,7 @@ bats は TAP 形式で報告する。runner は失敗したスイートの出力
 
 ## 7. 配布プラグインの eval（`claude plugin eval`）
 
-配布プラグインのプロンプト（trigger の発火条件・behavior の手順）を変更する作業で、変更前後の挙動の差を再現可能に比べるための手動実行系である。runner（`bash scripts/run-tests.sh`）には**組み込まない**。eval は課金を伴い、かつログイン済みの子セッション（`claude` の認証情報）を要する。commit ゲート・CIの双方から自動起動される runner にこれを混ぜると、commit のたびに課金が発生し、CI 環境の認証情報整備という別種の前提を背負うことになるため、意図的に外している。
+配布プラグインのプロンプト（trigger の発火条件・behavior の手順）を変更する作業で、変更前後の挙動の差を再現可能に比べるための手動実行系である。比較の基準は、変更の直前に同じ条件で取り直す。runner（`bash scripts/run-tests.sh`）には**組み込まない**。eval は課金を伴い、かつログイン済みの子セッション（`claude` の認証情報）を要する。commit ゲート・CIの双方から自動起動される runner にこれを混ぜると、commit のたびに課金が発生し、CI 環境の認証情報整備という別種の前提を背負うことになるため、意図的に外している。
 
 ### 7.1 置き場と実行スクリプト
 
@@ -175,12 +175,12 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
 
 ### 7.2 実行条件
 
-- 実行回数は `--runs 3`、`--ablation none`（プラグイン無しの腕は前後比較に要らない）、`--no-publish`、`--trust-plugin`、`--scaffold` を付ける。挙動ケースは `case.yaml` の `scaffold_script` で題材を組み立てるため、`--scaffold` が無いと題材の無い状態で走る（基準値も `--scaffold` 付きで取得した）。**一時複製は実行のたびに新しいディレクトリになるため、`--trust-plugin` を付けない場合の信頼確認プロンプトが毎回出る**
+- 実行回数は `--runs 3`、`--ablation none`（プラグイン無しの腕は前後比較に要らない）、`--no-publish`、`--trust-plugin`、`--scaffold` を付ける。挙動ケースは `case.yaml` の `scaffold_script` で題材を組み立てるため、`--scaffold` が無いと題材の無い状態で走る。**一時複製は実行のたびに新しいディレクトリになるため、`--trust-plugin` を付けない場合の信頼確認プロンプトが毎回出る**
 - `--max-cost-usd` で上限を掛ける
 - モデルは各ケースの front-matter の `model:` に従う。`--model` で一律に上書きしない
 - `adr` と `writing` は `--allow-tools Write Edit Bash` を付ける。許可パターンを限ると、検証ゲートの複合コマンドが確認なしモードで拒否され、挙動が測れない
-- `domain-design` は `--allow-tools Write` を付ける。スキルの `allowed-tools` に Write があっても、eval の子セッションには付与されない。付けないと挙動ケースが成果物を書けずに止まり、不合格になる（基準値は Write・Edit を持つ状態で取得している）
-- `growth` は `--allow-tools Write 'Bash(git rev-parse *)' 'Bash(date *)' 'Bash(rm ~/.claude/projects/*/growth/captures-*.md)'` を付ける（Write と、distill の `allowed-tools` と同じ Bash パターン）。基準値は Bash・Write・Edit を持つ状態で取得している
+- `domain-design` は `--allow-tools Write` を付ける。スキルの `allowed-tools` に Write があっても、eval の子セッションには付与されない。付けないと挙動ケースが成果物を書けずに止まり、不合格になる
+- `growth` は `--allow-tools Write 'Bash(git rev-parse *)' 'Bash(date *)' 'Bash(rm ~/.claude/projects/*/growth/captures-*.md)'` を付ける（Write と、distill の `allowed-tools` と同じ Bash パターン）
 - `growth` の `behavior-distill` の採点器のうち `cursor-advanced`・`example-entry-hypothesized`・`upsert-preserves-existing` は、拒否された Write の試みの内容で判定する。拒否後に書き込みを試みるかは回ごとに揺れるため、不合格が出たら trace の最終応答で判断の中身を確かめてから退行と判定する
 - 付与の過不足は、結果の trace（`--keep-temp` で残る `trace.jsonl`）の system 行が持つ `tools` の一覧で確かめられる
 - `Bash` を付与する挙動ケース（`adr`・`writing`・`growth`）は、`~/.docker` 内に symlink があると eval 側が起動を拒否する。実行の直前に退避し、終了後に戻す（**この退避はスクリプトが自動化しない。手順として実行者が行う**）
@@ -202,15 +202,3 @@ bash scripts/run-plugin-eval.sh dependency-insight \
   --max-cost-usd 5 --output-dir .local/eval-results/dependency-insight
 mv ~/.docker.eval-off ~/.docker  # Bash 付与ケースのみ
 ```
-
-### 7.3 基準値（main 250cf56 時点）
-
-変更前に各ケースを3回実行した合格率。以後の比較はこの値を基準にする。
-
-| プラグイン | 発火判定 | 挙動 | 補足 |
-|---|---|---|---|
-| adr | 1.0 | 1.0 | |
-| dependency-insight | 1.0 | 1.0 | |
-| domain-design | 1.0 | 1.0 | run0 の不合格は採点器 `document-structure` の誤判定で、採点器を直した後の値 |
-| growth | 1.0 | 1.0 | 採点器 `priority-ignores-origin` を llm から regex へ置き換えて取得済み応答へ当て直した値。書き込み成功を前提とする3採点器は無効化中（§7.2） |
-| writing | 1.0 | 1.0 | |
