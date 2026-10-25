@@ -17,7 +17,9 @@
 
 ## 検査器の導入
 
-検査器と描画は、プラグインと分けて、利用するリポジトリが持つ道具として入れます。いまはソースからビルドします。
+検査器と描画は、プラグインと分けて、利用するリポジトリが持つ道具として入れます。いまは npm へ公開しておらず、手元でも CI でもソースからビルドします。
+
+### 手元
 
 ```bash
 # claude-shared-skills のチェックアウトで
@@ -25,11 +27,61 @@ pnpm --dir tools/living-spec install --frozen-lockfile
 pnpm --dir tools/living-spec build          # tools/living-spec/dist/living-spec.mjs ができる
 
 # 利用するリポジトリで（どちらか）
-npm i -D <claude-shared-skills>/tools/living-spec    # package.json に入れ、CI からも npx living-spec check で走らせる
+npm i -D <claude-shared-skills>/tools/living-spec    # 手元のチェックアウトへの symlink として入る
 export LIVING_SPEC_BIN=<claude-shared-skills>/tools/living-spec/dist/living-spec.mjs   # リポジトリに入れずに使う
 ```
 
 中継は `LIVING_SPEC_BIN`、次に根から解決できるパッケージ `@kuchita-el/living-spec` の順に探します。見つからなければ、フックは何もせず、スキルからの呼び出しは導入の手順を出して止まります。
+
+手元の `npm i -D` は、利用するリポジトリの外にあるチェックアウトを指します。CI の環境にはそのチェックアウトが無いため、この形で入れたパッケージは CI では解決できません。CI で依存を入れる（`npm ci` 等）リポジトリでは、`package.json` に入った `file:` の依存そのものが CI の導入を失敗させるため、手元は `LIVING_SPEC_BIN` で使います。CI では次の手順で取ります。
+
+### CI（GitHub Actions）
+
+CI のジョブの中で claude-shared-skills を取り、検査器をビルドして直接走らせます。claude-shared-skills は公開リポジトリのため、認証なしで取れることを前提にしています。
+
+```yaml
+jobs:
+  living-spec:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      # 取る claude-shared-skills の版。コミット SHA で固定し、上げるときはこの行を書き換える
+      LIVING_SPEC_REF: <claude-shared-skills のコミット SHA（40桁）>
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: living-spec の検査器のソースを取る
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          repository: kuchita-el/claude-shared-skills
+          ref: ${{ env.LIVING_SPEC_REF }}
+          path: .living-spec-src
+          sparse-checkout: tools/living-spec
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413  # v6.1.0
+        with:
+          version: 12.5.1
+
+      - name: 検査器をビルドする
+        run: |
+          pnpm --dir .living-spec-src/tools/living-spec install --frozen-lockfile
+          pnpm --dir .living-spec-src/tools/living-spec build
+
+      - name: 表・要求票・例を検査する
+        run: node .living-spec-src/tools/living-spec/dist/living-spec.mjs check
+      - name: 書き漏らしの向きを検査する
+        run: node .living-spec-src/tools/living-spec/dist/living-spec.mjs check --doc-missing
+```
+
+- 版は `ref` のコミット SHA だけで決まります。ブランチ名やタグにすると、claude-shared-skills 側の変更で利用するリポジトリの CI の結果が黙って変わります。
+- 検査の根は作業ディレクトリ（利用するリポジトリの根）です。`.living-spec.json` で置き場を変えていれば、それに従います。
+- 違反があると検査器は非 0 で終わり、ジョブが失敗します。
+- 取ったソース（`.living-spec-src`）は検査の対象の置き場の外にあるため、検査の結果に混ざりません。
 
 ## 前提
 
