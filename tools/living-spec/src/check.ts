@@ -1,8 +1,9 @@
 // RDRA の表・要求票・例の機械検査。
-import { existsSync, readFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { basename } from 'node:path';
 import { parseDocument } from 'yaml';
 import { TABLES, tableById } from './schema.ts';
+import { readSources } from './sources.ts';
+import type { Sources } from './sources.ts';
 import type { TableDef, ValueType } from './schema.ts';
 import { checkTrace } from './trace.ts';
 import type { TraceContext } from './trace.ts';
@@ -87,11 +88,10 @@ function values(row: Row, key: string): string[] {
   return [];
 }
 
-function loadTable(root: string, def: TableDef, out: Violation[]): Row[] {
-  const path = join(root, def.file);
-  if (!existsSync(path)) return [];
+function loadTable(text: string | undefined, def: TableDef, out: Violation[]): Row[] {
+  if (text === undefined) return [];
   const tableTarget = `表:${basename(def.file)}`;
-  const doc = parseDocument(readFileSync(path, 'utf8'));
+  const doc = parseDocument(text);
   if (doc.errors.length > 0) {
     const msg = doc.errors[0].message.split('\n')[0];
     out.push({ rule: 'invalid-shape', file: def.file, target: tableTarget, detail: `YAML の構文誤り: ${msg}` });
@@ -162,9 +162,9 @@ function rowTarget(row: Row): string {
   return `${row.def.kind}:${row.name}`;
 }
 
-export function loadTables(root: string, out: Violation[]): Record<string, Row[]> {
+export function loadTables(sources: Sources, out: Violation[]): Record<string, Row[]> {
   const rows: Record<string, Row[]> = {};
-  for (const def of TABLES) rows[def.id] = loadTable(root, def, out);
+  for (const def of TABLES) rows[def.id] = loadTable(sources.tables.get(def.id), def, out);
   return rows;
 }
 
@@ -199,12 +199,21 @@ function traceContext(rows: Record<string, Row[]>): TraceContext {
 // 対象は requirement-missing・requirement-coverage・example-missing。
 // 表の構造の違反は checkRepo が拾うため、ここでは読めた表の内容だけを使う
 export function checkDocMissing(root: string): Violation[] {
-  return checkTrace(root, traceContext(loadTables(root, []))).docMissing;
+  return checkDocMissingSources(readSources(root));
+}
+
+export function checkDocMissingSources(sources: Sources): Violation[] {
+  return checkTrace(sources, traceContext(loadTables(sources, []))).docMissing;
 }
 
 export function checkRepo(root: string): Violation[] {
+  return checkSources(readSources(root));
+}
+
+// 全体検査の本体。ファイルを読まず、読んだ中身だけから判定する
+export function checkSources(sources: Sources): Violation[] {
   const out: Violation[] = [];
-  const rows = loadTables(root, out);
+  const rows = loadTables(sources, out);
 
   // 名前の集合。state 表は状態モデルの集合と、状態モデルごとの状態の集合を別に持つ
   const names: Record<string, Set<string>> = {};
@@ -309,7 +318,7 @@ export function checkRepo(root: string): Violation[] {
   }
 
   // 要求票・例の検査（名前照合・追跡）。書き漏らしの向き（requirement-missing・requirement-coverage・example-missing）は含めない
-  out.push(...checkTrace(root, traceContext(rows)).checked);
+  out.push(...checkTrace(sources, traceContext(rows)).checked);
 
   return out;
 }

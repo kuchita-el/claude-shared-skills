@@ -1,8 +1,6 @@
 // 要求票（LAYOUT.requirements）と例（LAYOUT.examples）の名前照合・追跡の検査。
 // RDRA の表から読んだ内容は check.ts が TraceContext として渡す。
 // 違反は2つに分けて返す。名前照合・追跡の違反（checked）は全体検査に含め、書き漏らしの向きの違反（docMissing）は含めない。
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import type { Violation } from './check.ts';
 import { parseExample } from './example.ts';
 import type { ExampleFeature, ExampleScenario } from './example.ts';
@@ -15,6 +13,7 @@ import {
   REQUIREMENT_STATE_SEP,
   tableById,
 } from './schema.ts';
+import type { Sources } from './sources.ts';
 
 export interface TraceContext {
   // UC の表のレコード。hypothesis は『仮説』キーを持つか（値が空でも持つ扱い）
@@ -40,15 +39,6 @@ interface RequirementFile {
   req: Requirement;
   // req.lines と同じ並びの、各行の RDRA 欄から読んだ参照
   refs: { refs: Reference[] }[];
-}
-
-function listFiles(root: string, dir: string, ext: string): string[] {
-  const path = join(root, dir);
-  if (!existsSync(path)) return [];
-  return readdirSync(path)
-    .filter((f) => f.endsWith(ext))
-    .sort()
-    .map((f) => `${dir}/${f}`);
 }
 
 // 状態の参照「<状態モデル>/<状態>」を分ける。区切りが無ければ null
@@ -106,14 +96,14 @@ function addTo<K, V>(map: Map<K, V[]>, key: K, value: V): void {
   else list.push(value);
 }
 
-export function checkTrace(root: string, ctx: TraceContext): TraceResult {
+export function checkTrace(sources: Sources, ctx: TraceContext): TraceResult {
   const out: Violation[] = [];
   const missing: Violation[] = [];
   const ucNames = ctx.names.get('UC') ?? new Set<string>();
 
   // --- 要求票 ---
-  const reqFiles: RequirementFile[] = listFiles(root, LAYOUT.requirements, '.md').map((file) => {
-    const req = parseRequirement(readFileSync(join(root, file), 'utf8'));
+  const reqFiles: RequirementFile[] = sources.requirements.map(({ file, text }) => {
+    const req = parseRequirement(text);
     return { file, req, refs: req.lines.map((l) => ({ refs: parseReferences(l.rdra) })) };
   });
   const filesOfUc = new Map<string, string[]>();
@@ -220,8 +210,8 @@ export function checkTrace(root: string, ctx: TraceContext): TraceResult {
   // --- 例 ---
   const features: { file: string; feature: ExampleFeature }[] = [];
   let unreadable = false;
-  for (const file of listFiles(root, LAYOUT.examples, '.feature')) {
-    const parsed = parseExample(readFileSync(join(root, file), 'utf8'));
+  for (const { file, text } of sources.examples) {
+    const parsed = parseExample(text);
     if (!parsed.ok) {
       unreadable = true;
       out.push({

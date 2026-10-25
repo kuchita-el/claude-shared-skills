@@ -1,13 +1,13 @@
 // 設計の可視化の材料を組む。RDRA の表・要求票・例を読み、状態モデルごとの遷移と UC ごとの縦串にまとめる。
 // 検査はしない（違反は check.ts が拾う）。違反があっても組み、表に無い名前は known: false にして残す。
 // HTML の文字列は html.ts が作る。
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { loadTables } from './check.ts';
+import { readSources } from './sources.ts';
+import type { Sources } from './sources.ts';
 import { parseExample } from './example.ts';
 import type { ExampleScenario } from './example.ts';
 import { parseReferences, parseRequirement } from './requirement.ts';
-import { LAYOUT, REQUIREMENT_STATE_SEP } from './schema.ts';
+import { REQUIREMENT_STATE_SEP } from './schema.ts';
 
 type Rows = ReturnType<typeof loadTables>;
 type Row = Rows[string][number];
@@ -147,15 +147,6 @@ function hypothesisOf(row: Row): string[] | null {
   return Object.hasOwn(row.data, '仮説') ? list(row, '仮説') : null;
 }
 
-function listFiles(root: string, dir: string, pattern: RegExp): string[] {
-  const path = join(root, dir);
-  if (!existsSync(path)) return [];
-  return readdirSync(path)
-    .filter((f) => pattern.test(f))
-    .sort()
-    .map((f) => `${dir}/${f}`);
-}
-
 function scenarioView(s: ExampleScenario): ScenarioView {
   return { name: s.name, count: s.expansions.length };
 }
@@ -192,8 +183,8 @@ function buildStateModels(rows: Rows, ucNames: Set<string>): StateModelView[] {
   return [...models.values()];
 }
 
-export function buildView(root: string): View {
-  const rows = loadTables(root, []);
+export function buildView(root: string, sources: Sources = readSources(root)): View {
+  const rows = loadTables(sources, []);
   const byName = (id: string) => new Map(rows[id].map((r) => [r.name, r] as const));
   const actors = byName('actor');
   const externalSystems = byName('external-system');
@@ -258,15 +249,15 @@ export function buildView(root: string): View {
     return namesOfKind.get(kind)?.has(name) ?? false;
   };
 
-  const requirements = listFiles(root, LAYOUT.requirements, /\.md$/).map((file) => ({
+  const requirements = sources.requirements.map(({ file, text }) => ({
     file,
-    req: parseRequirement(readFileSync(join(root, file), 'utf8')),
+    req: parseRequirement(text),
   }));
 
   const features: { file: string; name: string; rules: RuleView[]; loose: ScenarioView[] }[] = [];
   const unreadableExamples: View['unreadableExamples'] = [];
-  for (const file of listFiles(root, LAYOUT.examples, /\.feature$/)) {
-    const parsed = parseExample(readFileSync(join(root, file), 'utf8'));
+  for (const { file, text } of sources.examples) {
+    const parsed = parseExample(text);
     if (!parsed.ok) {
       unreadableExamples.push({ file, message: parsed.message });
     } else if (parsed.feature === null) {
