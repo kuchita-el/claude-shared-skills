@@ -46,7 +46,7 @@ export LIVING_SPEC_BIN=<claude-shared-skills>/tools/living-spec/dist/living-spec
 ## host 差分
 
 - Claude Code: スキル・エージェント・フックのすべてが動きます。
-- Codex: スキルと検査器は動きます。plugin 単位のフックが無いため、編集ごとの自動検査と描き直しはありません。スキルの手順どおり `node scripts/run.mjs check` と `render`（または導入した検査器の `living-spec check` と `render`）を明示的に実行します。突き合わせのエージェントが使えない場合は、別の会話で `agents/rule-crosschecker.md` の指示を与えて実行します。
+- Codex: スキルと検査器は動きます。plugin 単位のフックが無いため、編集ごとの自動検査と描き直しはありません。スキルの手順どおり `node scripts/run.mjs check` と `render`（または導入した検査器の `living-spec check` と `render`）を明示的に実行します。突き合わせのエージェントが使えない場合は、別の会話で `agents/rule-crosschecker.md` の指示を与え、入力として plugin root path（`references/format.md` を含むこのディレクトリ）も渡して実行します。
 
 ## 機械検査が見ないもの
 

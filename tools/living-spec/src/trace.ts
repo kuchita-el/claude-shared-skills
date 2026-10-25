@@ -159,7 +159,7 @@ export function checkTrace(sources: Sources, ctx: TraceContext): TraceResult {
     }
   }
 
-  // 要求票が1つも無いリポジトリでは、票の有無・網羅は検査しない（one-pager-mismatch と同じ扱い）
+  // 要求票が1つも無いリポジトリでは、票の有無・網羅は検査しない
   const ucDef = tableById('use-case');
   const useCaseOf = new Map(ctx.useCases.map((u) => [u.name, u] as const));
   if (reqFiles.length > 0) {
