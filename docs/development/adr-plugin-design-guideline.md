@@ -133,4 +133,3 @@ ADR 化要否の判定は、条文を読む判定主体が散文で結論と根�
 - `docs/adr/ADR-202607230648-01-adr-machinery-plugin-extraction.md` — ADR 運用機構を独立プラグイン `adr` として抽出・配布した決定。本書の対象範囲はこの決定によって生まれた
 - `docs/adr/ADR-202608011651-01-adr-value-precondition-criteria-in-operating-doc.md` — ADR の固有価値を却下代替に定めて起票の必要条件とし、粒度判定基準の項目と境界の実体は運用文書（`adr-scoping.md`）側へ委ねた決定。判定手続きの中身を改訂するときの正本の所在を示す
 - `docs/distribution-boundary.md` — 配布物と配布元の配置境界。ある資産をどちらへ置くかの判断軸3点を持ち、配布物の内部構成は射程外と自ら述べる
-- `docs/development/adr-plugin-portability-seams.md` — プラグイン抽出で判明した「何がプロジェクト固有で何が可搬か」の継ぎ目リスト。導入先環境への依存に触れる改修の入力になる

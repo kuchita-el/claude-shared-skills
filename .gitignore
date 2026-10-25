@@ -8,7 +8,7 @@
 # growth プラグインの個人ローカル store（in-repo dogfooding 用。生捕捉はコミットしない。詳細は plugins/growth/references/personal-store-spec.md）
 plugins/growth/.local/
 
-# scripts/run-plugin-eval.sh の結果の推奨出力先（docs/development/test-execution.md §9.2）
+# scripts/run-plugin-eval.sh の結果の推奨出力先（docs/development/test-execution.md §7.2）
 /.local/eval-results/
 
 # Node の依存とその置き場。node_modules はどの階層でも追跡しない。.pnpm-store は、ホームの既定の置き場へ書けないとき

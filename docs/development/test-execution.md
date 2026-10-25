@@ -24,7 +24,7 @@ living-spec の検査器はプラグインに含めず、`tools/living-spec` か
 
 Writing Wave 2の追加検査は`writing-lint.bats`と`writing-contract.bats`で行う。前者は`lint-ja.sh`のfile/diff、候補、長文、退役ADR境界を検査し、後者はskill/agent、F1/F3/F4/F5正負fixture、最大2回loop、両host matrix、permission ledgerを検査する。Codex agent登録面が利用できない場合の明示起動・degraded手動検査は、`plugins/writing/compatibility.json`へ記録する。
 
-配布プラグインの `claude plugin eval` ケース（`evals/<plugin>/`）は runner に含めない。理由・実行手順・基準値は §9 を参照。
+配布プラグインの `claude plugin eval` ケース（`evals/<plugin>/`）は runner に含めない。理由・実行手順・基準値は §7 を参照。
 
 ## 2. いつ走るか — 自動起動の射程
 
@@ -39,7 +39,7 @@ runner は commit ゲート（`scripts/hooks/pre-commit-gate.sh`）から起動�
 
 ### git worktree で作業する場合
 
-本リポジトリの作業は git worktree 上で行うことが多い。**この経路でも自動起動は働き、検査対象になるのは worktree のツリーである**（`EnterWorktree` で入った worktree セッションでの実測。詳細は §8）。ただし検査対象が worktree になるのはゲート側の仕掛けによるものであり、worktree 固有の注意も2点ある。
+本リポジトリの作業は git worktree 上で行うことが多い。**この経路でも自動起動は働き、検査対象になるのは worktree のツリーである**（2026-08-01、`EnterWorktree` で入った worktree セッションから `git commit` を打ち、runner が worktree のツリーで走ることを観測）。ただし検査対象が worktree になるのはゲート側の仕掛けによるものであり、worktree 固有の注意も2点ある。
 
 **検査対象はゲートが git コンテキストから解決する。** `.claude/settings.json` のフックは `${CLAUDE_PROJECT_DIR}` 配下のゲートを起動し、同変数は project root（既定のチェックアウト）を指す。ゲートがそのまま `CLAUDE_PROJECT_DIR` を検査対象にすると、走るのは**コミット対象ではない別のツリー**に対する検査になり、project root が緑なら worktree の変更内容と無関係に通ってしまう。そこでゲートは「コミットが実際に走る git コンテキスト」から検査対象を解決する。候補を上から順に試し、git のトップレベルが取れ、かつそこに runner が在る最初のものを採る。
 
@@ -51,9 +51,9 @@ runner は commit ゲート（`scripts/hooks/pre-commit-gate.sh`）から起動�
 
 実測では、この解決の結果として worktree のツリーが検査対象になった。候補1が project root のツリー内のいずれかを指していれば、そこで確定していたはずである。ゲートは候補を `git -C <候補> rev-parse --show-toplevel` に掛けるため、指しているのがサブディレクトリであってもトップレベルは project root に解決され、runner も在るため候補2 へ進まない。そうならなかったことから、**候補1は project root のツリー内のどこも指していない**と言える。候補1と候補2 のどちらで解決したかは切り分けていない。観測される結果はどちらでも同じであるため、機構は断定しない。
 
-**注意1: 起動されるゲートの実体は project root 側のものである。** フックのコマンドが `${CLAUDE_PROJECT_DIR}` 配下を指すため、worktree 側の `scripts/hooks/pre-commit-gate.sh` は呼ばれない（診断用に「必ず exit 2」で終わるゲートを worktree へ置いても commit が通ることを実測した）。ただし **project root 側なのはゲート本体だけである**。ゲートは解決したツリーへ `cd` してから runner を相対パスで起動するため、その配下で走る runner・テスト・検査器はいずれも worktree 側のものになる（§8 のマーカー観測）。したがって自動経路で検証されないのは `pre-commit-gate.sh` 自身の改修に限る。その場合は stdin へ PreToolUse の JSON を投入する形で手元から確かめる（コマンドの形は §8）。
+**注意1: 起動されるゲートの実体は project root 側のものである。** フックのコマンドが `${CLAUDE_PROJECT_DIR}` 配下を指すため、worktree 側の `scripts/hooks/pre-commit-gate.sh` は呼ばれない（診断用に「必ず exit 2」で終わるゲートを worktree へ置いても commit が通ることを実測した）。ただし **project root 側なのはゲート本体だけである**。ゲートは解決したツリーへ `cd` してから runner を相対パスで起動するため、その配下で走る runner・テスト・検査器はいずれも worktree 側のものになる。したがって自動経路で検証されないのは `pre-commit-gate.sh` 自身の改修に限る。その場合は stdin へ PreToolUse の JSON を投入する形で手元から確かめる（コマンドの形は §3）。
 
-**注意2: worktree ごとに `mise trust` が要る。** `mise` の信頼はディレクトリ単位であり、project root を信頼していても新しく作った worktree は未信頼のままである。この状態では `mise exec` 経由で bats を解決できない。PATH にも bats が無ければ runner は非0で終わり（§4 の fail-closed）、ゲートが exit 2 で commit をブロックする。§8 の実測はこの条件下のものである。stderr に導入（`mise install`）と信頼（`mise trust`）の案内が出るので、それに従う。fail-closed が意図どおり働いた結果であり、異常ではない。
+**注意2: worktree ごとに `mise trust` が要る。** `mise` の信頼はディレクトリ単位であり、project root を信頼していても新しく作った worktree は未信頼のままである。この状態では `mise exec` 経由で bats を解決できない。PATH にも bats が無ければ runner は非0で終わり（§4 の fail-closed）、ゲートが exit 2 で commit をブロックする。stderr に導入（`mise install`）と信頼（`mise trust`）の案内が出るので、それに従う。fail-closed が意図どおり働いた結果であり、異常ではない。
 
 `plugins/adr/hooks/adr-commit-gate` は別のゲートであり、`lint-adr.sh` を `docs/adr` へ掛けるだけで runner を呼ばない。この役割分離は意図的なものであり、本経路とは独立している。
 
@@ -77,9 +77,13 @@ mise exec -- bats scripts/tests/lint-adr-stem.bats
 
 # ケース数だけを数える
 mise exec -- bats --count scripts/tests/*.bats
+
+# commit ゲートを手元から確かめる（PreToolUse の JSON を stdin へ投入する）
+printf '%s' '{"tool_input":{"command":"git commit -m \"任意の変更\""}}' \
+  | CLAUDE_PROJECT_DIR="$PWD" bash scripts/hooks/pre-commit-gate.sh
 ```
 
-各検査器は対象集合0件、JSON不正、期待集合と実集合の不一致を非0にする。host smokeは固定promptを各3回実行し、skill-load観測APIが無い場合は自動合格にせず、`degraded` 手動検査として証拠を保存する（証拠の保存先は各Waveの運用文書に従う。例は §1 Writing Wave 2 の記載を参照）。
+各検査器は対象集合0件、JSON不正、期待集合と実集合の不一致を非0にする。host smokeは固定promptを各3回実行し、skill-load観測APIが無い場合は自動合格にせず、`degraded` 手動検査として証拠を保存する（証拠の保存先は各Waveの運用文書に従う）。
 
 ## 4. セットアップ
 
@@ -113,24 +117,13 @@ $ echo $?
 
 ## 5. 失敗時の読み方
 
-bats は TAP 形式で報告する。runner は失敗したスイートの出力にスイート名を前置し、通過ケースの行を畳んで出す。次のブロックは過去の実行例であり、報告ケース総数を含む具体値はその時点のものである（総数の正解ではない）。
-
-```
-[test ] bats                 ... FAILED (exit 1, 6s)
-    bats| 1..80
-    bats| not ok 56 面②: 参照ファイルが期待リストに被覆されている
-    bats| #   `collect_finish' failed
-    bats| # 1/7 件の検査項目が失敗しました（全件を列挙する）:
-    bats| #   [FAIL] AC5: surface file list covers: .../adr-demotion.md -- surface file list does not cover: ...
-[check] validate-skills      ... ok (0s)
-FAILED: 1/2 suites (6s) -- bats
-```
+bats は TAP 形式で報告する。runner は失敗したスイートの出力にスイート名を前置し、通過ケースの行を畳んで出す。
 
 読み方の要点は3つ。
 
 - **`1..N`（N はテストファイルの増減に応じて変わる報告ケース総数）**は失敗の有無・件数によらず一定である。テストファイルの前提（fixture の ADR 群や被テスト検査器）が満たされない場合も、そのファイルのケース群が1件へ潰れることはない。専用の「前提: …」ケースが前提不成立を名指しして落ち、その前提に依存する面のケースも1件ずつ個別に落ちる（前提不成立の失敗が1件で済むという意味ではない。潰れないこと・総数が動かないことが不変条件である）。現在値は §3 のケース計数コマンドで求められる。
 - **`not ok` の行が失敗したケース**であり、続く `#` 行がその内訳である。1ケースは複数の検査項目を束ねており、`collect_finish` が**落ちた項目を全件列挙する**。1件目で打ち切らないため、複数の欠落があれば1回の実行で出揃う。
-- **ケース説明文の「面」は検査の面**を指す。旧ランナーの `[PASS]` ラベルは各面の内側に検査項目のラベルとして残っている（§7 参照）。
+- **ケース説明文の「面」は検査の面**を指す。
 
 ## 6. 実行経路に関する決定
 
@@ -160,91 +153,11 @@ FAILED: 1/2 suites (6s) -- bats
 
 **この決定を `docs/distribution-boundary.md` へ節として足さず、本書へ記録した理由**: 同文書 §1 が「配布物の内部構成（スキル・スクリプト・hook の分割）」を定めないと自ら宣言しており、実行経路の帰属はその明文の外にある。節を足すのは文書が引いた射程線を動かす行為であり、後続の判断が「どこまでがこの文書の責務か」を再び曖昧にする。ただし §3（テストと fixture の配置）は現況の置き場所を述べる記述であるため、実行経路が同じ側に属することと `scripts/tests/` への移動はそちらへ反映してある。
 
-### ADR 化要否の判定（2026-08-01）
+## 7. 配布プラグインの eval（`claude plugin eval`）
 
-判定基準は `plugins/adr/skills/manage-adr/references/adr-scoping.md` に従う。必要条件（却下代替が在ること）を先に確認し、成立する場合のみ粒度判定基準4項目で採点する。問い1 の判定は同問いの節が持つ。
+配布プラグインのプロンプト（trigger の発火条件・behavior の手順）を変更する作業で、変更前後の挙動の差を再現可能に比べるための手動実行系である。runner（`bash scripts/run-tests.sh`）には**組み込まない**。eval は課金を伴い、かつログイン済みの子セッション（`claude` の認証情報）を要する。commit ゲート・CIの双方から自動起動される runner にこれを混ぜると、commit のたびに課金が発生し、CI 環境の認証情報整備という別種の前提を背負うことになるため、意図的に外している。
 
-#### 問い2
-
-**必要条件: 成立**。却下した選択肢は「実行経路（runner）を配布物（`plugins/`）内へ置く」であり、却下理由は「runner は本リポジトリのスイート構成とスクリプト配置を直接知っており、`docs/distribution-boundary.md` §2 の判断軸（引数ですべての入力を受け既定値を持たない検査器のみ配布物へ）では配布元側に落ちる。配布物内へ置くと参照方向の一方向性が破れる」である。
-
-| 項目 | 点 | 判定の根拠 |
-|---|---|---|
-| 1. 後戻りコストが高い | 1 | 反転で `run-tests.sh` 本体・`pre-commit-gate.sh`・`distribution-boundary.md` §3・本書の4本に修正が要る（3本以上）。加えて非本数条件「ファイル群の構造変更（配置の規約変更）」にも当たる |
-| 2. 複数の適用先に波及する | 0 | 新たに決めたのは runner の帰属のみである。テスト・fixture の帰属は `distribution-boundary.md` §3 が既に定めており本決定の適用先ではない。ゲートは既に配布物外に在る。数える単位が2つ以上か迷うため、同点処理により0点 |
-| 3. 採用理由が揮発しやすい | 0 | 保持先が `docs/distribution-boundary.md`（共有規約文書）であり、§3 に採用理由（参照方向を一方向に固定する）が現に書かれているため値域(B) を満たす |
-| 4. ツールで自動強制できない | 1 | 実行経路が配布物内へ移されたことを検出する検査は無い。`adr-scoping-cases-edge.bats` 面⑤の走査は被テスト検査器1本と配布物内の Issue 番号に限られ、この違反を検出しない（採点は判定時点のもの。#637 で追加した一方向性の検査により、以後は移された実体の相対パスまたは内容に走査語彙が現れる場合に限り検出される） |
-| **合計** | **2** | |
-
-**結論: ADR 化しない**（2点以下）。行き先は「ツールでは強制できないが複数の箇所へ効かせたい規範 → 共有規約文書」であり、規範そのものは `docs/distribution-boundary.md` §3 に、採用理由は同節に置いてある。本書 §6 の記述はその決定に至った経緯（既存の判断軸をどう適用したか、なぜ境界文書へ節を足さなかったか）であり、規範の正本ではない。
-
-なお `ADR-202607230648-01`（ADR 運用機構のプラグイン抽出）決定2 の射程の注記は、テスト・fixture の配布物内／外の別を自らの射程外と明示している。実行経路の帰属を扱う既存 ADR は無く、既存 ADR の枠組みへの非core 改訂にもあたらない。
-
-## 7. 移行の対応（旧ランナー → bats）
-
-テストは bash のランナー4本（`scripts/test-*.sh`）から bats のケースへ載せ替えた。対応の要約は次のとおり。
-
-| 移行前のランナー | 緑経路の `[PASS]` ラベル数 | 移行後のファイル | ケース数 |
-|---|---|---|---|
-| `test-lint-adr.sh` | 137 | `lint-adr-index.bats` / `lint-adr-layers.bats` / `lint-adr-xref.bats` / `lint-adr-surface.bats` / `lint-adr-stem.bats` | 3 / 17 / 8 / 4 / 9 = 41 |
-| `test-adr-scoping-cases.sh` | 75 | `adr-scoping-cases-basic.bats` / `adr-scoping-cases-edge.bats` | 16 / 8 = 24 |
-| `test-lint-domain-doc.sh` | 5 | `lint-domain-doc.bats` | 3 |
-| `test-next-adr-id.sh` | 14 | `next-adr-id.bats` | 7 |
-| ローカルプラグイン runner | — | `local-plugin-runners.bats` | 4 |
-| 合計 | 231 | 10ファイル | **79** |
-
-**ケース数はアサーション数ではない。** 1ケースは検査の面に対応し、その面に属する検査項目（旧ランナーの `[PASS]` ラベル）を内側に束ねている。移行の完了時点では、旧ラベル231件はすべて `.bats` 本文へ文字列として残してあり、`grep -F` で1件ずつ突き合わせて欠落0件を確認した。その後 2026-08-07 のパーク欄廃止（#563）と 2026-08-29 の語彙統一（#806）でラベルが変化しており、以降は欠落0件が成立しない。**移行に伴う喪失と、廃止・語彙統一に伴う意図的な削除・言い換えを混同しないこと。** 内訳は次のとおり。
-
-- **削除6件**: `(AC6/AC7): 保留した決定が非存在slugを指すと dangling 参照違反` 系3件（exit 1／`dangling 参照違反` を含む／`ADR-202612121021-01-park-missing` を含む）、`(park link dedup): リンク形式 park dangling は1回のみ報告（count=1）`、および `lint-adr-surface.bats` 面③の `3段構え編集機構の対応表が edit-decision.md に存在する` と `decision tree（些末/非core/core 判定フロー）が edit-decision.md に存在する`
-- **言い換え4件（#563・パーク欄廃止）**: `(AC2/AC7-誤検出回避)` 系3件は park の記述を落として `(AC2-誤検出回避)` へ。`(AC5): ヘッダにレイヤ4（Related/park 参照の生存性・実在性）仕様が成文化されている` は `（Related 参照の生存性・実在性）` へ
-- **言い換え15種（#806・語彙統一）**: テスト資産の外来語 `corpus` を規範文書と同じ「ADR 群」へ揃えた際の言い換え。`AC1:` / `AC2:` / `AC3:` / `(AC5/レイヤ5-誤検出回避)` 接頭辞を持つ 16 行・一意なラベル文字列 15 種が対象で、`AC3: index-drift corpus は exit 1` は `AC3: index-drift の ADR 群は exit 1` の形になった。検査内容の変更は伴わず、変えたのはラベル引数・コメント・`@test` 名のみで、`collect_contains` 系が照合する needle は不変。なお旧ランナーから静的に抽出できる `[PASS]` ラベル（変数展開・`printf` 書式指定子を含まないもの）10 件で包含を照合すると、本変更で新たに欠落となるのは次の 6 件である（#806 の直前では欠落0件）。`AC1: valid corpus(01-mixed-validity) は exit 0` / `AC2: valid corpus(01-mixed-validity) はレイヤ3追加後も exit 0` / `AC2: xref-missing corpus は exit 1` / `AC2: xref-valid corpus(02-xref-valid) は exit 0` / `AC3: index-drift corpus は exit 1` / `AC3: valid corpus(01-mixed-validity) はレイヤ2追加後も exit 0`
-
-79 の内訳は **面 70 ＋ 前提不成立 9** である。旧ラベルを持たない新規ケースは次の **16件** に限る。
-
-- **前提不成立ケース 9件**（`.bats` ファイル1つにつき1件）— fixture の ADR 群・被テスト検査器の不在を、ファイル全体の潰れではなく専用ケースの失敗として報告するためのもの。bats は `setup_file` が失敗するとそのファイルの全ケースを1件へ潰し、報告総数が失敗の有無で変動する。これを避けるため、共有 `setup_file` は判定を一切せず常に `return 0` で終わり、前提の判定は専用ケースが行う。
-- **`lint-adr-surface.bats` の面①（期待リストのファイル存在）と面②（参照ファイルの被覆）の 2件** — 旧 `run_ac5_edit_mechanism` はこの2検査について失敗時にしか総数を加算せず、緑経路では `[PASS]` を1件も出さなかった。集約報告化に伴い緑経路でも報告される独立ケースになるため、旧ラベルを持たない新規ケースとして扱う。前提不成立ケースではない。
-- **`lint-adr-xref.bats` の面⑦（後継なし退役先への参照は違反にならない）の1件** — 2026-08-07 のレイヤ4 参照先退役検査限定化（#560）に伴う新規ケース。旧ランナーは `廃止済み` も退役違反として検査しており、対応する `[PASS]` ラベルを持たない。
-
-移行前後で「実行アサーション数が保存される」という不変条件は採らない。旧ランナーの総数加算箇所の多くは前提不成立分岐であり、それをケース化すれば総数は必ず増えるため、等号は算術的に成立しない。代わりに「旧ラベル集合の包含」と「増分の事前宣言（上記12件）」を不変条件とした。
-
-## 8. 動作確認済み
-
-### Writing Wave 2（2026-08-11）
-
-- `mise exec -- bats scripts/tests/writing-lint.bats`: lint契約の正負・境界を検証。
-- `mise exec -- bats scripts/tests/writing-contract.bats`: skill/agent、reviewer、fixture、matrix、ledgerを検証。
-- `bash scripts/validate-plugin-manifests.sh .`: 両marketplace、両manifest、skill集合を検証。
-- `bash scripts/validate-plugin-portability.sh .`: writing matrix、permission ledger、参照境界を検証。
-- Codexはagent登録面を自動観測できないため、明示起動とdegraded手動検査の契約を`compatibility.json`へ記録した。
-
-- **2026-08-01（#645）**: 移行完了時点の実測。
-  - `bash scripts/run-tests.sh` が exit 0。報告ケース数 76、失敗 0。
-  - 所要時間は 6.0〜9.4 秒（同一環境で3回計測。初回 9.44s / 2回目 6.84s / 3回目 6.04s）。実装時の見込み（約6秒）の範囲内であり、面のさらなる集約を検討する閾値（10秒）は超えていない。
-  - **AC2 の失敗観測**: `scripts/tests/lint-adr-surface.bats` の期待リストから `adr-demotion.md` を1件外した状態で、
-    - `bash scripts/run-tests.sh` → exit 1。`not ok 56 面②: 参照ファイルが期待リストに被覆されている` と、未登録ファイル名を名指す `[FAIL]` 行が出る。報告ケース総数は 76 のまま変わらない。
-    - commit ゲートへ PreToolUse の JSON を投入 → **exit 2**（commit をブロックする状態）。stderr に失敗したスイート名とケース名が現れる。
-
-      ```bash
-      printf '%s' '{"tool_input":{"command":"git commit -m \"任意の変更\""}}' \
-        | CLAUDE_PROJECT_DIR="$PWD" bash scripts/hooks/pre-commit-gate.sh
-      ```
-    - 期待リストを復元 → runner が exit 0、ゲートが exit 0。
-  - この失敗は Issue #645 の発端となった検知漏れ（`manage-adr/references/` へファイルが増えたのに期待リストへ未登録）と同一の型である。
-  - **検査対象ツリーの解決**（§2「git worktree で作業する場合」）: JSON の `cwd` に worktree を、`CLAUDE_PROJECT_DIR` に project root を与えた状態で、worktree 側だけを壊すと exit 2、戻すと exit 0 になることを確認。`cwd` を持たない JSON・git 外の cwd・runner を持たないツリーの各分岐についても、フォールバック順と fail-closed（exit 2）を確認した。
-  - **観測方法についての注記**: 上記のゲート観測は PreToolUse の JSON を stdin へ直接投入する形で行った。ゲートが受け取る入力は PreToolUse の JSON そのものであり、投入経路はゲートの判定に影響しないため、ブロック挙動の証拠としては等価である。ハーネス経由での実地確認は #653 で別途行った（下記）。
-  - **bats 解決失敗時の fail-closed**: `mise` も PATH 上の `bats` も見えない環境（`env -i PATH=/usr/bin:/bin`）で runner を起動すると exit 1 で終わり、導入手順（`mise install` / `mise trust`）が stderr に出ることを確認。
-- **2026-08-01（#653）**: worktree セッションからハーネス経由（Claude Code の Bash ツールで `git commit --allow-empty` を打つ形）で観測した。`EnterWorktree` で入った worktree から2回実施し、いずれも同じ結果。
-  - 観測手段は2系統。`ps -eo pid=,args=` を 0.05 秒間隔でポーリングして `pre-commit-gate.sh` / `run-tests.sh` / `bats` のプロセスを拾い `readlink /proc/<pid>/cwd` で cwd を読む方法と、worktree 側の `scripts/run-tests.sh` 冒頭にのみ `$PWD` を追記するマーカーを一時的に仕込む方法（観測後に `git restore` で戻す）。
-  - **ゲートは発火する**。起動されたのは project root 側の `pre-commit-gate.sh` であり、その配下で `bash scripts/run-tests.sh` が **cwd=worktree** で走った。worktree 側マーカーも `PWD=worktree` で発火した。観測期間中、cwd が project root のプロセスは1つも現れていない。所要は約6.2秒（プロセス初出から最終出現まで）、commit は exit 0 で通った。
-  - **未信頼 worktree での fail-closed**: 1回目は worktree の `mise.toml` が未信頼で bats を解決できず、runner が非0、ゲートが exit 2 で commit をブロックした。runner は `mise exec` に失敗すると PATH へフォールバックする（§4）ため、この環境では PATH 上にも `bats` が無かったことになる。`mise trust --show` で project root=trusted / worktree=untrusted を確認。`mise trust` 後に上記の緑になった。
-  - この観測により、#645 時点の §2 の記述（worktree では自動起動が働かないため手動実行が要る）が誤りであることが確定した。
-dev-workflow Wave 3は`dev-workflow-skill-contract.bats`と`dev-workflow-fixture-contract.bats`を実行し、`skill-portability.bats`と各validatorを回帰実行する。前者はスキル横断の不変条件（起動契約・規模規律・単一出典・参照到達性）を、後者はfixtureが固定する境界を検査する。スキル別に4本を持つ構成は、単一出典と参照到達性が特定スキルへ帰属しないため2本へ再編した。fixtureは成果状態とhost adapter witnessを分離する。
-
-## 9. 配布プラグインの eval（`claude plugin eval`）
-
-配布プラグインのプロンプト（trigger の発火条件・behavior の手順）を変更する作業で、変更前後の挙動の差を再現可能に比べるための手動実行系である（Issue #877）。runner（`bash scripts/run-tests.sh`）には**組み込まない**。eval は課金を伴い、かつログイン済みの子セッション（`claude` の認証情報）を要する。commit ゲート・CIの双方から自動起動される runner にこれを混ぜると、commit のたびに課金が発生し、CI 環境の認証情報整備という別種の前提を背負うことになるため、意図的に外している。
-
-### 9.1 置き場と実行スクリプト
+### 7.1 置き場と実行スクリプト
 
 eval ケース（プロンプト・採点器・`scaffold.sh`・`case.yaml`）は配布物 `plugins/<plugin>/` の外、リポジトリ直下 `evals/<plugin>/` に置く。ケースの採点器は本リポジトリ固有の監査所見を名指しており配布先にとって意味を持たないため、`docs/distribution-boundary.md` §2・§3 と同じ判断軸で配布物から外している。一方 `claude plugin eval` は eval の置き場をプラグイン配下に限る（`--eval-dir` はプラグイン配下限定）ため、両立させる実行スクリプト `scripts/run-plugin-eval.sh` を用意した。
 
@@ -260,7 +173,7 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
 
 `claude` は PATH から解決する（`command -v claude`）。これらの引数検証・複製・配置・後始末・引数透過・終了コード透過は、本物の `claude` を呼ばず PATH 上をスタブに差し替えた `scripts/tests/run-plugin-eval.bats` が検査する。`plugins/` 配下のどのプラグインにも `evals/` が存在しないこと（配布物へ eval ケースを同梱していないこと）は `scripts/tests/eval-placement.bats` が機械検査する。両ファイルとも runner の bats スイートに含まれるため、`bash scripts/run-tests.sh` で走る。
 
-### 9.2 実行条件
+### 7.2 実行条件
 
 - 実行回数は `--runs 3`、`--ablation none`（プラグイン無しの腕は前後比較に要らない）、`--no-publish`、`--trust-plugin`、`--scaffold` を付ける。挙動ケースは `case.yaml` の `scaffold_script` で題材を組み立てるため、`--scaffold` が無いと題材の無い状態で走る（基準値も `--scaffold` 付きで取得した）。**一時複製は実行のたびに新しいディレクトリになるため、`--trust-plugin` を付けない場合の信頼確認プロンプトが毎回出る**
 - `--max-cost-usd` で上限を掛ける
@@ -290,7 +203,7 @@ bash scripts/run-plugin-eval.sh dependency-insight \
 mv ~/.docker.eval-off ~/.docker  # Bash 付与ケースのみ
 ```
 
-### 9.3 基準値（main 250cf56 時点）
+### 7.3 基準値（main 250cf56 時点）
 
 変更前に各ケースを3回実行した合格率。以後の比較はこの値を基準にする。
 
@@ -299,11 +212,5 @@ mv ~/.docker.eval-off ~/.docker  # Bash 付与ケースのみ
 | adr | 1.0 | 1.0 | |
 | dependency-insight | 1.0 | 1.0 | |
 | domain-design | 1.0 | 1.0 | run0 の不合格は採点器 `document-structure` の誤判定で、採点器を直した後の値 |
-| growth | 1.0 | 1.0 | 採点器 `priority-ignores-origin` を llm から regex へ置き換えて取得済み応答へ当て直した値。書き込み成功を前提とする3採点器は無効化中（§9.2） |
+| growth | 1.0 | 1.0 | 採点器 `priority-ignores-origin` を llm から regex へ置き換えて取得済み応答へ当て直した値。書き込み成功を前提とする3採点器は無効化中（§7.2） |
 | writing | 1.0 | 1.0 | |
-
-## Cross-host Plugin Wave 4（2026-08-12）
-
-- `domain-design`（0.1.0）と`dependency-insight`（0.1.0）はmarketplace登録前の単体配布物として、両manifest、skill内reference、compatibility、permission ledgerを検査する。
-- `dev-workflow`は境界変更により0.10.0、`adr`は0.3.1、`growth`は0.2.2、`writing`は0.2.1へ更新した。各version変更は文脈固有ルール追加またはskill移設に伴う配布物変更を理由とする。
-- 明示呼び出しの契約fixtureは`plugin-boundaries/domain-design`と`plugin-boundaries/dependency-insight`に置き、`check-plugin-boundary-decision.sh`で旧path、agent依存、graph差分、7判定、J1/J2承認を検査する。marketplace/runner登録はWave 5の対象である。
