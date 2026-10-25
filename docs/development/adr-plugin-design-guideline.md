@@ -111,13 +111,12 @@ ADR 化要否の判定は、条文を読む判定主体が散文で結論と根�
 
 ### 4.3 固定列挙は glob の増減に追随しない
 
-参照面やテストスイートを増減させる改修は、次の3系統の固定列挙への追随を伴う。いずれも glob の結果を自動で反映しない。
+参照面やテストスイートを増減させる改修は、次の2系統の固定列挙への追随を伴う。いずれも glob の結果を自動で反映しない。
 
 - `scripts/run-tests.sh` の `EXPECTED_BATS` — 実行対象 bats の固定リスト。glob 結果との双方向照合を持つため、追随漏れは赤で現れる
 - `scripts/tests/manage-adr-surface.bats` の `AC5_SURFACE_FILES` — 旧記述の除去を検査する対象面の固定列挙。同じく glob との双方向照合を持つ
-- `docs/development/plugin-path-reference-ledger.md` — 配布物のパスを行番号で固定した参照台帳。行の挿入・削除でずれるため、行数を動かす編集で追随が要る
 
-改修の締めに、この3系統を1つずつ確認する。
+改修の締めに、この2系統を1つずつ確認する。
 
 ### 4.4 受入条件は、現行の検査経路が観測できる事象で書く
 
@@ -133,4 +132,3 @@ ADR 化要否の判定は、条文を読む判定主体が散文で結論と根�
 - `docs/adr/ADR-202607230648-01-adr-machinery-plugin-extraction.md` — ADR 運用機構を独立プラグイン `adr` として抽出・配布した決定。本書の対象範囲はこの決定によって生まれた
 - `docs/adr/ADR-202608011651-01-adr-value-precondition-criteria-in-operating-doc.md` — ADR の固有価値を却下代替に定めて起票の必要条件とし、粒度判定基準の項目と境界の実体は運用文書（`adr-scoping.md`）側へ委ねた決定。判定手続きの中身を改訂するときの正本の所在を示す
 - `docs/distribution-boundary.md` — 配布物と配布元の配置境界。ある資産をどちらへ置くかの判断軸3点を持ち、配布物の内部構成は射程外と自ら述べる
-- `docs/development/adr-plugin-portability-seams.md` — プラグイン抽出で判明した「何がプロジェクト固有で何が可搬か」の継ぎ目リスト。導入先環境への依存に触れる改修の入力になる
