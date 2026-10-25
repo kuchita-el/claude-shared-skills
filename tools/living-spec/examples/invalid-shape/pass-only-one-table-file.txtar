@@ -1,5 +1,0 @@
--- expected.yaml --
-[]
--- docs/rdra/variation.yaml --
-- バリエーション: 費目
-  値: 交通費、宿泊費

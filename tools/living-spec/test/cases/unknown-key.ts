@@ -93,4 +93,50 @@ export const cases: Case[] = [
     },
     expected: [{ rule: 'unknown-key', file: 'docs/rdra/actor.yaml', target: 'アクター:従業員' }],
   },
+  // 別の表のキー（情報の 属性）をバリエーションに書くと落ちる
+  {
+    name: 'fail-key-of-other-table',
+    files: {
+      'docs/rdra/variation.yaml': t`
+        - バリエーション: 費目
+          値: 交通費、宿泊費
+          属性: 費目の属性
+      `,
+    },
+    expected: [{ rule: 'unknown-key', file: 'docs/rdra/variation.yaml', target: 'バリエーション:費目' }],
+  },
+  // 状態の行に許されないキーがあると落ちる
+  {
+    name: 'fail-state-extra-key',
+    files: {
+      'docs/rdra/state.yaml': t`
+        - 状態モデル: 経費申請の状態
+          状態: 作成中
+          備考: x
+      `,
+    },
+    expected: [{ rule: 'unknown-key', file: 'docs/rdra/state.yaml', target: '状態:経費申請の状態／作成中' }],
+  },
+  // UC に許されないキーがあると落ちる
+  {
+    name: 'fail-use-case-extra-key',
+    files: {
+      'docs/rdra/use-case.yaml': t`
+        - UC: 経費申請を提出する
+          優先度: 高
+      `,
+    },
+    expected: [{ rule: 'unknown-key', file: 'docs/rdra/use-case.yaml', target: 'UC:経費申請を提出する' }],
+  },
+  // UC に画面要求のキーを書くと落ちる（UC の表のキーではない）
+  {
+    name: 'fail-use-case-screen-requirement',
+    files: {
+      'docs/rdra/use-case.yaml': t`
+        - UC: 経費申請を提出する
+          画面要求: 申請の入力画面
+      `,
+    },
+    expected: [{ rule: 'unknown-key', file: 'docs/rdra/use-case.yaml', target: 'UC:経費申請を提出する' }],
+  },
 ];

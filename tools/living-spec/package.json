@@ -9,7 +9,7 @@
     "dist"
   ],
   "scripts": {
-    "test": "node --test test/examples.test.ts test/cli.test.ts test/render.test.ts",
+    "test": "node --test test/rules.test.ts test/examples.test.ts test/cli.test.ts test/render.test.ts",
     "build": "esbuild src/main.ts --bundle --platform=node --format=esm --target=node22 --legal-comments=none --banner:js=\"#!/usr/bin/env node\n// 生成物。手で直さない。正本は tools/living-spec/src（pnpm build で作り直す）\nimport { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outfile=dist/living-spec.mjs"
   },
   "dependencies": {

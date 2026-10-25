@@ -1,5 +1,7 @@
-// examples/<規則>/<pass|fail>-<名前>.txtar を走査し、各見本を展開して検査器を走らせ、
+// examples/<規則>/<pass|fail>-<名前>.txtar を走査し、各見本をファイルとして展開して検査器を走らせ、
 // (rule, file, target) の集合が見本の expected.yaml と完全一致することを確かめる。
+// 見本は規則ごとに通る1件・落ちる1件の、表一式を置いたリポジトリの形。置き場からの読み込み・違反の file と target の形まで
+// つながっていることを見る。規則の分岐の網羅は、ファイルを置かない test/rules.test.ts（test/cases/）が持つ。
 // 書き漏らしの向きの規則の見本は、checkRepo に checkDocMissing を足して走らせる（規則は DOC_MISSING_RULES）。
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
