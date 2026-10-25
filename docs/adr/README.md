@@ -1,6 +1,6 @@
 # ADR（Architecture Decision Records）
 
-本ディレクトリは本リポジトリの ADR を置く場所。`docs/development/event-storming.md` の「技術的意思決定」集約の実体であり、同集約の状態遷移・コマンド・イベント定義と整合する。
+本ディレクトリは本リポジトリの ADR を置く場所。
 
 ## 対象 ADR ディレクトリ
 
