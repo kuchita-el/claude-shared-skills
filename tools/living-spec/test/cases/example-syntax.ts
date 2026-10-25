@@ -54,6 +54,10 @@ export const cases: Case[] = [
       'docs/requirements/withdraw.md': t`
         # 要求票: 経費申請を取り下げる
 
+        ## 理由
+
+        なし
+
         ## 仕様
 
         1. ${rule1}

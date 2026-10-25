@@ -11,6 +11,10 @@ const UC_TABLE = {
 const TITLE_ONLY = t`
   # 要求票: 経費申請を取り下げる
 
+  ## 理由
+
+  なし
+
   ## 仕様
 `;
 
@@ -96,6 +100,10 @@ export const cases: Case[] = [
       'docs/requirements/untitled.md': t`
         # 要求票:
 
+        ## 理由
+
+        なし
+
         ## 仕様
       `,
     },
@@ -109,6 +117,10 @@ export const cases: Case[] = [
       'docs/requirements/untitled.md': t`
         # 経費申請を取り下げる
 
+        ## 理由
+
+        なし
+
         ## 仕様
       `,
     },
@@ -121,6 +133,10 @@ export const cases: Case[] = [
       ...UC_TABLE,
       'docs/requirements/other.md': t`
         # 要求票: 経費申請を削除する
+
+        ## 理由
+
+        なし
 
         ## 仕様
       `,

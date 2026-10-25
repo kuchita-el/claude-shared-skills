@@ -47,7 +47,7 @@ const FEATURE = {
       ルール: ${S2}
   `,
 };
-const TITLE = '# 要求票: 経費申請を取り下げる\n\n## 仕様\n\n';
+const TITLE = '# 要求票: 経費申請を取り下げる\n\n## 理由\n\nなし\n\n## 仕様\n\n';
 const line = (n: number, sentence: string, rdra: string) => `${n}. ${sentence}\n   - RDRA: ${rdra}\n   - 理由: なし\n`;
 
 export const cases: Case[] = [

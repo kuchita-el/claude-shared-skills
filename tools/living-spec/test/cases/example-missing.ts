@@ -30,6 +30,10 @@ const twoRulesFeature = t`
 const twoLinesRequirement = t`
   # 要求票: 経費申請を取り下げる
 
+  ## 理由
+
+  なし
+
   ## 仕様
 
   1. ${rule1}
@@ -51,6 +55,10 @@ export const cases: Case[] = [
       'docs/requirements/submit.md': t`
         # 要求票: 経費申請を提出する
 
+        ## 理由
+
+        なし
+
         ## 仕様
 
         1. 従業員が経費申請を提出するとき、システムは提出先へ出す
@@ -67,6 +75,10 @@ export const cases: Case[] = [
       'docs/rdra/use-case.yaml': ucTable,
       'docs/requirements/withdraw.md': t`
         # 要求票: 経費申請を取り下げる
+
+        ## 理由
+
+        なし
 
         ## 仕様
 

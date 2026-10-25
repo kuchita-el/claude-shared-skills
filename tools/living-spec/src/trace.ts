@@ -137,6 +137,7 @@ export function checkTrace(sources: Sources, ctx: TraceContext): TraceResult {
         });
       }
     }
+    for (const issue of req.issues) out.push({ rule: 'requirement-structure', file, ...issue });
     // 参照の検査は UC 名が読めない票でも行う（行は表題と独立に読める）
     for (const [i, line] of req.lines.entries()) {
       const lineTarget = `仕様:${line.ordinal}`;

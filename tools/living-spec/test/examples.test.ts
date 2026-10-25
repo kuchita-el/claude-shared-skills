@@ -21,6 +21,7 @@ const RULES = [
   'unconnected',
   'duplicate-name',
   'requirement-uc',
+  'requirement-structure',
   'requirement-reference',
   'requirement-name-absent',
   'requirement-missing',

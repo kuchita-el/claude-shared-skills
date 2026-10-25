@@ -5,6 +5,10 @@ import type { Case } from './case.ts';
 const WITHDRAW_MD = t`
   # 要求票: 経費申請を取り下げる
 
+  ## 理由
+
+  なし
+
   ## 仕様
 `;
 

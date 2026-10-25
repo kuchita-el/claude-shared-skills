@@ -11,6 +11,10 @@ const rule2 = '取り下げられる条件を満たさないならば、シス�
 const requirement1 = t`
   # 要求票: 経費申請を取り下げる
 
+  ## 理由
+
+  なし
+
   ## 仕様
 
   1. ${rule1}
@@ -20,6 +24,10 @@ const requirement1 = t`
 
 const requirement2 = t`
   # 要求票: 経費申請を取り下げる
+
+  ## 理由
+
+  なし
 
   ## 仕様
 

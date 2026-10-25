@@ -141,9 +141,9 @@ export const cases: Case[] = [
     },
     expected: [],
   },
-  // RDRA 欄が「なし」の行と、RDRA 欄そのものが無い行は、参照なしとして扱い違反にしない
+  // RDRA 欄が「なし」の行は、参照なしとして扱い違反にしない
   {
-    name: 'pass-no-reference-or-no-field',
+    name: 'pass-no-reference',
     files: {
       ...TABLES,
       'docs/requirements/withdraw.md':
@@ -152,7 +152,6 @@ export const cases: Case[] = [
           3. システムは取り下げを記録する
              - RDRA: なし
              - 理由: なし
-          4. システムは取り下げの履歴を残す
         `,
     },
     expected: [],

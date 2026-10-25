@@ -1,6 +1,7 @@
-// 要求票（docs/requirements/*.md）を読む。
-// 見出し・欄の構造の検査は意図して作らない（README 参照）。読めない部分は「無い」ものとして寛容に扱い、
-// 構造の違反は出さない（仕様節が無い票は仕様の行が0件の票、RDRA 欄が無い行は参照なしの行）。
+// 要求票（<requirements>/*.md）を読む。
+// 読めない部分は「無い」ものとして寛容に読む（仕様節が無い票は仕様の行が0件の票、RDRA 欄が無い行は参照なしの行）。
+// そのうえで、雛形の構造から外れた箇所を issues に集める（requirement-structure が出す）。寛容に読んだ結果だけを見る
+// 他の規則が、構造の誤りを黙って読み飛ばさないようにするため。
 import {
   REQUIREMENT_NO_REFERENCE,
   REQUIREMENT_RDRA_FIELD,
@@ -21,12 +22,19 @@ export interface RequirementLine {
   reason: string | null;
 }
 
+// 雛形の構造から外れた箇所。target は違反の target（見出し:<名>・仕様:<N>・行:<行番号>）
+export interface StructureIssue {
+  target: string;
+  detail: string;
+}
+
 export interface Requirement {
   // 表題「# 要求票: <UC 名>」から読んだ UC 名。読めなければ null
   ucName: string | null;
   // 「## 理由」節の本文（空行を除いた行を改行でつなぐ）。節が無ければ null（検査は読まない。描画が使う）
   reason: string | null;
   lines: RequirementLine[];
+  issues: StructureIssue[];
 }
 
 // 参照の欄の1要素。<種類>「<名前>」として読めなければ kind・name が null（raw は読もうとした文字列）
@@ -37,8 +45,11 @@ export interface Reference {
 }
 
 export function parseRequirement(source: string): Requirement {
-  // HTML コメント（複数行にまたがる）の中は読まない。閉じていないコメントは末尾までをコメントとして扱う
-  const text = source.replace(/^﻿/, '').replace(/<!--[\s\S]*?(?:-->|$)/g, '');
+  // HTML コメント（複数行にまたがる）の中は読まない。閉じていないコメントは末尾までをコメントとして扱う。
+  // 行番号を保つため、コメントは中の改行だけを残して消す
+  const text = source
+    .replace(/^\uFEFF/, '')
+    .replace(/<!--[\s\S]*?(?:-->|$)/g, (c) => c.replace(/[^\n]/g, ''));
   const lines = text.split(/\r?\n/);
   let ucName: string | null = null;
   let titleSeen = false;
@@ -46,7 +57,12 @@ export function parseRequirement(source: string): Requirement {
   let inReason = false;
   let reason: string[] | null = null;
   const out: RequirementLine[] = [];
-  for (const line of lines) {
+  const issues: StructureIssue[] = [];
+  const headings = new Set<string>();
+  // 仕様の行ごとに、欄を何回書いたか
+  const fieldCount: { rdra: number; reason: number }[] = [];
+  const fieldRe = (name: string) => new RegExp(`^\\s+[-*]\\s+${name}[:：]\\s*(.*?)\\s*$`);
+  for (const [i, line] of lines.entries()) {
     if (/^#\s/.test(line)) {
       // 最初のレベル1見出しだけが表題
       if (!titleSeen) {
@@ -58,6 +74,12 @@ export function parseRequirement(source: string): Requirement {
     }
     if (/^##\s/.test(line)) {
       const heading = line.replace(/^##\s+/, '').trim();
+      if (heading !== REQUIREMENT_REASON_HEADING && heading !== REQUIREMENT_SPEC_HEADING) {
+        issues.push({ target: `見出し:${heading}`, detail: `雛形に無い見出し「## ${heading}」（見出しは「## ${REQUIREMENT_REASON_HEADING}」「## ${REQUIREMENT_SPEC_HEADING}」に限る）` });
+      } else if (headings.has(heading)) {
+        issues.push({ target: `見出し:${heading}`, detail: `見出し「## ${heading}」が2回以上ある` });
+      }
+      headings.add(heading);
       inSpec = heading === REQUIREMENT_SPEC_HEADING;
       inReason = heading === REQUIREMENT_REASON_HEADING;
       if (inReason && reason === null) reason = [];
@@ -68,18 +90,46 @@ export function parseRequirement(source: string): Requirement {
       continue;
     }
     if (!inSpec) continue;
+    if (line.trim() === '') continue;
     const spec = line.match(/^\d+\.(?:\s+(.*?))?\s*$/);
     if (spec !== null) {
       out.push({ ordinal: out.length + 1, text: spec[1] ?? '', rdra: null, reason: null });
+      fieldCount.push({ rdra: 0, reason: 0 });
+      if ((spec[1] ?? '') === '') issues.push({ target: `仕様:${out.length}`, detail: '要求文が空' });
       continue;
     }
-    const field = line.match(new RegExp(`^\\s+[-*]\\s+${REQUIREMENT_RDRA_FIELD}[:：]\\s*(.*?)\\s*$`));
     const current = out[out.length - 1];
-    if (field !== null && current !== undefined && current.rdra === null) current.rdra = field[1];
-    const reasonField = line.match(new RegExp(`^\\s+[-*]\\s+${REQUIREMENT_REASON_FIELD}[:：]\\s*(.*?)\\s*$`));
-    if (reasonField !== null && current !== undefined && current.reason === null) current.reason = reasonField[1];
+    const field = line.match(fieldRe(REQUIREMENT_RDRA_FIELD));
+    const reasonField = line.match(fieldRe(REQUIREMENT_REASON_FIELD));
+    if (current === undefined || (field === null && reasonField === null)) {
+      issues.push({
+        target: `行:${i + 1}`,
+        detail: `仕様の節に読めない行「${line.trim()}」（番号つきの要求文と、その直下に字下げした「- ${REQUIREMENT_RDRA_FIELD}: 」「- ${REQUIREMENT_REASON_FIELD}: 」の欄だけを書く）`,
+      });
+      continue;
+    }
+    const count = fieldCount[fieldCount.length - 1];
+    if (field !== null) {
+      count.rdra++;
+      if (current.rdra === null) current.rdra = field[1];
+    } else {
+      count.reason++;
+      if (current.reason === null) current.reason = reasonField![1];
+    }
   }
-  return { ucName, reason: reason === null ? null : reason.join('\n'), lines: out };
+  if (!headings.has(REQUIREMENT_REASON_HEADING)) {
+    issues.push({ target: `見出し:${REQUIREMENT_REASON_HEADING}`, detail: `見出し「## ${REQUIREMENT_REASON_HEADING}」が無い` });
+  }
+  if (!headings.has(REQUIREMENT_SPEC_HEADING)) {
+    issues.push({ target: `見出し:${REQUIREMENT_SPEC_HEADING}`, detail: `見出し「## ${REQUIREMENT_SPEC_HEADING}」が無い` });
+  }
+  for (const [k, c] of fieldCount.entries()) {
+    for (const [name, n] of [[REQUIREMENT_RDRA_FIELD, c.rdra], [REQUIREMENT_REASON_FIELD, c.reason]] as const) {
+      if (n === 0) issues.push({ target: `仕様:${k + 1}`, detail: `「- ${name}: 」の欄が無い（書くことが無ければ「なし」と書く）` });
+      if (n > 1) issues.push({ target: `仕様:${k + 1}`, detail: `「- ${name}: 」の欄が2回以上ある（最初の欄だけを読む）` });
+    }
+  }
+  return { ucName, reason: reason === null ? null : reason.join('\n'), lines: out, issues };
 }
 
 // 参照の欄を「、」区切りの要素へ分ける。名前の「」の中の「、」では分けない。

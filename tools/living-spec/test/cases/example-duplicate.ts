@@ -7,7 +7,7 @@ const rule2 = '取り下げられる条件を満たさないならば、シス�
 const ucTable = '- UC: 経費申請を取り下げる\n';
 
 const requirement = (...rules: string[]) =>
-  '# 要求票: 経費申請を取り下げる\n\n## 仕様\n\n' +
+  '# 要求票: 経費申請を取り下げる\n\n## 理由\n\nなし\n\n## 仕様\n\n' +
   rules.map((r, i) => `${i + 1}. ${r}\n   - RDRA: なし\n   - 理由: なし\n`).join('');
 
 // ルール1つ分の機能。scenarios は字下げを除いて書いたシナリオ群（ルールの下の字下げ4字はここで足す）
