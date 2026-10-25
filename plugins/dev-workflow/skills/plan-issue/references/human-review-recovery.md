@@ -30,8 +30,6 @@ plan-issue SKILL.md の `## 人間レビュー却下後のリカバリ` から�
 2. plan-issue スキルを再起動する: `/dev-workflow:plan-issue {番号} "{補足指示}"`（plan-issue の通常モードは「Issue番号 + 補足指示」を引数で受け取れる。SKILL.md ステップ1の判定例参照）
 3. ステップ5の連番命名解決により新規 plan は連番サフィックス付きパス（`issue-{番号}-2.md`, `issue-{番号}-3.md` …）へ書き込まれ（メインが Glob で空きパスを解決→新規 plan エージェントインスタンスが直接 Write）、旧 `issue-{番号}.md` は上書きされず残る（明示的に削除しない）。Issue・PR・dogfood ログから旧 plan へのパス参照は維持される
 
-この経路は `docs/development/event-storming.md` P2（変更要求対応 → 新インスタンス作成）と整合する。
-
 ## 手動修正パスの操作手順
 
 開発者が Edit で plan ファイルを直接修正する。修正対象の plan ファイルは `plan-location-resolution.md` の解決順序（現作業ディレクトリ → メイン worktree フォールバック）で特定し、特定したディレクトリ内のファイルを in-place で修正する（現作業ディレクトリへコピーしない）。必要に応じてステップ7のレビュアーエージェントを再起動して整合性を再確認してもよい。
