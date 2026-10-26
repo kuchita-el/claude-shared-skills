@@ -42,6 +42,37 @@ collect_count() {
     return 0
 }
 
+# front-matter の key の値を前後空白を除いて出力する。front-matter を持たない旧形式やキー省略は
+# 空を出力する（lint-adr.sh がキー省略と値空を同じ「空」として扱うのに合わせる）。
+# fixture の前提確認に使う。ファイル全体への部分一致では本文中の同じ文字列にも当たる。
+frontmatter_value() {
+    local file="$1" key="$2"
+    awk -v key="$key" '
+        NR == 1 { if ($0 != "---") exit; next }
+        /^---[[:space:]]*$/ { exit }
+        index($0, key ":") == 1 {
+            v = substr($0, length(key) + 2)
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+            print v
+            exit
+        }
+    ' "$file"
+}
+
+# needle を含む最初の行が `## 関連ADR` 節に対してどこにあるかを before / inside / after / absent で
+# 出力する。節の開閉は lint-adr.sh の extract_body_related と同じ規則（`## 関連ADR` で開き、次の
+# `## ` 見出しで閉じる）で判定する。見出しが消えたり改名されたりすると Related 行が1件も抽出されず、
+# 違反にならないことを確かめるケースが自明に緑になるため、行の位置を前提として確かめるのに使う。
+related_section_position() {
+    local file="$1" needle="$2"
+    awk -v needle="$needle" '
+        /^##[[:space:]]+関連ADR/ { state = "inside"; seen = 1; next }
+        state == "inside" && /^##[[:space:]]/ { state = "after"; next }
+        index($0, needle) { print (seen ? state : "before"); found = 1; exit }
+        END { if (!found) print "absent" }
+    ' "$file"
+}
+
 @test "前提: 被テスト検査器と fixture の ADR 群が存在する" {
     assert_preconditions_met
 }
@@ -114,8 +145,10 @@ collect_count() {
     collect_init
 
     local source_file="$CORPUS_DIR/valid/06-related-valid/ADR-202612310906-01-related-valid-source.md"
-    collect_contains "$(cat "$source_file")" "ADR-209901010101-01-nonexistent-quoted" \
-        "(AC2-誤検出回避): 実在しないstemを引用するデコイ行がfixtureに存在する（行が消えると本ケースの検出力が空回りする）"
+    collect_equals "$(frontmatter_value "$source_file" validity)" "有効" \
+        "(AC2-誤検出回避): sourceが有効である（有効でないとRelatedが検査されず本ケースが自明に成立する）"
+    collect_equals "$(related_section_position "$source_file" "ADR-209901010101-01-nonexistent-quoted")" "inside" \
+        "(AC2-誤検出回避): 実在しないstemを引用するデコイ行が関連ADR節の内側に存在する（行や節見出しが消えると本ケースの検出力が空回りする）"
 
     run_sut "$CORPUS_DIR/valid/06-related-valid"
     collect_rc 0 "(AC2-誤検出回避): 全書式の有効参照・散文の非実在stem引用は exit 0: exit 0"
@@ -152,13 +185,121 @@ collect_count() {
     collect_init
 
     local source_file="$CORPUS_DIR/valid/06-related-valid/ADR-202612310906-01-related-valid-source.md"
-    collect_contains "$(cat "$source_file")" "ADR-202701030906-01-related-valid-retired-mentioned" \
-        "(AC2-後継なし退役): 後継なし退役ADRを先頭stemに指すRelated行がfixtureに存在する（行が消えると本ケースが自明に成立する）"
+    collect_equals "$(related_section_position "$source_file" "Related: ADR-202701030906-01-related-valid-retired-mentioned")" "inside" \
+        "(AC2-後継なし退役): 後継なし退役ADRを先頭stemに指すRelated行が関連ADR節の内側に存在する（行や節見出しが消えると本ケースが自明に成立する）"
 
     run_sut "$CORPUS_DIR/valid/06-related-valid"
     collect_rc 0 "(AC2-後継なし退役): 先頭stemが後継なし退役ADRのRelatedは違反にならない: exit 0"
     collect_not_contains "$output" "ADR-202701030906-01-related-valid-retired-mentioned" \
         '(AC2-後継なし退役): 先頭stemが後継なし退役ADRのRelatedは違反にならない: 当該 stem が出力に現れない'
+
+    collect_finish
+}
+
+# source の限定: 有効でない ADR（上書き済み・廃止済み・提案中・却下・旧形式）の `Related:` は
+# 検査しない。各 source は実在しない stem を指しており、限定が外れると dangling 違反として現れる。
+# source を有効でない区分ごとに1本ずつ置くのは、限定を特定の区分へ狭める退行
+# （例: 上書き済みの source だけを読み飛ばす）も、残った区分の dangling 違反として捉えるためである。
+#
+# 各 source の Related 行が `## 関連ADR` 節の内側にあることを前提として確かめる。1本の source で
+# 節見出しが崩れると、その区分だけが黙って検出力を失うためである。参照先ごとに出力を名指しで
+# 確かめる項は置かない。どの参照先も実在しないため、抽出されれば必ず dangling 違反になり rc=1 で落ちる。
+#
+# 加えて、値を持つ非有効区分（上書き済み・廃止済み）は validity を名指しで固定する。読み飛ばしを
+# 特定の区分へ狭める変異を捉えるには、その区分の source が fixture に残っている必要があるが、提案中・
+# 却下・旧形式は validity が空でこの読み飛ばしでは同一経路のため、値で区別されるのは上書き済みと
+# 廃止済みだけである。この2区分の source が非有効区分どうしの front-matter 漂流（例: 廃止済み →
+# 提案中）で黙って消えると、依然として非有効のまま rc=0 が保たれ、当該区分を狙う変異への検出力が
+# 失われる。空区分（提案中・却下・旧形式）は代表が3本あり、validity では互いに区別できないため固定しない。
+@test "面⑨: 有効でない source の Related は検査しない" {
+    collect_init
+
+    local dir="$CORPUS_DIR/valid/09-related-source-not-valid"
+    local pair src target
+    for pair in \
+        "ADR-202703010907-01-related-src-superseded|ADR-209903010101-01-nonexistent-from-superseded" \
+        "ADR-202703030907-01-related-src-abolished|ADR-209903010101-01-nonexistent-from-abolished" \
+        "ADR-202703040907-01-related-src-proposed|ADR-209903010101-01-nonexistent-from-proposed" \
+        "ADR-202703050907-01-related-src-rejected|ADR-209903010101-01-nonexistent-from-rejected" \
+        "ADR-20270306-legacy-related-src|ADR-209903010101-01-nonexistent-from-legacy"; do
+        src="${pair%%|*}"
+        target="${pair#*|}"
+        collect_equals "$(related_section_position "$dir/$src.md" "Related: $target")" "inside" \
+            "(source限定): $src が実在しない参照先を指すRelated行が関連ADR節の内側に存在する（行や節見出しが消えると本ケースが自明に成立する）"
+    done
+
+    # 値を持つ非有効区分の validity を固定する（上の読み飛ばしで区別されるのはこの2区分のみ）。
+    # 区分の代表が非有効区分どうしの漂流で消えると、その区分を狙う変異への検出力が黙って失われる。
+    collect_equals "$(frontmatter_value "$dir/ADR-202703010907-01-related-src-superseded.md" validity)" "上書き済み" \
+        "(source限定): 上書き済み source の validity が固定されている（上書き済み区分の代表が非有効区分間の漂流で消えないため）"
+    collect_equals "$(frontmatter_value "$dir/ADR-202703030907-01-related-src-abolished.md" validity)" "廃止済み" \
+        "(source限定): 廃止済み source の validity が固定されている（廃止済み区分の代表が非有効区分間の漂流で消えないため）"
+
+    run_sut "$dir"
+    collect_rc 0 "(source限定): 有効でないsourceのRelatedは検査されない: exit 0"
+    collect_not_contains "$output" "dangling 参照違反" \
+        '(source限定): 有効でないsourceのRelatedは検査されない: "dangling 参照違反" を含まない'
+
+    collect_finish
+}
+
+# 参照先の fail-open: 参照先が旧形式・提案中・却下で validity が空なら、実在する限り違反にしない
+# （参照先退役違反は validity が上書き済みと完全一致する参照先だけを対象とする）。
+# 前提として確かめるのは次の3つである。いずれかが崩れると、本ケースは「空の参照先」を通さないまま
+# 緑で残る。source が有効であること（有効でない source の参照はそもそも検査されない）、
+# Related 行が `## 関連ADR` 節の内側にあること、参照先の front-matter の validity が空であること。
+@test "面⑩: validity が空の参照先は違反にならない" {
+    collect_init
+
+    local dir="$CORPUS_DIR/valid/10-related-target-validity-empty"
+    local source_file="$dir/ADR-202703110907-01-related-empty-source.md"
+    local target
+    collect_equals "$(frontmatter_value "$source_file" validity)" "有効" \
+        "(参照先fail-open): sourceが有効である（有効でないとRelatedが検査されず本ケースが自明に成立する）"
+
+    for target in \
+        ADR-20270312-legacy-related-empty-target \
+        ADR-202703130907-01-related-empty-target-proposed \
+        ADR-202703140907-01-related-empty-target-rejected; do
+        collect_equals "$(related_section_position "$source_file" "Related: $target")" "inside" \
+            "(参照先fail-open): $target を指すRelated行が関連ADR節の内側に存在する"
+        collect_equals "$(frontmatter_value "$dir/$target.md" validity)" "" \
+            "(参照先fail-open): 参照先 $target の validity が空である"
+    done
+
+    run_sut "$dir"
+    collect_rc 0 "(参照先fail-open): validityが空の参照先は違反にならない: exit 0"
+    collect_not_contains "$output" "参照先退役違反" \
+        '(参照先fail-open): validityが空の参照先は違反にならない: "参照先退役違反" を含まない'
+    collect_not_contains "$output" "dangling 参照違反" \
+        '(参照先fail-open): validityが空の参照先は違反にならない: "dangling 参照違反" を含まない'
+
+    collect_finish
+}
+
+# 抽出範囲: `Related:` を抽出するのは `## 関連ADR` 節の内側だけである。節より前の行と、
+# 節が次の `## ` 見出しで閉じた後の行は検査しない。いずれも実在しない stem を指しており、
+# 範囲の限定が外れると dangling 違反として現れる。節の後ろの行は、節の終端で抽出を止める側を固定する。
+# 各行が節の前・内側・後ろのどこにあるかを前提として確かめる。節見出しが消えると節が一度も開かず、
+# 節の後ろの行が終端の検査を通らないまま本ケースが緑で残るためである。
+@test "面⑪: 関連ADR 節の外の Related は検査しない" {
+    collect_init
+
+    local dir="$CORPUS_DIR/valid/11-related-outside-section"
+    local source_file="$dir/ADR-202703210907-01-related-outside-source.md"
+    collect_equals "$(frontmatter_value "$source_file" validity)" "有効" \
+        "(節の内側に限定): sourceが有効である（有効でないとRelatedが検査されず本ケースが自明に成立する）"
+    collect_equals "$(related_section_position "$source_file" "Related: ADR-209903210101-01-nonexistent-before-section")" "before" \
+        "(節の内側に限定): 実在しない参照先を指すRelated行が関連ADR節の前に存在する"
+    collect_equals "$(related_section_position "$source_file" "Related: ADR-202703220907-01-related-outside-target")" "inside" \
+        "(節の内側に限定): 有効な参照先を指すRelated行が関連ADR節の内側に存在する（節見出しが消えると節の後ろの行が終端の検査を通らない）"
+    collect_equals "$(related_section_position "$source_file" "Related: ADR-209903210101-01-nonexistent-after-section")" "after" \
+        "(節の内側に限定): 実在しない参照先を指すRelated行が関連ADR節の後ろに存在する"
+
+    run_sut "$dir"
+    collect_rc 0 "(節の内側に限定): 節の外のRelatedは検査されない: exit 0"
+    collect_not_contains "$output" "dangling 参照違反" \
+        '(節の内側に限定): 節の外のRelatedは検査されない: "dangling 参照違反" を含まない'
 
     collect_finish
 }
