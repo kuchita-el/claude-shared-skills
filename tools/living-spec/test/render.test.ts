@@ -7,8 +7,8 @@ import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } 
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
-import { Script } from 'node:vm';
 import { fileURLToPath } from 'node:url';
+import { Script } from 'node:vm';
 import { materialize } from './fixture.ts';
 import { escapeHtml, renderHtml, stateChart } from '../src/html.ts';
 import { buildView } from '../src/view.ts';
@@ -261,6 +261,7 @@ test('開いた直後に見せる部分（ヘッダ・状態遷移図・UC の�
   assert.ok(firstSlice >= 0);
   const overview = html.slice(0, firstSlice);
   assert.ok(!overview.includes('<details'), '縦串より前に畳む要素が無い');
+  assert.ok(overview.indexOf('</header>') > overview.indexOf('<header>'), 'ヘッダが閉じる');
   const header = overview.slice(overview.indexOf('<header>'), overview.indexOf('</header>'));
   for (const part of ['生成時刻', escapeHtml(view.root), '<nav>', 'data-defs="open"', 'data-defs="close"']) {
     assert.ok(header.includes(part), `ヘッダに ${part} がある`);
@@ -273,6 +274,7 @@ test('開いた直後に見せる部分（ヘッダ・状態遷移図・UC の�
   const states = overview.slice(order[1], order[2]);
   assert.ok(states.includes('実線は事実、破線は仮説の遷移'), '凡例がある');
   assert.ok(states.includes('<th>元の状態</th>'), '遷移の表がある');
+  assert.ok(states.includes('<pre class="mermaid">'), '状態遷移図がある');
   const stray = overview.slice(order[3]);
   const unknown = '<span class="unknown" title="表に無い名前">⚠ 表に無いUC</span>';
   assert.ok(stray.includes(`<li>要求票 docs/requirements/ghost.md: UC『${unknown}』`), stray);
@@ -285,9 +287,10 @@ test('開いた直後に見せる部分（ヘッダ・状態遷移図・UC の�
 
 test('外から読む資源は Mermaid だけにする', () => {
   const html = renderHtml(buildView(sample), new Date());
-  // 絶対 URL と、引用符・=・( の直後のプロトコル相対の参照（//…）を集める。https:// の中の // は : の直後なので二重に集めない
+  // 絶対 URL（scheme の大文字小文字と種類を問わない）と、引用符・=・( の直後のプロトコル相対の参照（//…）を集める。
+  // https:// の中の // は : の直後なので二重に集めない
   const urls = [
-    ...[...html.matchAll(/https?:\/\/[^\s"'<>)]+/g)].map((m) => m[0]),
+    ...[...html.matchAll(/[a-z][a-z0-9+.-]*:\/\/[^\s"'<>)]+/gi)].map((m) => m[0]),
     ...[...html.matchAll(/["'=(]\s*(\/\/[^\s"'<>)]+)/g)].map((m) => m[1]),
   ];
   assert.ok(urls.length > 0, '外部の参照を集められている');
