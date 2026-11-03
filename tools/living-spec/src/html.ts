@@ -277,7 +277,8 @@ function sliceSection(uc: UseCaseView, view: View): string {
           })
           .join('')}</tbody></table>`;
   return `<section class="slice" id="${uc.anchor}">
-<h2>${escapeHtml(uc.name)} ${hypothesisBadge(uc.hypothesis)}</h2>
+<details>
+<summary><h2>${escapeHtml(uc.name)} ${hypothesisBadge(uc.hypothesis)}</h2></summary>
 <p>${escapeHtml(uc.description)}</p>
 <div class="cols">
 <div><h4>アクター</h4>${uc.actors.length === 0 ? '<p class="note">なし</p>' : `<ul>${roles(uc.actors)}</ul>`}</div>
@@ -294,6 +295,7 @@ ${requirementBlock(uc, view)}
 <h3>例</h3>
 ${exampleBlock(uc)}
 <p class="top"><a href="#top">先頭へ</a></p>
+</details>
 </section>`;
 }
 
@@ -335,7 +337,9 @@ table { border-collapse:collapse; margin:8px 0 16px; width:100%; }
 th, td { border:1px solid var(--line); padding:4px 8px; text-align:left; vertical-align:top; }
 th { background:var(--panel); }
 pre.mermaid { background:#fff; border:1px solid var(--line); border-radius:6px; padding:8px; overflow-x:auto; }
-section.slice { border-top:2px solid var(--line); margin-top:32px; padding-top:8px; }
+section.slice { border-top:1px solid var(--line); margin-top:0; padding:6px 0; }
+section.slice > details > summary { cursor:pointer; }
+section.slice > details > summary h2 { display:inline; margin:0; }
 .cols { display:flex; gap:32px; flex-wrap:wrap; }
 .badge { display:inline-block; font-size:12px; padding:1px 8px; border-radius:10px; background:#fff3bf; color:#5c3c00; vertical-align:middle; }
 .unknown { color:var(--warn); font-weight:600; }
