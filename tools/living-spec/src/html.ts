@@ -412,6 +412,25 @@ for (const t of document.querySelectorAll('.term')) {
     if (d) d.hidden = !d.hidden;
   });
 }
+// アンカーが指す UC の縦串を開く。開くだけで閉じず、他の縦串の開閉に触れない
+function openSlice(hash) {
+  if (!hash || hash.length < 2 || hash.charAt(0) !== '#') return;
+  let target = null;
+  try {
+    target = document.getElementById(decodeURIComponent(hash.slice(1)));
+  } catch (e) {
+    return;
+  }
+  if (!target) return;
+  const d = target.matches('section.slice') ? target.querySelector(':scope > details') : target.closest('details');
+  if (d) d.open = true;
+}
+openSlice(location.hash);
+window.addEventListener('hashchange', () => openSlice(location.hash));
+// # 以下が変わらない再訪（開いて閉じた縦串へのリンクをもう一度押す）は hashchange が起きないため、押下で拾う
+for (const a of document.querySelectorAll('a[href^="#"]')) {
+  a.addEventListener('click', () => openSlice(a.getAttribute('href')));
+}
 </script>
 <script type="module">
 import mermaid from '${MERMAID_URL}';

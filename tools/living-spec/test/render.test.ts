@@ -7,6 +7,7 @@ import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } 
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
+import { Script } from 'node:vm';
 import { fileURLToPath } from 'node:url';
 import { materialize } from './fixture.ts';
 import { escapeHtml, renderHtml, stateChart } from '../src/html.ts';
@@ -280,6 +281,41 @@ test('開いた直後に見せる部分（ヘッダ・状態遷移図・UC の�
   const clean = renderHtml(buildView(passExample), new Date());
   assert.ok(!clean.includes('<section id="stray">'));
   assert.ok(!clean.includes('href="#stray"'));
+});
+
+test('外から読む資源は Mermaid だけにする', () => {
+  const html = renderHtml(buildView(sample), new Date());
+  // 絶対 URL と、引用符・=・( の直後のプロトコル相対の参照（//…）を集める。https:// の中の // は : の直後なので二重に集めない
+  const urls = [
+    ...[...html.matchAll(/https?:\/\/[^\s"'<>)]+/g)].map((m) => m[0]),
+    ...[...html.matchAll(/["'=(]\s*(\/\/[^\s"'<>)]+)/g)].map((m) => m[1]),
+  ];
+  assert.ok(urls.length > 0, '外部の参照を集められている');
+  for (const url of urls) {
+    assert.ok(url.startsWith('https://cdn.jsdelivr.net/npm/mermaid@'), `Mermaid 以外の外部資源: ${url}`);
+  }
+});
+
+test('埋め込んだスクリプトは構文として読める', () => {
+  const html = renderHtml(buildView(sample), new Date());
+  const classic = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+  const modules = [...html.matchAll(/<script type="module">([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+  assert.ok(classic.length > 0, '通常のスクリプトがある');
+  assert.ok(modules.length > 0, 'モジュールのスクリプトがある');
+  // 通常のスクリプトはブラウザと同じくトップレベルで読む（.cjs の --check は関数で包むため return 等を通してしまう）
+  for (const code of classic) assert.doesNotThrow(() => new Script(code), code);
+  const dir = mkdtempSync(join(tmpdir(), 'living-spec-script-'));
+  try {
+    modules.forEach((code, i) => {
+      const file = join(dir, `m${i}.mjs`);
+      writeFileSync(file, code);
+      // --check は構文だけを見るため、https:// からの import は解決しない
+      const result = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
+      assert.equal(result.status, 0, `${result.stderr}\n${code}`);
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('CLI: 根の .cache/living-spec/index.html へ、生成時刻と根のパスを先頭に書き出す', () => {
