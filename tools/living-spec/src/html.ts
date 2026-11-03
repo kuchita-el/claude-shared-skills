@@ -435,7 +435,30 @@ for (const a of document.querySelectorAll('a[href^="#"]')) {
 <script type="module">
 import mermaid from '${MERMAID_URL}';
 const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-mermaid.initialize({ startOnLoad: true, securityLevel: 'strict', theme: dark ? 'neutral' : 'default' });
+mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: dark ? 'neutral' : 'default' });
+// 閉じた縦串の中の図は、その縦串を開いたときに描く（閉じた中の寸法が取れないブラウザで図が崩れないように）。
+// 描画は1本の連鎖で順に行う。描画を重ねると、同じミリ秒に作った図の ID が重なって別の図へ描き込まれ、
+// まだ手を付けていない要素が二重に渡りうるため、各段は前の描画が終わってから描く対象を選ぶ。
+let chain = Promise.resolve();
+function draw() {
+  chain = chain
+    .then(async () => {
+      const nodes = [...document.querySelectorAll('pre.mermaid:not([data-processed])')].filter(
+        (n) => !n.closest('details:not([open])'),
+      );
+      if (nodes.length > 0) await mermaid.run({ nodes });
+    })
+    .catch((e) => console.error(e));
+}
+draw();
+// toggle は泡立たないため、捕捉の段で受ける。閉じたときは何もしない
+document.addEventListener(
+  'toggle',
+  (e) => {
+    if (e.target instanceof HTMLDetailsElement && e.target.open) draw();
+  },
+  true,
+);
 </script>
 </body>
 </html>
