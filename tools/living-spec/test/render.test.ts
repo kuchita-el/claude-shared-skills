@@ -8,8 +8,9 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { Script } from 'node:vm';
 import { materialize } from './fixture.ts';
-import { renderHtml, stateChart } from '../src/html.ts';
+import { escapeHtml, renderHtml, stateChart } from '../src/html.ts';
 import { buildView } from '../src/view.ts';
 import type { StateModelView, UseCaseView, View } from '../src/view.ts';
 
@@ -207,6 +208,117 @@ test('HTML と Mermaid の名札の特殊文字を逃がす', () => {
   assert.ok(inner !== null, label);
   assert.doesNotMatch(inner[1], /["<>&]/);
   assert.ok(inner[1].includes('#quot;'));
+});
+
+test('全 UC の縦串を、見出しより下を閉じた状態で出す', () => {
+  const view = buildView(sample);
+  const html = renderHtml(view, new Date());
+  // 空の一覧を回して素通りしないよう、UC があり、全てに縦串の節があることを先に確かめる
+  assert.ok(view.useCases.length > 0, '見本に UC がある');
+  assert.equal(html.split('<section class="slice"').length - 1, view.useCases.length);
+  for (const uc of view.useCases) {
+    const slice = sliceOf(html, uc);
+    const body = slice.slice(slice.indexOf('>') + 1).trimStart();
+    // 節の直下に畳む要素が1つだけあり、open 属性を持たない（閉じた状態の印は open 属性の有無）
+    assert.ok(body.startsWith('<details'), `${uc.anchor}: 節の直下が details\n${slice}`);
+    assert.equal(slice.split('<details').length - 1, 1, `${uc.anchor}: details は1つ`);
+    const openTag = body.slice(0, body.indexOf('>') + 1);
+    assert.doesNotMatch(openTag, /\sopen(\s|=|>)/, `${uc.anchor}: 閉じている\n${openTag}`);
+    // 見出し（UC 名）だけが summary にある
+    const afterOpen = body.slice(openTag.length).trimStart();
+    assert.ok(afterOpen.startsWith('<summary>'), `${uc.anchor}: details の最初の子が summary`);
+    const summaryEnd = afterOpen.indexOf('</summary>');
+    assert.ok(summaryEnd >= 0, `${uc.anchor}: summary が閉じる`);
+    const summary = afterOpen.slice(0, summaryEnd);
+    assert.ok(summary.includes('<h2>'), `${uc.anchor}: 見出しが summary にある`);
+    assert.ok(summary.includes(escapeHtml(uc.name)), `${uc.anchor}: UC 名が summary にある`);
+    // 本文は summary の後ろ、details の中にそろう
+    const detailsEnd = afterOpen.indexOf('</details>');
+    assert.ok(detailsEnd > summaryEnd, `${uc.anchor}: details が閉じる`);
+    const content = afterOpen.slice(summaryEnd, detailsEnd);
+    for (const part of [
+      `<p>${escapeHtml(uc.description)}</p>`,
+      '<h4>アクター</h4>',
+      '<h4>外部システム</h4>',
+      '<h3>状態の遷移</h3>',
+      '<h3>情報</h3>',
+      '<h3>条件</h3>',
+      '<h3>要求票</h3>',
+      '<h3>例</h3>',
+      '先頭へ',
+    ]) {
+      assert.ok(content.includes(part), `${uc.anchor}: 本文に ${part} がある`);
+    }
+    assert.equal(afterOpen.slice(detailsEnd + '</details>'.length).trim(), '', `${uc.anchor}: details の後ろは空`);
+  }
+  assert.ok(html.includes('<summary><h2>名前に&lt;b&gt;&amp;&quot;記号&lt;/b&gt;がある'));
+});
+
+test('開いた直後に見せる部分（ヘッダ・状態遷移図・UC の一覧・結び付かない要求票・例）は畳まない', () => {
+  const view = buildView(sample);
+  const html = renderHtml(view, new Date());
+  const firstSlice = html.indexOf('<section class="slice"');
+  assert.ok(firstSlice >= 0);
+  const overview = html.slice(0, firstSlice);
+  assert.ok(!overview.includes('<details'), '縦串より前に畳む要素が無い');
+  assert.ok(overview.indexOf('</header>') > overview.indexOf('<header>'), 'ヘッダが閉じる');
+  const header = overview.slice(overview.indexOf('<header>'), overview.indexOf('</header>'));
+  for (const part of ['生成時刻', escapeHtml(view.root), '<nav>', 'data-defs="open"', 'data-defs="close"']) {
+    assert.ok(header.includes(part), `ヘッダに ${part} がある`);
+  }
+  const order = ['<header>', '<section id="states">', '<section id="use-cases">', '<section id="stray">'].map((s) =>
+    overview.indexOf(s),
+  );
+  assert.ok(order.every((i) => i >= 0), `全体像の各部がある: ${order}`);
+  assert.deepEqual([...order].sort((a, b) => a - b), order, '全体像の各部がこの順に並ぶ');
+  const states = overview.slice(order[1], order[2]);
+  assert.ok(states.includes('実線は事実、破線は仮説の遷移'), '凡例がある');
+  assert.ok(states.includes('<th>元の状態</th>'), '遷移の表がある');
+  assert.ok(states.includes('<pre class="mermaid">'), '状態遷移図がある');
+  const stray = overview.slice(order[3]);
+  const unknown = '<span class="unknown" title="表に無い名前">⚠ 表に無いUC</span>';
+  assert.ok(stray.includes(`<li>要求票 docs/requirements/ghost.md: UC『${unknown}』`), stray);
+  assert.ok(stray.includes(`<li>例 docs/examples/ghost.feature: 機能名『${unknown}』`), stray);
+  // 結び付かない要求票・例が無ければ、その節もヘッダの案内も出ない
+  const clean = renderHtml(buildView(passExample), new Date());
+  assert.ok(!clean.includes('<section id="stray">'));
+  assert.ok(!clean.includes('href="#stray"'));
+});
+
+test('外から読む資源は Mermaid だけにする', () => {
+  const html = renderHtml(buildView(sample), new Date());
+  // 絶対 URL（scheme の大文字小文字と種類を問わない）と、引用符・=・( の直後のプロトコル相対の参照（//…）を集める。
+  // https:// の中の // は : の直後なので二重に集めない
+  const urls = [
+    ...[...html.matchAll(/[a-z][a-z0-9+.-]*:\/\/[^\s"'<>)]+/gi)].map((m) => m[0]),
+    ...[...html.matchAll(/["'=(]\s*(\/\/[^\s"'<>)]+)/g)].map((m) => m[1]),
+  ];
+  assert.ok(urls.length > 0, '外部の参照を集められている');
+  for (const url of urls) {
+    assert.ok(url.startsWith('https://cdn.jsdelivr.net/npm/mermaid@'), `Mermaid 以外の外部資源: ${url}`);
+  }
+});
+
+test('埋め込んだスクリプトは構文として読める', () => {
+  const html = renderHtml(buildView(sample), new Date());
+  const classic = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+  const modules = [...html.matchAll(/<script type="module">([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+  assert.ok(classic.length > 0, '通常のスクリプトがある');
+  assert.ok(modules.length > 0, 'モジュールのスクリプトがある');
+  // 通常のスクリプトはブラウザと同じくトップレベルで読む（.cjs の --check は関数で包むため return 等を通してしまう）
+  for (const code of classic) assert.doesNotThrow(() => new Script(code), code);
+  const dir = mkdtempSync(join(tmpdir(), 'living-spec-script-'));
+  try {
+    modules.forEach((code, i) => {
+      const file = join(dir, `m${i}.mjs`);
+      writeFileSync(file, code);
+      // --check は構文だけを見るため、https:// からの import は解決しない
+      const result = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
+      assert.equal(result.status, 0, `${result.stderr}\n${code}`);
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('CLI: 根の .cache/living-spec/index.html へ、生成時刻と根のパスを先頭に書き出す', () => {

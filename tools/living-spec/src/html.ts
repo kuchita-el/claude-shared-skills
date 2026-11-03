@@ -277,7 +277,8 @@ function sliceSection(uc: UseCaseView, view: View): string {
           })
           .join('')}</tbody></table>`;
   return `<section class="slice" id="${uc.anchor}">
-<h2>${escapeHtml(uc.name)} ${hypothesisBadge(uc.hypothesis)}</h2>
+<details>
+<summary><h2>${escapeHtml(uc.name)} ${hypothesisBadge(uc.hypothesis)}</h2></summary>
 <p>${escapeHtml(uc.description)}</p>
 <div class="cols">
 <div><h4>アクター</h4>${uc.actors.length === 0 ? '<p class="note">なし</p>' : `<ul>${roles(uc.actors)}</ul>`}</div>
@@ -294,6 +295,7 @@ ${requirementBlock(uc, view)}
 <h3>例</h3>
 ${exampleBlock(uc)}
 <p class="top"><a href="#top">先頭へ</a></p>
+</details>
 </section>`;
 }
 
@@ -335,7 +337,9 @@ table { border-collapse:collapse; margin:8px 0 16px; width:100%; }
 th, td { border:1px solid var(--line); padding:4px 8px; text-align:left; vertical-align:top; }
 th { background:var(--panel); }
 pre.mermaid { background:#fff; border:1px solid var(--line); border-radius:6px; padding:8px; overflow-x:auto; }
-section.slice { border-top:2px solid var(--line); margin-top:32px; padding-top:8px; }
+section.slice { border-top:1px solid var(--line); margin-top:0; padding:6px 0; }
+section.slice > details > summary { cursor:pointer; }
+section.slice > details > summary h2 { display:inline; margin:0; }
 .cols { display:flex; gap:32px; flex-wrap:wrap; }
 .badge { display:inline-block; font-size:12px; padding:1px 8px; border-radius:10px; background:#fff3bf; color:#5c3c00; vertical-align:middle; }
 .unknown { color:var(--warn); font-weight:600; }
@@ -408,11 +412,53 @@ for (const t of document.querySelectorAll('.term')) {
     if (d) d.hidden = !d.hidden;
   });
 }
+// アンカーが指す UC の縦串を開く。開くだけで閉じず、他の縦串の開閉に触れない
+function openSlice(hash) {
+  if (!hash || hash.length < 2 || hash.charAt(0) !== '#') return;
+  let target = null;
+  try {
+    target = document.getElementById(decodeURIComponent(hash.slice(1)));
+  } catch (e) {
+    return;
+  }
+  if (!target) return;
+  const d = target.matches('section.slice') ? target.querySelector(':scope > details') : target.closest('details');
+  if (d) d.open = true;
+}
+openSlice(location.hash);
+window.addEventListener('hashchange', () => openSlice(location.hash));
+// # 以下が変わらない再訪（開いて閉じた縦串へのリンクをもう一度押す）は hashchange が起きないため、押下で拾う
+for (const a of document.querySelectorAll('a[href^="#"]')) {
+  a.addEventListener('click', () => openSlice(a.getAttribute('href')));
+}
 </script>
 <script type="module">
 import mermaid from '${MERMAID_URL}';
 const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-mermaid.initialize({ startOnLoad: true, securityLevel: 'strict', theme: dark ? 'neutral' : 'default' });
+mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: dark ? 'neutral' : 'default' });
+// 閉じた縦串の中の図は、その縦串を開いたときに描く（閉じた中の寸法が取れないブラウザで図が崩れないように）。
+// 描画は1本の連鎖で順に行う。描画を重ねると、同じミリ秒に作った図の ID が重なって別の図へ描き込まれ、
+// まだ手を付けていない要素が二重に渡りうるため、各段は前の描画が終わってから描く対象を選ぶ。
+let chain = Promise.resolve();
+function draw() {
+  chain = chain
+    .then(async () => {
+      const nodes = [...document.querySelectorAll('pre.mermaid:not([data-processed])')].filter(
+        (n) => !n.closest('details:not([open])'),
+      );
+      if (nodes.length > 0) await mermaid.run({ nodes });
+    })
+    .catch((e) => console.error(e));
+}
+draw();
+// toggle は泡立たないため、捕捉の段で受ける。閉じたときは何もしない
+document.addEventListener(
+  'toggle',
+  (e) => {
+    if (e.target instanceof HTMLDetailsElement && e.target.open) draw();
+  },
+  true,
+);
 </script>
 </body>
 </html>
