@@ -1,8 +1,8 @@
-// living-spec の検査器を探して呼ぶ中継。依存を持たない。検査器そのものはプラグインに含めず、利用者がソースからビルドして入れる。
+// living-spec の検査器を探して呼ぶ中継。依存を持たない。検査器そのものはプラグインに含めず、利用者が GitHub Release の添付物を取って入れる。
 // 使い方: node run.mjs check [--doc-missing] [根] | node run.mjs render [根] | node run.mjs hook
 // 検査器を探す順:
-//   1. 環境変数 LIVING_SPEC_BIN（ビルドした dist/living-spec.mjs のパス）
-//   2. 根から解決できるパッケージ @kuchita-el/living-spec（利用者のリポジトリへ npm i -D で入れたもの）の bin
+//   1. 環境変数 LIVING_SPEC_BIN（取った living-spec-<SHA>.mjs のパス）
+//   2. 根から解決できるパッケージ @kuchita-el/living-spec（開発者がリポジトリへ npm i -D で入れたもの）の bin
 // 根は hook なら CLAUDE_PROJECT_DIR（無ければ今の作業ディレクトリ）、それ以外は今の作業ディレクトリ。
 // 見つかれば引数と標準入力をそのまま渡し、検査器の終了コードで終わる。
 // 見つからなければ、hook は何もせず終了コード 0（検査器を入れていないリポジトリの編集を止めない）。
@@ -14,9 +14,10 @@ import { dirname, join, resolve } from 'node:path';
 
 const PACKAGE = '@kuchita-el/living-spec';
 
-const INSTALL = `living-spec の検査器が見つからない。次のどちらかで入れる:
-  1. claude-shared-skills の tools/living-spec で pnpm install && pnpm build し、このリポジトリで npm i -D <claude-shared-skills>/tools/living-spec
-  2. 環境変数 LIVING_SPEC_BIN に、ビルドした <claude-shared-skills>/tools/living-spec/dist/living-spec.mjs のパスを入れる`;
+const INSTALL = `living-spec の検査器が見つからない。次の2段で入れる:
+  1. 使う版のコミット SHA（40桁）を https://github.com/kuchita-el/claude-shared-skills/releases から選び、添付物を取る:
+     curl -fsSL --create-dirs -o ~/.local/share/living-spec/living-spec-<SHA>.mjs https://github.com/kuchita-el/claude-shared-skills/releases/download/living-spec-<SHA>/living-spec-<SHA>.mjs
+  2. エージェント（Claude Code・Codex 等）を起動するシェルで、環境変数 LIVING_SPEC_BIN に取ったファイルのパスを入れる`;
 
 function findChecker(root) {
   const fromEnv = process.env.LIVING_SPEC_BIN;
