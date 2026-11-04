@@ -52,6 +52,64 @@ function withdrawMd(sentence3: string | null, rdra3: string | null): string {
   return head + `3. ${sentence3}\n` + (rdra3 === null ? '' : `   - RDRA: ${rdra3}\n   - 理由: なし\n`);
 }
 
+// 承認の UC の表一式と票。withReceipt のとき、情報「領収書」を情報の表と UC の情報、行1の RDRA 欄に足す（要求文は変えない）
+function approveFiles(withReceipt: boolean): Record<string, string> {
+  const receiptRecord = withReceipt ? `- 情報: 領収書\n  説明: 経費の支払いを証す書類\n` : '';
+  const receiptInUc = withReceipt ? '\n    - 領収書' : '';
+  const receiptInRdra = withReceipt ? '、情報「領収書」' : '';
+  return {
+    'docs/rdra/actor.yaml': t`
+      - アクター: 承認者
+        役割: 経費申請を承認する
+        社内外: 社内
+    `,
+    'docs/rdra/condition.yaml': t`
+      - 条件: 承認できる役割である
+        条件の説明: 操作する人が承認者である
+    `,
+    'docs/rdra/information.yaml': `- 情報: 経費申請
+  属性: 申請者、金額
+  状態モデル: 経費申請の状態
+  説明: 従業員が出す経費の申請
+${receiptRecord}`,
+    'docs/rdra/state.yaml': t`
+      - 状態モデル: 経費申請の状態
+        状態: 提出済み
+        遷移UC: 経費申請を承認する
+        遷移先状態: 承認済み
+      - 状態モデル: 経費申請の状態
+        状態: 承認済み
+    `,
+    'docs/rdra/use-case.yaml': `- UC: 経費申請を承認する
+  アクター:
+    - 承認者
+  情報:
+    - 経費申請${receiptInUc}
+  条件:
+    - 承認できる役割である
+`,
+    'docs/requirements/approve.md': t`
+      # 要求票: 経費申請を承認する
+
+      ## 理由
+
+      承認者だけが経費申請を承認できるようにする。
+
+      ## 仕様
+
+      1. 承認者が申請を承認するとき、システムは申請を承認済みにする
+         - RDRA: アクター「承認者」、情報「経費申請」${receiptInRdra}、状態「経費申請の状態/承認済み」
+         - 理由: なし
+      2. 承認できる役割でなければ、システムは承認を受け付けない
+         - RDRA: 条件「承認できる役割である」
+         - 理由: なし
+      3. システムは承認した経費申請の金額を変えない
+         - RDRA: 情報「経費申請」
+         - 理由: なし
+    `,
+  };
+}
+
 export const cases: Case[] = [
   // 9種すべての種類（アクター・外部システム・情報・状態モデル・状態・UC・条件・バリエーション・アーキテクチャ特性）を1つの行に挙げ、すべて表にあり、名前が要求文に現れる
   {
@@ -215,5 +273,17 @@ export const cases: Case[] = [
     name: 'fail-undefined-actor',
     files: { ...TABLES, 'docs/requirements/withdraw.md': withdrawMd(`承認者が経費申請を見るとき、システムは内容を表示する`, `アクター「承認者」`) },
     expected: [{ rule: 'requirement-reference', file: 'docs/requirements/withdraw.md', target: '仕様:3' }],
+  },
+  // 要求文が欄の名前を活用・略称で書いても（「経費申請」を「申請」、「承認できる役割である」を「承認できる役割でなければ」）、違反にならない
+  {
+    name: 'pass-sentence-conjugates-and-abbreviates-names',
+    files: approveFiles(false),
+    expected: [],
+  },
+  // 欄に挙げた要素（情報「領収書」）に要求文が触れていなくても、検査器は止めない（欄の過剰は突き合わせの観点であり機械検査の対象ではない）
+  {
+    name: 'pass-listed-element-untouched-by-sentence',
+    files: approveFiles(true),
+    expected: [],
   },
 ];

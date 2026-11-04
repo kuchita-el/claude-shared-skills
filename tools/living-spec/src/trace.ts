@@ -72,15 +72,6 @@ function referenceProblem(ref: Reference, ctx: TraceContext): string | null {
   return `${ref.kind}『${ref.name}』が表に無い`;
 }
 
-// 名前が要求文に現れるべき部分。状態は状態名の部分だけ。読めない参照・語彙に無い種類・区切りの無い状態は検査しない（null。
-// requirement-reference が拾う。種類が誤っている参照に名前の出現まで問うと、同じ誤りを二重に出す）
-function nameInText(ref: Reference): string | null {
-  if (ref.kind === null || ref.name === null) return null;
-  if (!(REQUIREMENT_KINDS as readonly string[]).includes(ref.kind)) return null;
-  if (ref.kind === '状態') return splitState(ref.name)?.state ?? null;
-  return ref.name;
-}
-
 // 参照を（種類, 名前）の鍵にする。状態は区切りの前後の空白を除いた形へそろえる
 function refKey(kind: string, name: string): string {
   if (kind === '状態') {
@@ -145,15 +136,6 @@ export function checkTrace(sources: Sources, ctx: TraceContext): TraceResult {
         const problem = referenceProblem(ref, ctx);
         if (problem !== null) {
           out.push({ rule: 'requirement-reference', file, target: lineTarget, detail: `RDRA 欄の${problem}` });
-        }
-        const part = nameInText(ref);
-        if (part !== null && !line.text.includes(part)) {
-          out.push({
-            rule: 'requirement-name-absent',
-            file,
-            target: lineTarget,
-            detail: `RDRA 欄の${ref.kind}『${ref.name}』の名前（『${part}』）が要求文に現れない`,
-          });
         }
       }
     }
