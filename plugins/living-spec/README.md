@@ -27,7 +27,7 @@
 curl -fsSL --create-dirs -o ~/.local/share/living-spec/living-spec-<SHA>.mjs https://github.com/kuchita-el/claude-shared-skills/releases/download/living-spec-<SHA>/living-spec-<SHA>.mjs
 ```
 
-2. エージェント（Claude Code・Codex 等）を起動するシェルで、`LIVING_SPEC_BIN` に取ったファイルのパスを入れます。シェルの設定ファイルに書いてもかまいません。`~` は中継が展開しないため、下のように引用符で囲まない `export` で書いてシェルに展開させるか、絶対パスを入れます。引用符付きの値や設定ファイルの値に `~` を書くと文字のまま残り、検査器が見つからない扱いになります。
+2. エージェント（Claude Code・Codex 等）を起動するシェルで、`LIVING_SPEC_BIN` に取ったファイルのパスを入れます。シェルの設定ファイルに書いてもかまいません。`~` は中継が展開しません。下のように引用符で囲まない `export` で書いてシェルに展開させるか、絶対パスを入れます。引用符で囲んだ値や、シェルを通らない設定（エージェントの設定ファイルの環境変数の欄等）に `~` を書くと、文字のまま残り、検査器が見つからない扱いになります。
 
 ```bash
 export LIVING_SPEC_BIN=~/.local/share/living-spec/living-spec-<SHA>.mjs
