@@ -27,7 +27,7 @@ main への push ごとに Release を作る形は採らない。検査器が変
 
 main の祖先のコミットに限る。
 
-既定の選び方は次のとおりである。先に `git fetch origin` を単独で実行し、`origin/main` を最新にしておく。
+既定の選び方は次のとおりである。先に `git fetch origin` で `origin/main` を最新にしておく。
 
 ```bash
 git log -1 --format=%H origin/main -- tools/living-spec/src tools/living-spec/package.json tools/living-spec/pnpm-lock.yaml tools/living-spec/pnpm-workspace.yaml
@@ -35,7 +35,7 @@ git log -1 --format=%H origin/main -- tools/living-spec/src tools/living-spec/pa
 
 この命令は、ビルドの入力を最後に変えた main のコミットを返す。
 
-公開を取り消した SHA は再び使わない。その SHA の名前は再利用できないためである（(8)）。既定の選び方が取り消した SHA を返すことがある。取り消しの原因がビルドの入力の外にあったときである。そのときは `git rev-parse origin/main` が返す SHA で切る。
+公開を取り消した SHA は再び使わない。その SHA の名前は再利用できないためである（(8)）。既定の選び方が取り消した SHA を返すことがある。取り消しの原因がビルドの入力の外にあったときである。そのときは `git rev-parse origin/main` が返す SHA で切る。この SHA も取り消した SHA と同じなら、取り消した SHA が main の先頭にある。そのときは、main に新しいコミットが入るのを待ち、そのコミットで切る。
 
 ## (4) 誰が切るか
 
@@ -63,13 +63,13 @@ AI が保守者に代わって起動する場合は、保守者の明示の承�
 
    これはリポジトリの設定の変更である。AI が行う場合は、保守者の明示の承認を得る。有効にする前に公開した Release には、変更不可は掛からない。
 
-2. 同名の下書きの Release が残っていないことを確かめる。ワークフローの中の Release の有無の確認は、読み取りの権限で行うため、下書きが見えない。過去の失敗した実行が残した下書きは、その確認をすり抜ける。下書きは、保守者の認証で一覧を取れば見える。
+2. 同名の下書きの Release が残っていないことを確かめる。ワークフローの中の Release の有無の確認は、読み取りの権限で行うため、下書きが見えない。過去の失敗した実行が残した下書きは、その確認をすり抜ける。保守者の認証で次の命令を実行すれば、下書きもタグ名で引ける。gh は、公開した Release に加えて、そのタグ名を予定する下書きも探すためである。
 
    ```bash
-   gh release list --repo kuchita-el/claude-shared-skills --limit 1000 --json tagName,isDraft --jq '.[] | select(.isDraft and .tagName == "living-spec-<40桁SHA>")'
+   gh release view living-spec-<40桁SHA> --repo kuchita-el/claude-shared-skills --json isDraft --jq .isDraft
    ```
 
-   何も出なければ先へ進む。出たら、(9) の「下書きが残ったとき」に従って消してから起動する。
+   `release not found` で失敗すれば、同名の Release は無い。先へ進む。`true` なら下書きが残っている。(9) の「下書きが残ったとき」に従って消してから起動する。`false` なら、同じ SHA の Release は既に公開されている。その SHA では起動しない。
 
 ### 起動と見届け
 
@@ -79,11 +79,13 @@ AI が保守者に代わって起動する場合は、保守者の明示の承�
 gh workflow run living-spec-release.yml --repo kuchita-el/claude-shared-skills -f sha=<40桁SHA>
 ```
 
-起動した実行を `gh run watch` で見届ける。実行の ID は次の命令で取れる。
+起動した実行を `gh run watch` で見届ける。実行の題名は `living-spec release <40桁SHA>` である。実行の ID は、題名で絞って次の命令で取る。一覧は新しい順に並ぶため、最初の1件が最新の実行である。
 
 ```bash
-gh run list --workflow living-spec-release.yml --repo kuchita-el/claude-shared-skills --limit 1
+gh run list --workflow living-spec-release.yml --repo kuchita-el/claude-shared-skills --json databaseId,displayTitle,createdAt --jq 'map(select(.displayTitle == "living-spec release <40桁SHA>")) | first | {databaseId, createdAt}'
 ```
+
+起動の直後は、実行が一覧にまだ載っていないことがある。`databaseId` が `null` なら、少し待って引き直す。同じ SHA で起動し直したときは、前の実行を拾うことがある。`createdAt` が起動の後の時刻であることを確かめる。
 
 ```bash
 gh run watch <実行の ID> --repo kuchita-el/claude-shared-skills --exit-status
@@ -113,7 +115,7 @@ gh run watch <実行の ID> --repo kuchita-el/claude-shared-skills --exit-status
 
 ## (7) 構造の bats が覆わないもの
 
-構造の bats は、起動契機・書き込み権限・待ち合わせ・job と step の条件だけを固定する。次の6つは覆わない。ワークフローを変える PR のレビューで確かめる。
+構造の bats（`scripts/tests/living-spec-release-workflow.bats`）が何を固定するかは、bats の定義を見る。次の6つは覆わない。ワークフローを変える PR のレビューで確かめる。
 
 1. release job が実行する命令の中身。複合命令・パイプ・拡張の導入で、第三者のコードを走らせないこと
 2. 試験した生成物と、受け渡す・添付する生成物が同じであること。置き場、途中の上書き、写す元がビルドの出力であることを見る
@@ -126,7 +128,7 @@ gh run watch <実行の ID> --repo kuchita-el/claude-shared-skills --exit-status
 
 ## (8) 版の名前
 
-添付物とタグの名前は `living-spec-<40桁SHA>` である。SHA 以外の情報を持たない。semver は持たない。
+タグの名前は `living-spec-<40桁SHA>`、添付物の名前は `living-spec-<40桁SHA>.mjs` である。どちらも SHA 以外の情報を持たない。semver は持たない。
 
 公開の後は、リポジトリの Immutable Releases により、タグと添付物を変えられない。そのため、同じ名前は同じ中身を指し続ける。
 
@@ -154,7 +156,7 @@ Release の作成の途中で失敗すると、下書きの Release が残るこ
 gh release delete living-spec-<40桁SHA> --repo kuchita-el/claude-shared-skills --yes
 ```
 
-消した後、同名のタグが残っていないかを `git ls-remote --tags origin refs/tags/living-spec-<40桁SHA>` で確かめる。残っていれば、次の「タグの照合で止まったとき」に従う。
+下書きは同じ名前で複数残ることがあり、この命令は1件ずつ消す。消した後、(5) の下書きの確認をもう一度行い、下書きが出なくなるまで繰り返す。そのうえで、同名のタグが残っていないかを `git ls-remote --tags origin refs/tags/living-spec-<40桁SHA>` で確かめる。残っていれば、次の「タグの照合で止まったとき」に従う。
 
 ### タグの照合で止まったとき
 
@@ -164,7 +166,7 @@ Release の無い同名のタグが残っており、Release は作られてい�
 git ls-remote --tags origin refs/tags/living-spec-<40桁SHA>
 ```
 
-そのうえで、Release の無いタグを消すかを判断する。消すなら `git push origin --delete refs/tags/living-spec-<40桁SHA>` を単独で実行し、起動し直す。
+そのうえで、Release の無いタグを消すかを判断する。消すなら `git push origin --delete refs/tags/living-spec-<40桁SHA>` で消し、起動し直す。
 
 ### 公開の後に止まったとき
 

@@ -19,10 +19,7 @@
 # ある・build / smoke / release の job を読めない・それらの job で step を1件も読めない）は、
 # 違反の名前 `読み取り` で赤へ倒す。事実を読めないまま合格を返さないためである。
 #
-# 命令の中身、試験した生成物と添付する生成物の同一性、入力の判定の変種と判定の step の結び付き、
-# build job の step の順序と試験の命令が失敗を握りつぶさないこと、smoke の中身、タグの照合は
-# 覆わない。覆わないものの正本は docs/development/living-spec-release.md の (7) であり、
-# ワークフローを変える PR のコードレビューで確かめる。
+# 覆わないものは docs/development/living-spec-release.md の (7) が定める。
 load 'helpers/common'
 
 setup() {

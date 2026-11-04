@@ -4,10 +4,8 @@
 # 目的: 利用者が依存を導入せずに検査器を取れるよう、ビルド済みの生成物を、ビルド元の
 # コミット SHA だけで同定して配る（タグと Release の名前は living-spec-<sha>）。
 #
-# 起動契機: 保守者が workflow_dispatch で SHA を指定したときだけ走る。届ける版を人が
-# 選んだときだけ Release が増え、一覧がそのまま版の候補になるためである。
-# main への push ごとに作る形は採らない。検査器が変わらないコミットでも Release が増え、
-# 利用者が版を選ぶ手がかりにならないためである。
+# 起動契機: 保守者が workflow_dispatch で SHA を指定したときだけ走る。起動契機とその理由の
+# 正本は docs/development/living-spec-release.md の (2) である。
 #
 # 権限の置き方: 最上位と build・smoke の job は contents: read に留め、書き込み
 # （contents: write）は Release を作る release job だけに渡す。release job は
