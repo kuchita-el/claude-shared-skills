@@ -312,7 +312,7 @@ export function checkTrace(sources: Sources, ctx: TraceContext): TraceResult {
           rule: 'example-limit',
           file,
           target: `ルール:${r.name}`,
-          detail: `例が ${count} 件で上限 ${EXAMPLE_LIMIT} 件を超える（規則が束になっている。要求文を分ける）`,
+          detail: `例が ${count} 件で上限 ${EXAMPLE_LIMIT} 件を超える（要求文を分けるか、例を絞る。判定は書式の「例」の節）`,
         });
       }
     }
