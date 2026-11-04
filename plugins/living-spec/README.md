@@ -17,27 +17,29 @@
 
 ## 検査器の導入
 
-検査器と描画は、プラグインと分けて、利用するリポジトリが持つ道具として入れます。いまは npm へ公開しておらず、手元でも CI でもソースからビルドします。
+検査器と描画は、プラグインと分けて、利用するリポジトリが持つ道具として入れます。claude-shared-skills の GitHub Release に、依存を同梱した1ファイル `living-spec-<コミット SHA>.mjs` として置いています。版は Release の一覧から SHA で選びます。Node 22 以上のほかに要るものはありません。
 
 ### 手元
 
-```bash
-# claude-shared-skills のチェックアウトで
-pnpm --dir tools/living-spec install --frozen-lockfile
-pnpm --dir tools/living-spec build          # tools/living-spec/dist/living-spec.mjs ができる
+1. 使う版のコミット SHA（40桁）を [Release の一覧](https://github.com/kuchita-el/claude-shared-skills/releases)から選び、添付物を取ります。置き場はリポジトリの外にします（commit や検査の対象に混ざりません）。
 
-# 利用するリポジトリで（どちらか）
-npm i -D <claude-shared-skills>/tools/living-spec    # 手元のチェックアウトへの symlink として入る
-export LIVING_SPEC_BIN=<claude-shared-skills>/tools/living-spec/dist/living-spec.mjs   # リポジトリに入れずに使う
+```bash
+curl -fsSL --create-dirs -o ~/.local/share/living-spec/living-spec-<SHA>.mjs https://github.com/kuchita-el/claude-shared-skills/releases/download/living-spec-<SHA>/living-spec-<SHA>.mjs
+```
+
+2. エージェント（Claude Code・Codex 等）を起動するシェルで、`LIVING_SPEC_BIN` に取ったファイルのパスを入れます。シェルの設定ファイルに書いてもかまいません。
+
+```bash
+export LIVING_SPEC_BIN=~/.local/share/living-spec/living-spec-<SHA>.mjs
 ```
 
 中継は `LIVING_SPEC_BIN`、次に根から解決できるパッケージ `@kuchita-el/living-spec` の順に探します。見つからなければ、フックは何もせず、スキルからの呼び出しは導入の手順を出して止まります。
 
-手元の `npm i -D` は、利用するリポジトリの外にあるチェックアウトを指します。CI の環境にはそのチェックアウトが無いため、この形で入れたパッケージは CI では解決できません。CI で依存を入れる（`npm ci` 等）リポジトリでは、`package.json` に入った `file:` の依存そのものが CI の導入を失敗させるため、手元は `LIVING_SPEC_BIN` で使います。CI では次の手順で取ります。
+パッケージ `@kuchita-el/living-spec` は npm へ公開していません。利用者は `LIVING_SPEC_BIN` を使います。
 
 ### CI（GitHub Actions）
 
-CI のジョブの中で claude-shared-skills を取り、検査器をビルドして直接走らせます。claude-shared-skills は公開リポジトリのため、認証なしで取れることを前提にしています。
+CI のジョブの中で添付物を取り、直接走らせます。claude-shared-skills は公開リポジトリのため、認証なしで取れることを前提にしています。
 
 ```yaml
 jobs:
@@ -46,46 +48,32 @@ jobs:
     permissions:
       contents: read
     env:
-      # 取る claude-shared-skills の版。コミット SHA で固定し、上げるときはこの行を書き換える
+      # 取る検査器の版。コミット SHA で固定し、上げるときはこの行を書き換える
       LIVING_SPEC_REF: <claude-shared-skills のコミット SHA（40桁）>
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      - name: living-spec の検査器のソースを取る
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          repository: kuchita-el/claude-shared-skills
-          ref: ${{ env.LIVING_SPEC_REF }}
-          path: .living-spec-src
-          sparse-checkout: tools/living-spec
-          persist-credentials: false
-
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version: 24
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413  # v6.1.0
-        with:
-          version: 12.5.1
 
-      - name: 検査器をビルドする
-        run: |
-          pnpm --dir .living-spec-src/tools/living-spec install --frozen-lockfile
-          pnpm --dir .living-spec-src/tools/living-spec build
+      - name: living-spec の検査器を取る
+        run: curl -fsSL -o "$RUNNER_TEMP/living-spec.mjs" "https://github.com/kuchita-el/claude-shared-skills/releases/download/living-spec-${LIVING_SPEC_REF}/living-spec-${LIVING_SPEC_REF}.mjs"
 
       - name: 表・要求票・例を検査する
-        run: node .living-spec-src/tools/living-spec/dist/living-spec.mjs check
+        run: node "$RUNNER_TEMP/living-spec.mjs" check
       - name: 書き漏らしの向きを検査する
-        run: node .living-spec-src/tools/living-spec/dist/living-spec.mjs check --doc-missing
+        run: node "$RUNNER_TEMP/living-spec.mjs" check --doc-missing
 ```
 
-- 版は `ref` のコミット SHA だけで決まります。ブランチ名やタグにすると、claude-shared-skills 側の変更で利用するリポジトリの CI の結果が黙って変わります。
+- 版は `LIVING_SPEC_REF` のコミット SHA だけで決まります。ブランチ名やタグにすると、claude-shared-skills 側の変更で利用するリポジトリの CI の結果が黙って変わります。
 - 検査の根は作業ディレクトリ（利用するリポジトリの根）です。`.living-spec.json` で置き場を変えていれば、それに従います。
 - 違反があると検査器は非 0 で終わり、ジョブが失敗します。
-- 取ったソース（`.living-spec-src`）は検査の対象の置き場の外にあるため、検査の結果に混ざりません。
+- 取ったファイルは `$RUNNER_TEMP` に置くため、検査の対象に混ざりません。
 
 ## 前提
 
-- Node 22 以上（22.23・24.16 で確かめています）。ビルドには pnpm が要ります。
+- Node 22 以上（22.23・24.16 で確かめています）。
 - 可視化の図は Mermaid を jsdelivr から読むため、表示にネットワークが要ります。
 
 ## 契約
@@ -98,7 +86,7 @@ jobs:
 ## host 差分
 
 - Claude Code: スキル・エージェント・フックのすべてが動きます。
-- Codex: スキルと検査器は動きます。plugin 単位のフックが無いため、編集ごとの自動検査と描き直しはありません。スキルの手順どおり `node scripts/run.mjs check` と `render`（または導入した検査器の `living-spec check` と `render`）を明示的に実行します。突き合わせのエージェントが使えない場合は、別の会話で `agents/rule-crosschecker.md` の指示を与え、入力として plugin root path（`references/format.md` を含むこのディレクトリ）も渡して実行します。
+- Codex: スキルと検査器は動きます。plugin 単位のフックが無いため、編集ごとの自動検査と描き直しはありません。スキルの手順どおり `node scripts/run.mjs check` と `render`（または、取ったファイルを `node <取ったファイルのパス> check` と `render` で直接）を明示的に実行します。突き合わせのエージェントが使えない場合は、別の会話で `agents/rule-crosschecker.md` の指示を与え、入力として plugin root path（`references/format.md` を含むこのディレクトリ）も渡して実行します。
 
 ## 検査と書式に期待できること
 

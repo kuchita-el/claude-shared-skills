@@ -1,6 +1,6 @@
 # tools/living-spec
 
-living-spec の検査器と描画（コマンド `living-spec`、パッケージ `@kuchita-el/living-spec`）の正本と、その工場側の試験。プラグイン（`plugins/living-spec`）には含めず、利用者がここからビルドして、利用するリポジトリへ入れる（導入の手順は `plugins/living-spec/README.md`）。npm へは公開していない（`private`）。
+living-spec の検査器と描画（コマンド `living-spec`、パッケージ `@kuchita-el/living-spec`）の正本と、その工場側の試験。プラグイン（`plugins/living-spec`）には含めない。利用者へは Release の添付物 `living-spec-<コミット SHA>.mjs` として配り、導入の手順は `plugins/living-spec/README.md` にある。Release を切る手順は `docs/development/living-spec-release.md` にある。ここからのビルドは開発する側の経路である。npm へは公開していない（`private`）。
 
 書式と検査の規則の正本は `plugins/living-spec/references/format.md`。表のキーと置き場の既定は `src/schema.ts` が持つ。
 
@@ -17,7 +17,12 @@ pnpm --dir tools/living-spec build    # dist/living-spec.mjs（依存を同梱�
 RDRA_ENTRY="$PWD/tools/living-spec/dist/living-spec.mjs" node --test tools/living-spec/test/cli.test.ts tools/living-spec/test/render.test.ts  # ビルドした物で入口の試験を走らせる
 ```
 
-`dist/` は追跡しない。`npm i -D` で入れたリポジトリはこの置き場への symlink を持つため、`src/` を直して build し直せば、入れた側にもそのまま効く。
+`dist/` は追跡しない。開発中の検査器を手元のリポジトリで使う経路は2つある。
+
+- `npm i -D <claude-shared-skills>/tools/living-spec`: この置き場への symlink として入るため、`src/` を直して build し直せば、入れた側にもそのまま効く。
+- `LIVING_SPEC_BIN` を `dist/living-spec.mjs` に向ける: リポジトリに入れずに使う。
+
+`npm ci` を走らせるリポジトリでは、`package.json` に入った `file:` の依存そのものが導入を壊す。CI にはそのチェックアウトが無いためである。その場合は `LIVING_SPEC_BIN` の経路を使う。
 
 ## 試験の置き方
 
