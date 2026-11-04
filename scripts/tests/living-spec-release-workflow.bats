@@ -18,8 +18,9 @@
 # キーは8桁）を前提にする。この形で読めないもの（最上位の on: が無い・on: の値がインラインに
 # ある・build / smoke / release の job を読めない・それらの job で step を1件も読めない）は、
 # 違反の名前 `読み取り` で赤へ倒す。字下げ8桁以下の行のアンカー・エイリアス、引用符で囲んだ
-# キー、フロー形式のマッピングの要素、`- ` の後に空白を続けた要素も、キーとの結び付きを辿れない
-# 表記として同じく赤へ倒す。事実を読めないまま合格を返さないためである。
+# キー、キーとコロンの間の空白、明示キー（`?` で始まる要素と `:` で始まる値の行）、フロー形式の
+# マッピングの要素、`- ` の後に空白を続けた要素も、キーとの結び付きを辿れない表記として同じく
+# 赤へ倒す。事実を読めないまま合格を返さないためである。
 #
 # 覆わないものは docs/development/living-spec-release.md の (7) が定める。
 load 'helpers/common'
@@ -91,6 +92,9 @@ release_workflow_facts() {
       if (s ~ /^&/) return "アンカー（&）"
       if (item && s ~ /^[{]/) return "フロー形式のマッピングの要素"
       if (s ~ /^("[^"]*"|\047[^\047]*\047)[ \t]*:/) return "引用符で囲んだキー"
+      if (s ~ /^[A-Za-z0-9_-]+[ \t]+:([ \t]|$)/) return "キーとコロンの間の空白"
+      if (s ~ /^[?]([ \t]|$)/) return "明示キー（?）"
+      if (s ~ /^:([ \t]|$)/) return "明示キーの値（:）"
       if (s ~ /^[^:]*:([ \t]|$)/) {
         v = trim(strip_comment(valof(s)))
         if (v ~ /^[*]/) return "エイリアス（*）"
@@ -548,4 +552,48 @@ expect_excluded() {
     { print }
   '
   expect_detected 読み取り "アンカー"
+}
+
+# キーとコロンの間に空白を置くと、キーの名前が完全一致に落ちず、条件を0件と読む。
+@test "読み取り 検出: build の入口・描画の試験の step に if : false（コロンの前の空白）を足す" {
+  mutate '{ print } job == "build" && /^      - name: 入口と描画の試験を生成物に掛ける$/ { print "        if : false" }'
+  expect_detected 読み取り "コロンの間"
+}
+
+@test "読み取り 検出: release の job のキーに if : always()（コロンの前の空白）を足す" {
+  mutate '{ print } job == "release" && /^    name: release$/ { print "    if : always()" }'
+  expect_detected 読み取り "コロンの間"
+}
+
+@test "読み取り 検出: smoke の job のキーに continue-on-error : true（コロンの前の空白）を足す" {
+  mutate '{ print } job == "smoke" && /^    runs-on:/ { print "    continue-on-error : true" }'
+  expect_detected 読み取り "コロンの間"
+}
+
+# 明示キー（? と :）は、キーと値が別の行に分かれ、キーの行を読んでも値と結び付かない。
+@test "読み取り 検出: build の入口・描画の試験の step に明示キーの ? if と : false を足す" {
+  mutate '{ print } job == "build" && /^      - name: 入口と描画の試験を生成物に掛ける$/ { print "        ? if"; print "        : false" }'
+  expect_detected 読み取り "明示キー"
+}
+
+@test "読み取り 検出: build の入口・描画の試験の step に明示キーの ? if だけを足す" {
+  mutate '{ print } job == "build" && /^      - name: 入口と描画の試験を生成物に掛ける$/ { print "        ? if" }'
+  expect_detected 読み取り "明示キー（?）"
+}
+
+@test "読み取り 検出: smoke の起動確認の step を - ? if で始める（step の数を保つ）" {
+  mutate '
+    job == "smoke" && /^      - name: 引数なしで起動して使い方を出すことを確かめる$/ {
+      print "      - ? if"
+      print "        name: 引数なしで起動して使い方を出すことを確かめる"
+      next
+    }
+    { print }
+  '
+  expect_detected 読み取り "明示キー（?）"
+}
+
+@test "読み取り 検出: build の入口・描画の試験の step に : で始まる行を足す" {
+  mutate '{ print } job == "build" && /^      - name: 入口と描画の試験を生成物に掛ける$/ { print "        : false" }'
+  expect_detected 読み取り "明示キーの値（:）"
 }
