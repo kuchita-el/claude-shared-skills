@@ -33,6 +33,8 @@ curl -fsSL --create-dirs -o ~/.local/share/living-spec/living-spec-<SHA>.mjs htt
 export LIVING_SPEC_BIN=~/.local/share/living-spec/living-spec-<SHA>.mjs
 ```
 
+上の2段は、エージェントに頼まず、端末で自分で実行します。エージェントに頼むと、取ったファイルを直接実行させる操作を、エージェントの権限の仕組み（Claude Code の auto mode の分類器等）が外から取ったコードの実行として止めることがあります。取得も、サンドボックスの中では置き場へ書けずに失敗します。2段を済ませてからエージェントを起動すれば、スキルは中継を通して検査器を呼べます。
+
 中継は `LIVING_SPEC_BIN`、次に根から解決できるパッケージ `@kuchita-el/living-spec` の順に探します。見つからなければ、フックは何もせず、スキルからの呼び出しは導入の手順を出して止まります。
 
 パッケージ `@kuchita-el/living-spec` は npm へ公開していません。利用者は `LIVING_SPEC_BIN` を使います。
