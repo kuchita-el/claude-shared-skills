@@ -1,0 +1,185 @@
+# living-spec の検査器の Release
+
+living-spec の検査器（`tools/living-spec`）の生成物を、GitHub の Release として切る契機と手順を定める。
+
+## (1) この文書が定めること
+
+配布の形は ADR-202611040012-01（検査器を Release の添付物として配る）が決める。添付物を本リポジトリの Release に置き、コミット SHA だけで名指し、公開後は変えられなくする。この文書は、その Release をいつ・どのコミットで・誰が・どう切るかと、失敗したときの対処を定める。
+
+Release を作る仕組みは `.github/workflows/living-spec-release.yml` である。この文書は、そのワークフローを起動する保守者の手順を持つ。
+
+## (2) いつ切るか
+
+利用者へ届けたい検査器の変更が main に入ったときに切る。検査器の変更とは、ビルドの入力の変更である。ビルドの入力は次の4つである。
+
+- `tools/living-spec/src`
+- `tools/living-spec/package.json`
+- `tools/living-spec/pnpm-lock.yaml`
+- `tools/living-spec/pnpm-workspace.yaml`
+
+ワークフローは `workflow_dispatch` でだけ起動する。届ける版を人が選んだときだけ Release が増え、Release の一覧がそのまま版の候補になるためである。
+
+main への push ごとに Release を作る形は採らない。検査器が変わらないコミットでも Release が増え、利用者が版を選ぶ手がかりにならないためである。
+
+起動契機とその理由の正本は、この節である。
+
+## (3) どのコミットで切るか
+
+main の祖先のコミットに限る。
+
+既定の選び方は次のとおりである。先に `git fetch origin` を単独で実行し、`origin/main` を最新にしておく。
+
+```bash
+git log -1 --format=%H origin/main -- tools/living-spec/src tools/living-spec/package.json tools/living-spec/pnpm-lock.yaml tools/living-spec/pnpm-workspace.yaml
+```
+
+この命令は、ビルドの入力を最後に変えた main のコミットを返す。
+
+公開を取り消した SHA は再び使わない。その SHA の名前は再利用できないためである（(8)）。既定の選び方が取り消した SHA を返すことがある。取り消しの原因がビルドの入力の外にあったときである。そのときは `git rev-parse origin/main` が返す SHA で切る。
+
+## (4) 誰が切るか
+
+リポジトリへの書き込み権限を持つ保守者が切る。
+
+AI が保守者に代わって起動する場合は、保守者の明示の承認を得てからにする。
+
+## (5) どう切るか
+
+### 起動の前に確かめること
+
+1. リポジトリの Immutable Releases が有効であることを確かめる。
+
+   ```bash
+   gh api repos/kuchita-el/claude-shared-skills/immutable-releases --jq .enabled
+   ```
+
+   `true` を返せば有効である。この確認には管理者の読み取りの権限が要る。状態コードでは判断しない。GitHub の文書は無効なら 404 と書くが、2026-11-04 に本リポジトリで無効のまま確かめたところ、200 と `enabled: false` が返った。値で判断する。
+
+   `false` なら起動しない。リポジトリの管理者が有効にしてから起動する。手段は2つある。Settings の「Releases」で「Enable release immutability」を選ぶか、次の命令を実行する。
+
+   ```bash
+   gh api -X PUT repos/kuchita-el/claude-shared-skills/immutable-releases
+   ```
+
+   これはリポジトリの設定の変更である。AI が行う場合は、保守者の明示の承認を得る。有効にする前に公開した Release には、変更不可は掛からない。
+
+2. 同名の下書きの Release が残っていないことを確かめる。ワークフローの中の Release の有無の確認は、読み取りの権限で行うため、下書きが見えない。過去の失敗した実行が残した下書きは、その確認をすり抜ける。下書きは、保守者の認証で一覧を取れば見える。
+
+   ```bash
+   gh release list --repo kuchita-el/claude-shared-skills --limit 1000 --json tagName,isDraft --jq '.[] | select(.isDraft and .tagName == "living-spec-<40桁SHA>")'
+   ```
+
+   何も出なければ先へ進む。出たら、(9) の「下書きが残ったとき」に従って消してから起動する。
+
+### 起動と見届け
+
+ワークフローは、定義が既定のブランチ（main）にあるときだけ `workflow_dispatch` で起動できる。
+
+```bash
+gh workflow run living-spec-release.yml --repo kuchita-el/claude-shared-skills -f sha=<40桁SHA>
+```
+
+起動した実行を `gh run watch` で見届ける。実行の ID は次の命令で取れる。
+
+```bash
+gh run list --workflow living-spec-release.yml --repo kuchita-el/claude-shared-skills --limit 1
+```
+
+```bash
+gh run watch <実行の ID> --repo kuchita-el/claude-shared-skills --exit-status
+```
+
+### 起動の後に確かめること
+
+1. Release と添付物を確かめる。タグは `living-spec-<40桁SHA>`、添付物は `living-spec-<40桁SHA>.mjs` の1件である。
+
+   ```bash
+   gh release view living-spec-<40桁SHA> --repo kuchita-el/claude-shared-skills --json tagName,isDraft,assets
+   ```
+
+2. Release が変更不可になったことを確かめる。
+
+   ```bash
+   gh api repos/kuchita-el/claude-shared-skills/releases/tags/living-spec-<40桁SHA> --jq .immutable
+   ```
+
+   `true` を返せばよい。`false` なら (9) に従う。
+
+## (6) ワークフローが何を確かめるか
+
+この文書には中身を書かない。検査の中身の正本は、ワークフローの定義（`.github/workflows/living-spec-release.yml`）である。構造の不変条件は、`scripts/tests/living-spec-release-workflow.bats` が固定する。
+
+中身を文章へ写すと、ワークフローを変えるたびにこの文書も追随させる義務が増える。そのため、定義と bats を指すだけにする。
+
+## (7) 構造の bats が覆わないもの
+
+構造の bats は、起動契機・書き込み権限・待ち合わせ・job と step の条件だけを固定する。次の6つは覆わない。ワークフローを変える PR のレビューで確かめる。
+
+1. release job が実行する命令の中身。複合命令・パイプ・拡張の導入で、第三者のコードを走らせないこと
+2. 試験した生成物と、受け渡す・添付する生成物が同じであること。置き場、途中の上書き、写す元がビルドの出力であることを見る
+3. 入力の判定が、改行や特殊文字を含む値を通さないこと。判定の step が、ワークフローの入力に結び付くこと
+4. build job の中の step の順序。入口と描画の試験の step が存在し、ビルドの後・受け渡しの前にあること。試験の step の命令が、失敗を握りつぶさないこと（`|| true` 等）
+5. smoke の中身。matrix の版と、終了コードと使い方の出力の確認
+6. タグの照合
+
+覆わないものの正本は、この節である。
+
+## (8) 版の名前
+
+添付物とタグの名前は `living-spec-<40桁SHA>` である。SHA 以外の情報を持たない。semver は持たない。
+
+公開の後は、リポジトリの Immutable Releases により、タグと添付物を変えられない。そのため、同じ名前は同じ中身を指し続ける。
+
+名前は、公開を取り消した後も再利用できない。
+
+この形を採った理由と、却下した代替（タグのルールセット・チェックサム）は、ADR-202611040012-01 が正本である。この文書には写さない。
+
+## (9) 失敗したとき
+
+保守者が取る対処を、失敗した段ごとに書く。ワークフローが何を確かめるかは、ここでは書き直さない（(6)）。
+
+### build job か smoke job で止まったとき
+
+release job は走らず、Release もタグも作られない。実行の記録で止まった step と理由を読み、原因を直す。入力の形か SHA の選び方が誤っていたなら、(3) に従って正しい SHA で起動し直す。
+
+同じ SHA の Release が既にあるとして止まったなら、その SHA では切り直さない。既にある Release を使う。
+
+Node 22.0.0 でだけ起動の確認が落ちたら、README が書く前提（Node 22 以上）の下限を改めるかを判断する。前提の下限は利用者の要求に関わるため、保守者が判断する。
+
+### 下書きが残ったとき
+
+Release の作成の途中で失敗すると、下書きの Release が残ることがある。下書きを消してから起動し直す。変更不可は公開の後にだけ掛かるので、下書きは消せる。
+
+```bash
+gh release delete living-spec-<40桁SHA> --repo kuchita-el/claude-shared-skills --yes
+```
+
+消した後、同名のタグが残っていないかを `git ls-remote --tags origin refs/tags/living-spec-<40桁SHA>` で確かめる。残っていれば、次の「タグの照合で止まったとき」に従う。
+
+### タグの照合で止まったとき
+
+Release の無い同名のタグが残っており、Release は作られていない。残ったタグがどのコミットを指すかを確かめる。
+
+```bash
+git ls-remote --tags origin refs/tags/living-spec-<40桁SHA>
+```
+
+そのうえで、Release の無いタグを消すかを判断する。消すなら `git push origin --delete refs/tags/living-spec-<40桁SHA>` を単独で実行し、起動し直す。
+
+### 公開の後に止まったとき
+
+公開した後の照合が一致しないとき、または Release の `immutable` が `false` のときは、公開を取り消すかを判断する。利用者が既にその名前を固定している可能性があるため、保守者が判断する。
+
+`immutable` が `false` のときは、取り消すかどうかによらず、先に (5) の手段で設定を有効にする。
+
+取り消すときは、タグも一緒に消し、タグと Release の一覧を一対一に保つ。
+
+```bash
+gh release delete living-spec-<40桁SHA> --repo kuchita-el/claude-shared-skills --cleanup-tag --yes
+```
+
+取り消した SHA では起動し直さない。その名前は再利用できないためである（(8)）。(3) に従い、新しい SHA で切り直す。
+
+## (10) この文書に書かないもの
+
+個々の Release の記録（どの SHA をいつ切ったか）は書かない。記録の正本は、GitHub の Release の一覧である。

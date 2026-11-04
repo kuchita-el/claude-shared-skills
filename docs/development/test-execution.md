@@ -20,7 +20,7 @@
 
 runner はいずれかが失敗しても残りを最後まで実行してから非0で終わる。失敗を1回の実行で出揃わせるためである。成功したスイートの出力は畳み、失敗したスイートの出力だけを展開する（bats については通過ケースの `ok ` 行も畳む）。
 
-living-spec の検査器はプラグインに含めず、`tools/living-spec` からソースでビルドして使う（生成物 `dist/` は追跡しない）。規則の分岐（ファイルを置かない試験）・読み込みから出力までの見本・入口・描画は工場側の試験が持ち、runner の `living-spec` スイートが走らせる（`pnpm` は `mise.toml` が版を固定する）。プラグインの中継の振る舞いは、偽の検査器を使う `living-spec-run.bats` が見る。
+living-spec の検査器はプラグインに含めず、`tools/living-spec` からソースでビルドして使う（生成物 `dist/` は追跡しない）。規則の分岐（ファイルを置かない試験）・読み込みから出力までの見本・入口・描画は工場側の試験が持ち、runner の `living-spec` スイートが走らせる（`pnpm` は `mise.toml` が版を固定する）。プラグインの中継の振る舞いは、偽の検査器を使う `living-spec-run.bats` が見る。Release のワークフロー（`.github/workflows/living-spec-release.yml`）は runner の外にあり、手動の起動でだけ走るため、§2 の自動起動の射程に入らない（構造の不変条件は `living-spec-release-workflow.bats` が固定し、覆わないものと Release を切る手順は `living-spec-release.md` が定める）。
 
 Writing Wave 2の追加検査は`writing-lint.bats`と`writing-contract.bats`で行う。前者は`lint-ja.sh`のfile/diff、候補、長文、退役ADR境界を検査し、後者はskill/agent、F1/F3/F4/F5正負fixture、最大2回loop、両host matrix、permission ledgerを検査する。Codex agent登録面が利用できない場合の明示起動・degraded手動検査は、`plugins/writing/compatibility.json`へ記録する。
 
