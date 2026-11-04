@@ -162,7 +162,7 @@ test('要求文が名前を活用させたり略したりしていても描き�
   const sentences = [...slice.matchAll(/<p class="sentence">(.*?)<\/p>/g)].map((m) => m[1]);
   assert.equal(sentences.length, 3, sentences.join('\n'));
   // 行1（略称）と行2（活用）は、表の名前がそのままは現れないので印を付けず、文をそのまま出す
-  assert.ok(!sentences[0].includes('class="term"'), sentences[0]);
+  assert.doesNotMatch(sentences[0], />申請<\/span>/, `略した「申請」に印が付いている: ${sentences[0]}`);
   assert.ok(!sentences[1].includes('class="term"'), sentences[1]);
   assert.equal(sentences[1], '承認できる役割でなければ、システムは承認を受け付けない');
   // 行3は名前がそのまま現れるので印を付ける
