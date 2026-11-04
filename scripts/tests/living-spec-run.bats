@@ -27,7 +27,11 @@ teardown() {
   run node "$RUN" check
   [ "$status" -eq 2 ]
   [[ "$output" == *"検査器が見つからない"* ]]
-  [[ "$output" == *"pnpm build"* ]]
+  [[ "$output" == *"releases/download/living-spec-"* ]]
+  [[ "$output" == *"LIVING_SPEC_BIN"* ]]
+  [[ "$output" != *"pnpm"* ]]
+  [[ "$output" != *"build"* ]]
+  [[ "$output" != *"ビルド"* ]]
 }
 
 @test "検査器が無ければ hook は何もせず終了コード 0" {
@@ -63,4 +67,17 @@ teardown() {
   run node "$RUN" render
   [ "$status" -eq 1 ]
   [[ "$output" == *"args=render"* ]]
+}
+
+@test "導入案内の取得のコマンドは、README の導入の節の取得のコマンドと一致する" {
+  local readme="$REPO_ROOT/plugins/living-spec/README.md"
+  local from_readme from_relay
+  from_readme="$(awk '/^## 検査器の導入/{f=1;next} /^## /{f=0} f' "$readme" | sed 's/^[[:space:]]*//' | command grep -F 'curl -fsSL --create-dirs ' | command grep '^curl -fsSL --create-dirs ' || true)"
+  [ "$(printf '%s\n' "$from_readme" | command grep -c .)" -eq 1 ]
+  cd "$WORK"
+  run node "$RUN" check
+  [ "$status" -eq 2 ]
+  from_relay="$(printf '%s\n' "$output" | sed 's/^[[:space:]]*//' | command grep '^curl ' || true)"
+  [ "$(printf '%s\n' "$from_relay" | command grep -c .)" -eq 1 ]
+  [ "$from_readme" = "$from_relay" ]
 }
