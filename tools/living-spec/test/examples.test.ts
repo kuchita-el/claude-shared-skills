@@ -1,8 +1,9 @@
 // examples/<規則>/<pass|fail>-<名前>.txtar を走査し、各見本をファイルとして展開して検査器を走らせ、
 // (rule, file, target) の集合が見本の expected.yaml と完全一致することを確かめる。
-// 見本は規則ごとに通る1件・落ちる1件の、表一式を置いたリポジトリの形。置き場からの読み込み・違反の file と target の形まで
+// 見本は規則ごとに通る見本と落ちる見本を1件以上ずつ持つ、表一式を置いたリポジトリの形。置き場からの読み込み・違反の file と target の形まで
 // つながっていることを見る。規則の分岐の網羅は、ファイルを置かない test/rules.test.ts（test/cases/）が持つ。
-// 書き漏らしの向きの規則の見本は、checkRepo に checkDocMissing を足して走らせる（規則は DOC_MISSING_RULES）。
+// 見本はすべて、checkRepo に checkDocMissing を足して走らせる。CLI の check と check --doc-missing の両方に当たる。
+// 落ちる見本は、2つの検査を合わせてもその規則の違反だけが出る入力にする。
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -37,10 +38,9 @@ const RULES = [
 // checkRepo に含めず、CLI の --doc-missing で走らせる規則
 const DOC_MISSING_RULES = new Set(['requirement-missing', 'requirement-coverage', 'example-missing']);
 
-// 見本の規則に応じて、その見本を走らせる検査を選ぶ
-function runCheck(rule: string, dir: string) {
-  if (DOC_MISSING_RULES.has(rule)) return [...checkRepo(dir), ...checkDocMissing(dir)];
-  return checkRepo(dir);
+// 規則によらず、全体検査と書き漏らしの検査を合わせて走らせる
+function runCheck(dir: string) {
+  return [...checkRepo(dir), ...checkDocMissing(dir)];
 }
 
 interface Triple {
@@ -90,7 +90,7 @@ for (const rule of RULES) {
       // 落ちる見本は、その規則の違反だけが出る入力にする
       for (const e of expected) assert.equal(e.rule, rule, `${name}: 期待に別の規則 ${e.rule} が混ざっている`);
 
-      const actual = runCheck(rule, dir);
+      const actual = runCheck(dir);
       const actualKeys = [...new Set(actual.map(keyOf))].sort();
       const expectedKeys = [...new Set(expected.map(keyOf))].sort();
       assert.deepEqual(actualKeys, expectedKeys);
