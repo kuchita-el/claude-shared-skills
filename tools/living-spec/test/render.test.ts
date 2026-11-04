@@ -9,8 +9,10 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { Script } from 'node:vm';
+import { cases } from './cases/requirement-reference.ts';
 import { materialize } from './fixture.ts';
 import { escapeHtml, renderHtml, stateChart } from '../src/html.ts';
+import { sourcesFromFiles } from '../src/sources.ts';
 import { buildView } from '../src/view.ts';
 import type { StateModelView, UseCaseView, View } from '../src/view.ts';
 
@@ -149,6 +151,27 @@ test('要求文の中の印は、表にある長い名前の一部には付け�
   // 「申請を作成する」（UC の名前）の中の「申請」には付けず、「作成中の申請」の「申請」にだけ付ける
   assert.equal(sentence.match(/class="term"/g)?.length, 1, sentence);
   assert.match(sentence, /作成中の<span class="term" tabindex="0" data-tip="[^"]*">申請<\/span>を作る/);
+});
+
+test('要求文が名前を活用させたり略したりしていても描き、名前がそのまま現れる行にだけ印を付ける', () => {
+  const found = cases.find((c) => c.name === 'pass-sentence-conjugates-and-abbreviates-names');
+  assert.ok(found, '件 pass-sentence-conjugates-and-abbreviates-names がある');
+  const view = buildView('/unused', sourcesFromFiles(found.files));
+  const html = renderHtml(view, new Date());
+  const slice = sliceOf(html, useCase(view, '経費申請を承認する'));
+  const sentences = [...slice.matchAll(/<p class="sentence">(.*?)<\/p>/g)].map((m) => m[1]);
+  assert.equal(sentences.length, 3, sentences.join('\n'));
+  // 行1（略称）と行2（活用）は、表の名前がそのままは現れないので印を付けず、文をそのまま出す
+  assert.ok(!sentences[0].includes('class="term"'), sentences[0]);
+  assert.ok(!sentences[1].includes('class="term"'), sentences[1]);
+  assert.equal(sentences[1], '承認できる役割でなければ、システムは承認を受け付けない');
+  // 行3は名前がそのまま現れるので印を付ける
+  assert.ok(
+    sentences[2].includes(
+      '<span class="term" tabindex="0" data-tip="従業員が出す経費の申請（属性: 申請者、金額）">経費申請</span>',
+    ),
+    sentences[2],
+  );
 });
 
 test('票の行に結び付かない例は別枠に出る', () => {
