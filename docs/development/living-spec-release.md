@@ -4,7 +4,7 @@ living-spec の検査器（`tools/living-spec`）の生成物を、GitHub の Re
 
 ## (1) この文書が定めること
 
-配布の形は ADR-202611040012-01（検査器を Release の添付物として配る）が決める。添付物を本リポジトリの Release に置き、コミット SHA だけで名指し、公開後は変えられなくする。この文書は、その Release をいつ・どのコミットで・誰が・どう切るかと、失敗したときの対処を定める。
+配布の形（どこに、どう名指して置くか）は ADR-202611040012-01（検査器を Release の添付物として配る）が決める。この文書は、その Release をいつ・どのコミットで・誰が・どう切るかと、失敗したときの対処を定める。
 
 Release を作る仕組みは `.github/workflows/living-spec-release.yml` である。この文書は、そのワークフローを起動する保守者の手順を持つ。
 
@@ -35,7 +35,7 @@ git log -1 --format=%H origin/main -- tools/living-spec/src tools/living-spec/pa
 
 この命令は、ビルドの入力を最後に変えた main のコミットを返す。
 
-公開を取り消した SHA は再び使わない。その SHA の名前は再利用できないためである（(8)）。既定の選び方が取り消した SHA を返すことがある。取り消しの原因がビルドの入力の外にあったときである。そのときは `git rev-parse origin/main` が返す SHA で切る。この SHA も取り消した SHA と同じなら、取り消した SHA が main の先頭にある。そのときは、main に新しいコミットが入るのを待ち、そのコミットで切る。
+公開を取り消した SHA は再び使わない。その SHA の名前は再利用できないためである（ADR-202611040012-01）。既定の選び方が取り消した SHA を返すことがある。取り消しの原因がビルドの入力の外にあったときである。そのときは `git rev-parse origin/main` が返す SHA で切る。この SHA も取り消した SHA と同じなら、取り消した SHA が main の先頭にある。そのときは、main に新しいコミットが入るのを待ち、そのコミットで切る。
 
 ## (4) 誰が切るか
 
@@ -61,9 +61,9 @@ AI が保守者に代わって起動する場合は、保守者の明示の承�
    gh api -X PUT repos/kuchita-el/claude-shared-skills/immutable-releases
    ```
 
-   これはリポジトリの設定の変更である。AI が行う場合は、保守者の明示の承認を得る。有効にする前に公開した Release には、変更不可は掛からない。
+   これはリポジトリの設定の変更である。AI が行う場合は、保守者の明示の承認を得る。初回の Release より前に有効にしておく理由は、ADR-202611040012-01 の Consequences（変更不可が掛かる範囲）にある。
 
-2. 同名の下書きの Release が残っていないことを確かめる。ワークフローの中の Release の有無の確認は、読み取りの権限で行うため、下書きが見えない。過去の失敗した実行が残した下書きは、その確認をすり抜ける。保守者の認証で次の命令を実行すれば、下書きもタグ名で引ける。gh は、公開した Release に加えて、そのタグ名を予定する下書きも探すためである。
+2. 同名の下書きの Release が残っていないことを確かめる。ワークフローの中の Release の有無の確認は、読み取りの権限で行うため、下書きが見えない。過去の失敗した実行が残した下書きは、その確認をすり抜ける。保守者の認証で次の命令を実行すれば、下書きもタグ名で引ける。gh の `release view` は、公開した Release に加えて、そのタグ名を予定する下書きも探すためである（gh 2.97.0 のソースの `pkg/cmd/release/shared/fetch.go` の `FetchRelease` で確かめた）。
 
    ```bash
    gh release view living-spec-<40桁SHA> --repo kuchita-el/claude-shared-skills --json isDraft --jq .isDraft
@@ -73,11 +73,13 @@ AI が保守者に代わって起動する場合は、保守者の明示の承�
 
 ### 起動と見届け
 
-ワークフローは、定義が既定のブランチ（main）にあるときだけ `workflow_dispatch` で起動できる。
+ワークフローは、定義が既定のブランチ（main）にあるときだけ `workflow_dispatch` で起動できる。起動するときは `--ref` を付けない（UI では「Use workflow from」を main のままにする）。`--ref` で選んだブランチやタグにある版の定義が走るためである。
 
 ```bash
 gh workflow run living-spec-release.yml --repo kuchita-el/claude-shared-skills -f sha=<40桁SHA>
 ```
+
+main 以外の ref から起動した実行は、ワークフローが止める（何をどう確かめるかは (6)）。この照合は、誤って main 以外の定義で起動したときに止めるためのものである。照合を外した定義をブランチに置いて起動すれば、照合は働かない。それを止めるのは、リポジトリへの書き込み権限を誰に渡すかである（(4)）。
 
 起動した実行を `gh run watch` で見届ける。実行の題名は `living-spec release <40桁SHA>` である。実行の ID は、題名で絞って次の命令で取る。一覧は新しい順に並ぶため、最初の1件が最新の実行である。
 
@@ -115,7 +117,7 @@ gh run watch <実行の ID> --repo kuchita-el/claude-shared-skills --exit-status
 
 ## (7) 構造の bats が覆わないもの
 
-構造の bats（`scripts/tests/living-spec-release-workflow.bats`）が何を固定するかは、bats の定義を見る。次の6つは覆わない。ワークフローを変える PR のレビューで確かめる。
+構造の bats（`scripts/tests/living-spec-release-workflow.bats`）が何を固定するかは、bats の定義を見る。次の7つは覆わない。ワークフローを変える PR のレビューで確かめる。
 
 1. release job が実行する命令の中身。複合命令・パイプ・拡張の導入で、第三者のコードを走らせないこと
 2. 試験した生成物と、受け渡す・添付する生成物が同じであること。置き場、途中の上書き、写す元がビルドの出力であることを見る
@@ -123,18 +125,15 @@ gh run watch <実行の ID> --repo kuchita-el/claude-shared-skills --exit-status
 4. build job の中の step の順序。入口と描画の試験の step が存在し、ビルドの後・受け渡しの前にあること。試験の step の命令が、失敗を握りつぶさないこと（`|| true` 等）
 5. smoke の中身。matrix の版と、終了コードと使い方の出力の確認
 6. タグの照合
+7. 起動した ref の照合の step のうち、照合の行と `exit 1` の行の外の中身。照合が外れたときに必ず `exit 1` へ至ること
 
 覆わないものの正本は、この節である。
 
 ## (8) 版の名前
 
-タグの名前は `living-spec-<40桁SHA>`、添付物の名前は `living-spec-<40桁SHA>.mjs` である。どちらも SHA 以外の情報を持たない。semver は持たない。
+この文書の命令は、タグの名前を `living-spec-<40桁SHA>`、添付物の名前を `living-spec-<40桁SHA>.mjs` として書く。
 
-公開の後は、リポジトリの Immutable Releases により、タグと添付物を変えられない。そのため、同じ名前は同じ中身を指し続ける。
-
-名前は、公開を取り消した後も再利用できない。
-
-この形を採った理由と、却下した代替（タグのルールセット・チェックサム）は、ADR-202611040012-01 が正本である。この文書には写さない。
+名前の形、公開の後にタグと添付物を変えられないこと、公開を取り消した名前を再利用できないことは、ADR-202611040012-01 の決定が定める。その理由と却下した代替を含め、正本は同 ADR である。この文書には写さない。
 
 ## (9) 失敗したとき
 
@@ -142,7 +141,7 @@ gh run watch <実行の ID> --repo kuchita-el/claude-shared-skills --exit-status
 
 ### build job か smoke job で止まったとき
 
-release job は走らず、Release もタグも作られない。実行の記録で止まった step と理由を読み、原因を直す。入力の形か SHA の選び方が誤っていたなら、(3) に従って正しい SHA で起動し直す。
+release job は走らず、Release もタグも作られない。実行の記録で止まった step と理由を読み、原因を直す。main 以外の ref から起動したとして止まったなら、(5) に従い `--ref` を付けずに起動し直す。入力の形か SHA の選び方が誤っていたなら、(3) に従って正しい SHA で起動し直す。
 
 同じ SHA の Release が既にあるとして止まったなら、その SHA では切り直さない。既にある Release を使う。
 
@@ -180,7 +179,7 @@ git ls-remote --tags origin refs/tags/living-spec-<40桁SHA>
 gh release delete living-spec-<40桁SHA> --repo kuchita-el/claude-shared-skills --cleanup-tag --yes
 ```
 
-取り消した SHA では起動し直さない。その名前は再利用できないためである（(8)）。(3) に従い、新しい SHA で切り直す。
+取り消した SHA では起動し直さない。その名前は再利用できないためである（ADR-202611040012-01）。(3) に従い、新しい SHA で切り直す。
 
 ## (10) この文書に書かないもの
 

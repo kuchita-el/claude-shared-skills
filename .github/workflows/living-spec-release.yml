@@ -43,6 +43,15 @@ jobs:
       SHA: ${{ inputs.sha }}
       ASSET: living-spec-${{ inputs.sha }}.mjs
     steps:
+      # 起動した ref を照合する。理由と限界の正本は docs/development/living-spec-release.md の (5)。
+      # ここで止まれば、needs により release job は走らない。
+      - name: 起動した定義が main のものであることを確かめる
+        run: |
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::このワークフローは main の定義でだけ起動する（起動した ref: $GITHUB_REF）。--ref を付けずに起動する" >&2
+            exit 1
+          fi
+
       # 改行を含む値を通さないよう、値全体を1回で照合する [[ =~ ]] を使う。
       # 行ごとに照合する grep は、40桁の行の後に別の語を続けた値を通す。
       - name: 入力の形を確かめる

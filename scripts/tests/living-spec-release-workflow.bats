@@ -1,8 +1,9 @@
 #!/usr/bin/env bats
 # living-spec の Release のワークフロー（.github/workflows/living-spec-release.yml）の構造の
-# 不変条件を固定する。固定するのは次の5つだけである。
+# 不変条件を固定する。固定するのは次の6つだけである。
 #
 #   契機        起動は workflow_dispatch だけ
+#   定義の出所  build job の最初の step が、GITHUB_REF を refs/heads/main と照合して止める
 #   権限        書き込み権限は release job だけ（最上位に書き込みが無く、全 job が自分の
 #               permissions: を持ち、書き込みを含む job の集合が {release} に一致する）
 #   待ち合わせ  release job は build と smoke を待つ
@@ -35,13 +36,17 @@ setup() {
 #
 #   trigger <名前>       on: のブロックの中の2桁のキーごと。値がインラインなら trigger ?inline
 #   top-perm present=<0|1> write=<0|1>
-#   job <id> perm= write= if= coe= steps= step-if= step-coe= needs=<並べ替えてカンマでつなぐ。無ければ ->
+#   job <id> perm= write= if= coe= steps= step-if= step-coe= ref-guard= needs=<並べ替えてカンマでつなぐ。無ければ ->
 #   unreadable <行番号> <表記>  字下げ8桁以下の行で、キーと値の結び付きを辿れない表記
 #
 # 注記の行（最初の空白でない文字が #）はどの事実にも数えない。permissions:・needs: の値の行末の
 # # 以降も除く。job のキーは4桁の行だけを見る。steps は、直前の4桁のキーが steps である6桁の
 # `- ` の行の数である。step の条件は step を特定せず、jobs の下の8桁の行のキーと、6桁の `- ` の
 # 行の `- ` の後のキーを完全一致で見る（10桁の行の if-no-files-found: 等は数えない）。
+# ref-guard は、ref の照合の行（10桁）と exit 1 の行（12桁）の両方を run の中に持つ step のうち、
+# 最初のものが job の何番目の step かである。無ければ 0 である。2行は字面の完全一致で見るため、
+# 同じ効果の書き換え（引用符を外す・GITHUB_REF_NAME で照合する等）でも赤になる。照合の書き方を
+# 変えるときは、ここの2行も合わせて直す。
 release_workflow_facts() {
   awk '
     function strip_comment(s) { sub(/[ \t]+#.*$/, "", s); return s }
@@ -142,20 +147,24 @@ release_workflow_facts() {
       next
     }
     /^        [A-Za-z0-9_-]+:/ { step_key(keyof($0)) }
+    k4 == "steps" && $0 == "          if [[ \"$GITHUB_REF\" != \"refs/heads/main\" ]]; then" { rg_if[job, jsteps[job]] = 1 }
+    k4 == "steps" && $0 == "            exit 1" { rg_exit[job, jsteps[job]] = 1 }
 
     END {
       printf "top-perm present=%d write=%d\n", tp_present, tp_write
       for (i = 1; i <= njobs; i++) {
         j = order[i]
-        printf "job %s perm=%d write=%d if=%d coe=%d steps=%d step-if=%d step-coe=%d needs=%s\n", \
-          j, jperm[j], jwrite[j], jif[j], jcoe[j], jsteps[j], sif[j], scoe[j], needs_of(j)
+        guard = 0
+        for (s = 1; s <= jsteps[j]; s++) if (rg_if[j, s] && rg_exit[j, s]) { guard = s; break }
+        printf "job %s perm=%d write=%d if=%d coe=%d steps=%d step-if=%d step-coe=%d ref-guard=%d needs=%s\n", \
+          j, jperm[j], jwrite[j], jif[j], jcoe[j], jsteps[j], sif[j], scoe[j], guard, needs_of(j)
       }
     }
   ' "$1"
 }
 
 # 事実から違反を1行ずつ `違反 <違反の名前>: <理由>` の形で出し、違反があれば非0で終わる。
-# 違反の名前は 契機・権限・待ち合わせ・job の条件・step の条件・読み取り の6つである。
+# 違反の名前は 契機・定義の出所・権限・待ち合わせ・job の条件・step の条件・読み取り の7つである。
 # 事実の読み出しが失敗しても事実が0件になるだけで、読み取り の違反として赤へ倒れる。
 check_release_workflow() {
   release_workflow_facts "$1" | awk '
@@ -197,6 +206,10 @@ check_release_workflow() {
       # 契機
       if (!inline && ntrig > 0 && trig_list != "workflow_dispatch")
         violate("契機", "on: の直下のキーが {workflow_dispatch} でない（読めたキー: " trig_list "）")
+
+      # 定義の出所
+      if ("build" in has_job && f["build", "ref-guard"] + 0 != 1)
+        violate("定義の出所", "build の最初の step の run が、照合の行 `if [[ \"$GITHUB_REF\" != \"refs/heads/main\" ]]; then`（10桁）と `exit 1` の行（12桁）を持たない（両方を持つ step の位置: " f["build", "ref-guard"] "。0 は無し）")
 
       # 権限
       if (tp["present"] + 0 == 0) violate("権限", "最上位の permissions: が無い")
@@ -274,7 +287,7 @@ expect_excluded() {
   [ "$status" -eq 0 ]
 }
 
-@test "実物のワークフローは5つの不変条件を満たし、何も出さない" {
+@test "実物のワークフローは6つの不変条件を満たし、何も出さない" {
   run check_release_workflow "$WORKFLOW"
   echo "$output"
   [ "$status" -eq 0 ]
@@ -295,6 +308,71 @@ expect_excluded() {
 
 @test "契機 除外: on: の直下の注記の行は契機に数えない" {
   mutate '{ print } /^on:$/ { print "  # push は契機にしない" }'
+  expect_excluded
+}
+
+# --- 定義の出所 ---
+
+@test "定義の出所 検出: build の ref の照合の step を消す" {
+  mutate '
+    job == "build" && /^      - name: 起動した定義が main のものであることを確かめる$/ { skip = 1; next }
+    skip && (/^      - / || /^      # /) { skip = 0 }
+    skip { next }
+    { print }
+  '
+  expect_detected 定義の出所
+}
+
+@test "定義の出所 検出: 照合する ref を refs/heads/develop に替える（step の数と行の数を保つ）" {
+  mutate 'job == "build" && /refs\/heads\/main/ { sub(/refs\/heads\/main/, "refs/heads/develop") } { print }'
+  expect_detected 定義の出所
+}
+
+@test "定義の出所 検出: ref の照合の step から exit 1 を true に替える（行の数を保つ）" {
+  mutate '
+    job == "build" && /^      - name: 起動した定義が main のものであることを確かめる$/ { in_guard = 1 }
+    job == "build" && /^      - name: 入力の形を確かめる$/ { in_guard = 0 }
+    in_guard && /^            exit 1$/ { print "            true"; next }
+    { print }
+  '
+  expect_detected 定義の出所
+}
+
+@test "定義の出所 検出: ref の照合の step を入力の形の確認の後へ動かす（step の数を保つ）" {
+  mutate '
+    job == "build" && /^      - name: 起動した定義が main のものであることを確かめる$/ { hold = 1 }
+    hold && /^      - name: 入力の形を確かめる$/ { hold = 0; after = 1 }
+    hold { buf[++nb] = $0; next }
+    after && /^      - name: 指定のコミットを取り出す$/ { for (i = 1; i <= nb; i++) print buf[i]; print ""; after = 0 }
+    { print }
+  '
+  expect_detected 定義の出所 "両方を持つ step の位置: 2"
+}
+
+@test "定義の出所 検出: ref の照合の step を build から release の先頭へ移す" {
+  mutate '
+    job == "build" && /^      - name: 起動した定義が main のものであることを確かめる$/ { hold = 1 }
+    hold && /^      - name: 入力の形を確かめる$/ { hold = 0 }
+    hold { buf[++nb] = $0; next }
+    { print }
+    job == "release" && /^    steps:$/ { for (i = 1; i <= nb; i++) print buf[i] }
+  '
+  expect_detected 定義の出所 "両方を持つ step の位置: 0"
+}
+
+@test "定義の出所 除外: ref の照合の step の失敗の文言を替える" {
+  mutate 'job == "build" && /::error::このワークフローは main の定義でだけ起動する/ { print "            echo \"::error::main 以外の ref から起動した: $GITHUB_REF\" >&2"; next } { print }'
+  expect_excluded
+}
+
+@test "定義の出所 除外: release の先頭にも同じ照合の step を足す" {
+  mutate '
+    job == "build" && /^      - name: 起動した定義が main のものであることを確かめる$/ { hold = 1 }
+    hold && /^      - name: 入力の形を確かめる$/ { hold = 0 }
+    hold { buf[++nb] = $0 }
+    { print }
+    job == "release" && /^    steps:$/ { for (i = 1; i <= nb; i++) print buf[i] }
+  '
   expect_excluded
 }
 
@@ -488,7 +566,7 @@ expect_excluded() {
 }
 
 # 以下は、字下げの形の上では読めても、キーと値の結び付きを awk で辿れない表記である。読み飛ばすと
-# 5つの不変条件をすり抜けるため、読み取り で止める。
+# 6つの不変条件をすり抜けるため、読み取り で止める。
 @test "読み取り 検出: build の permissions: の値をエイリアス（*）にする" {
   mutate '
     job == "build" && /^    permissions:$/ { print "    permissions: *rw"; skip = 1; next }
