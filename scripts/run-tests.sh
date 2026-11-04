@@ -108,6 +108,7 @@ EXPECTED_BATS=(
     writing-contract.bats
     distribution-boundary.bats
     living-spec-run.bats
+    living-spec-release-workflow.bats
 )
 
 BATS_FILES=()
