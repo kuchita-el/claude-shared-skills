@@ -24,7 +24,6 @@ const RULES = [
   'requirement-uc',
   'requirement-structure',
   'requirement-reference',
-  'requirement-name-absent',
   'requirement-missing',
   'requirement-coverage',
   'example-feature',
