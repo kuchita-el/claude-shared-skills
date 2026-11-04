@@ -116,7 +116,7 @@ jobs:
           path: ${{ runner.temp }}/release/${{ env.ASSET }}
           if-no-files-found: error
 
-  # README の前提（Node 22 以上）の下限と、mise.toml が固定する系列で起動を確かめる。
+  # plugins/living-spec/README.md の前提（Node 22 以上）の下限と、mise.toml が固定する系列で起動を確かめる。
   # チェックアウトせず、依存の無い場所で生成物だけを起動する。
   smoke:
     name: smoke (node ${{ matrix.node }})
@@ -170,8 +170,9 @@ jobs:
             exit 1
           fi
 
-  # 書き込み権限を持つ唯一の job。チェックアウト・依存の導入・ビルド・試験を行わず、
-  # 外部のコードを取って実行しない。使う命令は gh・curl・cmp とシェルの組み込みに限る。
+  # 書き込み権限を持つ唯一の job。チェックアウト・依存の導入・ビルド・試験を行わない。
+  # 使うアクションは actions/download-artifact だけで、ほかに外部のコードを取って実行しない。
+  # 使う命令は gh・curl・cmp とシェルの組み込みに限る。
   release:
     name: release
     runs-on: ubuntu-latest

@@ -17,7 +17,9 @@
 # 読み方はワークフローの字下げの形（job 名は2桁、job のキーは4桁、step は6桁の `- `、step の
 # キーは8桁）を前提にする。この形で読めないもの（最上位の on: が無い・on: の値がインラインに
 # ある・build / smoke / release の job を読めない・それらの job で step を1件も読めない）は、
-# 違反の名前 `読み取り` で赤へ倒す。事実を読めないまま合格を返さないためである。
+# 違反の名前 `読み取り` で赤へ倒す。字下げ8桁以下の行のアンカー・エイリアス、引用符で囲んだ
+# キー、フロー形式のマッピングの要素、`- ` の後に空白を続けた要素も、キーとの結び付きを辿れない
+# 表記として同じく赤へ倒す。事実を読めないまま合格を返さないためである。
 #
 # 覆わないものは docs/development/living-spec-release.md の (7) が定める。
 load 'helpers/common'
@@ -28,11 +30,12 @@ setup() {
 }
 
 # ワークフローを読み、事実を1行ずつ出す。run-tests-runner.bats の workflow_step_facts と同じ
-# 考え方だが、あちらは test.yml の step 専用なので共通化しない。出す事実は次の3種である。
+# 考え方だが、あちらは test.yml の step 専用なので共通化しない。出す事実は次の4種である。
 #
 #   trigger <名前>       on: のブロックの中の2桁のキーごと。値がインラインなら trigger ?inline
 #   top-perm present=<0|1> write=<0|1>
 #   job <id> perm= write= if= coe= steps= step-if= step-coe= needs=<並べ替えてカンマでつなぐ。無ければ ->
+#   unreadable <行番号> <表記>  字下げ8桁以下の行で、キーと値の結び付きを辿れない表記
 #
 # 注記の行（最初の空白でない文字が #）はどの事実にも数えない。permissions:・needs: の値の行末の
 # # 以降も除く。job のキーは4桁の行だけを見る。steps は、直前の4桁のキーが steps である6桁の
@@ -75,9 +78,30 @@ release_workflow_facts() {
       if (k == "if") sif[job] = 1
       if (k == "continue-on-error") scoe[job] = 1
     }
+    # 字下げ8桁以下の行が、キーと値の結び付きを辿れない表記かを返す。10桁以上（run: | の
+    # ブロックの中身、with:・env: の子）には掛けない。
+    function unreadable_form(l,   s, v, item) {
+      match(l, /^ */)
+      if (RLENGTH > 8) return ""
+      s = substr(l, RLENGTH + 1)
+      if (s ~ /^-[ \t][ \t]/) return "`- ` の後に空白が続く要素"
+      item = 0
+      if (s ~ /^-[ \t]/) { s = substr(s, 3); item = 1 }
+      if (s ~ /^[*]/) return "エイリアス（*）"
+      if (s ~ /^&/) return "アンカー（&）"
+      if (item && s ~ /^[{]/) return "フロー形式のマッピングの要素"
+      if (s ~ /^("[^"]*"|\047[^\047]*\047)[ \t]*:/) return "引用符で囲んだキー"
+      if (s ~ /^[^:]*:([ \t]|$)/) {
+        v = trim(strip_comment(valof(s)))
+        if (v ~ /^[*]/) return "エイリアス（*）"
+        if (v ~ /^&/) return "アンカー（&）"
+      }
+      return ""
+    }
 
     /^[ \t]*#/ { next }
     /^[ \t]*$/ { next }
+    { u = unreadable_form($0); if (u != "") printf "unreadable %d %s\n", NR, u }
 
     /^[^ \t]/ {
       top = keyof($0); job = ""; k4 = ""
@@ -138,6 +162,12 @@ check_release_workflow() {
       else trig_list = trig_list (trig_list == "" ? "" : ",") $2
       next
     }
+    $1 == "unreadable" {
+      form = $0
+      sub(/^unreadable [0-9]+ /, "", form)
+      unread[++nunread] = $2 " 行目が、読めない表記（" form "）で書かれている"
+      next
+    }
     $1 == "top-perm" {
       tp_seen = 1
       for (i = 2; i <= NF; i++) { split($i, kv, "="); tp[kv[1]] = kv[2] }
@@ -152,6 +182,7 @@ check_release_workflow() {
       # 読み取り
       if (ntrig == 0) violate("読み取り", "最上位の on: のブロックから契機を1件も読めない")
       if (inline) violate("読み取り", "on: の値がインラインにあり、契機を読めない")
+      for (i = 1; i <= nunread; i++) violate("読み取り", unread[i])
       split("build smoke release", required, " ")
       for (r = 1; r <= 3; r++) {
         j = required[r]
@@ -221,6 +252,12 @@ expect_detected() {
   fi
   if [[ "$output" != *"違反 $1:"* ]]; then
     echo "違反 $1 を出していない" >&2
+    return 1
+  fi
+  # 第2引数があれば、その違反の理由に当該の語が含まれることも確かめる。読み取り は経路が多く、
+  # 別の経路で赤になっただけでは、当該の経路の規則を消しても緑のまま気付けない。
+  if [ -n "${2-}" ] && ! grep -F "違反 $1:" <<<"$output" | grep -qF -- "$2"; then
+    echo "違反 $1 の理由に「$2」が含まれない" >&2
     return 1
   fi
 }
@@ -332,6 +369,15 @@ expect_excluded() {
   expect_excluded
 }
 
+@test "待ち合わせ 除外: release の needs をフロー形式の [build, smoke] にし、行末に注記を添える" {
+  mutate '
+    job == "release" && /^    needs:$/ { print "    needs: [build, smoke]  # 試験を待つ"; skip = 1; next }
+    skip && /^      - / { next }
+    { skip = 0; print }
+  '
+  expect_excluded
+}
+
 # --- job の条件 ---
 
 @test "job の条件 検出: release の job のキーに if: always() を足す" {
@@ -417,4 +463,89 @@ expect_excluded() {
     { print }
   '
   expect_detected 読み取り
+}
+
+@test "読み取り 検出: 最上位の on: のブロックを消す" {
+  mutate '
+    /^on:$/ { skip = 1; next }
+    skip && /^ / { next }
+    { skip = 0; print }
+  '
+  expect_detected 読み取り "最上位の on:"
+}
+
+@test "読み取り 検出: on: を on: workflow_dispatch へ畳む" {
+  mutate '
+    /^on:$/ { print "on: workflow_dispatch"; skip = 1; next }
+    skip && /^ / { next }
+    { skip = 0; print }
+  '
+  expect_detected 読み取り "インライン"
+}
+
+# 以下は、字下げの形の上では読めても、キーと値の結び付きを awk で辿れない表記である。読み飛ばすと
+# 5つの不変条件をすり抜けるため、読み取り で止める。
+@test "読み取り 検出: build の permissions: の値をエイリアス（*）にする" {
+  mutate '
+    job == "build" && /^    permissions:$/ { print "    permissions: *rw"; skip = 1; next }
+    skip && /^      / { next }
+    { skip = 0; print }
+  '
+  expect_detected 読み取り "エイリアス"
+}
+
+@test "読み取り 検出: release の permissions: にアンカー（&）を付ける" {
+  mutate '
+    job == "release" && /^    permissions:$/ { print "    permissions: &rw"; next }
+    { print }
+  '
+  expect_detected 読み取り "アンカー"
+}
+
+@test "読み取り 検出: build の入口・描画の試験の step のキーを引用符で囲んだ \"if\": false を足す" {
+  mutate '{ print } job == "build" && /^      - name: 入口と描画の試験を生成物に掛ける$/ { print "        \"if\": false" }'
+  expect_detected 読み取り "引用符"
+}
+
+@test "読み取り 検出: release の job のキーに引用符で囲んだ 'if': always() を足す" {
+  mutate '{ print } job == "release" && /^    name: release$/ { print "    \047if\047: always()" }'
+  expect_detected 読み取り "引用符"
+}
+
+@test "読み取り 検出: build の steps: にフロー形式のマッピングの step を足す" {
+  mutate '{ print } job == "build" && /^    steps:$/ { print "      - { name: 何もしない, if: false, run: true }" }'
+  expect_detected 読み取り "フロー形式"
+}
+
+# `-   name:` と書くと step のキーは10桁に並び、8桁の行だけを見る step の条件の読みを外れる。
+@test "読み取り 検出: build の入口・描画の試験の step を -   name: で書き、10桁に if: false を足す" {
+  mutate '
+    job == "build" && /^      - name: 入口と描画の試験を生成物に掛ける$/ {
+      print "      -   name: 入口と描画の試験を生成物に掛ける"
+      print "          if: false"
+      in_step = 1
+      next
+    }
+    in_step && (/^      - / || /^  [^ ]/) { in_step = 0 }
+    in_step && /^        / { print "  " $0; next }
+    { print }
+  '
+  expect_detected 読み取り "空白が続く"
+}
+
+@test "読み取り 検出: build の steps: にエイリアス（*）の step を足す" {
+  mutate '{ print } job == "build" && /^    steps:$/ { print "      - *skip_step" }'
+  expect_detected 読み取り "エイリアス"
+}
+
+@test "読み取り 検出: smoke の起動確認の step にアンカー（&）を付ける（step の数とキーの並びを保つ）" {
+  mutate '
+    job == "smoke" && /^      - name: 引数なしで起動して使い方を出すことを確かめる$/ {
+      print "      - &probe"
+      print "        name: 引数なしで起動して使い方を出すことを確かめる"
+      next
+    }
+    { print }
+  '
+  expect_detected 読み取り "アンカー"
 }
