@@ -17,7 +17,7 @@
 
 ## 検査器の導入
 
-検査器と描画は、プラグインと分けて、利用するリポジトリが持つ道具として入れます。claude-shared-skills の GitHub Release に、依存を同梱した1ファイル `living-spec-<コミット SHA>.mjs` として置いています。版は Release の一覧から SHA で選びます。Node 22 以上のほかに要るものはありません。
+検査器と描画は、プラグインと分けて、利用するリポジトリが持つ道具として入れます。claude-shared-skills の GitHub Release に、依存を同梱した1ファイル `living-spec-<コミット SHA>.mjs` として置いています。版は Release の一覧から SHA で選びます。Node 22 以上と、取得に使う curl のほかに要るものはありません。
 
 ### 手元
 
@@ -27,7 +27,7 @@
 curl -fsSL --create-dirs -o ~/.local/share/living-spec/living-spec-<SHA>.mjs https://github.com/kuchita-el/claude-shared-skills/releases/download/living-spec-<SHA>/living-spec-<SHA>.mjs
 ```
 
-2. エージェント（Claude Code・Codex 等）を起動するシェルで、`LIVING_SPEC_BIN` に取ったファイルのパスを入れます。シェルの設定ファイルに書いてもかまいません。
+2. エージェント（Claude Code・Codex 等）を起動するシェルで、`LIVING_SPEC_BIN` に取ったファイルのパスを入れます。シェルの設定ファイルに書いてもかまいません。`~` は中継が展開しないため、下のように引用符で囲まない `export` で書いてシェルに展開させるか、絶対パスを入れます。引用符付きの値や設定ファイルの値に `~` を書くと文字のまま残り、検査器が見つからない扱いになります。
 
 ```bash
 export LIVING_SPEC_BIN=~/.local/share/living-spec/living-spec-<SHA>.mjs
@@ -66,14 +66,14 @@ jobs:
         run: node "$RUNNER_TEMP/living-spec.mjs" check --doc-missing
 ```
 
-- 版は `LIVING_SPEC_REF` のコミット SHA だけで決まります。ブランチ名やタグにすると、claude-shared-skills 側の変更で利用するリポジトリの CI の結果が黙って変わります。
+- 版は `LIVING_SPEC_REF` のコミット SHA だけで決まります。Release のある 40桁の SHA 以外を入れると取得が失敗し、ジョブが失敗します。公開した Release の添付物は差し替えられないため、同じ SHA は同じ検査器を指し続けます。
 - 検査の根は作業ディレクトリ（利用するリポジトリの根）です。`.living-spec.json` で置き場を変えていれば、それに従います。
 - 違反があると検査器は非 0 で終わり、ジョブが失敗します。
 - 取ったファイルは `$RUNNER_TEMP` に置くため、検査の対象に混ざりません。
 
 ## 前提
 
-- Node 22 以上（22.23・24.16 で確かめています）。
+- Node 22 以上（22.23・24.16 で確かめています）と、検査器の取得に使う curl。
 - 可視化の図は Mermaid を jsdelivr から読むため、表示にネットワークが要ります。
 
 ## 契約
