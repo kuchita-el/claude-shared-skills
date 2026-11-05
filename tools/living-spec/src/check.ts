@@ -152,7 +152,7 @@ function loadTable(text: string | undefined, def: TableDef, out: Violation[]): R
         });
       }
     }
-    // 鍵のキーに値があるのに値のキーが無い・空白だけなら落とす。値が文字列でないときは上の型の検査に任せる
+    // 条件のキーに値があるのに、要されるキーが無い・空白だけなら落とす。どちらかの値が文字列でないときは上の型の検査に任せる
     for (const [from, to] of Object.entries(def.requires)) {
       const fromVal = item[from];
       if (typeof fromVal !== 'string' || fromVal.trim() === '') continue;

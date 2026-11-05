@@ -61,7 +61,7 @@ export interface TableDef {
   splitKeys: string[];
   // 省略・空（null・空文字）を許すキー
   emptyOkKeys: string[];
-  // 鍵のキーに値（空白を除いて1字以上の文字列）があるとき、値のキーも要る（無い、または空白だけなら違反）
+  // 条件のキー → 要されるキー。条件のキーに値（空白を除いて1字以上の文字列）があるとき、要されるキーにも値が要る（無い、または空白だけなら違反）
   requires: Record<string, string>;
 }
 
