@@ -126,6 +126,7 @@ export const cases: Case[] = [
       'docs/rdra/architecture-characteristic.yaml': t`
         - アーキテクチャ特性: 監査可能性
           分類: 運用
+          分類体系: ソフトウェアアーキテクチャの基礎
           説明: 操作を追跡できる
           検証方法: 履歴の照合
       `,

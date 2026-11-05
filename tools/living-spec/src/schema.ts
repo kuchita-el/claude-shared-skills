@@ -183,6 +183,7 @@ export const TABLES: TableDef[] = [
     keys: {
       アーキテクチャ特性: 'string',
       分類: 'string',
+      分類体系: 'string',
       説明: 'string',
       検証方法: 'string',
       [HYPOTHESIS]: 'list',
