@@ -6,6 +6,9 @@ export interface Case {
   files: Record<string, string>;
   // 期待する違反の (rule, file, target)。pass は空。fail は、その規則の違反だけを並べる
   expected: { rule: string; file: string; target: string }[];
+  // 対象（target）→ その対象への違反の件数。集合の比較は同じ対象に重なる違反の数を見ないので、
+  // 重ねて出すこと・重ねて出さないことを確かめる件だけが書く。書いた件は、全違反の対象ごとの件数が一致することを見る
+  counts?: Record<string, number>;
 }
 
 // テンプレート文字列の先頭の改行と、共通の字下げを除く（YAML・Markdown・Gherkin を字下げして書くため）

@@ -1,6 +1,7 @@
 // 規則ごとの判定を、ファイルを置かずに確かめる（test/cases/<規則>.ts）。
 // 1件ごとに、要る表・要求票・例だけを渡して全体検査（書き漏らしの向きの規則は書き漏らしの検査も）を走らせ、
-// (rule, file, target) の集合が期待と完全一致することを見る。読み込みから出力までのつながりは examples.test.ts が見る。
+// (rule, file, target) の集合が期待と完全一致することを見る。件が counts を持つときは、重複を除く前の違反の件数も
+// 対象ごとに見る（同じ対象に重なる違反の数は集合では見えないため）。読み込みから出力までのつながりは examples.test.ts が見る。
 import assert from 'node:assert/strict';
 import { readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -42,6 +43,11 @@ for (const f of ruleFiles) {
         ? [...checkSources(sources), ...checkDocMissingSources(sources)]
         : checkSources(sources);
       assert.deepEqual([...new Set(actual.map(keyOf))].sort(), [...new Set(c.expected.map(keyOf))].sort());
+      if (c.counts !== undefined) {
+        const got: Record<string, number> = {};
+        for (const v of actual) got[v.target] = (got[v.target] ?? 0) + 1;
+        assert.deepEqual(got, c.counts, '対象ごとの違反の件数が counts と違う');
+      }
       for (const v of actual) assert.ok(v.detail !== '', '違反の detail が空');
     });
   }

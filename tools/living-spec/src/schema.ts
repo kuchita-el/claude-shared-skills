@@ -61,6 +61,8 @@ export interface TableDef {
   splitKeys: string[];
   // 省略・空（null・空文字）を許すキー
   emptyOkKeys: string[];
+  // 鍵のキーに値（空白を除いて1字以上の文字列）があるとき、値のキーも要る（無い、または空白だけなら違反）
+  requires: Record<string, string>;
 }
 
 const HYPOTHESIS = '仮説';
@@ -76,6 +78,7 @@ export const TABLES: TableDef[] = [
     keys: { アクター: 'string', 役割: 'string', 社内外: 'string', [HYPOTHESIS]: 'list' },
     splitKeys: [],
     emptyOkKeys: [],
+    requires: {},
   },
   {
     id: 'external-system',
@@ -87,6 +90,7 @@ export const TABLES: TableDef[] = [
     keys: { 外部システム: 'string', 役割: 'string', [HYPOTHESIS]: 'list' },
     splitKeys: [],
     emptyOkKeys: [],
+    requires: {},
   },
   {
     id: 'information',
@@ -106,6 +110,7 @@ export const TABLES: TableDef[] = [
     },
     splitKeys: ['属性', '関連情報', '状態モデル', 'バリエーション'],
     emptyOkKeys: [],
+    requires: {},
   },
   {
     id: 'state',
@@ -125,6 +130,7 @@ export const TABLES: TableDef[] = [
     splitKeys: [],
     // 初期遷移は 状態 を、終端の状態は 遷移UC・遷移先状態 を省略または空にする
     emptyOkKeys: ['状態', '遷移UC', '遷移先状態'],
+    requires: {},
   },
   {
     id: 'use-case',
@@ -144,6 +150,7 @@ export const TABLES: TableDef[] = [
     },
     splitKeys: [],
     emptyOkKeys: [],
+    requires: {},
   },
   {
     id: 'condition',
@@ -161,6 +168,7 @@ export const TABLES: TableDef[] = [
     },
     splitKeys: ['バリエーション', '状態モデル'],
     emptyOkKeys: [],
+    requires: {},
   },
   {
     id: 'variation',
@@ -172,6 +180,7 @@ export const TABLES: TableDef[] = [
     keys: { バリエーション: 'string', 値: 'string', 説明: 'string', [HYPOTHESIS]: 'list' },
     splitKeys: ['値'],
     emptyOkKeys: [],
+    requires: {},
   },
   {
     id: 'architecture-characteristic',
@@ -190,6 +199,7 @@ export const TABLES: TableDef[] = [
     },
     splitKeys: [],
     emptyOkKeys: [],
+    requires: { 分類: '分類体系' },
   },
 ];
 
