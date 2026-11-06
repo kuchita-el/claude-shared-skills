@@ -152,6 +152,14 @@ function loadTable(text: string | undefined, def: TableDef, out: Violation[]): R
         });
       }
     }
+    // 条件のキーに値があるのに、要されるキーが無い・空白だけなら落とす。どちらかの値が文字列でないときは上の型の検査に任せる
+    for (const [from, to] of Object.entries(def.requires)) {
+      const fromVal = item[from];
+      if (typeof fromVal !== 'string' || fromVal.trim() === '') continue;
+      const toVal = item[to];
+      if (toVal !== undefined && (typeof toVal !== 'string' || toVal.trim() !== '')) continue;
+      out.push({ rule: 'invalid-shape', file: def.file, target, detail: `キー『${from}』に値があるのに、キー『${to}』が無い、または空` });
+    }
     if (hasName) rows.push({ def, data: item, name });
   });
   return rows;

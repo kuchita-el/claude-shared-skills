@@ -97,6 +97,7 @@ export const cases: Case[] = [
       [AC]: t`
         - アーキテクチャ特性: ""
           分類: 運用
+          分類体系: ソフトウェアアーキテクチャの基礎
       `,
     },
     expected: bad(AC, 'アーキテクチャ特性:#1'),
@@ -107,6 +108,7 @@ export const cases: Case[] = [
     files: {
       [AC]: t`
         - 分類: 運用
+          分類体系: ソフトウェアアーキテクチャの基礎
       `,
     },
     expected: bad(AC, 'アーキテクチャ特性:#1'),
@@ -210,6 +212,7 @@ export const cases: Case[] = [
       [AC]: t`
         - アーキテクチャ特性: 監査可能性
           分類: 運用
+          分類体系: ソフトウェアアーキテクチャの基礎
           説明: 100
           検証方法: 履歴の照合
       `,
@@ -227,5 +230,137 @@ export const cases: Case[] = [
     name: 'fail-yaml-syntax',
     files: { [AC]: '- アーキテクチャ特性: 監査可能性\n  分類: [運用\n' },
     expected: bad(AC, '表:architecture-characteristic.yaml'),
+  },
+  // 分類に値があるのに分類体系が無いレコードだけが落ちる
+  {
+    name: 'fail-classification-system-missing',
+    files: {
+      [AC]: t`
+        - アーキテクチャ特性: 監査可能性
+          分類: 運用
+          分類体系: ソフトウェアアーキテクチャの基礎
+        - アーキテクチャ特性: 可用性
+          分類: 運用
+      `,
+    },
+    expected: bad(AC, 'アーキテクチャ特性:可用性'),
+  },
+  // 分類体系が空文字・空白だけのレコードも、無いものとして落ちる
+  {
+    name: 'fail-classification-system-blank',
+    files: {
+      [AC]: t`
+        - アーキテクチャ特性: 監査可能性
+          分類: 運用
+          分類体系: ""
+        - アーキテクチャ特性: 可用性
+          分類: 運用
+          分類体系: " "
+      `,
+    },
+    expected: [...bad(AC, 'アーキテクチャ特性:監査可能性'), ...bad(AC, 'アーキテクチャ特性:可用性')],
+  },
+  // 名前の無いレコードにも掛かり、名前の欠けと同じ対象に重ねて出る（集合では見えないので件数で見る）
+  {
+    name: 'fail-classification-system-nameless',
+    files: {
+      [AC]: t`
+        - 分類: 運用
+          説明: 操作を追跡できる
+      `,
+    },
+    expected: bad(AC, 'アーキテクチャ特性:#1'),
+    counts: { 'アーキテクチャ特性:#1': 2 },
+  },
+  // 分類体系の値が文字列でないときは型の誤りだけが出て、必須の検査は重ならない
+  {
+    name: 'fail-classification-system-not-string',
+    files: {
+      [AC]: t`
+        - アーキテクチャ特性: 監査可能性
+          分類: 運用
+          分類体系: 123
+        - アーキテクチャ特性: 可用性
+          分類: 運用
+          分類体系: null
+      `,
+    },
+    expected: [...bad(AC, 'アーキテクチャ特性:監査可能性'), ...bad(AC, 'アーキテクチャ特性:可用性')],
+    counts: { 'アーキテクチャ特性:監査可能性': 1, 'アーキテクチャ特性:可用性': 1 },
+  },
+  // 分類の値が文字列でないときは型の誤りだけが出て、必須の検査は重ならない
+  {
+    name: 'fail-classification-not-string',
+    files: {
+      [AC]: t`
+        - アーキテクチャ特性: 監査可能性
+          分類: 123
+      `,
+    },
+    expected: bad(AC, 'アーキテクチャ特性:監査可能性'),
+    counts: { 'アーキテクチャ特性:監査可能性': 1 },
+  },
+  // 分類と分類体系が揃っていれば通る
+  {
+    name: 'pass-classification-with-system',
+    files: {
+      [AC]: t`
+        - アーキテクチャ特性: 保守性
+          分類: 保守性
+          分類体系: ISO/IEC 25010
+      `,
+    },
+    expected: [],
+  },
+  // 体系が分からないときは「不明」と書けば通る（値の中身は問わない）
+  {
+    name: 'pass-classification-system-unknown',
+    files: {
+      [AC]: t`
+        - アーキテクチャ特性: 監査可能性
+          分類: 運用
+          分類体系: 不明
+      `,
+    },
+    expected: [],
+  },
+  // 分類の無いレコードは分類体系を問われない
+  {
+    name: 'pass-no-classification',
+    files: {
+      [AC]: t`
+        - アーキテクチャ特性: 監査可能性
+          説明: 操作を追跡できる
+      `,
+    },
+    expected: [],
+  },
+  // 分類が空文字・空白だけなら値が無いものとして、分類体系を問われない
+  {
+    name: 'pass-classification-blank',
+    files: {
+      [AC]: t`
+        - アーキテクチャ特性: 監査可能性
+          分類: ""
+        - アーキテクチャ特性: 可用性
+          分類: " "
+      `,
+    },
+    expected: [],
+  },
+  // レコードごとに分類体系が違っても通る（体系の一致は求めない）
+  {
+    name: 'pass-classification-systems-differ',
+    files: {
+      [AC]: t`
+        - アーキテクチャ特性: 監査可能性
+          分類: 運用
+          分類体系: ソフトウェアアーキテクチャの基礎
+        - アーキテクチャ特性: 保守性
+          分類: 保守性
+          分類体系: ISO/IEC 25010
+      `,
+    },
+    expected: [],
   },
 ];
