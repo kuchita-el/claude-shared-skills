@@ -13,7 +13,7 @@ allowed-tools:
 
 # 要求の構造化
 
-要求を3層の正本（RDRA の表・要求票・例）へ落とし、機械検査を通り、規則間の矛盾が突き合わせで潰れた状態で終える。
+要求を3層の正本（RDRA の表・要求票・例）へ落とし、機械検査を通し、規則間の矛盾が突き合わせで潰れた状態で終える。
 
 書式・置き場・検査の規則の正本は `${CLAUDE_PLUGIN_ROOT}/references/format.md`。着手前に読む。雛形は `${CLAUDE_PLUGIN_ROOT}/references/templates/`。
 
