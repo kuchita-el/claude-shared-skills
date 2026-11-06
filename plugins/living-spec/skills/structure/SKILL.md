@@ -13,7 +13,7 @@ allowed-tools:
 
 # 要求の構造化
 
-要求を3層の正本（RDRA の表・要求票・例）へ落とし、名前と参照と層間の追跡が機械検査で通り、規則間の矛盾が突き合わせで潰れた状態で終える。
+要求を3層の正本（RDRA の表・要求票・例）へ落とし、機械検査を通し、規則間の矛盾が突き合わせで潰れた状態で終える。
 
 書式・置き場・検査の規則の正本は `${CLAUDE_PLUGIN_ROOT}/references/format.md`。着手前に読む。雛形は `${CLAUDE_PLUGIN_ROOT}/references/templates/`。
 
@@ -66,7 +66,7 @@ allowed-tools:
 
 ### 6. 規則間の矛盾を突き合わせる
 
-機械検査は名前と参照しか見ない。`rule-crosschecker` エージェントへ、根・置き場・この回で足したり変えたりした要素の名前と、plugin root path（`${CLAUDE_PLUGIN_ROOT}`）を渡し、独立した文脈で矛盾を探させる。起草の経緯は渡さない。
+機械検査は意味を見ない。`rule-crosschecker` エージェントへ、根・置き場・この回で足したり変えたりした要素の名前と、plugin root path（`${CLAUDE_PLUGIN_ROOT}`）を渡し、独立した文脈で矛盾を探させる。起草の経緯は渡さない。
 
 返った指摘を1件ずつ扱う。
 

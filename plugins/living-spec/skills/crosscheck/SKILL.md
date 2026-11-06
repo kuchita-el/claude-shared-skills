@@ -8,7 +8,7 @@ allowed-tools:
 
 # 規則間の矛盾の突き合わせ
 
-機械検査（名前・参照・層間の追跡）を通った正本に、意味の突き合わせを掛ける。直さずに報告する。直すのは `structure` か利用者。
+機械検査を通った正本に、意味の突き合わせを掛ける。直さずに報告する。直すのは `structure` か利用者。
 
 ## 引数
 
@@ -16,7 +16,7 @@ allowed-tools:
 
 ## 手順
 
-1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/run.mjs" check` を実行する。違反があれば、名前や参照が崩れたままでは意味の突き合わせが空振りするため、違反を示して止まる
+1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/run.mjs" check` を実行する。違反があれば、正本が崩れたままでは意味の突き合わせが空振りするため、違反を示して止まる
 2. 根の `.living-spec.json` から置き場を読む（無ければ既定）
 3. `rule-crosschecker` エージェントへ、根の絶対パス・置き場・焦点と、plugin root path（`${CLAUDE_PLUGIN_ROOT}`）を渡す。起草の経緯・作り手の意図は渡さない
 4. 返った指摘から最大3件を抜き取り、根拠を確かめる。
