@@ -15,13 +15,14 @@ export interface Layout {
 
 export const CONFIG_FILE = '.living-spec.json';
 
-const DEFAULT_LAYOUT: Layout = {
+// 既定の置き場。根の設定で書き換わらない（書き換わるのは LAYOUT）。根の探索の目印もここから読む
+export const DEFAULT_LAYOUT: Readonly<Layout> = Object.freeze({
   tables: 'docs/rdra',
   requirements: 'docs/requirements',
   examples: 'docs/examples',
   output: '.cache/living-spec/index.html',
   hook: true,
-};
+});
 
 export const LAYOUT: Layout = { ...DEFAULT_LAYOUT };
 

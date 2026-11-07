@@ -360,7 +360,7 @@ test('CLI: 根の .cache/living-spec/index.html へ、生成時刻と根のパ�
   }
 });
 
-test('CLI: 根に docs/rdra/ が無ければ終了コード 2 で止まり、何も書かない', () => {
+test('CLI: 今いる場所から上へ辿って目印が無ければ終了コード 2 で止まり、何も書かない', () => {
   const empty = mkdtempSync(join(tmpdir(), 'living-spec-render-'));
   try {
     const result = spawnSync(process.execPath, [main, 'render'], { cwd: empty, encoding: 'utf8' });
