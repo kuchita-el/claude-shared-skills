@@ -13,7 +13,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { checkDocMissing, checkRepo, formatViolation } from './check.ts';
 import { writeView } from './render.ts';
-import { findRoot, formatNoRoot, statIfExists } from './root.ts';
+import { RootSearchError, findRoot, formatNoRoot, statIfExists } from './root.ts';
 import { CONFIG_FILE, LAYOUT, configureLayout } from './schema.ts';
 
 const USAGE = '使い方: living-spec check [--doc-missing] [起点] | living-spec render [起点] | living-spec hook';
@@ -31,14 +31,20 @@ function die(message: string): never {
 // 起点から根を決め、置き場を読み込む。announce なら根が決まった直後（設定を読む前）に標準出力の1行目へ根を出す。
 // 根を誤ると表を1つも読まずに「違反なし」と出て黙って通るため、表の置き場が無ければ止める
 function prepare(arg: string | undefined, announce: boolean): string {
-  let start = process.cwd();
-  if (arg !== undefined) {
-    const target = resolve(arg);
-    const stat = statIfExists(target);
-    if (stat === undefined) die(`起点が見つからない: ${target}`);
-    start = stat.isDirectory() ? target : dirname(target);
+  let search: ReturnType<typeof findRoot>;
+  try {
+    let start = process.cwd();
+    if (arg !== undefined) {
+      const target = resolve(arg);
+      const stat = statIfExists(target);
+      if (stat === undefined) die(`起点が見つからない: ${target}`);
+      start = stat.isDirectory() ? target : dirname(target);
+    }
+    search = findRoot(start);
+  } catch (e) {
+    if (e instanceof RootSearchError) die(e.message);
+    throw e;
   }
-  const search = findRoot(start);
   if (!search.found) die(formatNoRoot(search));
   const root = search.root;
   if (announce) console.log(`根: ${root}`);

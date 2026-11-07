@@ -1,9 +1,10 @@
 // 正本の根の探索。起点のディレクトリから親へ1段ずつ辿り、最も近い目印のディレクトリを根にする。
 // 目印: .living-spec.json が在る（種類を問わない）か、既定の表の置き場（DEFAULT_LAYOUT.tables）がディレクトリとして在る。
-// 境界: .git が在る（ディレクトリかファイルかを問わない）。境界のディレクトリ自身の目印は見るが、その上へは辿らない。
+// 境界: .git が在る（ディレクトリかファイルかを問わない）、かつ submodule でない。境界のディレクトリ自身の目印は見るが、その上へは辿らない。
+// submodule: 親の作業ツリー（上へ辿って最初に .git を持つディレクトリ）の .gitmodules の path に載るディレクトリ。
 // パスは絶対化したものを字面のまま扱い、シンボリックリンクは解かない（在るか・種類はリンクを辿って見る）。
-import { type Stats, statSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { type Stats, readFileSync, statSync } from 'node:fs';
+import { dirname, join, relative, sep } from 'node:path';
 import { CONFIG_FILE, DEFAULT_LAYOUT } from './schema.ts';
 
 export interface RootFound {
@@ -21,9 +22,82 @@ export interface RootNotFound {
 
 export type RootSearch = RootFound | RootNotFound;
 
-// p が在れば種類を、無ければ（途中がファイルのときも）undefined を返す。それ以外の読み取りの失敗は例外のまま投げる
+// 無い場合以外の読み取りの失敗。読もうとしたパスと理由（code）を持つ
+export class RootSearchError extends Error {
+  readonly path: string;
+  readonly reason: string;
+  constructor(path: string, reason: string) {
+    super(`根の探索で読めない: ${path}（${reason}）`);
+    this.name = 'RootSearchError';
+    this.path = path;
+    this.reason = reason;
+  }
+}
+
+function reasonOf(e: unknown): string {
+  const code = (e as NodeJS.ErrnoException).code;
+  return typeof code === 'string' ? code : String(e);
+}
+
+// p が在れば種類を、無ければ（途中がファイルのときも）undefined を返す。それ以外の読み取りの失敗は RootSearchError にして投げる
 export function statIfExists(p: string): Stats | undefined {
-  return statSync(p, { throwIfNoEntry: false });
+  try {
+    return statSync(p, { throwIfNoEntry: false });
+  } catch (e) {
+    throw new RootSearchError(p, reasonOf(e));
+  }
+}
+
+// .gitmodules の本文から、submodule の節の path の値の並びを返す
+export function readGitmodulePaths(text: string): string[] {
+  const paths: string[] = [];
+  let inSubmodule = false;
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (line === '' || line.startsWith('#') || line.startsWith(';')) continue;
+    if (line.startsWith('[')) {
+      inSubmodule = line.toLowerCase().startsWith('[submodule');
+      continue;
+    }
+    if (!inSubmodule) continue;
+    const eq = line.indexOf('=');
+    if (eq < 0 || line.slice(0, eq).trim().toLowerCase() !== 'path') continue;
+    let value = line.slice(eq + 1).trim();
+    if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
+      value = value.slice(1, -1).replace(/\\(["\\])/g, '$1');
+    } else {
+      const cut = value.search(/[#;]/);
+      if (cut >= 0) value = value.slice(0, cut).trim();
+    }
+    paths.push(value.replace(/\/+$/, ''));
+  }
+  return paths;
+}
+
+// 作業ツリー S の .gitmodules の path の値。無ければ（ENOENT・ENOTDIR）空
+function gitmodulePaths(S: string): string[] {
+  const file = join(S, '.gitmodules');
+  let text: string;
+  try {
+    text = readFileSync(file, 'utf8');
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException).code;
+    if (code === 'ENOENT' || code === 'ENOTDIR') return [];
+    throw new RootSearchError(file, reasonOf(e));
+  }
+  return readGitmodulePaths(text);
+}
+
+function isSubmodule(dir: string): boolean {
+  let S = dirname(dir);
+  for (;;) {
+    if (statIfExists(join(S, '.git')) !== undefined) break;
+    const parent = dirname(S);
+    if (parent === S) return false;
+    S = parent;
+  }
+  const rel = relative(S, dir).split(sep).join('/');
+  return gitmodulePaths(S).includes(rel);
 }
 
 function isMarker(dir: string): boolean {
@@ -32,7 +106,7 @@ function isMarker(dir: string): boolean {
 }
 
 function isBoundary(dir: string): boolean {
-  return statIfExists(join(dir, '.git')) !== undefined;
+  return statIfExists(join(dir, '.git')) !== undefined && !isSubmodule(dir);
 }
 
 // startDir は絶対パスで渡す。存在しないディレクトリは目印にも境界にもならず、親へ進む

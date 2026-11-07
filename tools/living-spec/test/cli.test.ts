@@ -325,3 +325,88 @@ test('境界: worktree の .git の上の目印は根にしない', () => {
     rmSync(R, { recursive: true });
   }
 });
+
+const gitmodulesDocs = '[submodule "docs"]\n\tpath = docs\n\turl = ../docs.git\n';
+
+// R の docs を submodule（またはその体裁の入れ子）にした木。docsGit は R/docs/.git の作り方
+function submoduleTree(docsGit: 'file' | 'dir', modules: string | null): string {
+  const R = repo();
+  put(R, passExample);
+  if (modules !== null) writeFileSync(join(R, '.gitmodules'), modules);
+  if (docsGit === 'file') writeFileSync(join(R, 'docs', '.git'), 'gitdir: ../.git/modules/docs\n');
+  else mkdirSync(join(R, 'docs', '.git'));
+  return R;
+}
+
+const useCase = (R: string) => join(R, 'docs', 'rdra', 'use-case.yaml');
+
+test('境界: submodule の docs は境界にしない（ルートの設定の有無によらない）', () => {
+  const R = submoduleTree('file', gitmodulesDocs);
+  try {
+    const plain = run(['check', useCase(R)], R);
+    assert.equal(firstLine(plain.stdout), `根: ${R}`, plain.stdout + plain.stderr);
+    assert.equal(plain.status, 0, plain.stdout + plain.stderr);
+    config(R, {});
+    const withConfig = run(['check', useCase(R)], R);
+    assert.equal(firstLine(withConfig.stdout), `根: ${R}`, withConfig.stdout + withConfig.stderr);
+    assert.equal(withConfig.status, 0, withConfig.stdout + withConfig.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('境界: 旧式の submodule（.git がディレクトリ）も境界にしない', () => {
+  const R = submoduleTree('dir', gitmodulesDocs);
+  try {
+    const out = run(['check', useCase(R)], R);
+    assert.equal(firstLine(out.stdout), `根: ${R}`, out.stdout + out.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('境界: .gitmodules に載らない入れ子のリポジトリは境界にする', () => {
+  const R = submoduleTree('dir', null);
+  try {
+    const out = run(['check', useCase(R)], R);
+    assert.equal(out.status, 2, out.stdout + out.stderr);
+    assert.doesNotMatch(out.stdout, rootLine);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('境界: .gitmodules の書式の揺れでも submodule と判定し、注釈の行は数えない', () => {
+  const R = submoduleTree('file', gitmodulesDocs);
+  try {
+    const yes = [
+      '[Submodule "docs"]\n  PATH=docs/  # 注釈\n',
+      '; 注釈\n[submodule "docs"]\n\tpath = "docs"\n',
+    ];
+    for (const text of yes) {
+      writeFileSync(join(R, '.gitmodules'), text);
+      const out = run(['check', useCase(R)], R);
+      assert.equal(firstLine(out.stdout), `根: ${R}`, `${text}\n${out.stdout}${out.stderr}`);
+    }
+    writeFileSync(join(R, '.gitmodules'), '[submodule "docs"]\n# path = docs\n');
+    const no = run(['check', useCase(R)], R);
+    assert.equal(no.status, 2, no.stdout + no.stderr);
+    assert.doesNotMatch(no.stdout, rootLine);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('境界: .gitmodules を読めなければ、終了コード 2 で読めない場所を示す', () => {
+  const R = submoduleTree('file', null);
+  try {
+    mkdirSync(join(R, '.gitmodules'));
+    const out = run(['check', useCase(R)], R);
+    assert.equal(out.status, 2, out.stdout + out.stderr);
+    assert.doesNotMatch(out.stdout, rootLine);
+    assert.ok(out.stderr.includes('根の探索で読めない'), out.stderr);
+    assert.ok(out.stderr.includes(join(R, '.gitmodules')), out.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
