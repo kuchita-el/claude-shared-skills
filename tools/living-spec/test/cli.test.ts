@@ -1138,3 +1138,21 @@ test('フック: 根の探索でファイルを読めなければ、check と同
     rmSync(R, { recursive: true });
   }
 });
+
+test('注記の範囲は設定の置き場で決める: 設定の表の置き場は範囲内、既定の置き場の位置は範囲外', () => {
+  const R = repo();
+  try {
+    put(R, passExample);
+    renameSync(join(R, 'docs', 'rdra'), join(R, 'domains'));
+    config(R, { tables: 'domains' });
+    const inside = run(['check', join(R, 'domains', 'actor.yaml')], R);
+    assert.equal(inside.status, 0, inside.stdout + inside.stderr);
+    assert.equal(inside.stderr, '');
+    mkdirSync(join(R, 'docs', 'rdra'));
+    const outside = run(['check', join(R, 'docs', 'rdra')], R);
+    assert.equal(outside.status, 0, outside.stdout + outside.stderr);
+    assert.ok(outside.stderr.includes('注記'), outside.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
