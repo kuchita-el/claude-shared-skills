@@ -53,6 +53,47 @@ function firstLine(out: string): string {
   return out.split('\n')[0];
 }
 
+interface MisplacedRoot {
+  name: string;
+  // 検査する根
+  root: string;
+  // 後始末で消す一時ディレクトリ
+  base: string;
+  // 標準エラーに含むべき語
+  words: string[];
+}
+
+// 置き場が根に属さない3つの形の木（根の外・別の根の中・境界の向こう）。どの置き場にも通る見本の表を置く
+function misplacedRoots(): MisplacedRoot[] {
+  const tables = join(passExample, 'docs', 'rdra');
+  const outsideBase = repo();
+  const outside = join(outsideBase, 'r');
+  config(outside, { tables: '../shared/rdra' });
+  cpSync(tables, join(outsideBase, 'shared', 'rdra'), { recursive: true });
+  const nested = repo();
+  config(nested, { tables: 'x/docs/rdra' });
+  cpSync(tables, join(nested, 'x', 'docs', 'rdra'), { recursive: true });
+  const fenced = repo();
+  config(fenced, { tables: 'vendor/spec/rdra' });
+  mkdirSync(join(fenced, 'vendor', 'spec', '.git'), { recursive: true });
+  cpSync(tables, join(fenced, 'vendor', 'spec', 'rdra'), { recursive: true });
+  return [
+    {
+      name: '根の外',
+      root: outside,
+      base: outsideBase,
+      words: ['tables', '../shared/rdra', join(outsideBase, 'shared', 'rdra'), '根の外'],
+    },
+    { name: '別の根の中', root: nested, base: nested, words: ['x/docs/rdra', '別の根', join(nested, 'x')] },
+    {
+      name: '境界の向こう',
+      root: fenced,
+      base: fenced,
+      words: ['vendor/spec/rdra', '境界', join(fenced, 'vendor', 'spec')],
+    },
+  ];
+}
+
 for (const [name, args] of [
   ['全体検査', ['check']],
   ['書き漏らしの検査', ['check', '--doc-missing']],
@@ -408,5 +449,134 @@ test('境界: .gitmodules を読めなければ、終了コード 2 で読めな
     assert.ok(out.stderr.includes(join(R, '.gitmodules')), out.stderr);
   } finally {
     rmSync(R, { recursive: true });
+  }
+});
+
+test('設定を読めなくても、根を1行目に示して終了コード 2', () => {
+  const R = repo();
+  try {
+    put(R, passExample);
+    writeFileSync(join(R, '.living-spec.json'), '{');
+    const checked = run(['check', R], R);
+    assert.equal(checked.status, 2, checked.stdout + checked.stderr);
+    assert.equal(firstLine(checked.stdout), `根: ${R}`);
+    assert.ok(checked.stderr.includes('.living-spec.json'), checked.stderr);
+    assert.ok(checked.stderr.includes(R), checked.stderr);
+    const rendered = run(['render', R], R);
+    assert.equal(rendered.status, 2, rendered.stdout + rendered.stderr);
+    assert.equal(rendered.stdout, '');
+    assert.ok(rendered.stderr.includes(R), rendered.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('設定はあるのに表の置き場が無ければ、根を示して終了コード 2', () => {
+  const R = repo();
+  try {
+    config(R, {});
+    const checked = run(['check', R], R);
+    assert.equal(checked.status, 2, checked.stdout + checked.stderr);
+    assert.equal(firstLine(checked.stdout), `根: ${R}`);
+    assert.ok(checked.stderr.includes('表の置き場が見つからない'), checked.stderr);
+    const rendered = run(['render', R], R);
+    assert.equal(rendered.status, 2, rendered.stdout + rendered.stderr);
+    assert.equal(rendered.stdout, '');
+    assert.ok(rendered.stderr.includes(R), rendered.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('表の置き場がディレクトリでなければ、正本が無いと扱う', () => {
+  const R = repo();
+  try {
+    config(R, {});
+    mkdirSync(join(R, 'docs'));
+    writeFileSync(join(R, 'docs', 'rdra'), '');
+    const checked = run(['check', R], R);
+    assert.equal(checked.status, 2, checked.stdout + checked.stderr);
+    assert.ok(checked.stderr.includes('表の置き場が見つからない'), checked.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('根に属さない置き場: 3つの形で check と render が同じ文面で止まる', () => {
+  for (const tree of misplacedRoots()) {
+    try {
+      const checked = run(['check', tree.root], tree.root);
+      assert.equal(checked.status, 2, `${tree.name}: ${checked.stdout}${checked.stderr}`);
+      assert.equal(firstLine(checked.stdout), `根: ${tree.root}`, tree.name);
+      for (const word of tree.words) assert.ok(checked.stderr.includes(word), `${tree.name}: ${word}\n${checked.stderr}`);
+      const rendered = run(['render', tree.root], tree.root);
+      assert.equal(rendered.status, 2, `${tree.name}: ${rendered.stdout}${rendered.stderr}`);
+      assert.equal(rendered.stdout, '', tree.name);
+      assert.equal(rendered.stderr, checked.stderr, tree.name);
+    } finally {
+      rmSync(tree.base, { recursive: true });
+    }
+  }
+});
+
+test('置き場の検証は置き場そのものから辿る: 置き場自身が目印なら別の根、置き場が根そのものなら属する', () => {
+  const R = repo();
+  const S = repo();
+  try {
+    put(R, passExample);
+    renameSync(join(R, 'docs', 'rdra'), join(R, 'sub'));
+    config(R, { tables: 'sub' });
+    config(join(R, 'sub'), {});
+    const checked = run(['check', R], R);
+    assert.equal(checked.status, 2, checked.stdout + checked.stderr);
+    assert.equal(firstLine(checked.stdout), `根: ${R}`);
+    for (const word of ['sub', '別の根', join(R, 'sub')]) assert.ok(checked.stderr.includes(word), `${word}\n${checked.stderr}`);
+    const rendered = run(['render', R], R);
+    assert.equal(rendered.status, 2, rendered.stdout + rendered.stderr);
+    assert.equal(rendered.stdout, '');
+    assert.equal(rendered.stderr, checked.stderr);
+
+    put(S, passExample);
+    cpSync(join(S, 'docs', 'rdra'), S, { recursive: true });
+    rmSync(join(S, 'docs', 'rdra'), { recursive: true });
+    config(S, { tables: '.' });
+    const self = run(['check', S], S);
+    assert.equal(self.status, 0, self.stdout + self.stderr);
+    assert.equal(firstLine(self.stdout), `根: ${S}`);
+  } finally {
+    rmSync(R, { recursive: true });
+    rmSync(S, { recursive: true });
+  }
+});
+
+test('置き場がまだ無くても、根に属するなら止めない', () => {
+  const R = repo();
+  try {
+    put(R, passExample);
+    config(R, { requirements: 'spec/req' });
+    const checked = run(['check', R], R);
+    assert.equal(checked.status, 0, checked.stdout + checked.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('外れた置き場は存在しなくても止める', () => {
+  const R = repo();
+  const T = repo();
+  try {
+    put(R, passExample);
+    config(R, { examples: '../nowhere' });
+    const examples = run(['check', R], R);
+    assert.equal(examples.status, 2, examples.stdout + examples.stderr);
+    assert.ok(examples.stderr.includes('根の外'), examples.stderr);
+    config(T, { tables: '../nowhere' });
+    const tables = run(['check', T], T);
+    assert.equal(tables.status, 2, tables.stdout + tables.stderr);
+    assert.ok(tables.stderr.includes('根の外'), tables.stderr);
+    assert.ok(!tables.stderr.includes('表の置き場が見つからない'), tables.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+    rmSync(T, { recursive: true });
   }
 });
