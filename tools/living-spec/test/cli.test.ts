@@ -1,5 +1,5 @@
 // 入口（main.ts）の根の探索・置き場の検証・範囲・書き漏らしの向きのフラグ・フックの範囲を確かめる。
-// 根が決まらない・置き場が根に属さない・設定や探索で読めないときは、CLI もフックも同じ文面で終了コード 2 で止まる。
+// 置き場が根に属さない・設定を読めない・根が決まった後の探索で読めないときは、CLI もフックも同じ文面で終了コード 2 で止まる。
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -1126,12 +1126,30 @@ test('フック: 置き場の検証は置き場そのものから辿る', () => 
   }
 });
 
-test('フック: 根の探索でファイルを読めなければ、check と同じ文面で終了コード 2', () => {
+test('フック: 根が決まる前の探索でファイルを読めなければ、何もせず終了コード 0（check は 2）', () => {
   const R = submoduleTree('file', null);
   try {
     mkdirSync(join(R, '.gitmodules'));
     const checked = run(['check', useCase(R)], R);
+    assert.equal(checked.status, 2, checked.stdout + checked.stderr);
     const result = hookAt(useCase(R), R);
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.equal(result.stderr, '');
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('フック: 根が決まった後の探索でファイルを読めなければ、check と同じ文面で終了コード 2', () => {
+  const R = repo();
+  try {
+    put(R, passExample);
+    config(R, { requirements: 'a/b' });
+    mkdirSync(join(R, 'a'));
+    writeFileSync(join(R, 'a', '.git'), 'gitdir: ../.git/modules/a\n');
+    mkdirSync(join(R, '.gitmodules'));
+    const checked = run(['check', R], R);
+    const result = hookAt(join(R, '.living-spec.json'), R);
     assert.equal(result.status, 2, result.stdout + result.stderr);
     assert.equal(result.stderr, checked.stderr);
   } finally {
@@ -1152,6 +1170,97 @@ test('注記の範囲は設定の置き場で決める: 設定の表の置き場
     const outside = run(['check', join(R, 'docs', 'rdra')], R);
     assert.equal(outside.status, 0, outside.stdout + outside.stderr);
     assert.ok(outside.stderr.includes('注記'), outside.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('境界: .gitmodules の引用符で囲んだ path の後ろの注釈は値に含めない', () => {
+  const R = submoduleTree('file', '[submodule "docs"]\n\tpath = "docs" # pinned\n');
+  try {
+    const out = run(['check', useCase(R)], R);
+    assert.equal(firstLine(out.stdout), `根: ${R}`, out.stdout + out.stderr);
+    assert.equal(out.status, 0, out.stdout + out.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('目印: docs が自身の設定を持てば、その docs/rdra は親の目印にならない', () => {
+  const R = repo();
+  try {
+    config(join(R, 'docs'), { tables: 'rdra' });
+    cpSync(join(passExample, 'docs', 'rdra'), join(R, 'docs', 'rdra'), { recursive: true });
+    const plain = run(['check'], R);
+    assert.equal(plain.status, 2, plain.stdout + plain.stderr);
+    assert.doesNotMatch(plain.stdout, rootLine);
+    assert.ok(plain.stderr.includes('正本が見つからない'), plain.stderr);
+    const docs = run(['check', join(R, 'docs')], R);
+    assert.equal(firstLine(docs.stdout), `根: ${join(R, 'docs')}`, docs.stdout + docs.stderr);
+    assert.equal(docs.status, 0, docs.stdout + docs.stderr);
+    const edited = hookAt(join(R, 'docs', 'rdra', 'use-case.yaml'), R);
+    assert.equal(edited.status, 0, edited.stdout + edited.stderr);
+    assert.ok(existsSync(view(join(R, 'docs'))));
+    assert.ok(!existsSync(join(R, '.cache')));
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('目印: docs/rdra が自身の設定を持てば、親の目印にならず、そこが根になる', () => {
+  const R = repo();
+  try {
+    config(join(R, 'docs', 'rdra'), { tables: '.' });
+    cpSync(join(passExample, 'docs', 'rdra'), join(R, 'docs', 'rdra'), { recursive: true });
+    const file = run(['check', join(R, 'docs', 'rdra', 'use-case.yaml')], R);
+    assert.equal(firstLine(file.stdout), `根: ${join(R, 'docs', 'rdra')}`, file.stdout + file.stderr);
+    const plain = run(['check'], R);
+    assert.equal(plain.status, 2, plain.stdout + plain.stderr);
+    assert.doesNotMatch(plain.stdout, rootLine);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('置き場の値の先頭以外に docs/rdra の並びがあれば、置き場がまだ無くても別の根の中の誤り', () => {
+  const R = repo();
+  try {
+    put(R, passExample);
+    config(R, { requirements: 'x/docs/rdra' });
+    const checked = run(['check', R], R);
+    assert.equal(checked.status, 2, checked.stdout + checked.stderr);
+    assert.equal(firstLine(checked.stdout), `根: ${R}`);
+    for (const word of ['別の根', join(R, 'x')]) assert.ok(checked.stderr.includes(word), `${word}\n${checked.stderr}`);
+    assert.ok(!existsSync(join(R, 'x')));
+    const edited = hookAt(join(R, '.living-spec.json'), R);
+    assert.equal(edited.status, 2, edited.stdout + edited.stderr);
+    assert.equal(edited.stderr, checked.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('置き場の値の先頭の docs/rdra の並びは、別の根の中の誤りにしない', () => {
+  const R = repo();
+  try {
+    put(R, passExample);
+    config(R, { requirements: 'docs/rdra/req' });
+    const checked = run(['check', R], R);
+    assert.equal(checked.status, 0, checked.stdout + checked.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('候補なし: 作業ディレクトリが置き場の中にある', () => {
+  const R = repo();
+  try {
+    put(R, passExample);
+    mkdirSync(join(R, 'docs', 'rdra', 'sub'));
+    writeFileSync(join(R, 'docs', 'rdra', 'sub', 'x.yaml'), '');
+    const result = run(['check', 'x.yaml'], join(R, 'docs', 'rdra', 'sub'));
+    assert.ok(result.stderr.includes('注記'), result.stderr);
+    assert.ok(!result.stderr.includes('候補:'), result.stderr);
   } finally {
     rmSync(R, { recursive: true });
   }

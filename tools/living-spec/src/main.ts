@@ -4,18 +4,19 @@
 //   living-spec hook                           Claude Code の PostToolUse フック（標準入力の JSON を読む）
 // 根は起点（check・render は引数か作業ディレクトリ、hook は編集したファイル）から上へ辿って最も近い目印で決まる。
 // 根・置き場・範囲の規則の正本は plugins/living-spec/references/format.md の「置き場の設定」。CLI とフックは同じ関数でそれを適用する。
-// check は1行目に「根: <絶対パス>」を出し、違反があれば終了コード 1、無ければ 0。範囲外の起点には扱いを示す注記を標準エラーへ出す。
-// 終了コード 2: 引数の誤り・起点が無い・正本が見つからない・根の探索で読めない・設定を読めない・根に属さない置き場・表の置き場が無い。
+// check は1行目に「根: <絶対パス>」を出し、違反があれば終了コード 1、無ければ 0。引数で渡した起点が範囲外なら、扱いを示す注記を標準エラーへ出す。
+// 終了コード 2: 引数の誤り・起点が無い・正本が見つからない・根の探索を続けられない・設定を読めない・根に属さない置き場・表の置き場が無い。
 // hook: 根の範囲内の編集で根を全体検査して描き直す。CLAUDE_PROJECT_DIR は根にしない。
-//   終了コード 2 で止める: 違反・検査器が動かない・根の探索で読めない・設定を読めない（範囲によらない）・根に属さない置き場。
-//   止めるときは標準エラーが AI へ返る。設定の誤りと読み取りの失敗の文面は CLI と同じ。
-//   何もせず終了コード 0: 正本が見つからない・hook が false・範囲外の編集・表の置き場が無い。描画の失敗では編集を止めない。
+//   終了コード 2 で止める: 違反・検査器が動かない・設定を読めない（範囲によらない）・根に属さない置き場・根が決まった後の探索を続けられない。
+//   止めるときは標準エラーが AI へ返る。設定の誤りと読み取りの失敗の文面は CLI と同じ。描画の失敗では編集を止めない。
+//   何もせず終了コード 0: 正本が見つからない・根が決まる前の探索を続けられない・hook が false・範囲外の編集・表の置き場が無い。
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { checkDocMissing, checkRepo, formatViolation } from './check.ts';
 import { writeView } from './render.ts';
 import {
-  RootSearchError,
+  type RootSearch,
+  SearchError,
   findMisplacements,
   findRoot,
   formatMisplacements,
@@ -51,34 +52,25 @@ function loadConfig(root: string): void {
   }
 }
 
-// 根が決まる前の探索（起点の判定・根の探索）で読めなければ止める（文面は CLI とフックで同じ）
-function beforeRoot<T>(f: () => T): T {
+// 探索（起点の判定・根の探索・置き場の検証・範囲の判定）を続けられなければ止める。
+// 根が決まった後なら root を渡し、文面に根を添える（文面は CLI とフックで同じ）。フックの根が決まる前は runHook が扱う
+function withSearch<T>(f: () => T, root?: string): T {
   try {
     return f();
   } catch (e) {
-    if (e instanceof RootSearchError) die(e.message);
-    throw e;
-  }
-}
-
-// 根が決まった後の探索（置き場の検証・範囲の判定）で読めなければ、根を添えて止める（文面は CLI とフックで同じ）
-function afterRoot<T>(root: string, f: () => T): T {
-  try {
-    return f();
-  } catch (e) {
-    if (e instanceof RootSearchError) die(`${e.message}（根: ${root}）`);
+    if (e instanceof SearchError) die(root === undefined ? e.message : `${e.message}（根: ${root}）`);
     throw e;
   }
 }
 
 // 根に属さない置き場は別の正本の表を読み込むため止める（文面は CLI とフックで同じ）
 function checkPlacements(root: string): void {
-  const misplaced = afterRoot(root, () => findMisplacements(root, LAYOUT));
+  const misplaced = withSearch(() => findMisplacements(root, LAYOUT), root);
   if (misplaced.length > 0) die(formatMisplacements(root, misplaced));
 }
 
 function tablesIsDir(root: string): boolean {
-  return afterRoot(root, () => statIfExists(join(root, LAYOUT.tables))?.isDirectory() === true);
+  return withSearch(() => statIfExists(join(root, LAYOUT.tables))?.isDirectory() === true, root);
 }
 
 // 起点から根を決め、置き場を読み込んで検証する。announce なら根が決まった直後（設定を読む前）に標準出力の1行目へ根を出す。
@@ -88,11 +80,11 @@ function prepare(arg: string | undefined, announce: boolean): { root: string; ta
   const target = arg === undefined ? undefined : resolve(arg);
   let start = process.cwd();
   if (target !== undefined) {
-    const stat = beforeRoot(() => statIfExists(target));
+    const stat = withSearch(() => statIfExists(target));
     if (stat === undefined) die(`起点が見つからない: ${target}`);
     start = stat.isDirectory() ? target : dirname(target);
   }
-  const search = beforeRoot(() => findRoot(start));
+  const search = withSearch(() => findRoot(start));
   if (!search.found) die(formatNoRoot(search));
   const root = search.root;
   if (announce) console.log(`根: ${root}`);
@@ -106,7 +98,7 @@ function prepare(arg: string | undefined, announce: boolean): { root: string; ta
 
 // 対象が範囲外なら、検査か描画へ進む前に注記を標準エラーへ出す。起動した場所は作業ディレクトリ。終了コードは変えない
 function noteScope(root: string, target: string | undefined): void {
-  const scope = afterRoot(root, () => classifyTarget(root, LAYOUT, process.cwd(), target));
+  const scope = withSearch(() => classifyTarget(root, LAYOUT, process.cwd(), target), root);
   if (scope.kind === 'out' && target !== undefined) {
     process.stderr.write(`${formatScopeNote(root, LAYOUT, target, scope.candidate)}\n`);
   }
@@ -153,13 +145,20 @@ function runHook(): never {
   // 基点は相対の file_path の絶対化と、範囲の判定の起動した場所にだけ使い、根にはしない
   const launch = resolve(process.env.CLAUDE_PROJECT_DIR || (typeof obj.cwd === 'string' ? obj.cwd : process.cwd()));
   const target = resolve(launch, filePath);
-  const search = beforeRoot(() => findRoot(statIfExists(target)?.isDirectory() === true ? target : dirname(target)));
+  // 根が決まる前に探索を続けられなければ、どの根の編集かが分からないので何もしない
+  let search: RootSearch;
+  try {
+    search = findRoot(statIfExists(target)?.isDirectory() === true ? target : dirname(target));
+  } catch (e) {
+    if (e instanceof SearchError) process.exit(0);
+    throw e;
+  }
   if (!search.found) process.exit(0);
   const root = search.root;
   // 設定を読めないときは範囲によらず止める。範囲の判定に置き場の値が要るため
   loadConfig(root);
   if (!LAYOUT.hook) process.exit(0);
-  if (afterRoot(root, () => classifyTarget(root, LAYOUT, launch, target)).kind !== 'in') process.exit(0);
+  if (withSearch(() => classifyTarget(root, LAYOUT, launch, target), root).kind !== 'in') process.exit(0);
   // 置き場の検証は表の置き場の有無より先。外れた置き場は存在しなくても止める
   checkPlacements(root);
   if (!tablesIsDir(root)) process.exit(0);

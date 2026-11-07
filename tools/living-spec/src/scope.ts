@@ -1,8 +1,8 @@
 // 対象が根の範囲の内か外かの判定と、範囲外の注記。フックと CLI が同じ関数で判定する。
 // 範囲内: 対象がディレクトリとして在れば、いずれかの置き場が対象の中にあるとき（対象が置き場そのものか、それを含むとき）。
 //   そうでなければ、対象の親がいずれかの置き場と一致するか、対象が根の .living-spec.json と一致するとき。
-// 候補: 起動した場所が根の下にあり（根と同じでない）、対象が起動した場所の中にあり、どの置き場も起動した場所の中に無いとき、
-//   起動した場所を、対象の領域を独立した正本にするときの根の候補とする。
+// 候補: 起動した場所が根の下にあり（根と同じでない）、対象が起動した場所の中にあり、どの置き場も起動した場所の中に無く、
+//   起動した場所がどの置き場の中にも無いとき、起動した場所を、対象の領域を独立した正本にするときの根の候補とする。
 // パスは絶対化したものを字面のまま比べる。置き場の絶対パスは join(根, 値)。
 import { dirname, join } from 'node:path';
 import { PLACEMENT_KEYS, type PlacementKey, isWithin, statIfExists } from './root.ts';
@@ -34,7 +34,8 @@ export function classifyTarget(
     launch !== root &&
     isWithin(launch, root) &&
     isWithin(target, launch) &&
-    !placements.some((p) => isWithin(p, launch))
+    !placements.some((p) => isWithin(p, launch)) &&
+    !placements.some((p) => isWithin(launch, p))
       ? launch
       : null;
   return { kind: 'out', candidate };
