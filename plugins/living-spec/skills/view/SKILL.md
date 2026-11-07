@@ -6,13 +6,24 @@ allowed-tools:
 
 # 要求の可視化
 
+## 引数
+
+描く正本のファイルかディレクトリ（任意）。無ければ作業ディレクトリから根を決める。
+
 ## 手順
 
-1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/run.mjs" render` を根で実行する。書き出した場所（既定 `<根>/.cache/living-spec/index.html`、`.living-spec.json` の `output` で変わる）が標準出力に出る
-2. 終了コード 2 なら、表の置き場が無いか `.living-spec.json` の誤り。標準エラーの内容を示して止まる
+起点は `${CLAUDE_PLUGIN_ROOT}/references/starting-point.md` の「探さない」「起点の渡し方」、注記は同書の「注記の伝え方」に従う。このスキルでは次のとおりとする。
+
+- 扱っているファイルとは、引数に示された描く正本のファイルかディレクトリである
+- 実行するのは `render` の1回だけである。`check` は実行しない
+- 注記を伝えたら、答えを待たずに終える（手順4）
+
+1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/run.mjs" render [起点]` を実行する。書き出した場所（既定 `<根>/.cache/living-spec/index.html`、`.living-spec.json` の `output` で変わる）が標準出力に出る
+2. 終了コード 2 なら、標準エラーの内容を示して止まる。終了コード 2 の理由は `${CLAUDE_PLUGIN_ROOT}/references/format.md` の「検査の規則」の終了コードが定める
 3. 書き出した場所と開き方を示す。開くのは利用者に任せ、ブラウザを自動で起動しない
    - macOS: `open <path>` ／ Linux: `xdg-open <path>` ／ WSL: `explorer.exe "$(wslpath -w <path>)"`（WSL 内のブラウザは日本語のフォントが無いことがある）
    - 描き直した後に古い図が出たら、ブラウザのキャッシュを飛ばして読み直す（Ctrl+Shift+R）
+4. 手順3 を済ませたうえで注記が出ていたら、書き出した場所と開き方に続けて、注記と扱いの問いを示して終える。描いた図は根のものである。描画は済んでいるので止めない
 
 ## 描くもの
 
