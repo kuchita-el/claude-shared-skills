@@ -1,5 +1,5 @@
-// 入口（main.ts）の根の扱い・書き漏らしの向きのフラグ・.living-spec.json の置き場・フックの範囲を確かめる。
-// 根に表の置き場が無ければ、表を読まずに「違反なし」と出さず、終了コード 2 で止まる。
+// 入口（main.ts）の根の探索・置き場の検証・範囲・書き漏らしの向きのフラグ・フックの範囲を確かめる。
+// 根が決まらない・置き場が根に属さない・設定や探索で読めないときは、CLI もフックも同じ文面で終了コード 2 で止まる。
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -945,6 +945,195 @@ test('フック: 根の表の置き場が別の根を含む祖先を指しても
     const checked = run(['check', R], R);
     assert.equal(firstLine(checked.stdout), `根: ${R}`);
     assert.equal(checked.status, 0, checked.stdout + checked.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('根の探索で読めない: 置き場の検証で読めなければ、根を1行目と文面に示して終了コード 2', () => {
+  const R = repo();
+  try {
+    put(R, passExample);
+    config(R, { requirements: 'a/b' });
+    mkdirSync(join(R, 'a'));
+    writeFileSync(join(R, 'a', '.git'), 'gitdir: ../.git/modules/a\n');
+    mkdirSync(join(R, '.gitmodules'));
+    const checked = run(['check', R], R);
+    assert.equal(checked.status, 2, checked.stdout + checked.stderr);
+    assert.equal(firstLine(checked.stdout), `根: ${R}`);
+    assert.ok(checked.stderr.includes('根の探索で読めない'), checked.stderr);
+    assert.ok(checked.stderr.includes(join(R, '.gitmodules')), checked.stderr);
+    assert.ok(checked.stderr.includes(`（根: ${R}）`), checked.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('根に属さない置き場: 根の設定の編集でのフックは、check と同じ文面で終了コード 2', () => {
+  for (const tree of misplacedRoots()) {
+    try {
+      const checked = run(['check', tree.root], tree.root);
+      const result = hookAt(join(tree.root, '.living-spec.json'), tree.root);
+      assert.equal(result.status, 2, `${tree.name}: ${result.stdout}${result.stderr}`);
+      assert.equal(result.stderr, checked.stderr, tree.name);
+      if (tree.name === '根の外') {
+        const requirement = join(tree.root, 'docs', 'requirements', 'x.md');
+        mkdirSync(dirname(requirement), { recursive: true });
+        writeFileSync(requirement, '# x\n');
+        const edited = hookAt(requirement, tree.root);
+        assert.equal(edited.status, 2, `${tree.name}: ${edited.stdout}${edited.stderr}`);
+        assert.equal(edited.stderr, checked.stderr, tree.name);
+      }
+    } finally {
+      rmSync(tree.base, { recursive: true });
+    }
+  }
+});
+
+test('根に属さない置き場があっても、範囲外の編集ではフックは何もしない', () => {
+  const trees = misplacedRoots();
+  try {
+    const tree = trees.find((t) => t.name === '根の外');
+    assert.ok(tree);
+    writeFileSync(join(tree.root, 'README.md'), '# R\n');
+    const result = hookAt(join(tree.root, 'README.md'), tree.root);
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.equal(result.stderr, '');
+  } finally {
+    for (const t of trees) rmSync(t.base, { recursive: true });
+  }
+});
+
+test('外れた置き場が存在しなくても、根の設定の編集で止める', () => {
+  const R = repo();
+  try {
+    config(R, { tables: '../nowhere' });
+    const result = hookAt(join(R, '.living-spec.json'), R);
+    assert.equal(result.status, 2, result.stdout + result.stderr);
+    assert.ok(result.stderr.includes('根の外'), result.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('フック: 設定はあるのに表の置き場が無ければ何もしない', () => {
+  const R = repo();
+  try {
+    config(R, {});
+    const result = hookAt(join(R, '.living-spec.json'), R);
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.equal(result.stderr, '');
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('フック: hook が偽なら、根に属さない置き場があっても何もしないが、CLI は止まる', () => {
+  const R = repo();
+  try {
+    config(R, { hook: false, tables: '../shared/rdra' });
+    const result = hookAt(join(R, '.living-spec.json'), R);
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.equal(result.stderr, '');
+    const checked = run(['check', R], R);
+    assert.equal(checked.status, 2, checked.stdout + checked.stderr);
+    assert.equal(firstLine(checked.stdout), `根: ${R}`);
+    assert.ok(checked.stderr.includes('根の外'), checked.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('フック: hook の偽はその根の編集にだけ効き、下の設定の無い領域には効かない', () => {
+  const R = repo();
+  try {
+    put(R, passExample);
+    config(R, { hook: false });
+    const D = join(R, 'domains', 'a');
+    put(D, failExample);
+    const inner = hookAt(join(D, 'docs', 'rdra', 'use-case.yaml'), R);
+    assert.equal(inner.status, 2, inner.stdout + inner.stderr);
+    assert.ok(existsSync(view(D)));
+    const outer = hookAt(join(R, 'docs', 'rdra', 'use-case.yaml'), R);
+    assert.equal(outer.status, 0, outer.stdout + outer.stderr);
+    assert.ok(!existsSync(join(R, '.cache')));
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('フック: 根の設定を読めなければ、範囲外の編集でも check と同じ文面で止まる', () => {
+  const R = repo();
+  try {
+    put(R, passExample);
+    writeFileSync(join(R, '.living-spec.json'), '{');
+    mkdirSync(join(R, 'src'));
+    writeFileSync(join(R, 'src', 'app.ts'), '');
+    const checked = run(['check', R], R);
+    const result = hookAt(join(R, 'src', 'app.ts'), R);
+    assert.equal(result.status, 2, result.stdout + result.stderr);
+    assert.equal(result.stderr, checked.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('フック: 入れ子のリポジトリの docs の中の既定の置き場の編集では、外側の根を拾わず何もしない', () => {
+  const R = repo();
+  try {
+    put(R, passExample);
+    config(R, {});
+    mkdirSync(join(R, 'docs', '.git'));
+    for (const projectDir of [R, '']) {
+      const result = hookAt(join(R, 'docs', 'rdra', 'use-case.yaml'), projectDir);
+      assert.equal(result.status, 0, `CLAUDE_PROJECT_DIR=${projectDir}: ${result.stdout}${result.stderr}`);
+      assert.equal(result.stderr, '', `CLAUDE_PROJECT_DIR=${projectDir}`);
+      assert.ok(!existsSync(join(R, '.cache')), `CLAUDE_PROJECT_DIR=${projectDir}`);
+    }
+    const checked = run(['check', R], R);
+    assert.equal(checked.status, 2, checked.stdout + checked.stderr);
+    assert.equal(firstLine(checked.stdout), `根: ${R}`);
+    assert.ok(checked.stderr.includes('境界'), checked.stderr);
+    assert.ok(checked.stderr.includes(join(R, 'docs')), checked.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('フック: 置き場の検証は置き場そのものから辿る', () => {
+  const R = repo();
+  const S = repo();
+  try {
+    put(R, passExample);
+    renameSync(join(R, 'docs', 'rdra'), join(R, 'sub'));
+    config(R, { tables: 'sub' });
+    config(join(R, 'sub'), {});
+    const checked = run(['check', R], R);
+    const other = hookAt(join(R, '.living-spec.json'), R);
+    assert.equal(other.status, 2, other.stdout + other.stderr);
+    assert.equal(other.stderr, checked.stderr);
+
+    put(S, passExample);
+    cpSync(join(S, 'docs', 'rdra'), S, { recursive: true });
+    rmSync(join(S, 'docs', 'rdra'), { recursive: true });
+    config(S, { tables: '.' });
+    const self = hookAt(join(S, 'use-case.yaml'), S);
+    assert.equal(self.status, 0, self.stdout + self.stderr);
+    assert.ok(existsSync(view(S)));
+  } finally {
+    rmSync(R, { recursive: true });
+    rmSync(S, { recursive: true });
+  }
+});
+
+test('フック: 根の探索でファイルを読めなければ、check と同じ文面で終了コード 2', () => {
+  const R = submoduleTree('file', null);
+  try {
+    mkdirSync(join(R, '.gitmodules'));
+    const checked = run(['check', useCase(R)], R);
+    const result = hookAt(useCase(R), R);
+    assert.equal(result.status, 2, result.stdout + result.stderr);
+    assert.equal(result.stderr, checked.stderr);
   } finally {
     rmSync(R, { recursive: true });
   }
