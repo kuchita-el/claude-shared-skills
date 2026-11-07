@@ -7,11 +7,12 @@
 // 起点が根の置き場の外（範囲外）なら、根を検査したうえで、扱い2つ（置き場へ移す・独立した正本にする）を示す注記を標準エラーへ出す（scope.ts）。
 // check: 1行目に「根: <絶対パス>」を出す。違反があれば一覧を標準出力へ出して終了コード 1、無ければ 0。
 // 引数の誤り・起点が無い・正本が見つからない・.living-spec.json の誤り・根に属さない置き場がある・根に表の置き場がディレクトリとして無いときは終了コード 2。
-// hook: 編集したファイルが表・要求票・例の置き場か .living-spec.json なら全体検査し、合否に関わらず描き直す。
+// hook: 編集したファイルから CLI と同じ規則で根を決め、そのファイルが根の範囲内（表・要求票・例の置き場の直下か根の .living-spec.json）なら
+//   根を全体検査し、合否に関わらず描き直す。CLAUDE_PROJECT_DIR は相対の file_path の絶対化に使い、根にはしない。
 //   違反、または検査器が動かないときは標準エラーへ出して終了コード 2（PostToolUse の終了コード 2 は標準エラーを AI へ返す）。
-//   表の置き場が無いリポジトリ、.living-spec.json の hook が false のとき、範囲外のファイルでは何もせず終了コード 0。描画の失敗では編集を止めない。
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+//   正本が見つからないとき、.living-spec.json の hook が false のとき、範囲外のファイル、根に表の置き場が無いときは何もせず終了コード 0。描画の失敗では編集を止めない。
+import { readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { checkDocMissing, checkRepo, formatViolation } from './check.ts';
 import { writeView } from './render.ts';
 import {
@@ -134,19 +135,20 @@ function runHook(): never {
   };
   const filePath = obj.tool_input?.file_path;
   if (typeof filePath !== 'string' || filePath === '') process.exit(0);
-  const root = resolve(process.env.CLAUDE_PROJECT_DIR || (typeof obj.cwd === 'string' ? obj.cwd : process.cwd()));
-  const rel = relative(root, resolve(root, filePath)).split('\\').join('/');
-  const configExists = existsSync(join(root, CONFIG_FILE));
+  // 基点は相対の file_path の絶対化と、範囲の判定の起動した場所にだけ使い、根にはしない
+  const launch = resolve(process.env.CLAUDE_PROJECT_DIR || (typeof obj.cwd === 'string' ? obj.cwd : process.cwd()));
+  const target = resolve(launch, filePath);
+  const search = findRoot(statIfExists(target)?.isDirectory() === true ? target : dirname(target));
+  if (!search.found) process.exit(0);
+  const root = search.root;
   try {
     configureLayout(root);
   } catch (e) {
     die(`living-spec フック: ${CONFIG_FILE} を読めない（${(e as Error).message}）`);
   }
-  if (!LAYOUT.hook || !existsSync(join(root, LAYOUT.tables))) process.exit(0);
-  const inScope =
-    (configExists && rel === CONFIG_FILE) ||
-    [LAYOUT.tables, LAYOUT.requirements, LAYOUT.examples].some((d) => rel.startsWith(`${d}/`));
-  if (!inScope) process.exit(0);
+  if (!LAYOUT.hook) process.exit(0);
+  if (classifyTarget(root, LAYOUT, launch, target).kind !== 'in') process.exit(0);
+  if (statIfExists(join(root, LAYOUT.tables))?.isDirectory() !== true) process.exit(0);
   let violations;
   try {
     violations = checkRepo(root);
@@ -159,7 +161,7 @@ function runHook(): never {
     process.stderr.write(`living-spec フック: 設計の可視化を描けない（${(e as Error).message}）\n`);
   }
   if (violations.length === 0) process.exit(0);
-  die(`RDRA の検査で違反が ${violations.length} 件ある（${rel} の編集後）。直すこと。\n${violations.map(formatViolation).join('\n')}`);
+  die(`RDRA の検査で違反が ${violations.length} 件ある（根: ${root}。${target} の編集後）。直すこと。\n${violations.map(formatViolation).join('\n')}`);
 }
 
 const [command, ...args] = process.argv.slice(2);

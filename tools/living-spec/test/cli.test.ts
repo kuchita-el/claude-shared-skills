@@ -94,6 +94,12 @@ function misplacedRoots(): MisplacedRoot[] {
   ];
 }
 
+// フックを起動する。CLAUDE_PROJECT_DIR は必ず明示する（未設定は空文字）。cwd は標準入力の JSON の cwd（省略時は入れない）
+function hookAt(file: string, projectDir: string, cwd?: string) {
+  const input = JSON.stringify({ cwd, tool_input: { file_path: file } });
+  return run(['hook'], tmpdir(), input, { CLAUDE_PROJECT_DIR: projectDir });
+}
+
 for (const [name, args] of [
   ['全体検査', ['check']],
   ['書き漏らしの検査', ['check', '--doc-missing']],
@@ -686,6 +692,259 @@ test('render も同じ注記を出し、標準出力は書き出した場所だ�
     assert.equal(result.status, 0, result.stdout + result.stderr);
     assert.equal(result.stdout.trim(), join(R, '.cache', 'living-spec', 'index.html'));
     assert.ok(result.stderr.includes('注記'), result.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+// 既定の描画先
+const view = (dir: string) => join(dir, '.cache', 'living-spec', 'index.html');
+
+test('フック: 領域の根の表の編集で、その根を検査し、根からの相対の output に描く', () => {
+  const R = repo();
+  try {
+    const D = join(R, 'domains', 'a');
+    put(D, failExample);
+    config(D, { output: 'out/view.html' });
+    for (const rel of ['docs/requirements/withdraw.md', 'docs/examples/withdraw.feature']) {
+      mkdirSync(dirname(join(D, rel)), { recursive: true });
+      cpSync(join(requirementMissingExample, rel), join(D, rel));
+    }
+    const result = hookAt(join(D, 'docs', 'rdra', 'use-case.yaml'), R);
+    assert.equal(result.status, 2, result.stdout + result.stderr);
+    assert.match(result.stderr, /\[undefined-reference\]/);
+    assert.ok(result.stderr.includes(D), result.stderr);
+    assert.ok(existsSync(join(D, 'out', 'view.html')));
+    assert.ok(!existsSync(join(R, '.cache')));
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('フック: 入れ子では編集したファイルに最も近い根を検査する', () => {
+  const R = repo();
+  try {
+    put(R, passExample);
+    config(R, {});
+    const D = join(R, 'domains', 'a');
+    put(D, failExample);
+    config(D, {});
+    const inner = hookAt(join(D, 'docs', 'rdra', 'use-case.yaml'), R);
+    assert.equal(inner.status, 2, inner.stdout + inner.stderr);
+    assert.ok(existsSync(view(D)));
+    const outer = hookAt(join(R, 'docs', 'rdra', 'use-case.yaml'), R);
+    assert.equal(outer.status, 0, outer.stdout + outer.stderr);
+    assert.ok(existsSync(view(R)));
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('フック: 範囲外・置き場の下の深い階層・目印の無い木の編集では何もしない', () => {
+  const R = repo();
+  const X = repo();
+  try {
+    const D = join(R, 'domains', 'a');
+    put(D, passExample);
+    for (const rel of ['README.md', 'docs/rdra/sub/x.yaml', 'docs/examples/sub/x.feature']) {
+      mkdirSync(dirname(join(D, rel)), { recursive: true });
+      writeFileSync(join(D, rel), '');
+      const result = hookAt(join(D, rel), R);
+      assert.equal(result.status, 0, `${rel}\n${result.stdout}${result.stderr}`);
+      assert.ok(!existsSync(join(D, '.cache')), rel);
+    }
+    const none = hookAt(join(X, 'docs', 'rdra', 'x.yaml'), X);
+    assert.equal(none.status, 0, none.stdout + none.stderr);
+    assert.ok(!existsSync(join(X, '.cache')));
+  } finally {
+    rmSync(R, { recursive: true });
+    rmSync(X, { recursive: true });
+  }
+});
+
+test('フック: 例と要求票の置き場の直下の編集で根を検査する', () => {
+  const R = repo();
+  try {
+    put(R, passExample);
+    const broken = join(R, 'docs', 'examples', 'broken.feature');
+    mkdirSync(dirname(broken), { recursive: true });
+    writeFileSync(broken, 'これは Gherkin ではない\n');
+    const example = hookAt(broken, R);
+    assert.equal(example.status, 2, example.stdout + example.stderr);
+    assert.match(example.stderr, /\[example-syntax\]/);
+    assert.ok(existsSync(view(R)));
+    rmSync(join(R, '.cache'), { recursive: true });
+    const requirement = join(R, 'docs', 'requirements', 'x.md');
+    mkdirSync(dirname(requirement), { recursive: true });
+    writeFileSync(requirement, '# x\n');
+    hookAt(requirement, R);
+    assert.ok(existsSync(view(R)));
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('フック: CLAUDE_PROJECT_DIR は根を変えず、外の編集も除かない', () => {
+  const R = repo();
+  const elsewhere = bare();
+  try {
+    put(R, passExample);
+    config(R, { output: 'out/r.html' });
+    const W = join(R, '.worktrees', 'w');
+    put(W, failExample);
+    writeFileSync(join(W, '.git'), `gitdir: ${join(R, '.git', 'worktrees', 'w')}\n`);
+    for (const projectDir of ['', R, join(W, 'docs'), elsewhere]) {
+      rmSync(join(W, '.cache'), { recursive: true, force: true });
+      rmSync(join(R, 'out'), { recursive: true, force: true });
+      const result = hookAt(join(W, 'docs', 'rdra', 'use-case.yaml'), projectDir);
+      assert.equal(result.status, 2, `CLAUDE_PROJECT_DIR=${projectDir}: ${result.stdout}${result.stderr}`);
+      assert.ok(existsSync(view(W)), projectDir);
+      assert.ok(!existsSync(join(R, 'out', 'r.html')), projectDir);
+    }
+  } finally {
+    rmSync(R, { recursive: true });
+    rmSync(elsewhere, { recursive: true });
+  }
+});
+
+test('フック: worktree の中の、目印の無い場所の編集では何もしない', () => {
+  const R = repo();
+  try {
+    put(R, passExample);
+    config(R, {});
+    const W = join(R, '.worktrees', 'w');
+    mkdirSync(join(W, 'spec'), { recursive: true });
+    writeFileSync(join(W, '.git'), `gitdir: ${join(R, '.git', 'worktrees', 'w')}\n`);
+    writeFileSync(join(W, 'spec', 'use-case.yaml'), '');
+    const result = hookAt(join(W, 'spec', 'use-case.yaml'), R);
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.equal(result.stderr, '');
+    assert.ok(!existsSync(join(R, '.cache')));
+    assert.ok(!existsSync(join(W, '.cache')));
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('フック: 相対の file_path は基点で絶対化し、根はそのファイルから決める', () => {
+  const R = repo();
+  try {
+    const D = join(R, 'domains', 'a');
+    put(D, passExample);
+    const rel = 'domains/a/docs/rdra/use-case.yaml';
+    for (const [projectDir, cwd] of [
+      [R, undefined],
+      ['', R],
+    ] as [string, string | undefined][]) {
+      rmSync(join(D, '.cache'), { recursive: true, force: true });
+      const result = hookAt(rel, projectDir, cwd);
+      assert.equal(result.status, 0, `CLAUDE_PROJECT_DIR=${projectDir}: ${result.stdout}${result.stderr}`);
+      assert.ok(existsSync(view(D)), `CLAUDE_PROJECT_DIR=${projectDir}`);
+      assert.ok(!existsSync(join(R, '.cache')), `CLAUDE_PROJECT_DIR=${projectDir}`);
+    }
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('フック: 作業ツリーの下の設定の無い既定の置き場は、その場所を根にする', () => {
+  const R = repo();
+  try {
+    const sub = join(R, 'sub');
+    put(sub, failExample);
+    for (const projectDir of [R, '']) {
+      rmSync(join(sub, '.cache'), { recursive: true, force: true });
+      const result = hookAt(join(sub, 'docs', 'rdra', 'use-case.yaml'), projectDir);
+      assert.equal(result.status, 2, `CLAUDE_PROJECT_DIR=${projectDir}: ${result.stdout}${result.stderr}`);
+      assert.ok(existsSync(view(sub)), `CLAUDE_PROJECT_DIR=${projectDir}`);
+    }
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('フック: 設定のある根の下の設定の無い領域を、その領域の根で検査する', () => {
+  const R = repo();
+  try {
+    put(R, passExample);
+    config(R, {});
+    const D = join(R, 'domains', 'a');
+    put(D, failExample);
+    const requirement = join(D, 'docs', 'requirements', 'x.md');
+    mkdirSync(dirname(requirement), { recursive: true });
+    writeFileSync(requirement, '# x\n');
+    const table = hookAt(join(D, 'docs', 'rdra', 'use-case.yaml'), R);
+    assert.equal(table.status, 2, table.stdout + table.stderr);
+    assert.ok(!existsSync(join(R, '.cache')));
+    rmSync(join(D, '.cache'), { recursive: true, force: true });
+    const req = hookAt(requirement, R);
+    assert.equal(req.status, 2, req.stdout + req.stderr);
+    assert.ok(existsSync(view(D)));
+    assert.ok(!existsSync(join(R, '.cache')));
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('フック: submodule の docs の表の編集はルートを根にする', () => {
+  const R = submoduleTree('file', gitmodulesDocs);
+  try {
+    for (const withConfig of [false, true]) {
+      if (withConfig) config(R, {});
+      rmSync(join(R, '.cache'), { recursive: true, force: true });
+      const result = hookAt(useCase(R), R);
+      assert.ok(existsSync(view(R)), `設定${withConfig ? 'あり' : 'なし'}: ${result.stdout}${result.stderr}`);
+    }
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('フック: git の外の目印も根にし、CLAUDE_PROJECT_DIR を下にしても変わらない', () => {
+  const proj = bare();
+  try {
+    put(proj, failExample);
+    for (const projectDir of [join(proj, 'docs'), '']) {
+      rmSync(join(proj, '.cache'), { recursive: true, force: true });
+      const result = hookAt(join(proj, 'docs', 'rdra', 'use-case.yaml'), projectDir);
+      assert.equal(result.status, 2, `CLAUDE_PROJECT_DIR=${projectDir}: ${result.stdout}${result.stderr}`);
+      assert.ok(existsSync(view(proj)), `CLAUDE_PROJECT_DIR=${projectDir}`);
+    }
+  } finally {
+    rmSync(proj, { recursive: true });
+  }
+});
+
+test('フック: 範囲外の明示の対象では何もしない', () => {
+  const R = repo();
+  try {
+    put(R, passExample);
+    writeFileSync(join(R, 'README.md'), '# R\n');
+    const result = hookAt(join(R, 'README.md'), R);
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.ok(!existsSync(join(R, '.cache')));
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('フック: 根の表の置き場が別の根を含む祖先を指しても、それぞれの根で検査する', () => {
+  const R = repo();
+  try {
+    config(R, { tables: 'domains' });
+    cpSync(join(passExample, 'docs', 'rdra'), join(R, 'domains'), { recursive: true });
+    const D = join(R, 'domains', 'a');
+    put(D, failExample);
+    const outer = hookAt(join(R, 'domains', 'actor.yaml'), R);
+    assert.equal(outer.status, 0, outer.stdout + outer.stderr);
+    assert.ok(existsSync(view(R)));
+    assert.ok(!existsSync(join(D, '.cache')));
+    const inner = hookAt(join(D, 'docs', 'rdra', 'use-case.yaml'), R);
+    assert.equal(inner.status, 2, inner.stdout + inner.stderr);
+    assert.ok(existsSync(view(D)));
+    const checked = run(['check', R], R);
+    assert.equal(firstLine(checked.stdout), `根: ${R}`);
+    assert.equal(checked.status, 0, checked.stdout + checked.stderr);
   } finally {
     rmSync(R, { recursive: true });
   }
