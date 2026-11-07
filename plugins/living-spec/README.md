@@ -13,6 +13,7 @@
 - `agents/rule-crosschecker.md`: 表・票・例を初見で読み、矛盾を `id,severity,evidence,why,suggestion` で返します。
 - `scripts/run.mjs`: 検査器を探して呼ぶ中継（`check [--doc-missing] [起点]`・`render [起点]`・`hook`）。依存を持ちません。検査器そのものはプラグインに含めません（下の「検査器の導入」）。
 - `hooks/hooks.json`: 表・票・例の編集の後に全体検査と描き直しを走らせる PostToolUse フック。
+- `references/starting-point.md`: スキル3本が共通に従う、検査器へ渡す起点と根の手順。
 - `references/templates/`: 要求票と例の雛形。
 
 ## 検査器の導入
