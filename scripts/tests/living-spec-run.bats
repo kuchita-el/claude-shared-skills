@@ -57,7 +57,7 @@ teardown() {
   [[ "$output" == *"args=check --doc-missing some/root"* ]]
 }
 
-@test "根から解決できるパッケージ @kuchita-el/living-spec の bin を呼ぶ" {
+@test "作業ディレクトリから解決できるパッケージ @kuchita-el/living-spec の bin を呼ぶ" {
   local pkg="$WORK/project/node_modules/@kuchita-el/living-spec"
   mkdir -p "$pkg/dist"
   cp "$FAKE" "$pkg/dist/living-spec.mjs"
