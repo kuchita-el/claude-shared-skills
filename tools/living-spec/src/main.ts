@@ -4,6 +4,7 @@
 //   living-spec hook                           Claude Code の PostToolUse フック（標準入力の JSON を読む）
 // 起点（ファイルならそのディレクトリ、省略時は今の作業ディレクトリ）から上へ辿り、最も近い目印のディレクトリを根にする（root.ts）。
 // 各層の置き場は根の .living-spec.json で変えられる（schema.ts の Layout）。
+// 起点が根の置き場の外（範囲外）なら、根を検査したうえで、扱い2つ（置き場へ移す・独立した正本にする）を示す注記を標準エラーへ出す（scope.ts）。
 // check: 1行目に「根: <絶対パス>」を出す。違反があれば一覧を標準出力へ出して終了コード 1、無ければ 0。
 // 引数の誤り・起点が無い・正本が見つからない・.living-spec.json の誤り・根に属さない置き場がある・根に表の置き場がディレクトリとして無いときは終了コード 2。
 // hook: 編集したファイルが表・要求票・例の置き場か .living-spec.json なら全体検査し、合否に関わらず描き直す。
@@ -21,6 +22,7 @@ import {
   formatNoRoot,
   statIfExists,
 } from './root.ts';
+import { classifyTarget, formatScopeNote } from './scope.ts';
 import { CONFIG_FILE, LAYOUT, configureLayout } from './schema.ts';
 
 const USAGE = '使い方: living-spec check [--doc-missing] [起点] | living-spec render [起点] | living-spec hook';
@@ -41,13 +43,14 @@ function configError(root: string, e: unknown): string {
 }
 
 // 起点から根を決め、置き場を読み込んで検証する。announce なら根が決まった直後（設定を読む前）に標準出力の1行目へ根を出す。
-// 根に属さない置き場は別の正本の表を読み込むため止める。根を誤ると表を1つも読まずに「違反なし」と出て黙って通るため、表の置き場が無ければ止める
-function prepare(arg: string | undefined, announce: boolean): string {
+// 根に属さない置き場は別の正本の表を読み込むため止める。根を誤ると表を1つも読まずに「違反なし」と出て黙って通るため、表の置き場が無ければ止める。
+// 返す target は引数を絶対化した対象（引数が無ければ undefined）
+function prepare(arg: string | undefined, announce: boolean): { root: string; target: string | undefined } {
   let search: ReturnType<typeof findRoot>;
+  const target = arg === undefined ? undefined : resolve(arg);
   try {
     let start = process.cwd();
-    if (arg !== undefined) {
-      const target = resolve(arg);
+    if (target !== undefined) {
       const stat = statIfExists(target);
       if (stat === undefined) die(`起点が見つからない: ${target}`);
       start = stat.isDirectory() ? target : dirname(target);
@@ -76,14 +79,29 @@ function prepare(arg: string | undefined, announce: boolean): string {
     throw e;
   }
   if (!tablesIsDir) die(`表の置き場が見つからない: ${tables}（根: ${root}。置き場は ${CONFIG_FILE} の tables）`);
-  return root;
+  return { root, target };
+}
+
+// 対象が範囲外なら、検査か描画へ進む前に注記を標準エラーへ出す。起動した場所は作業ディレクトリ。終了コードは変えない
+function noteScope(root: string, target: string | undefined): void {
+  let scope: ReturnType<typeof classifyTarget>;
+  try {
+    scope = classifyTarget(root, LAYOUT, process.cwd(), target);
+  } catch (e) {
+    if (e instanceof RootSearchError) die(`${e.message}（根: ${root}）`);
+    throw e;
+  }
+  if (scope.kind === 'out' && target !== undefined) {
+    process.stderr.write(`${formatScopeNote(root, LAYOUT, target, scope.candidate)}\n`);
+  }
 }
 
 function runCheck(args: string[]): never {
   const docMissing = args.includes('--doc-missing');
   const rest = args.filter((a) => a !== '--doc-missing');
   if (rest.length > 1 || rest.some((a) => a.startsWith('--'))) usage();
-  const root = prepare(rest[0], true);
+  const { root, target } = prepare(rest[0], true);
+  noteScope(root, target);
   const label = docMissing ? '要求票・例の書き漏らしの検査' : 'RDRA の検査';
   const violations = docMissing ? checkDocMissing(root) : checkRepo(root);
   if (violations.length === 0) {
@@ -97,7 +115,9 @@ function runCheck(args: string[]): never {
 
 function runRender(args: string[]): never {
   if (args.length > 1 || args.some((a) => a.startsWith('--'))) usage();
-  console.log(writeView(prepare(args[0], false)));
+  const { root, target } = prepare(args[0], false);
+  noteScope(root, target);
+  console.log(writeView(root));
   process.exit(0);
 }
 

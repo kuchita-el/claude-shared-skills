@@ -580,3 +580,113 @@ test('外れた置き場は存在しなくても止める', () => {
     rmSync(T, { recursive: true });
   }
 });
+
+// R に通る見本と、範囲外の起点に使うファイル・ディレクトリを置く
+function scopeTree(example: string = passExample): string {
+  const R = repo();
+  put(R, example);
+  writeFileSync(join(R, 'README.md'), '# R\n');
+  mkdirSync(join(R, 'src'));
+  writeFileSync(join(R, 'src', 'app.ts'), '');
+  mkdirSync(join(R, 'lib'));
+  writeFileSync(join(R, 'docs', 'notes.md'), '');
+  return R;
+}
+
+test('範囲外の起点: 根を検査し、注記で扱い2つを示す。終了コードは検査の結果', () => {
+  const R = scopeTree();
+  const F = scopeTree(failExample);
+  try {
+    for (const [root, status] of [
+      [R, 0],
+      [F, 1],
+    ] as [string, number][]) {
+      const result = run(['check', join(root, 'README.md')], root);
+      assert.equal(result.status, status, result.stdout + result.stderr);
+      assert.equal(firstLine(result.stdout), `根: ${root}`);
+      if (status === 0) assert.match(result.stdout, /違反なし/);
+      for (const word of ['注記', join(root, 'README.md'), '根の置き場へ移す', '独立した正本にする', '決められない']) {
+        assert.ok(result.stderr.includes(word), `${word}\n${result.stderr}`);
+      }
+      assert.ok(!result.stderr.includes('候補:'), result.stderr);
+    }
+  } finally {
+    rmSync(R, { recursive: true });
+    rmSync(F, { recursive: true });
+  }
+});
+
+test('候補: 作業ディレクトリが根より下で起点を含み、置き場を含まなければ、そこを示す', () => {
+  const R = scopeTree();
+  try {
+    const result = run(['check', 'app.ts'], join(R, 'src'));
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.ok(result.stderr.includes(`候補: ${join(R, 'src')}`), result.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('候補なし: 作業ディレクトリが置き場を含む・根そのもの・根より上・起点を含まない', () => {
+  const R = scopeTree();
+  try {
+    for (const [cwd, target] of [
+      [join(R, 'docs'), join(R, 'docs', 'notes.md')],
+      [R, join(R, 'README.md')],
+      [dirname(R), join(R, 'README.md')],
+      [join(R, 'lib'), join(R, 'src', 'app.ts')],
+    ]) {
+      const result = run(['check', target], cwd);
+      assert.equal(result.status, 0, result.stdout + result.stderr);
+      assert.ok(result.stderr.includes('注記'), `${cwd}\n${result.stderr}`);
+      assert.ok(!result.stderr.includes('候補:'), `${cwd}\n${result.stderr}`);
+    }
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('範囲内の起点と起点なしでは注記を出さない', () => {
+  const R = scopeTree();
+  try {
+    config(R, {});
+    for (const [args, cwd] of [
+      [['check', join(R, 'docs', 'rdra', 'use-case.yaml')], R],
+      [['check', join(R, 'docs', 'rdra')], R],
+      [['check', join(R, 'docs')], R],
+      [['check', R], R],
+      [['check', join(R, '.living-spec.json')], R],
+      [['check'], join(R, 'src')],
+    ] as [string[], string][]) {
+      const result = run(args, cwd);
+      assert.equal(result.status, 0, `${args.join(' ')}\n${result.stdout}${result.stderr}`);
+      assert.equal(result.stderr, '', args.join(' '));
+    }
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('置き場の下の深い階層のディレクトリは範囲外', () => {
+  const R = scopeTree();
+  try {
+    mkdirSync(join(R, 'docs', 'rdra', 'sub'));
+    const result = run(['check', join(R, 'docs', 'rdra', 'sub')], R);
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.ok(result.stderr.includes('注記'), result.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
+
+test('render も同じ注記を出し、標準出力は書き出した場所だけ', () => {
+  const R = scopeTree();
+  try {
+    const result = run(['render', join(R, 'README.md')], R);
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.equal(result.stdout.trim(), join(R, '.cache', 'living-spec', 'index.html'));
+    assert.ok(result.stderr.includes('注記'), result.stderr);
+  } finally {
+    rmSync(R, { recursive: true });
+  }
+});
