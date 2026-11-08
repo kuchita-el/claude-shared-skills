@@ -1,6 +1,11 @@
 // 設計の可視化の HTML の文字列を作る。材料は view.ts の buildView が組む。
 // 図は Mermaid の flowchart で描く（stateDiagram は破線と辺ごとの強調を持てない）。Mermaid は jsdelivr から版を固定して読む。
+// 基準の版との描き分けの材料（diffview.ts の buildDiffView）では、区分のある要素の出現位置に印を1つ付ける。
+// 印・図の class と linkStyle・見出しの行・凡例・描き分けの CSS は、区分か基準の版があるときだけ出し、
+// 区分の無い材料（基準の版なし）からは描き分けを足す前と同じ文字列を作る。
 import type {
+  DiffStatus,
+  Marked,
   NamedView,
   ReferenceView,
   RequirementLineView,
@@ -15,6 +20,23 @@ const MERMAID_URL = 'https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.es
 const UNKNOWN_MARK = '⚠';
 const HIGHLIGHT = 'stroke:#d9480f,stroke-width:3px,color:#d9480f';
 const DIMMED = 'stroke:#adb5bd,color:#868e96';
+
+// 描き分けの区分。図では名札の先頭の印と、色と太さで示す。破線（stroke-dasharray）は使わない
+// （破線は凡例のとおり仮説の遷移だけを示すため。仮説の辺の linkStyle には破線の指定を後ろに足して保つ）
+const DIFF_STATUSES: readonly DiffStatus[] = ['added', 'changed', 'removed'];
+const CHART_MARK: Record<DiffStatus, string> = { added: '［足された］', changed: '［変わった］', removed: '［外された］' };
+// 全体図の区分のある辺の linkStyle。縦串の図の強調（stroke-width:3px）と見分けられる太さにする
+const DIFF_LINK: Record<DiffStatus, string> = {
+  added: 'stroke:#2f9e44,stroke-width:2px,color:#2f9e44',
+  changed: 'stroke:#7048e8,stroke-width:2px,color:#7048e8',
+  removed: 'stroke:#e03131,stroke-width:2px,color:#e03131',
+};
+// 区分のある状態の節点の classDef
+const DIFF_NODE: Record<DiffStatus, string> = {
+  added: 'fill:#ebfbee,stroke:#2f9e44,stroke-width:2px,color:#2b8a3e',
+  changed: 'fill:#f3f0ff,stroke:#7048e8,stroke-width:2px,color:#5f3dc4',
+  removed: 'fill:#fff5f5,stroke:#e03131,stroke-width:2px,color:#c92a2a',
+};
 
 export function escapeHtml(s: string): string {
   return s
@@ -41,15 +63,39 @@ function marked(name: string, known: boolean): string {
   return known ? name : `${UNKNOWN_MARK} ${name}`;
 }
 
-// 状態モデル1つの Mermaid の文字列。highlightUc を渡すと、その UC が遷移 UC の辺だけを強調し、他の辺を薄くする
+// 描き分けの印。区分の無い要素には何も出さない。変わった要素は変わった欄の名前を添える
+// （欄名は表の定義に無いキーの名前でもありうるので逃がす）
+function diffMark(x: Marked): string {
+  if (x.diff === undefined) return '';
+  const text =
+    x.diff === 'changed' ? `変わった（${(x.changed ?? []).join('・')}）` : x.diff === 'added' ? '足された' : '外された';
+  return `<span class="diff" data-diff="${x.diff}">${escapeHtml(text)}</span>`;
+}
+
+// 状態の区分。区分は状態の名前をキーにした物なので、自分の欄だけを見る（Object の継承した欄の名前の状態で誤らないため）
+function stateStatus(model: StateModelView, state: string): DiffStatus | undefined {
+  return model.stateDiff !== undefined && Object.hasOwn(model.stateDiff, state) ? model.stateDiff[state] : undefined;
+}
+
+// 状態モデル1つの Mermaid の文字列。highlightUc を渡すと、その UC が遷移 UC の辺だけを強調し、他の辺を薄くする。
+// 描き分けの材料では、区分のある状態の節点と遷移の辺の名札の先頭に印を付け、節点には区分の class を付ける。
+// 区分の linkStyle は全体図（highlightUc が null）だけに付け、縦串の図では強調・薄めの linkStyle だけを辺ごとに1本出す
+// （区分の linkStyle を重ねると、同じ辺へ2本目の style が付き、UC の強調が読めなくなるため）
 export function stateChart(model: StateModelView, highlightUc: string | null): string {
   const id = new Map(model.states.map((s, i) => [s, `s${i}`] as const));
   const out = ['flowchart LR'];
   const drawn = model.transitions.filter((t) => t.from !== null || t.to !== null);
+  const classes = new Set<DiffStatus>();
   if (drawn.some((t) => t.from === null)) out.push('  start0(("開始")):::terminal');
   for (const s of model.states) {
     const known = !model.transitions.some((t) => t.to === s && !t.toKnown);
-    out.push(`  ${id.get(s)}["${mermaidText(marked(s, known))}"]`);
+    const status = stateStatus(model, s);
+    if (status === undefined) {
+      out.push(`  ${id.get(s)}["${mermaidText(marked(s, known))}"]`);
+    } else {
+      classes.add(status);
+      out.push(`  ${id.get(s)}["${mermaidText(`${CHART_MARK[status]} ${marked(s, known)}`)}"]:::${status}`);
+    }
   }
   if (drawn.some((t) => t.to === null)) out.push('  end0(("終端")):::terminal');
   const styles: string[] = [];
@@ -57,15 +103,20 @@ export function stateChart(model: StateModelView, highlightUc: string | null): s
     const from = t.from === null ? 'start0' : id.get(t.from)!;
     const to = t.to === null ? 'end0' : id.get(t.to)!;
     const arrow = t.hypothesis ? '-.->' : '-->';
-    const label = t.uc === null ? '' : `|"${mermaidText(marked(t.uc, t.ucKnown))}"|`;
+    // 遷移 UC の無い辺も、区分があれば印だけの名札を持つ
+    const text = (t.diff === undefined ? '' : CHART_MARK[t.diff]) + (t.uc === null ? '' : marked(t.uc, t.ucKnown));
+    const label = text === '' ? '' : `|"${mermaidText(text)}"|`;
     out.push(`  ${from} ${arrow}${label} ${to}`);
+    const dash = t.hypothesis ? ',stroke-dasharray:5 5' : '';
     if (highlightUc !== null) {
-      const dash = t.hypothesis ? ',stroke-dasharray:5 5' : '';
       styles.push(`  linkStyle ${i} ${t.uc === highlightUc ? HIGHLIGHT : DIMMED}${dash}`);
+    } else if (t.diff !== undefined) {
+      styles.push(`  linkStyle ${i} ${DIFF_LINK[t.diff]}${dash}`);
     }
   });
   out.push(...styles);
   out.push('  classDef terminal fill:#495057,stroke:#495057,color:#fff');
+  for (const status of DIFF_STATUSES) if (classes.has(status)) out.push(`  classDef ${status} ${DIFF_NODE[status]}`);
   return out.join('\n');
 }
 
@@ -94,7 +145,8 @@ function hypothesisBadge(h: string[] | null): string {
 
 function scenarioList(scenarios: ScenarioView[]): string {
   const items = scenarios.map(
-    (s) => `<li>${escapeHtml(s.name)}${s.count === 1 ? '' : `<span class="note">（${s.count} 件）</span>`}</li>`,
+    (s) =>
+      `<li>${escapeHtml(s.name)}${diffMark(s)}${s.count === 1 ? '' : `<span class="note">（${s.count} 件）</span>`}</li>`,
   );
   return `<ul class="scenarios">${items.join('')}</ul>`;
 }
@@ -104,7 +156,8 @@ function stateModelSection(model: StateModelView, view: View): string {
     const from = t.from === null ? '<span class="note">（開始）</span>' : escapeHtml(t.from);
     const to =
       t.to === null ? '<span class="note">（終端）</span>' : nameHtml({ name: t.to, known: t.toKnown });
-    return `<tr><td>${from}</td><td>${to}</td><td>${ucLink(t.uc, t.ucKnown, view)}</td><td>${escapeHtml(t.description)}</td><td>${t.hypothesis ? '仮説' : ''}</td></tr>`;
+    // 遷移の区分の印は、行の元の状態の欄の先頭に付ける
+    return `<tr><td>${diffMark(t)}${from}</td><td>${to}</td><td>${ucLink(t.uc, t.ucKnown, view)}</td><td>${escapeHtml(t.description)}</td><td>${t.hypothesis ? '仮説' : ''}</td></tr>`;
   });
   return `<h3>${escapeHtml(model.name)}</h3>
 ${chartBlock(model, null)}
@@ -118,12 +171,17 @@ function presence(n: number, unit: string): string {
 
 function useCaseIndex(view: View): string {
   const rows = view.useCases.map((uc) => {
-    const lines = uc.requirements.reduce((n, r) => n + r.lines.length, 0);
+    // 描き分けの材料では、残る UC の行は外された票・行・例を数えず（作業ツリーの数）、外された UC の行は基準の版で
+    // 持っていた数（縦串に残る外された行・例の数）を出す。外された UC の行を作業ツリーの数にすると0になり、
+    // 要求票を欠いた欠陥のように「無い」が出るため。区分の無い材料では全てを数える（今と同じ）
+    const counted = (x: Marked): boolean => uc.diff === 'removed' || x.diff !== 'removed';
+    const requirements = uc.requirements.filter(counted);
+    const lines = requirements.flatMap((r) => r.lines.filter(counted));
     const scenarios =
-      uc.requirements.reduce((n, r) => n + r.lines.reduce((m, l) => m + l.scenarios.length, 0), 0) +
-      uc.unlinkedRules.reduce((n, r) => n + r.scenarios.length, 0) +
-      uc.looseScenarios.length;
-    return `<tr><td><a href="#${uc.anchor}">${escapeHtml(uc.name)}</a></td><td>${uc.actors.map(nameHtml).join('、')}</td><td>${hypothesisBadge(uc.hypothesis)}</td><td>${uc.requirements.length === 0 ? presence(0, '') : presence(lines, '行')}</td><td>${uc.exampleFiles.length === 0 ? presence(0, '') : presence(scenarios, 'シナリオ')}</td></tr>`;
+      lines.reduce((n, l) => n + l.scenarios.filter(counted).length, 0) +
+      uc.unlinkedRules.reduce((n, r) => n + r.scenarios.filter(counted).length, 0) +
+      uc.looseScenarios.filter(counted).length;
+    return `<tr><td><a href="#${uc.anchor}">${escapeHtml(uc.name)}</a>${diffMark(uc)}</td><td>${uc.actors.map(nameHtml).join('、')}</td><td>${hypothesisBadge(uc.hypothesis)}</td><td>${requirements.length === 0 ? presence(0, '') : presence(lines.length, '行')}</td><td>${uc.exampleFiles.length === 0 ? presence(0, '') : presence(scenarios, 'シナリオ')}</td></tr>`;
   });
   return `<table><thead><tr><th>UC</th><th>アクター</th><th>仮説</th><th>要求票</th><th>例</th></tr></thead>
 <tbody>${rows.join('\n')}</tbody></table>`;
@@ -181,10 +239,10 @@ function definitionsHtml(line: RequirementLineView): string {
     const variations = d.variations
       .map(
         (v) =>
-          `<div class="sub">${nameHtml(v)}${v.values.length > 0 ? `: ${escapeHtml(v.values.join('、'))}` : ''}</div>`,
+          `<div class="sub">${nameHtml(v)}${diffMark(v)}${v.values.length > 0 ? `: ${escapeHtml(v.values.join('、'))}` : ''}</div>`,
       )
       .join('');
-    return `<li><span class="kind">${escapeHtml(r.kind ?? '')}</span><strong>${escapeHtml(r.name)}</strong>: ${escapeHtml(d.description)}${values}${attributes}${variations}</li>`;
+    return `<li><span class="kind">${escapeHtml(r.kind ?? '')}</span><strong>${escapeHtml(r.name)}</strong>${diffMark(r)}: ${escapeHtml(d.description)}${values}${attributes}${variations}</li>`;
   });
   if (items.length === 0) return '';
   return `<div class="defs" hidden><ul>${items.join('')}</ul></div>`;
@@ -211,13 +269,14 @@ function requirementBlock(uc: UseCaseView, view: View): string {
             : uc.exampleFiles.length > 0
               ? '<p class="missing">この行に結び付く例が無い</p>'
               : '';
-        return `<li><p class="sentence">${sentenceHtml(l, view.tableNames)}</p>
+        // 要求文の区分の印は行の先頭に付ける。RDRA 欄の文字列とツールチップには付けない
+        return `<li><p class="sentence">${diffMark(l)}${sentenceHtml(l, view.tableNames)}</p>
 ${definitionsHtml(l)}
 <dl class="fields"><dt>理由</dt><dd>${escapeHtml(l.reason ?? '（欄が無い）')}</dd><dt>RDRA</dt><dd>${refs === '' ? 'なし' : refs}</dd></dl>
 ${examples}</li>`;
       });
       const reason = r.reason === null ? '（節が無い）' : escapeHtml(r.reason).replace(/\n/g, '<br>');
-      return `<p class="file">${escapeHtml(r.file)}</p>
+      return `<p class="file">${escapeHtml(r.file)}${diffMark(r)}</p>
 <p><strong>理由:</strong> ${reason}</p>
 <ol class="lines">${lines.join('\n')}</ol>`;
     })
@@ -245,7 +304,7 @@ function exampleBlock(uc: UseCaseView): string {
 
 function sliceSection(uc: UseCaseView, view: View): string {
   const roles = (xs: (NamedView & { role: string })[]) =>
-    xs.map((x) => `<li>${nameHtml(x)}${x.role === '' ? '' : `（${escapeHtml(x.role)}）`}</li>`).join('');
+    xs.map((x) => `<li>${nameHtml(x)}${diffMark(x)}${x.role === '' ? '' : `（${escapeHtml(x.role)}）`}</li>`).join('');
   const charts =
     uc.stateModels.length === 0
       ? '<p class="note">この UC が動かす遷移は無い</p>'
@@ -259,7 +318,7 @@ function sliceSection(uc: UseCaseView, view: View): string {
       : `<table><thead><tr><th>情報</th><th>説明</th><th>属性</th></tr></thead><tbody>${uc.information
           .map(
             (i) =>
-              `<tr><td>${nameHtml(i)}</td><td>${escapeHtml(i.description)}</td><td>${escapeHtml(i.attributes.join('、'))}</td></tr>`,
+              `<tr><td>${nameHtml(i)}${diffMark(i)}</td><td>${escapeHtml(i.description)}</td><td>${escapeHtml(i.attributes.join('、'))}</td></tr>`,
           )
           .join('')}</tbody></table>`;
   const conditions =
@@ -270,15 +329,15 @@ function sliceSection(uc: UseCaseView, view: View): string {
             const vs = c.variations
               .map(
                 (v) =>
-                  `<div>${nameHtml(v)}${v.values.length > 0 ? `: ${escapeHtml(v.values.join('、'))}` : ''}</div>`,
+                  `<div>${nameHtml(v)}${diffMark(v)}${v.values.length > 0 ? `: ${escapeHtml(v.values.join('、'))}` : ''}</div>`,
               )
               .join('');
-            return `<tr><td>${nameHtml(c)}</td><td>${escapeHtml(c.description)}</td><td>${vs}</td></tr>`;
+            return `<tr><td>${nameHtml(c)}${diffMark(c)}</td><td>${escapeHtml(c.description)}</td><td>${vs}</td></tr>`;
           })
           .join('')}</tbody></table>`;
   return `<section class="slice" id="${uc.anchor}">
 <details>
-<summary><h2>${escapeHtml(uc.name)} ${hypothesisBadge(uc.hypothesis)}</h2></summary>
+<summary><h2>${escapeHtml(uc.name)}${diffMark(uc)} ${hypothesisBadge(uc.hypothesis)}</h2></summary>
 <p>${escapeHtml(uc.description)}</p>
 <div class="cols">
 <div><h4>アクター</h4>${uc.actors.length === 0 ? '<p class="note">なし</p>' : `<ul>${roles(uc.actors)}</ul>`}</div>
@@ -369,30 +428,49 @@ nav button { font-size:12px; margin-left:4px; }
 .top { text-align:right; font-size:13px; }
 `;
 
+// 描き分けの印の規則。基準の版があるときだけ STYLE の後ろに足す
+const DIFF_STYLE = `span.diff { display:inline-block; margin:0 4px; padding:0 6px; border-radius:4px; font-size:12px; font-weight:600; vertical-align:middle; }
+span.diff[data-diff="added"] { background:#ebfbee; color:#2b8a3e; }
+span.diff[data-diff="changed"] { background:#f3f0ff; color:#5f3dc4; }
+span.diff[data-diff="removed"] { background:#fff5f5; color:#c92a2a; }
+`;
+
+// 状態遷移図の凡例の後ろに足す、描き分けの区分の説明
+const DIFF_LEGEND =
+  '基準の版との違い: 状態の節点と遷移の辺は、名札の先頭の印（［足された］・［変わった］・［外された］）と色（緑・紫・赤）で示す。' +
+  '破線は今どおり仮説の遷移だけを示す。UC の縦串の図では辺の色が UC の強調を示し、違いは名札の印だけで示す。' +
+  '表と縦串では、違いのある要素の名前に「足された」「変わった（変わった欄）」「外された」の印を付ける。';
+
 export function renderHtml(view: View, generatedAt: Date): string {
   const models =
     view.stateModels.length === 0
       ? '<p class="note">状態の表に状態モデルが無い</p>'
       : view.stateModels.map((m) => stateModelSection(m, view)).join('\n');
   const stray = strayBlock(view);
+  // 基準の版の行・凡例・CSS は、基準の版があるときだけ出す
+  const base =
+    view.base === undefined
+      ? ''
+      : `\n<p>基準の版: ${escapeHtml(view.base.ref)}（${escapeHtml(view.base.commit.slice(0, 12))}）</p>`;
+  const legend = view.base === undefined ? '' : `\n<p class="note">${DIFF_LEGEND}</p>`;
   return `<!doctype html>
 <html lang="ja">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>RDRA の設計の可視化</title>
-<style>${STYLE}</style>
+<style>${STYLE}${view.base === undefined ? '' : DIFF_STYLE}</style>
 </head>
 <body id="top">
 <header>
 <h1>RDRA の設計の可視化</h1>
 <p>生成時刻: ${escapeHtml(timestamp(generatedAt))}</p>
-<p>根: ${escapeHtml(view.root)}</p>
+<p>根: ${escapeHtml(view.root)}</p>${base}
 <nav><a href="#states">状態遷移図</a><a href="#use-cases">UC の一覧</a>${stray === '' ? '' : '<a href="#stray">結び付かない要求票・例</a>'}
 要求の行の中身（名前のクリックでも開閉）: <button type="button" data-defs="open">すべて開く</button><button type="button" data-defs="close">すべて閉じる</button></nav>
 </header>
 <section id="states"><h2>状態遷移図</h2>
-<p class="note">実線は事実、破線は仮説の遷移。${UNKNOWN_MARK} は表に無い名前。</p>
+<p class="note">実線は事実、破線は仮説の遷移。${UNKNOWN_MARK} は表に無い名前。</p>${legend}
 ${models}
 </section>
 <section id="use-cases"><h2>UC の一覧</h2>
