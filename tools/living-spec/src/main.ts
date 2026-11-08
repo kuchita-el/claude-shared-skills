@@ -1,8 +1,9 @@
 // 使い方:
 //   living-spec check [--doc-missing] [起点]   全体検査。--doc-missing は書き漏らしの向き（UC に要求票が無い・票が条件や遷移先状態を挙げない・票の行にルールが無い）だけを検査する
 //   living-spec render [--base <版>] [起点]    設計の可視化（状態遷移図と UC ごとの縦串）を1つの HTML へ描き、書き出した場所を出す。--base は git の版を基準の版として足された・変わった・外された要素を描き分け、output の語幹に -diff を付けた別のファイルへ書く（output には触れない）
+//   living-spec diff --base <版> [起点]        基準の版から変わった要素を、1行1要素のタブ区切りで標準出力へ出す。標準出力は一覧の行だけ（スキルが焦点として読むため。根の行も出さず、何も書かない）。終了コードは差分の有無によらず 0、2 は render --base と同じ場合と --base が無いとき。--base は必須で、既定の版は持たない（黙って選ばれた版と比べた「差分なし」を、利用者が意図した版と比べた結果と取り違えさせないため）。行の形の正本は plugins/living-spec/references/format.md の「基準の版から変わった要素の一覧（`diff`）」
 //   living-spec hook                           Claude Code の PostToolUse フック（標準入力の JSON を読む）
-// 根は起点（check・render は引数か作業ディレクトリ、hook は編集したファイル）から上へ辿って最も近い目印で決まる。
+// 根は起点（check・render・diff は引数か作業ディレクトリ、hook は編集したファイル）から上へ辿って最も近い目印で決まる。
 // 根・置き場・範囲の規則の正本は plugins/living-spec/references/format.md の「置き場の設定」。CLI とフックは同じ関数でそれを適用する。
 // check は1行目に「根: <絶対パス>」を出し、違反があれば終了コード 1、無ければ 0。引数で渡した起点が範囲外なら、扱いを示す注記を標準エラーへ出す。
 // 終了コード 2: 引数の誤り・起点が無い・正本が見つからない・根の探索を続けられない・設定を読めない・根に属さない置き場・表の置き場が無い。render --base では、基準の版を読めない（git を実行できない・根が git の作業ツリーの中に無い・版が無い・基準の版に正本の根や表の置き場が無い・根の位置が版で異なる・基準の版の設定や正本を読めない）ときも。
@@ -13,6 +14,8 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { type BaseVersion, BaseError, readBase } from './base.ts';
+import { diffSources } from './diff.ts';
+import { diffListLines } from './difflist.ts';
 import { checkDocMissing, checkRepo, formatViolation } from './check.ts';
 import { writeDiffView, writeView } from './render.ts';
 import {
@@ -25,9 +28,10 @@ import {
   statIfExists,
 } from './root.ts';
 import { classifyTarget, formatScopeNote } from './scope.ts';
+import { readSources } from './sources.ts';
 import { CONFIG_FILE, LAYOUT, configureLayout } from './schema.ts';
 
-const USAGE = '使い方: living-spec check [--doc-missing] [起点] | living-spec render [--base <版>] [起点] | living-spec hook';
+const USAGE = '使い方: living-spec check [--doc-missing] [起点] | living-spec render [--base <版>] [起点] | living-spec diff --base <版> [起点] | living-spec hook';
 
 function usage(): never {
   console.error(USAGE);
@@ -122,10 +126,10 @@ function runCheck(args: string[]): never {
   process.exit(1);
 }
 
-// render の引数を、--base の値と起点（1つまで）に分ける。--base は空白区切りの1形だけを受け、起点の前後どちらに置いてもよい。
+// render と diff の引数を、--base の値と起点（1つまで）に分ける。--base は空白区切りの1形だけを受け、起点の前後どちらに置いてもよい。
 // --base の値が無い・空・- で始まる・2回ある、知らない -- の引数、起点が2つ以上なら使い方を出して止める。
 // - で始まる値を git へ渡さないのは、版の文字列が git の選択肢として読まれる経路を、git の版によらず断つため
-function renderArgs(args: string[]): { ref: string | undefined; arg: string | undefined } {
+function baseArgs(args: string[]): { ref: string | undefined; arg: string | undefined } {
   let ref: string | undefined;
   const rest: string[] = [];
   for (let i = 0; i < args.length; i++) {
@@ -145,7 +149,7 @@ function renderArgs(args: string[]): { ref: string | undefined; arg: string | un
 }
 
 function runRender(args: string[]): never {
-  const { ref, arg } = renderArgs(args);
+  const { ref, arg } = baseArgs(args);
   const { root, target, start } = prepare(arg, false);
   noteScope(root, target);
   if (ref === undefined) {
@@ -162,6 +166,25 @@ function runRender(args: string[]): never {
   }
   console.log(writeDiffView(root, base));
   process.exit(0);
+}
+
+// 基準の版から変わった要素の一覧を標準出力へ出す。ref が無ければ使い方を出して止める（既定の版は持たない）。
+// process.exit を呼ばず終了コードを置いて戻る: process.exit は書き終えていない非同期の標準出力を捨てることがあり、
+// 一覧が欠けるとスキルの焦点が黙って縮むため。check・render のように process.exit(0) へ揃えない
+function runDiff(args: string[]): void {
+  const { ref, arg } = baseArgs(args);
+  if (ref === undefined) usage();
+  const { root, target, start } = prepare(arg, false);
+  noteScope(root, target);
+  let base: BaseVersion;
+  try {
+    base = readBase(root, start, ref);
+  } catch (e) {
+    if (e instanceof BaseError) die(e.message);
+    throw e;
+  }
+  process.stdout.write(diffListLines(diffSources(base.sources, readSources(root))).map((l) => `${l}\n`).join(''));
+  process.exitCode = 0;
 }
 
 function runHook(): never {
@@ -216,4 +239,5 @@ const [command, ...args] = process.argv.slice(2);
 if (command === 'check') runCheck(args);
 if (command === 'render') runRender(args);
 if (command === 'hook' && args.length === 0) runHook();
-usage();
+if (command === 'diff') runDiff(args);
+else usage();

@@ -3,24 +3,24 @@
 決めた仕様を、変更のたびに検査され描き直される「生きた正本」として保つプラグインです。人が決めたことが一つの矛盾の無い正本に残り続け、いつでも全体を見て確かめられる状態を目指します。
 
 いまは要求の3層（RDRA の表・要求票・例）を扱います。要求を構造化し、整合を機械検査し、規則間の矛盾を独立文脈で突き合わせ、状態遷移図と UC ごとの縦串を1枚の HTML に描きます。画面仕様・設計など他の層は、同じ正本と検査の形で後から足す想定です。
-書式・置き場・検査の規則と、基準の版との描き分けの定義の正本は `references/format.md` です。
+書式・置き場・検査の規則と、基準の版との描き分け・基準の版から変わった要素の一覧の定義の正本は `references/format.md` です。
 
 ## 配布物
 
 - `skills/structure/SKILL.md`: 要求を表→要求票→例へ写し、機械検査と突き合わせを通して終えます。
-- `skills/crosscheck/SKILL.md`: 規則間の矛盾・条件の食い違い・状態遷移の抜けを報告します（直しません）。
+- `skills/crosscheck/SKILL.md`: 規則間の矛盾・条件の食い違い・状態遷移の抜けを報告します（直しません）。基準の版（git の版）を渡すと、そこから変わった要素だけを突き合わせます。
 - `skills/view/SKILL.md`: 可視化を描き、開き方を示します。基準の版（git の版）を指定すると、そこからの違いを描き分けます。
 - `agents/rule-crosschecker.md`: 表・票・例を初見で読み、矛盾を `id,severity,evidence,why,suggestion` で返します。
-- `scripts/run.mjs`: 検査器を探して呼ぶ中継（`check [--doc-missing] [起点]`・`render [--base <版>] [起点]`・`hook`）。依存を持ちません。検査器そのものはプラグインに含めません（下の「検査器の導入」）。
+- `scripts/run.mjs`: 検査器を探して呼ぶ中継。引数は `check [--doc-missing] [起点]`・`render [--base <版>] [起点]`・`diff --base <版> [起点]`・`hook` です。依存を持ちません。検査器そのものはプラグインに含めません（下の「検査器の導入」）。
 - `hooks/hooks.json`: 表・票・例の編集の後に全体検査と描き直しを走らせる PostToolUse フック。
-- `references/starting-point.md`: スキル3本が共通に従う、検査器へ渡す起点と根の手順。
+- `references/starting-point.md`: 検査器へ渡す起点・基準の版・根の手順。起点と根はスキル3本が、基準の版の渡し方は `view` と `crosscheck` が従います。
 - `references/templates/`: 要求票と例の雛形。
 
 ## 検査器の導入
 
-検査器と描画は、プラグインと分けて、利用するリポジトリが持つ道具として入れます。claude-shared-skills の GitHub Release に、依存を同梱した1ファイル `living-spec-<コミット SHA>.mjs` として置いています。版は Release の一覧から SHA で選びます。要るのは Node 22 以上と、取得に使う curl です。基準の版との描き分け（`render --base`）を使うときは、git も要ります。
+検査器と描画は、プラグインと分けて、利用するリポジトリが持つ道具として入れます。claude-shared-skills の GitHub Release に、依存を同梱した1ファイル `living-spec-<コミット SHA>.mjs` として置いています。版は Release の一覧から SHA で選びます。要るのは Node 22 以上と、取得に使う curl です。基準の版との描き分け（`render --base`）と、`crosscheck` に基準の版を渡したときの一覧（`diff`）を使うときは、git も要ります。
 
-プラグインは版を持たず、更新すると最新の手順と書式が届きます。検査器は選んだ SHA に固定されたままなので、プラグインを更新したら、検査器も最新の Release へ上げます。古い検査器は、プラグインの手順が書かせるキーを、許さないキーとして止めることがあります。`--base` を持たない版の検査器では、`render --base` が使い方を出して止まります。検査器を最新の Release へ上げれば使えます。
+プラグインは版を持たず、更新すると最新の手順と書式が届きます。検査器は選んだ SHA に固定されたままなので、プラグインを更新したら、検査器も最新の Release へ上げます。古い検査器は、プラグインの手順が書かせるキーを、許さないキーとして止めることがあります。`--base` を持たない版の検査器では、`render --base` が使い方を出して止まります。`diff` を持たない版の検査器では、`crosscheck` に基準の版を渡すと `diff` が使い方を出して止まります。どちらも、検査器を最新の Release へ上げれば使えます。
 
 ### 手元
 
@@ -81,7 +81,7 @@ jobs:
 
 ## 前提
 
-- Node 22 以上（22.23・24.16 で確かめています）と、検査器の取得に使う curl。基準の版との描き分け（`render --base`）には git も要ります。
+- Node 22 以上（22.23・24.16 で確かめています）と、検査器の取得に使う curl。基準の版との描き分け（`render --base`）と、`crosscheck` に基準の版を渡したときの一覧（`diff`）には git も要ります。
 - 可視化の図は Mermaid を jsdelivr から読むため、表示にネットワークが要ります。
 
 ## 契約
@@ -95,7 +95,7 @@ jobs:
 ## host 差分
 
 - Claude Code: スキル・エージェント・フックのすべてが動きます。
-- Codex: スキルと検査器は動きます。plugin 単位のフックが無いため、編集ごとの自動検査と描き直しはありません。スキルの手順どおり `node scripts/run.mjs check` と `node scripts/run.mjs render` を明示的に実行します。端末で自分で実行するなら、取ったファイルを `node <取ったファイルのパス> check` と `node <取ったファイルのパス> render` で直接走らせてもかまいません。突き合わせのエージェントが使えない場合は、別の会話で `agents/rule-crosschecker.md` の指示を与え、入力として plugin root path（`references/format.md` を含むこのディレクトリ）も渡して実行します。
+- Codex: スキルと検査器は動きます。plugin 単位のフックが無いため、編集ごとの自動検査と描き直しはありません。スキルの手順どおり `node scripts/run.mjs check` と `node scripts/run.mjs render` を明示的に実行します。基準の版を渡した `crosscheck` では、`node scripts/run.mjs diff --base <版> [起点]` も明示的に実行します。版の渡し方は `references/starting-point.md` の「基準の版の渡し方」に従います。端末で自分で実行するなら、取ったファイルを `node <取ったファイルのパス> check` で直接走らせてもかまいません。`render` と `diff --base <版> [起点]` も、`scripts/run.mjs` と同じ引数で走らせられます。突き合わせのエージェントが使えない場合は、別の会話で `agents/rule-crosschecker.md` の指示を与えて実行します。入力には plugin root path（`references/format.md` を含むこのディレクトリ）も渡します。
 
 ## 検査と書式に期待できること
 
