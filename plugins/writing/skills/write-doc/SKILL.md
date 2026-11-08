@@ -57,7 +57,7 @@ doc-writerにはprofileと共通規約のpathを渡す。素材にない事実�
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/lint-ja.sh --type <documentType> --diff <base> -- <changed-paths>
 ```
 
-既存箇所を明示的に確認するときだけ`--file <path>`を使う。lintの一文長違反は未解決として扱う。
+既存箇所を明示的に確認するときだけ`--type <documentType> --file <path>`を使う。lintの一文長違反は未解決として扱う。
 識別子と参照の説明はlintでは検査せず、doc-reviewerが判定する。allowlist、登録簿、免除語集合は作らない。
 
 ## 独立レビュー
