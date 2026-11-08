@@ -90,7 +90,10 @@
   [ "$(wc -l <<<"$skill_items")" -eq 6 ]
   [ "$skill_items" = "$reviewer_items" ]
   # profileのpathは、2段の解決を経た後のファイルを指す（reviewerは渡されていないpathを探さないため）。
-  [[ "$review_section" == *"文書種別profileのpathは、「規約とprofile」節の手順で解決した後のもの"* ]]
+  [[ "$review_section" == *"文書種別profileのpathは、「規約とprofile」節の手順で解決した後のファイルを指す"* ]]
+  [[ "$review_section" == *"種別の行が無く同梱の既定を読んだときは、同梱のファイルを渡す"* ]]
+  # 渡されたprofileに種別の行が無いとき、reviewerが当てる行を決めておく（同梱の既定は汎用の行だけを持つ）。
+  [[ "$input_section" == *"その行がprofileに無ければ、汎用の行を当てる"* ]]
   [[ "$input_section" == *"次の6つだけを入力とする"* ]]
   [[ "$review_section" == *"だけをdoc-reviewerへ渡す"* ]]
   # 規約とprofileは本文ではなくpathで渡し、reviewerが自分で読む。
