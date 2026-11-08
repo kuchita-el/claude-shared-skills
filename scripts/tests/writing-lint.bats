@@ -381,6 +381,15 @@ run_doc_diff() {
   [ "$output" = 'doc.md:1:一文長: 121字（上限100）' ]
 }
 
+@test "差分の方式は、削除でつながった文が閉じた後に続く既存の長文を報告しない" {
+  # つながった文の印が、その文の終端で外れることを確かめる。後ろの長文は同じ行・次の行のどちらでも既存のまま。
+  make_diff_repo joined-then-existing "$(rep あ 60)" '' "$(rep い 60)。$(rep う 120)。" "$(rep え 120)。"
+  sed -i '2d' "$repo/doc.md"
+  run_doc_diff
+  [ "$status" -eq 1 ]
+  [ "$output" = 'doc.md:1:一文長: 121字（上限100）' ]
+}
+
 @test "差分の方式は、変えていない行の途中から始まる既存の長文を報告しない" {
   make_diff_repo unchanged-mid-line "短い文。$(rep う 120)。" '変更前。'
   sed -i 's/変更前。/変更後。/' "$repo/doc.md"
