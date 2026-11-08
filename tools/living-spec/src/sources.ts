@@ -1,7 +1,7 @@
 // 検査と描画の入力（表・要求票・例の中身）。ファイルを読む処理と判定を分け、判定をファイルなしで試験できるようにする。
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { LAYOUT, TABLES } from './schema.ts';
+import { LAYOUT, TABLES, tableFile, type Layout } from './schema.ts';
 
 export interface SourceFile {
   // 根からの相対パス（違反の file に出す）
@@ -17,27 +17,59 @@ export interface Sources {
   examples: SourceFile[];
 }
 
-function listDir(root: string, dir: string, ext: string): SourceFile[] {
-  const path = join(root, dir);
-  if (!existsSync(path)) return [];
-  return readdirSync(path)
+// 版（作業ツリー・git の版）ごとの読み手。パスは根からの相対
+export interface SourceReader {
+  // 項が無ければ undefined。項が在っても読めなければ例外
+  readFile(rel: string): string | undefined;
+  // 直下の項の名前（拡張子での絞り込みは readSourcesFrom が行う）。ディレクトリの名前を含むかは読み手による
+  // （作業ツリーの読み手は含み、git の版の読み手は木でない項だけを返す）。無いディレクトリなら空。項が在ってもディレクトリとして読めなければ例外
+  listFiles(relDir: string): string[];
+}
+
+// 置き場の一覧に出たファイルを読めない（読み手が「無い」と答えた）。基準の版の読み出し（base.ts）が実装の欠陥と見分けて
+// 文面に包むための型。文面は型を分ける前と同じ
+export class SourceReadError extends Error {}
+
+function listDir(reader: SourceReader, dir: string, ext: string): SourceFile[] {
+  return reader
+    .listFiles(dir)
     .filter((f) => f.endsWith(ext))
     .sort()
-    .map((f) => ({ file: `${dir}/${f}`, text: readFileSync(join(path, f), 'utf8') }));
+    .map((f) => {
+      const file = `${dir}/${f}`;
+      const text = reader.readFile(file);
+      if (text === undefined) throw new SourceReadError(`読めないファイル: ${file}`);
+      return { file, text };
+    });
+}
+
+// 読み手から、与えた置き場どおりに読む
+export function readSourcesFrom(reader: SourceReader, layout: Pick<Layout, 'tables' | 'requirements' | 'examples'>): Sources {
+  const tables = new Map<string, string>();
+  for (const def of TABLES) {
+    const text = reader.readFile(tableFile(def.id, layout.tables));
+    if (text !== undefined) tables.set(def.id, text);
+  }
+  return {
+    tables,
+    requirements: listDir(reader, layout.requirements, '.md'),
+    examples: listDir(reader, layout.examples, '.feature'),
+  };
 }
 
 // 根から、LAYOUT の置き場どおりに読む
 export function readSources(root: string): Sources {
-  const tables = new Map<string, string>();
-  for (const def of TABLES) {
-    const path = join(root, def.file);
-    if (existsSync(path)) tables.set(def.id, readFileSync(path, 'utf8'));
-  }
-  return {
-    tables,
-    requirements: listDir(root, LAYOUT.requirements, '.md'),
-    examples: listDir(root, LAYOUT.examples, '.feature'),
+  const reader: SourceReader = {
+    readFile: (rel) => {
+      const path = join(root, rel);
+      return existsSync(path) ? readFileSync(path, 'utf8') : undefined;
+    },
+    listFiles: (relDir) => {
+      const path = join(root, relDir);
+      return existsSync(path) ? readdirSync(path) : [];
+    },
   };
+  return readSourcesFrom(reader, LAYOUT);
 }
 
 // 根からの相対パス → 中身の対応から組む（試験用）。LAYOUT の置き場の直下に無いファイルは読まない（readSources と同じ）

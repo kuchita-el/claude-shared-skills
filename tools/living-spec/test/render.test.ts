@@ -15,6 +15,18 @@ import { escapeHtml, renderHtml, stateChart } from '../src/html.ts';
 import { sourcesFromFiles } from '../src/sources.ts';
 import { buildView } from '../src/view.ts';
 import type { StateModelView, UseCaseView, View } from '../src/view.ts';
+import { parseTxtar } from './fixture.ts';
+import { buildDiffView } from '../src/diffview.ts';
+import type { Sources } from '../src/sources.ts';
+import type { Marked } from '../src/view.ts';
+import type { ReferenceView } from '../src/view.ts';
+import { diffOutputPath, writeDiffView } from '../src/render.ts';
+import { mkdirSync, realpathSync, renameSync, symlinkSync } from 'node:fs';
+import { devNull } from 'node:os';
+import { extract } from './fixture.ts';
+import { BaseError, GitReadError, UnreadableEntryError, guard } from '../src/base.ts';
+import { LayoutError, parseLayout } from '../src/schema.ts';
+import { SourceReadError } from '../src/sources.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const sample = materialize(join(here, 'render', 'sample.txtar'));
@@ -412,4 +424,1599 @@ test('フック: 対象外のファイルの編集では描かない', () => {
   } finally {
     rmSync(root, { recursive: true });
   }
+});
+
+// ---- 描き分けの材料（diffview.ts の buildDiffView）。見本の2版は test/render/diff-base.txtar と diff-head.txtar ----
+// 材料の区分だけを見る（HTML と図の文字列は見ない）。区分の無い要素は diff・changed を自分の欄として持たない。
+
+function diffSample(name: string): Sources {
+  const files: Record<string, string> = {};
+  for (const { path, data } of parseTxtar(readFileSync(join(here, 'render', name), 'utf8'))) files[path] = data;
+  return sourcesFromFiles(files);
+}
+
+const diffBase = diffSample('diff-base.txtar');
+const diffHead = diffSample('diff-head.txtar');
+const BASE_COMMIT = '0123456789abcdef0123456789abcdef01234567';
+
+function diffView(): View {
+  return buildDiffView('/unused', { ref: 'main', commit: BASE_COMMIT, sources: diffBase }, diffHead);
+}
+
+// 区分を文字列にする。区分の無い要素は ''。変わった要素は欄名を添える
+function tag(x: Marked): string {
+  if (!Object.hasOwn(x, 'diff') && !Object.hasOwn(x, 'changed')) return '';
+  return x.changed === undefined ? String(x.diff) : `${x.diff} ${JSON.stringify(x.changed)}`;
+}
+
+function marks(xs: (Marked & { name: string })[]): [string, string][] {
+  return xs.map((x) => [x.name, tag(x)]);
+}
+
+function lineOf(uc: UseCaseView, text: string): UseCaseView['requirements'][number]['lines'][number] {
+  const found = uc.requirements.flatMap((r) => r.lines).filter((l) => l.text === text);
+  assert.equal(found.length, 1, `UC『${uc.name}』に行『${text}』が1つある`);
+  return found[0];
+}
+
+function conditionOf(uc: UseCaseView, name: string): UseCaseView['conditions'][number] {
+  const c = uc.conditions.find((x) => x.name === name);
+  assert.ok(c, `UC『${uc.name}』に条件『${name}』がある`);
+  return c;
+}
+
+const D_SUBMIT = '申請を提出する';
+const D_S1 = '提出できる条件を満たさないならば、システムは申請の提出を受け付けない';
+const D_S2 = '従業員が申請を提出するとき、システムは申請を提出済みにする';
+const D_S3 = '従業員が申請を提出するとき、システムは申請を提出済みにして上長へ知らせる';
+const D_AUDIT_LINE = '監査役が申請を監査するとき、システムは申請を監査済みにする';
+const D_RETURN_LINE = '上長が申請を差し戻すとき、システムは申請を差し戻しにして旧台帳へ控える';
+
+test('描き分けの材料: 状態と遷移は、作業ツリーの並びに区分を付け、外された状態・遷移を後ろに足す', () => {
+  const m = model(diffView());
+  assert.deepEqual(m.states, ['作成中', '提出済み', '承認済み', '監査済み', '差し戻し']);
+  assert.deepEqual(m.stateDiff, { 監査済み: 'added', 差し戻し: 'removed' });
+  assert.deepEqual(
+    m.transitions.map((t) => [t.from, t.to, t.uc, tag(t)]),
+    [
+      [null, '作成中', '申請を作成する', ''],
+      ['作成中', '提出済み', '申請を提出する', 'changed ["状態モデル・状態の説明"]'],
+      ['提出済み', '承認済み', '申請を承認する', ''],
+      ['承認済み', '監査済み', '申請を監査する', 'added'],
+      ['監査済み', null, null, 'added'],
+      ['提出済み', '差し戻し', '申請を差し戻す', 'removed'],
+      ['差し戻し', null, null, 'removed'],
+      ['承認済み', null, null, 'removed'],
+    ],
+  );
+});
+
+test('描き分けの材料: 外された UC は作業ツリーの UC の後ろに続き番号のアンカーで並び、遷移 UC の状態モデルを重ね合わせた後の遷移から持つ', () => {
+  const view = diffView();
+  const headCount = buildView('/unused', diffHead).useCases.length;
+  assert.equal(headCount, 4);
+  assert.deepEqual(marks(view.useCases), [
+    ['申請を作成する', ''],
+    [D_SUBMIT, 'changed ["アクター","説明"]'],
+    ['申請を承認する', 'changed ["外部システム","情報","条件"]'],
+    ['申請を監査する', 'added'],
+    ['申請を差し戻す', 'removed'],
+  ]);
+  const removed = view.useCases[view.useCases.length - 1];
+  assert.equal(removed.anchor, `uc-${headCount + 1}`);
+  assert.deepEqual(removed.stateModels, ['申請の状態']);
+});
+
+test('描き分けの材料: 見本の足された・外された要素が、UC の中の該当の位置で区分を持つ', () => {
+  const view = diffView();
+  const approve = useCase(view, '申請を承認する');
+  assert.deepEqual(marks(approve.externalSystems), [
+    ['会計システム', 'changed ["役割"]'],
+    ['電子署名サービス', 'added'],
+    ['通知サービス', 'removed'],
+  ]);
+  assert.deepEqual(marks(approve.information), [
+    ['申請', 'changed ["属性"]'],
+    ['承認の記録', 'added'],
+    ['承認記録', 'removed'],
+  ]);
+  assert.deepEqual(marks(approve.conditions), [['期限の条件', 'removed']]);
+  assert.deepEqual(marks(conditionOf(approve, '期限の条件').variations), [['旧区分', 'removed']]);
+
+  const audit = useCase(view, '申請を監査する');
+  assert.deepEqual(marks(audit.actors), [['監査役', 'added']]);
+  assert.deepEqual(marks(audit.information), [
+    ['申請', 'changed ["属性"]'],
+    ['監査記録', 'added'],
+  ]);
+  assert.deepEqual(marks(audit.conditions), [['監査できる条件', 'added']]);
+  assert.deepEqual(marks(conditionOf(audit, '監査できる条件').variations), [['監査の区分', 'added']]);
+  assert.deepEqual(
+    audit.requirements.map((r) => [r.file, tag(r)]),
+    [['docs/requirements/監査.md', 'added']],
+  );
+  const auditLine = lineOf(audit, D_AUDIT_LINE);
+  assert.equal(tag(auditLine), 'added');
+  assert.deepEqual(marks(auditLine.scenarios), [['承認済みの申請を監査する', 'added']]);
+  // 行の参照の中身（条件・バリエーション・情報）は参照先の要素の区分を持つ。RDRA 欄の他の種類には付けない
+  assert.deepEqual(
+    auditLine.references.map((r) => [r.raw, tag(r)]),
+    [
+      ['アクター「監査役」', ''],
+      ['情報「監査記録」', 'added'],
+      ['条件「監査できる条件」', 'added'],
+      ['バリエーション「監査の区分」', 'added'],
+      ['状態「申請の状態/監査済み」', ''],
+    ],
+  );
+  const auditCondition = auditLine.references.find((r) => r.name === '監査できる条件');
+  assert.ok(auditCondition?.definition);
+  assert.deepEqual(marks(auditCondition.definition.variations), [['監査の区分', 'added']]);
+
+  const submit = useCase(view, D_SUBMIT);
+  assert.deepEqual(
+    submit.requirements.map((r) => [r.file, tag(r)]),
+    [['docs/requirements/submit.md', 'changed ["要求文"]']],
+  );
+  // 外された行は同じ UC の最初の票の後ろに足す
+  assert.deepEqual(
+    submit.requirements[0].lines.map((l) => [l.text, tag(l)]),
+    [
+      [D_S1, 'changed ["理由"]'],
+      [D_S3, 'added'],
+      [D_S2, 'removed'],
+    ],
+  );
+  assert.deepEqual(marks(lineOf(submit, D_S1).scenarios), [
+    ['種類の無い申請は出せない', 'changed ["手順"]'],
+    ['金額の無い申請は出せない', 'added'],
+    ['期限切れの申請は出せない', 'removed'],
+  ]);
+  // 同じシナリオ名でも、ルール（要求文）が違えば別の例として区分を持つ
+  assert.deepEqual(marks(lineOf(submit, D_S3).scenarios), [['提出すると提出済みになる', 'added']]);
+  assert.deepEqual(marks(lineOf(submit, D_S2).scenarios), [['提出すると提出済みになる', 'removed']]);
+
+  // 外された UC の中は、子自身の区分を持つ
+  const returned = useCase(view, '申請を差し戻す');
+  assert.deepEqual(marks(returned.actors), [
+    ['上長', ''],
+    ['経理', 'removed'],
+  ]);
+  assert.deepEqual(marks(returned.information), [
+    ['申請', 'changed ["属性"]'],
+    ['旧台帳', 'removed'],
+  ]);
+  assert.deepEqual(
+    returned.requirements.map((r) => [r.file, tag(r)]),
+    [['docs/requirements/差し戻し.md', 'removed']],
+  );
+  const returnLine = lineOf(returned, D_RETURN_LINE);
+  assert.equal(tag(returnLine), 'removed');
+  assert.deepEqual(marks(returnLine.scenarios), [['差し戻すと差し戻しになる', 'removed']]);
+  assert.deepEqual(
+    returnLine.references.map((r) => [r.raw, tag(r)]),
+    [
+      ['アクター「上長」', ''],
+      ['情報「申請」', 'changed ["属性"]'],
+      ['情報「旧台帳」', 'removed'],
+      ['状態「申請の状態/差し戻し」', ''],
+    ],
+  );
+});
+
+test('描き分けの材料: 変わった要素は区分 changed と変わった欄の名前を持つ', () => {
+  const submit = useCase(diffView(), D_SUBMIT);
+  assert.deepEqual(marks(submit.actors), [['従業員', 'changed ["役割"]']]);
+  assert.deepEqual(submit.actors[0].changed, ['役割']);
+  assert.deepEqual(marks(submit.conditions), [['提出できる条件', 'changed ["条件の説明"]']]);
+  assert.deepEqual(marks(conditionOf(submit, '提出できる条件').variations), [['申請の種類', 'changed ["値"]']]);
+  assert.deepEqual(
+    lineOf(submit, D_S1).references.map((r) => [r.raw, tag(r)]),
+    [
+      ['条件「提出できる条件」', 'changed ["条件の説明"]'],
+      ['バリエーション「申請の種類」', 'changed ["値"]'],
+    ],
+  );
+});
+
+test('描き分けの材料: 容れ物（UC）から外れただけで表に残る要素は、その容れ物に載せない', () => {
+  const submit = useCase(diffView(), D_SUBMIT);
+  assert.ok(!submit.actors.some((a) => a.name === '上長'), '申請を提出する のアクターに 上長 が無い');
+});
+
+test('描き分けの材料: 外された容れ物の中の変わっていない要素と、変わっていない要素は区分を持たない', () => {
+  const view = diffView();
+  const boss = useCase(view, '申請を差し戻す').actors.find((a) => a.name === '上長');
+  assert.ok(boss, '外された UC 申請を差し戻す に 上長 がある');
+  assert.ok(!Object.hasOwn(boss, 'diff') && !Object.hasOwn(boss, 'changed'), '上長 は区分を持たない');
+
+  const create = useCase(view, '申請を作成する');
+  const unmarked = [
+    create,
+    ...create.requirements,
+    ...create.requirements.flatMap((r) => r.lines),
+    ...create.requirements.flatMap((r) => r.lines.flatMap((l) => l.scenarios)),
+    ...create.unlinkedRules.flatMap((r) => r.scenarios),
+    ...create.looseScenarios,
+  ];
+  assert.equal(unmarked.length, 1 + 1 + 2 + 2);
+  for (const x of unmarked) assert.ok(!Object.hasOwn(x, 'diff') && !Object.hasOwn(x, 'changed'), JSON.stringify(x));
+
+  // 金額の区分は値の順を入れ替えただけなので、参照の中身に区分を持たない
+  const amount = create.requirements
+    .flatMap((r) => r.lines.flatMap((l) => l.references))
+    .find((r) => r.name === '金額の区分');
+  assert.ok(amount, '申請を作成する の行が 金額の区分 を参照する');
+  assert.ok(!Object.hasOwn(amount, 'diff') && !Object.hasOwn(amount, 'changed'));
+});
+
+test('描き分けの材料: 基準の版の版とコミットを持つ', () => {
+  assert.deepEqual(diffView().base, { ref: 'main', commit: BASE_COMMIT });
+});
+
+test('区分の無い材料（buildView）は、描き分けの欄を自分の欄として持たない（値が undefined の欄も持たない）', () => {
+  const found: string[] = [];
+  const walk = (value: unknown, path: string): void => {
+    if (Array.isArray(value)) {
+      value.forEach((v, i) => walk(v, `${path}[${i}]`));
+    } else if (value !== null && typeof value === 'object') {
+      for (const key of ['diff', 'changed', 'stateDiff', 'base']) if (Object.hasOwn(value, key)) found.push(`${path}.${key}`);
+      for (const [key, v] of Object.entries(value)) walk(v, `${path}.${key}`);
+    }
+  };
+  walk(buildView(sample), 'view');
+  assert.deepEqual(found, []);
+});
+
+// ---- 描き分けの材料の、見本で通らない枝。件ごとに要るファイルだけを書いた小さな入力で見る ----
+
+function diffViewOf(before: Sources, after: Sources): View {
+  return buildDiffView('/unused', { ref: 'main', commit: BASE_COMMIT, sources: before }, after);
+}
+
+const SMALL_CREATE_UC = '- UC: 申請を作成する\n  説明: 空の申請を作る\n';
+
+// 条件 金額の条件 を行の RDRA 欄から指す一式。listInUc なら UC の表もその条件を挙げる。
+// 基準の版では条件が 金額の区分・旧区分 を持ち、作業ツリーでは 旧区分 をバリエーションの表ごと外す
+function conditionInputs(listInUc: boolean): [Sources, Sources] {
+  const ucs = listInUc ? `${SMALL_CREATE_UC}  条件: [金額の条件]\n` : SMALL_CREATE_UC;
+  const requirement = [
+    '# 要求票: 申請を作成する',
+    '',
+    '## 理由',
+    '',
+    '申請を先に作るため',
+    '',
+    '## 仕様',
+    '',
+    '1. 金額の条件を満たすとき、システムは申請を作る',
+    '   - RDRA: 条件「金額の条件」',
+    '   - 理由: なし',
+    '',
+  ].join('\n');
+  const version = (variations: string[]) =>
+    sourcesFromFiles({
+      'docs/rdra/use-case.yaml': ucs,
+      'docs/rdra/condition.yaml': `- 条件: 金額の条件\n  条件の説明: 金額で分ける\n  バリエーション: ${variations.join('、')}\n`,
+      'docs/rdra/variation.yaml': variations.map((v) => `- バリエーション: ${v}\n  値: 甲、乙\n`).join(''),
+      'docs/requirements/create.md': requirement,
+    });
+  return [version(['金額の区分', '旧区分']), version(['金額の区分'])];
+}
+
+function amountReference(uc: UseCaseView): ReferenceView {
+  const ref = uc.requirements.flatMap((r) => r.lines.flatMap((l) => l.references)).find((r) => r.name === '金額の条件');
+  assert.ok(ref?.definition, '行が 金額の条件 を指し、中身を持つ');
+  return ref;
+}
+
+test('描き分けの材料: 行の RDRA 欄からだけ指す条件の中身に、表ごと外したバリエーションを区分 removed で後ろに足す', () => {
+  const uc = useCase(diffViewOf(...conditionInputs(false)), '申請を作成する');
+  assert.deepEqual(uc.conditions, [], 'UC の表は条件を挙げない');
+  const ref = amountReference(uc);
+  assert.equal(tag(ref), 'changed ["バリエーション"]');
+  assert.deepEqual(marks(ref.definition!.variations), [
+    ['金額の区分', ''],
+    ['旧区分', 'removed'],
+  ]);
+});
+
+test('描き分けの材料: UC の表が挙げる条件にも、表ごと外したバリエーションを区分 removed で後ろに足す', () => {
+  const uc = useCase(diffViewOf(...conditionInputs(true)), '申請を作成する');
+  assert.deepEqual(marks(uc.conditions), [['金額の条件', 'changed ["バリエーション"]']]);
+  assert.deepEqual(marks(uc.conditions[0].variations), [
+    ['金額の区分', ''],
+    ['旧区分', 'removed'],
+  ]);
+  assert.deepEqual(marks(amountReference(uc).definition!.variations), [
+    ['金額の区分', ''],
+    ['旧区分', 'removed'],
+  ]);
+});
+
+test('描き分けの材料: 作業ツリーの UC の遷移を外すと、外された遷移が戻り、その UC は重ね合わせた後の状態モデルを持つ', () => {
+  const ucs = `${SMALL_CREATE_UC}- UC: 申請を取り下げる\n  説明: 作成中の申請を取り下げる\n`;
+  const created = '- 状態モデル: 申請の状態\n  遷移UC: 申請を作成する\n  遷移先状態: 作成中\n';
+  const withdrawn = '- 状態モデル: 申請の状態\n  状態: 作成中\n  遷移UC: 申請を取り下げる\n  遷移先状態: 取り下げ済み\n';
+  const before = sourcesFromFiles({ 'docs/rdra/use-case.yaml': ucs, 'docs/rdra/state.yaml': created + withdrawn });
+  const after = sourcesFromFiles({ 'docs/rdra/use-case.yaml': ucs, 'docs/rdra/state.yaml': created });
+  // 作業ツリーだけで組んだ材料では、取り下げる UC はどの状態モデルとも結び付かない
+  assert.deepEqual(useCase(buildView('/unused', after), '申請を取り下げる').stateModels, []);
+  const uc = useCase(diffViewOf(before, after), '申請を取り下げる');
+  assert.equal(tag(uc), '', 'UC 自身は変わっていない');
+  assert.deepEqual(uc.stateModels, ['申請の状態']);
+});
+
+test('描き分けの材料: 行に結び付かないルールの外された例はそのルールの枠の後ろに在り、作業ツリーに無いルールは枠ごと加わる', () => {
+  const draft = ['  ルール: 下書きを残す', '', '    シナリオ: 下書きが残る', '      もし 従業員Aが申請を作成する', '      ならば 下書きが残る', ''];
+  const discard = ['    シナリオ: 下書きを消せる', '      もし 従業員Aが下書きを消す', '      ならば 下書きが無くなる', ''];
+  const cleanup = ['  ルール: 古い下書きを片付ける', '', '    シナリオ: 古い下書きが消える', '      もし 30日が過ぎる', '      ならば 古い下書きが消える', ''];
+  const feature = (body: string[]) =>
+    sourcesFromFiles({
+      'docs/rdra/use-case.yaml': SMALL_CREATE_UC,
+      'docs/examples/create.feature': ['# language: ja', '機能: 申請を作成する', '', ...body].join('\n'),
+    });
+  const uc = useCase(diffViewOf(feature([...draft, ...discard, ...cleanup]), feature(draft)), '申請を作成する');
+  assert.deepEqual(
+    uc.unlinkedRules.map((r) => [r.name, marks(r.scenarios)]),
+    [
+      [
+        '下書きを残す',
+        [
+          ['下書きが残る', ''],
+          ['下書きを消せる', 'removed'],
+        ],
+      ],
+      ['古い下書きを片付ける', [['古い下書きが消える', 'removed']]],
+    ],
+  );
+});
+
+test('描き分けの材料: ルールの外のシナリオは、ルールの外の位置で区分を持ち、外されたシナリオが後ろに在る', () => {
+  const scenario = (name: string, steps: string[]) => [`  シナリオ: ${name}`, ...steps.map((s) => `    ${s}`), ''];
+  const feature = (body: string[]) =>
+    sourcesFromFiles({
+      'docs/rdra/use-case.yaml': SMALL_CREATE_UC,
+      'docs/examples/create.feature': ['# language: ja', '機能: 申請を作成する', '', ...body].join('\n'),
+    });
+  const before = feature([
+    ...scenario('申請を作る', ['もし 従業員Aが申請を作成する', 'ならば 作成中の申請ができる']),
+    ...scenario('申請を複製する', ['もし 従業員Aが申請を複製する', 'ならば 同じ中身の申請ができる']),
+  ]);
+  const after = feature([
+    ...scenario('申請を作る', ['もし 従業員Aが申請を作成する', 'ならば 作成中の申請が1件できる']),
+    ...scenario('申請を下書きから作る', ['もし 従業員Aが下書きから申請を作成する', 'ならば 作成中の申請ができる']),
+  ]);
+  const uc = useCase(diffViewOf(before, after), '申請を作成する');
+  assert.deepEqual(uc.unlinkedRules, []);
+  assert.deepEqual(marks(uc.looseScenarios), [
+    ['申請を作る', 'changed ["手順"]'],
+    ['申請を下書きから作る', 'added'],
+    ['申請を複製する', 'removed'],
+  ]);
+});
+
+// ---- 描き分けの HTML と図（html.ts の印、render.ts の書き出し）。材料は上の見本の2版から組む ----
+// 印の文字列は仕様が固定する文言である（references/format.md の描き分けの節）。
+
+const ADDED = '<span class="diff" data-diff="added">足された</span>';
+const REMOVED = '<span class="diff" data-diff="removed">外された</span>';
+const MARK = /<span class="diff" data-diff="([^"]*)">([^<]*)<\/span>/g;
+// 縦串の図の強調と薄めの style（html.ts の HIGHLIGHT・DIMMED）と、仮説の辺の破線の指定
+const HIGHLIGHT_STYLE = 'stroke:#d9480f,stroke-width:3px,color:#d9480f';
+const DIMMED_STYLE = 'stroke:#adb5bd,color:#868e96';
+const DASH = ',stroke-dasharray:5 5';
+
+function changedMark(...fields: string[]): string {
+  return `<span class="diff" data-diff="changed">変わった（${fields.join('・')}）</span>`;
+}
+
+function diffHtml(): string {
+  return renderHtml(diffView(), new Date(0));
+}
+
+// 出現位置（要素自身の名前を持つセルか項）。入れ子で中に並ぶ子の項は含めず、子自身の出現位置として別に数える
+interface Spot {
+  at: string;
+  html: string;
+}
+
+function spots(html: string): Spot[] {
+  const out: Spot[] = [];
+  const each = (at: string, re: RegExp, s: string) => {
+    for (const m of s.matchAll(re)) out.push({ at, html: m[1] });
+  };
+  // 遷移の表の元の状態の欄・UC の一覧の UC 名の欄・情報と条件の表の名前の欄
+  each('表の名前の欄', /<tr><td>(.*?)<\/td>/g, html);
+  each('縦串の見出し', /<summary><h2>(.*?)<\/h2><\/summary>/g, html);
+  for (const m of html.matchAll(/<h4>(?:アクター|外部システム)<\/h4><ul>(.*?)<\/ul>/g)) {
+    each('アクター・外部システムの項', /<li>(.*?)<\/li>/g, m[1]);
+  }
+  for (const m of html.matchAll(/<th>バリエーション<\/th><\/tr><\/thead><tbody>(.*?)<\/tbody>/g)) {
+    for (const row of m[1].matchAll(/<tr><td>.*?<\/td><td>.*?<\/td><td>(.*?)<\/td><\/tr>/g)) {
+      each('条件のバリエーションの項', /<div>(.*?)<\/div>/g, row[1]);
+    }
+  }
+  each('ファイル名の行', /<p class="file">(.*?)<\/p>/g, html);
+  each('要求文の行', /<p class="sentence">(.*?)<\/p>/g, html);
+  for (const m of html.matchAll(/<div class="defs" hidden><ul>(.*?)<\/ul><\/div>/g)) {
+    for (const item of m[1].matchAll(/<li>(.*?)<\/li>/g)) {
+      out.push({ at: '行の直下の中身の項', html: item[1].split('<div class="sub">')[0] });
+      each('行の直下の中身の中の項', /<div class="sub">(.*?)<\/div>/g, item[1]);
+    }
+  }
+  for (const m of html.matchAll(/<ul class="scenarios">(.*?)<\/ul>/g)) each('例の項', /<li>(.*?)<\/li>/g, m[1]);
+  return out;
+}
+
+// 出現位置の印（無ければ ''）。2つ以上あれば落とす
+function markOf(spot: string): string {
+  const found = [...spot.matchAll(MARK)];
+  assert.ok(found.length <= 1, `出現位置の印は1つまで: ${spot}`);
+  return found.length === 0 ? '' : found[0][0];
+}
+
+// 出現位置の文字（印・種類の添え字・タグを除く）
+function textOf(spot: string): string {
+  return spot
+    .replace(MARK, '')
+    .replace(/<span class="kind">[^<]*<\/span>/g, '')
+    .replace(/<[^>]*>/g, '');
+}
+
+// html の中の、種類が at で名前が name の出現位置の印。名前の直後は文字の終わりか区切り（空白・：・（）
+function markAt(html: string, at: string, name: string): string {
+  const all = spots(html).filter((s) => s.at === at);
+  const hits = all.filter((s) => {
+    const t = textOf(s.html);
+    return t.startsWith(name) && (t.length === name.length || ' :（'.includes(t[name.length]));
+  });
+  assert.equal(hits.length, 1, `${at} に『${name}』が1つある\n${all.map((s) => textOf(s.html)).join('\n')}`);
+  return markOf(hits[0].html);
+}
+
+// 縦串の中の、文が text の要求文の行（文の段落から次の行の手前まで。行の直下の中身と例を含む）
+function lineBlock(slice: string, text: string): string {
+  const starts = [...slice.matchAll(/<p class="sentence">(.*?)<\/p>/g)].filter((m) => textOf(m[1]) === text);
+  assert.equal(starts.length, 1, `行『${text}』が1つある`);
+  const rest = slice.slice(starts[0].index);
+  const end = rest.search(/\n<li><p class="sentence">|<\/ol>/);
+  return end < 0 ? rest : rest.slice(0, end);
+}
+
+// UC の一覧の、UC 名が name の行の欄
+function indexRow(html: string, name: string): string[] {
+  const rows = html.split('\n').filter((l) => l.includes('<tr><td><a href="#uc-') && l.includes(`">${name}</a>`));
+  assert.equal(rows.length, 1, `UC の一覧に『${name}』の行が1つある`);
+  return [...rows[0].matchAll(/<td>(.*?)<\/td>/g)].map((m) => m[1]);
+}
+
+// UC の材料の要求票の行数と例の件数（UC の一覧の数え方）
+function countsOf(uc: UseCaseView): { lines: number; scenarios: number } {
+  const lines = uc.requirements.flatMap((r) => r.lines);
+  return {
+    lines: lines.length,
+    scenarios:
+      lines.reduce((n, l) => n + l.scenarios.length, 0) +
+      uc.unlinkedRules.reduce((n, r) => n + r.scenarios.length, 0) +
+      uc.looseScenarios.length,
+  };
+}
+
+// 出現位置に載る、区分のある材料の数。行の直下の中身は、中身を持つ参照の名前ごとに1つ（html.ts の definedReferences と同じ）
+function expectedMarks(view: View): number {
+  const n = (xs: Marked[]) => xs.filter((x) => x.diff !== undefined).length;
+  let count = 0;
+  for (const m of view.stateModels) count += n(m.transitions);
+  for (const uc of view.useCases) {
+    count += 2 * n([uc]) + n(uc.actors) + n(uc.externalSystems) + n(uc.information) + n(uc.conditions);
+    count += n(uc.conditions.flatMap((c) => c.variations));
+    for (const r of uc.requirements) {
+      count += n([r]) + n(r.lines);
+      for (const l of r.lines) {
+        const refs = l.references.filter(
+          (x, i, xs) =>
+            x.definition !== null && x.name !== null && xs.findIndex((y) => y.name === x.name && y.definition !== null) === i,
+        );
+        count += n(refs) + n(refs.flatMap((x) => x.definition!.variations)) + n(l.scenarios);
+      }
+    }
+    count += n(uc.unlinkedRules.flatMap((r) => r.scenarios)) + n(uc.looseScenarios);
+  }
+  return count;
+}
+
+// Mermaid の文字列の辺（定義の順。番号は linkStyle の辺の番号）
+interface Edge {
+  index: number;
+  from: string;
+  to: string;
+  arrow: string;
+  label: string;
+}
+
+function edgesOf(chart: string): Edge[] {
+  return chart
+    .split('\n')
+    .filter((l) => /-\.?->/.test(l))
+    .map((l, index) => {
+      const m = l.match(/^\s*(\w+) (-\.?->)(?:\|"(.*)"\|)? (\w+)$/);
+      assert.ok(m !== null, `辺の行: ${l}`);
+      return { index, from: m[1], to: m[4], arrow: m[2], label: m[3] ?? '' };
+    });
+}
+
+// 状態の節点の行と id。名札は区分の印（［…］ ）の後ろに状態の名前を持つ
+function nodeOf(chart: string, state: string): { id: string; line: string } {
+  const lines = chart.split('\n').filter((l) => new RegExp(`^\\s*s\\d+\\["(?:［[^］]*］ )?${state}"\\]`).test(l));
+  assert.equal(lines.length, 1, `節点『${state}』が1つある\n${chart}`);
+  return { id: lines[0].trim().split('[')[0], line: lines[0] };
+}
+
+// 遷移元・遷移先の節点の id（開始は start0、終端は end0）と、名札の末尾（遷移 UC）で辺を1本選ぶ
+function edgeOf(chart: string, from: string, to: string, uc = ''): Edge {
+  const hits = edgesOf(chart).filter((e) => e.from === from && e.to === to && e.label.endsWith(uc));
+  assert.equal(hits.length, 1, `辺 ${from} → ${to}（${uc}）が1本ある\n${chart}`);
+  return hits[0];
+}
+
+// 辺の番号 → その番号の linkStyle の style の並び
+function linkStylesOf(chart: string): Map<number, string[]> {
+  const out = new Map<number, string[]>();
+  for (const l of chart.split('\n')) {
+    const m = l.match(/^\s*linkStyle (\d+) (.*)$/);
+    if (m === null) continue;
+    const i = Number(m[1]);
+    out.set(i, [...(out.get(i) ?? []), m[2]]);
+  }
+  return out;
+}
+
+test('描き分けの HTML: 見本の足された・外された要素が、各出現位置に区分の印を持つ', () => {
+  const view = diffView();
+  const html = renderHtml(view, new Date(0));
+  const slice = (name: string) => sliceOf(html, useCase(view, name));
+  const audit = slice('申請を監査する');
+  const approve = slice('申請を承認する');
+  const submit = slice(D_SUBMIT);
+  const returned = slice('申請を差し戻す');
+
+  // UC の一覧の UC 名の後ろと、縦串の見出しの UC 名の後ろ
+  assert.equal(markAt(html, '表の名前の欄', '申請を監査する'), ADDED);
+  assert.equal(markAt(html, '表の名前の欄', '申請を差し戻す'), REMOVED);
+  assert.ok(html.includes(`<a href="#uc-4">申請を監査する</a>${ADDED}</td>`));
+  assert.ok(audit.includes(`<summary><h2>申請を監査する${ADDED} </h2></summary>`), audit);
+  assert.equal(markAt(returned, '縦串の見出し', '申請を差し戻す'), REMOVED);
+  // 外された UC は UC の一覧に残り、作業ツリーの UC の後ろの続き番号のアンカーで縦串へ辿れる
+  const headCount = buildView('/unused', diffHead).useCases.length;
+  assert.equal(headCount, 4);
+  assert.ok(indexRow(html, '申請を差し戻す')[0].startsWith(`<a href="#uc-${headCount + 1}">申請を差し戻す</a>`));
+  assert.ok(html.includes(`<section class="slice" id="uc-${headCount + 1}">`));
+
+  // 縦串のアクター・外部システムの各項
+  assert.equal(markAt(audit, 'アクター・外部システムの項', '監査役'), ADDED);
+  assert.equal(markAt(returned, 'アクター・外部システムの項', '経理'), REMOVED);
+  assert.equal(markAt(approve, 'アクター・外部システムの項', '電子署名サービス'), ADDED);
+  assert.equal(markAt(approve, 'アクター・外部システムの項', '通知サービス'), REMOVED);
+  // 情報・条件の表の名前の欄と、条件のバリエーションの各項
+  assert.equal(markAt(approve, '表の名前の欄', '承認の記録'), ADDED);
+  assert.equal(markAt(approve, '表の名前の欄', '承認記録'), REMOVED);
+  assert.equal(markAt(audit, '表の名前の欄', '監査記録'), ADDED);
+  assert.equal(markAt(returned, '表の名前の欄', '旧台帳'), REMOVED);
+  assert.equal(markAt(audit, '表の名前の欄', '監査できる条件'), ADDED);
+  assert.equal(markAt(approve, '表の名前の欄', '期限の条件'), REMOVED);
+  assert.equal(markAt(audit, '条件のバリエーションの項', '監査の区分'), ADDED);
+  assert.equal(markAt(approve, '条件のバリエーションの項', '旧区分'), REMOVED);
+  // 要求票のファイル名の行
+  assert.equal(markAt(audit, 'ファイル名の行', 'docs/requirements/監査.md'), ADDED);
+  assert.equal(markAt(returned, 'ファイル名の行', 'docs/requirements/差し戻し.md'), REMOVED);
+  // 要求文の各行の先頭
+  assert.equal(markAt(submit, '要求文の行', D_S3), ADDED);
+  assert.equal(markAt(submit, '要求文の行', D_S2), REMOVED);
+  assert.equal(markAt(audit, '要求文の行', D_AUDIT_LINE), ADDED);
+  assert.equal(markAt(returned, '要求文の行', D_RETURN_LINE), REMOVED);
+  assert.ok(audit.includes(`<p class="sentence">${ADDED}`), '印は行の先頭');
+  // 行の直下に畳む中身の各項（条件・バリエーション・情報とその中のバリエーション）
+  const auditLine = lineBlock(audit, D_AUDIT_LINE);
+  assert.equal(markAt(auditLine, '行の直下の中身の項', '監査記録'), ADDED);
+  assert.equal(markAt(auditLine, '行の直下の中身の項', '監査できる条件'), ADDED);
+  assert.equal(markAt(auditLine, '行の直下の中身の項', '監査の区分'), ADDED);
+  assert.equal(markAt(auditLine, '行の直下の中身の中の項', '監査の区分'), ADDED);
+  assert.equal(markAt(lineBlock(returned, D_RETURN_LINE), '行の直下の中身の項', '旧台帳'), REMOVED);
+  // 例の各項。同じシナリオ名でも、ルール（要求文）が違えば各々の区分を持つ
+  const s1 = lineBlock(submit, D_S1);
+  assert.equal(markAt(s1, '例の項', '金額の無い申請は出せない'), ADDED);
+  assert.equal(markAt(s1, '例の項', '期限切れの申請は出せない'), REMOVED);
+  assert.equal(markAt(lineBlock(submit, D_S3), '例の項', '提出すると提出済みになる'), ADDED);
+  assert.equal(markAt(lineBlock(submit, D_S2), '例の項', '提出すると提出済みになる'), REMOVED);
+  assert.equal(markAt(audit, '例の項', '承認済みの申請を監査する'), ADDED);
+  assert.equal(markAt(returned, '例の項', '差し戻すと差し戻しになる'), REMOVED);
+});
+
+test('描き分けの HTML: 遷移の表の行は、元の状態の欄の先頭に区分の印を持つ', () => {
+  const html = diffHtml();
+  const states = html.slice(html.indexOf('<section id="states">'), html.indexOf('<section id="use-cases">'));
+  const rows = [...states.matchAll(/<tr><td>(.*?)<\/td><td>(.*?)<\/td><td>(.*?)<\/td>/g)].map((m) => [
+    textOf(m[1]),
+    textOf(m[2]),
+    textOf(m[3]),
+    markOf(m[1]),
+  ]);
+  assert.deepEqual(rows, [
+    ['（開始）', '作成中', '申請を作成する', ''],
+    ['作成中', '提出済み', '申請を提出する', changedMark('状態モデル・状態の説明')],
+    ['提出済み', '承認済み', '申請を承認する', ''],
+    ['承認済み', '監査済み', '申請を監査する', ADDED],
+    ['監査済み', '（終端）', '', ADDED],
+    ['提出済み', '差し戻し', '申請を差し戻す', REMOVED],
+    ['差し戻し', '（終端）', '', REMOVED],
+    ['承認済み', '（終端）', '', REMOVED],
+  ]);
+  assert.ok(states.includes(`<tr><td>${REMOVED}差し戻し</td>`), '印は元の状態の欄の先頭');
+});
+
+test('描き分けの HTML: 変わった要素は、印の文言に変わった欄の名前を添える', () => {
+  const view = diffView();
+  const html = renderHtml(view, new Date(0));
+  const submit = sliceOf(html, useCase(view, D_SUBMIT));
+  const approve = sliceOf(html, useCase(view, '申請を承認する'));
+  assert.equal(markAt(html, '表の名前の欄', D_SUBMIT), changedMark('アクター', '説明'));
+  assert.equal(markAt(submit, '縦串の見出し', D_SUBMIT), changedMark('アクター', '説明'));
+  assert.equal(markAt(html, '表の名前の欄', '申請を承認する'), changedMark('外部システム', '情報', '条件'));
+  assert.equal(markAt(submit, 'アクター・外部システムの項', '従業員'), changedMark('役割'));
+  assert.ok(submit.includes(`<li>従業員${changedMark('役割')}（申請を作り、種類と金額を入れて出す）</li>`), '印は名前の後ろ');
+  assert.equal(markAt(approve, 'アクター・外部システムの項', '会計システム'), changedMark('役割'));
+  assert.equal(markAt(submit, '表の名前の欄', '申請'), changedMark('属性'));
+  assert.equal(markAt(submit, '表の名前の欄', '提出できる条件'), changedMark('条件の説明'));
+  assert.equal(markAt(submit, '条件のバリエーションの項', '申請の種類'), changedMark('値'));
+  assert.equal(markAt(submit, 'ファイル名の行', 'docs/requirements/submit.md'), changedMark('要求文'));
+  assert.equal(markAt(submit, '要求文の行', D_S1), changedMark('理由'));
+  const s1 = lineBlock(submit, D_S1);
+  assert.equal(markAt(s1, '行の直下の中身の項', '提出できる条件'), changedMark('条件の説明'));
+  assert.equal(markAt(s1, '行の直下の中身の中の項', '申請の種類'), changedMark('値'));
+  assert.equal(markAt(s1, '行の直下の中身の項', '申請の種類'), changedMark('値'));
+  assert.equal(markAt(s1, '例の項', '種類の無い申請は出せない'), changedMark('手順'));
+});
+
+test('描き分けの HTML: 変わった欄の名前（表の定義に無いキーを含む）と版の文字列を逃がす', () => {
+  const ucs = '- UC: 申請を作成する\n  アクター: [従業員]\n  説明: 空の申請を作る\n';
+  const actor = (note: string) => `- アクター: 従業員\n  役割: 申請を作る\n  社内外: 社内\n  備考<b>&: ${note}\n`;
+  const version = (note: string) => sourcesFromFiles({ 'docs/rdra/use-case.yaml': ucs, 'docs/rdra/actor.yaml': actor(note) });
+  const view = buildDiffView('/unused', { ref: 'a<b>&"', commit: BASE_COMMIT, sources: version('甲') }, version('乙'));
+  const html = renderHtml(view, new Date(0));
+  assert.equal(
+    markAt(sliceOf(html, useCase(view, '申請を作成する')), 'アクター・外部システムの項', '従業員'),
+    '<span class="diff" data-diff="changed">変わった（備考&lt;b&gt;&amp;）</span>',
+  );
+  assert.ok(html.includes('<p>基準の版: a&lt;b&gt;&amp;&quot;（0123456789ab）</p>'));
+  assert.ok(!html.includes('備考<b>'));
+});
+
+test('描き分けの HTML: 容れ物から外れただけで表に残る要素と、変わっていない要素は印を持たない', () => {
+  const view = diffView();
+  const html = renderHtml(view, new Date(0));
+  const submit = sliceOf(html, useCase(view, D_SUBMIT));
+  const isBoss = (s: Spot) => s.at === 'アクター・外部システムの項' && textOf(s.html).startsWith('上長（');
+  // 上長 は 申請を提出する の縦串に載らない
+  assert.ok(!spots(submit).some(isBoss), '申請を提出する の縦串に 上長 の項が無い');
+  // 上長 の項は、外された UC 申請を差し戻す の縦串を含め、どこにも印を持たない
+  const boss = spots(html).filter(isBoss);
+  assert.equal(boss.length, 2, '申請を承認する と 申請を差し戻す の縦串に 上長 の項がある');
+  for (const s of boss) assert.equal(markOf(s.html), '', s.html);
+  assert.equal(markAt(sliceOf(html, useCase(view, '申請を差し戻す')), 'アクター・外部システムの項', '上長'), '');
+  // 金額の区分（値の順の入れ替えだけ）
+  const amount = spots(html).filter((s) => textOf(s.html).startsWith('金額の区分'));
+  assert.ok(amount.length > 0, '金額の区分 の出現位置がある');
+  for (const s of amount) assert.equal(markOf(s.html), '', s.html);
+  // 申請を作成する（行の順と例の順の入れ替えだけ）とその行・例
+  const create = sliceOf(html, useCase(view, '申請を作成する'));
+  assert.equal(markAt(html, '表の名前の欄', '申請を作成する'), '');
+  assert.equal(markAt(create, '縦串の見出し', '申請を作成する'), '');
+  assert.equal(markAt(create, 'ファイル名の行', 'docs/requirements/create.md'), '');
+  const lines = useCase(view, '申請を作成する').requirements.flatMap((r) => r.lines.map((l) => l.text));
+  assert.equal(lines.length, 2);
+  for (const text of lines) assert.equal(markAt(create, '要求文の行', text), '');
+  for (const name of ['空の申請を作る', '2件目の申請を作る']) assert.equal(markAt(create, '例の項', name), '');
+});
+
+test('描き分けの HTML: UC の一覧は、外された UC の行に基準の版での行数・件数を出し、残る UC の行は外された行・例を数えない', () => {
+  const html = diffHtml();
+  const returned = indexRow(html, '申請を差し戻す');
+  const was = countsOf(useCase(buildView('/unused', diffBase), '申請を差し戻す'));
+  assert.deepEqual(was, { lines: 1, scenarios: 1 });
+  assert.ok(!returned.join('').includes('class="missing"'), returned.join(''));
+  assert.equal(returned[3], `あり（${was.lines} 行）`);
+  assert.equal(returned[4], `あり（${was.scenarios} シナリオ）`);
+  const submit = indexRow(html, D_SUBMIT);
+  const now = countsOf(useCase(buildView('/unused', diffHead), D_SUBMIT));
+  // 描き分けの材料には外された行（S2）と例（期限切れ・S2 の例）も載るが、数えない
+  assert.deepEqual(now, { lines: 2, scenarios: 3 });
+  assert.deepEqual(countsOf(useCase(diffView(), D_SUBMIT)), { lines: 3, scenarios: 5 });
+  assert.equal(submit[3], `あり（${now.lines} 行）`);
+  assert.equal(submit[4], `あり（${now.scenarios} シナリオ）`);
+});
+
+test('描き分けの HTML: 区分ごとに印の文言と data-diff の値が違い、出現位置ごとに印は1つで、出現位置の外に印が無い', () => {
+  const view = diffView();
+  const html = renderHtml(view, new Date(0));
+  const found = [...html.matchAll(MARK)];
+  assert.deepEqual([...new Set(found.map((m) => m[1]))].sort(), ['added', 'changed', 'removed']);
+  for (const [whole, status, text] of found) {
+    if (status === 'added') assert.equal(text, '足された', whole);
+    else if (status === 'removed') assert.equal(text, '外された', whole);
+    else assert.match(text, /^変わった（[^（）]+）$/, whole);
+  }
+  // 各出現位置の印は1つまで（markOf が確かめる）。全ての印が出現位置の中にある
+  // （UC の一覧のアクター名・RDRA 欄の文字列・ツールチップ・結び付かない枠には無い）
+  const inSpots = spots(html).filter((s) => markOf(s.html) !== '').length;
+  assert.equal(inSpots, found.length);
+  // 印の数は、出現位置に載る区分のある材料の数と同じ
+  assert.equal(found.length, expectedMarks(view));
+});
+
+test('基準の版なしの HTML と図には、描き分けの印・凡例・基準の版の行・描き分けの CSS・class が無い', () => {
+  const view = buildView(sample);
+  const html = renderHtml(view, new Date(0));
+  const diff = diffHtml();
+  // 描き分けの HTML には在る（否定が書式の食い違いで素通りしないよう、在る側も確かめる）
+  for (const part of ['class="diff"', 'data-diff', '<p>基準の版: ', '<p class="note">基準の版との違い', 'span.diff']) {
+    assert.ok(diff.includes(part), `描き分けの HTML に ${part} がある`);
+    assert.ok(!html.includes(part), `基準の版なしの HTML に ${part} が無い`);
+  }
+  assert.ok(!html.includes('基準の版'));
+  const charts = view.stateModels.flatMap((m) => [null, ...view.useCases.map((u) => u.name)].map((uc) => stateChart(m, uc)));
+  const diffChart = stateChart(model(diffView()), null);
+  for (const part of ['［足された］', '［外された］', '［変わった］', ':::added', ':::removed', 'classDef added', 'classDef removed']) {
+    assert.ok(diffChart.includes(part), `描き分けの図に ${part} がある`);
+    for (const chart of charts) assert.ok(!chart.includes(part), `基準の版なしの図に ${part} が無い\n${chart}`);
+  }
+  for (const chart of charts) assert.ok(!/:::changed|classDef changed/.test(chart), chart);
+});
+
+test('描き分けの HTML: ヘッダに基準の版とコミットの先頭12字の行を持ち、状態遷移図の凡例の後ろに区分の説明を足す', () => {
+  const html = diffHtml();
+  const header = html.slice(html.indexOf('<header>'), html.indexOf('</header>'));
+  assert.ok(header.includes('<p>基準の版: main（0123456789ab）</p>'), header);
+  const states = html.slice(html.indexOf('<section id="states">'), html.indexOf('<section id="use-cases">'));
+  const legend = states.indexOf('実線は事実、破線は仮説の遷移');
+  assert.ok(legend >= 0);
+  assert.ok(states.indexOf('<p class="note">基準の版との違い') > legend, states);
+});
+
+test('描き分けの図: 全体図は、区分のある状態の節点に名札の印と class を、区分のある遷移の辺に名札の印と区分の linkStyle を付ける', () => {
+  const chart = stateChart(model(diffView()), null);
+  const audited = nodeOf(chart, '監査済み');
+  assert.ok(audited.line.includes('["［足された］ 監査済み"]') && audited.line.endsWith(':::added'), audited.line);
+  const gone = nodeOf(chart, '差し戻し');
+  assert.ok(gone.line.includes('["［外された］ 差し戻し"]') && gone.line.endsWith(':::removed'), gone.line);
+  const draft = nodeOf(chart, '作成中');
+  assert.ok(!draft.line.includes('［') && !draft.line.includes(':::'), draft.line);
+
+  const id = (s: string) => nodeOf(chart, s).id;
+  const added = edgeOf(chart, id('承認済み'), id('監査済み'));
+  const changed = edgeOf(chart, id('作成中'), id('提出済み'));
+  const removed = edgeOf(chart, id('提出済み'), id('差し戻し'));
+  assert.equal(added.label, '［足された］申請を監査する');
+  assert.equal(changed.label, '［変わった］申請を提出する');
+  assert.equal(removed.label, '［外された］申請を差し戻す');
+  // 遷移 UC の無い辺も、印だけの名札を持つ
+  assert.equal(edgeOf(chart, id('監査済み'), 'end0').label, '［足された］');
+  assert.equal(edgeOf(chart, id('差し戻し'), 'end0').label, '［外された］');
+
+  const styles = linkStylesOf(chart);
+  for (const [i, ss] of styles) assert.equal(ss.length, 1, `辺 ${i} の linkStyle は1本`);
+  const styleOf = (e: Edge) => styles.get(e.index)?.[0];
+  const distinct = new Set([styleOf(added), styleOf(changed), styleOf(removed)]);
+  assert.ok(!distinct.has(undefined), '区分のある辺は linkStyle を持つ');
+  assert.equal(distinct.size, 3, `区分ごとに linkStyle が違う: ${[...distinct].join(' / ')}`);
+  for (const s of distinct) assert.ok(!s!.includes('stroke-dasharray'), `仮説でない辺の区分の linkStyle は破線を持たない: ${s}`);
+  // 区分の無い辺（（開始）→作成中、仮説の 提出済み→承認済み）は名札の印も linkStyle も持たない
+  const start = edgeOf(chart, 'start0', id('作成中'));
+  assert.equal(start.label, '申請を作成する');
+  assert.ok(!styles.has(start.index));
+  const approve = edgeOf(chart, id('提出済み'), id('承認済み'));
+  assert.equal(approve.label, '申請を承認する');
+  assert.equal(approve.arrow, '-.->');
+  assert.ok(!styles.has(approve.index));
+  assert.equal(styles.size, 6, '区分のある辺の数だけ');
+  // 使った区分の classDef（状態の区分は足された・外されただけ）。色と太さで示し、破線を使わない
+  const classDefs = chart.split('\n').filter((l) => /^\s*classDef (added|changed|removed) /.test(l));
+  assert.deepEqual(
+    classDefs.map((l) => l.trim().split(' ')[1]),
+    ['added', 'removed'],
+  );
+  for (const l of classDefs) assert.ok(!l.includes('stroke-dasharray'), l);
+});
+
+test('描き分けの図: 同じ遷移元・遷移先に別の遷移 UC の仮説の記録を足すと、全体図では足した記録の辺だけが印と、破線を保つ区分の linkStyle を持つ', () => {
+  const ucs = '- UC: 申請を提出する\n  説明: 作成中の申請を出す\n- UC: 申請を出し直す\n  説明: 作成中の申請をもう一度出す\n';
+  const x = '- 状態モデル: 申請の状態\n  状態: 作成中\n  遷移UC: 申請を提出する\n  遷移先状態: 提出済み\n';
+  const y = '- 状態モデル: 申請の状態\n  状態: 作成中\n  遷移UC: 申請を出し直す\n  遷移先状態: 提出済み\n  仮説: [P01-1]\n';
+  const done = '- 状態モデル: 申請の状態\n  状態: 提出済み\n';
+  const before = sourcesFromFiles({ 'docs/rdra/use-case.yaml': ucs, 'docs/rdra/state.yaml': x + done });
+  const after = sourcesFromFiles({ 'docs/rdra/use-case.yaml': ucs, 'docs/rdra/state.yaml': x + y + done });
+  const chart = stateChart(model(diffViewOf(before, after)), null);
+  const from = nodeOf(chart, '作成中').id;
+  const to = nodeOf(chart, '提出済み').id;
+  const styles = linkStylesOf(chart);
+
+  const added = edgeOf(chart, from, to, '申請を出し直す');
+  assert.equal(added.label, '［足された］申請を出し直す');
+  assert.equal(added.arrow, '-.->');
+  // 区分の style（見本の足された辺と同じ）の後ろに、仮説の破線の指定が続く
+  const sample = stateChart(model(diffView()), null);
+  const sampleAdded = edgeOf(sample, nodeOf(sample, '承認済み').id, nodeOf(sample, '監査済み').id);
+  const addedStyle = linkStylesOf(sample).get(sampleAdded.index)?.[0];
+  assert.ok(addedStyle !== undefined);
+  assert.deepEqual(styles.get(added.index), [`${addedStyle}${DASH}`]);
+  // 元からある記録（遷移 UC は 申請を提出する）の辺は、名札の印も linkStyle も持たない
+  const kept = edgeOf(chart, from, to, '申請を提出する');
+  assert.equal(kept.label, '申請を提出する');
+  assert.ok(!styles.has(kept.index));
+});
+
+test('描き分けの図: 縦串の図は強調・薄めの linkStyle だけを辺ごとに1本出し、区分は名札の印で示す', () => {
+  const chart = stateChart(model(diffView()), D_SUBMIT);
+  const edges = edgesOf(chart);
+  const lines = chart
+    .split('\n')
+    .filter((l) => /^\s*linkStyle\s/.test(l))
+    .map((l) => l.trim());
+  const indices = lines.map((l) => Number(l.split(' ')[1]));
+  assert.equal(new Set(indices).size, indices.length, `辺の番号が重複しない\n${chart}`);
+  assert.deepEqual(
+    [...indices].sort((a, b) => a - b),
+    edges.map((e) => e.index),
+    '辺ごとに1本',
+  );
+  for (const l of lines) {
+    const m = l.match(/^linkStyle (\d+) (.*)$/);
+    assert.ok(m !== null, l);
+    const dash = edges[Number(m[1])].arrow === '-.->' ? DASH : '';
+    assert.ok(m[2] === `${HIGHLIGHT_STYLE}${dash}` || m[2] === `${DIMMED_STYLE}${dash}`, `強調か薄めの style だけを持つ: ${l}`);
+  }
+  assert.equal(lines.filter((l) => l.includes('stroke-width:3px')).length, 1);
+  const id = (s: string) => nodeOf(chart, s).id;
+  const submit = edgeOf(chart, id('作成中'), id('提出済み'));
+  assert.equal(submit.label, '［変わった］申請を提出する');
+  assert.ok(lines.includes(`linkStyle ${submit.index} ${HIGHLIGHT_STYLE}`));
+  // 状態の区分は縦串の図でも名札の印と class で示す
+  assert.ok(nodeOf(chart, '監査済み').line.endsWith(':::added'));
+  assert.match(chart, /^\s*classDef added /m);
+});
+
+test('描き分けの書き出し先: output の語幹に -diff を付け、拡張子を保つ', () => {
+  assert.equal(diffOutputPath('.cache/living-spec/index.html'), '.cache/living-spec/index-diff.html');
+  assert.equal(diffOutputPath('out/view'), 'out/view-diff');
+});
+
+test('描き分けの書き出し: 作業ツリーを読んで描き分けを別のファイルへ書き、output（index.html）には触れない', () => {
+  const root = materialize(join(here, 'render', 'diff-head.txtar'));
+  const out = writeDiffView(root, { ref: 'main', commit: BASE_COMMIT, sources: diffBase }, new Date(0));
+  assert.equal(out, join(root, '.cache', 'living-spec', 'index-diff.html'));
+  const html = readFileSync(out, 'utf8');
+  assert.ok(html.includes('<p>基準の版: main（0123456789ab）</p>'));
+  assert.ok(html.includes(`<a href="#uc-5">申請を差し戻す</a>${REMOVED}</td>`));
+  assert.ok(!existsSync(join(root, '.cache', 'living-spec', 'index.html')));
+});
+
+// ---- 残る容れ物の件数・欠けの注記・警告の枠は作業ツリーにある子で、外された容れ物は全ての子で決める ----
+// 件ごとに要るファイルだけを書いた小さな入力で見る。UC は SMALL_CREATE_UC の 申請を作成する
+
+const CREATE_LINE = '従業員が申請を作成するとき、システムは作成中の申請を作る';
+const CREATE_REQUIREMENT = [
+  '# 要求票: 申請を作成する',
+  '',
+  '## 理由',
+  '',
+  '申請を先に作るため',
+  '',
+  '## 仕様',
+  '',
+  `1. ${CREATE_LINE}`,
+  '   - RDRA: なし',
+  '   - 理由: なし',
+  '',
+].join('\n');
+
+// シナリオ1件の Gherkin の行。indent はシナリオの行の字下げ
+function scenarioLines(name: string, indent: string): string[] {
+  return [`${indent}シナリオ: ${name}`, `${indent}  もし 従業員Aが${name}`, `${indent}  ならば ${name}が済む`, ''];
+}
+
+function ruleLines(name: string, scenarios: string[]): string[] {
+  return [`  ルール: ${name}`, '', ...scenarios.flatMap((s) => scenarioLines(s, '    '))];
+}
+
+// 申請を作成する の一式。body が null なら例のファイルを置かない
+function createInputs(body: string[] | null, files: Record<string, string> = {}): Sources {
+  return sourcesFromFiles({
+    'docs/rdra/use-case.yaml': SMALL_CREATE_UC,
+    ...(body === null ? {} : { 'docs/examples/create.feature': ['# language: ja', '機能: 申請を作成する', '', ...body].join('\n') }),
+    ...files,
+  });
+}
+
+test('描き分けの HTML: UC の一覧は、残る UC の結び付かないルールの外された例とルールの外の外された例を数えない', () => {
+  const unlinked = diffViewOf(
+    createInputs(ruleLines('下書きを残す', ['下書きが残る', '下書きを消せる'])),
+    createInputs(ruleLines('下書きを残す', ['下書きが残る'])),
+  );
+  assert.equal(countsOf(useCase(unlinked, '申請を作成する')).scenarios, 2, '材料には外された例も載る');
+  assert.equal(indexRow(renderHtml(unlinked, new Date(0)), '申請を作成する')[4], 'あり（1 シナリオ）');
+
+  const loose = diffViewOf(
+    createInputs([...scenarioLines('申請を作る', '  '), ...scenarioLines('申請を複製する', '  ')]),
+    createInputs(scenarioLines('申請を作る', '  ')),
+  );
+  assert.equal(countsOf(useCase(loose, '申請を作成する')).scenarios, 2, '材料には外された例も載る');
+  assert.equal(indexRow(renderHtml(loose, new Date(0)), '申請を作成する')[4], 'あり（1 シナリオ）');
+});
+
+test('描き分けの HTML: 票を全て外した残る UC の縦串は「要求票が無い」を出し、外された票を後ろに印付きで並べる。外された UC には出さない', () => {
+  const view = diffViewOf(createInputs(null, { 'docs/requirements/create.md': CREATE_REQUIREMENT }), createInputs(null));
+  const uc = useCase(view, '申請を作成する');
+  assert.equal(tag(uc), '', 'UC は残る');
+  const html = renderHtml(view, new Date(0));
+  const slice = sliceOf(html, uc);
+  const note = slice.indexOf('<p class="missing">要求票が無い</p>');
+  const file = slice.indexOf(`<p class="file">docs/requirements/create.md${REMOVED}</p>`);
+  assert.ok(note >= 0, slice);
+  assert.ok(file > note, '外された票は注記の後ろに印付きで並ぶ');
+  assert.equal(markAt(slice, '要求文の行', CREATE_LINE), REMOVED);
+  assert.equal(indexRow(html, '申請を作成する')[3], '<span class="missing">無い</span>');
+
+  // 外された容れ物（見本の 申請を差し戻す。票も外れている）は全ての子で決めるので、注記を出さない
+  const sample = diffView();
+  assert.ok(!sliceOf(renderHtml(sample, new Date(0)), useCase(sample, '申請を差し戻す')).includes('要求票が無い'));
+});
+
+test('描き分けの HTML: 例を全て外した残る行は「この行に結び付く例が無い」を出し、外された例を後ろに印付きで並べる。外された行には出さない', () => {
+  const files = { 'docs/requirements/create.md': CREATE_REQUIREMENT };
+  const view = diffViewOf(
+    createInputs(ruleLines(CREATE_LINE, ['空の申請を作る']), files),
+    createInputs(ruleLines(CREATE_LINE, []), files),
+  );
+  const uc = useCase(view, '申請を作成する');
+  assert.equal(tag(lineOf(uc, CREATE_LINE)), '', '行は残る');
+  const block = lineBlock(sliceOf(renderHtml(view, new Date(0)), uc), CREATE_LINE);
+  const note = block.indexOf('<p class="missing">この行に結び付く例が無い</p>');
+  assert.ok(note >= 0, block);
+  assert.ok(block.indexOf('<ul class="scenarios">') > note, '外された例は注記の後ろに並ぶ');
+  assert.equal(markAt(block, '例の項', '空の申請を作る'), REMOVED);
+
+  // 外された行（見本の S2。例も外れている）は全ての子で決めるので、注記を出さない
+  const sample = diffView();
+  const submit = sliceOf(renderHtml(sample, new Date(0)), useCase(sample, D_SUBMIT));
+  const gone = lineBlock(submit, D_S2);
+  assert.ok(!gone.includes('この行に結び付く例が無い'), gone);
+  assert.equal(markAt(gone, '例の項', '提出すると提出済みになる'), REMOVED);
+});
+
+test('描き分けの HTML: 外された例だけが残る結び付かない例の枠は警告の様式を付けずに出し、外されていない子がある枠と外された UC の枠は警告の様式を保つ', () => {
+  const frame = (html: string) => html.match(/<div class="(unlinked[^"]*)"><h4>要求票の行に結び付かない例<\/h4>/)?.[1];
+
+  // 残る UC で、結び付かないルールの例を全て外した（例のファイルは残る）
+  const ruleGone = diffViewOf(createInputs(ruleLines('下書きを残す', ['下書きが残る'])), createInputs([]));
+  const ruleSlice = sliceOf(renderHtml(ruleGone, new Date(0)), useCase(ruleGone, '申請を作成する'));
+  assert.equal(frame(ruleSlice), 'unlinked-gone', ruleSlice);
+  assert.equal(markAt(ruleSlice, '例の項', '下書きが残る'), REMOVED);
+  assert.ok(ruleSlice.includes('<p class="file">docs/examples/create.feature</p>'));
+
+  // 残る UC で、ルールの外の例を例のファイルごと外した。「例が無い」は作業ツリーの例のファイルで決まる
+  const looseGone = diffViewOf(createInputs(scenarioLines('申請を作る', '  ')), createInputs(null));
+  const looseHtml = renderHtml(looseGone, new Date(0));
+  const looseSlice = sliceOf(looseHtml, useCase(looseGone, '申請を作成する'));
+  assert.equal(frame(looseSlice), 'unlinked-gone', looseSlice);
+  assert.equal(markAt(looseSlice, '例の項', '申請を作る'), REMOVED);
+  assert.ok(looseSlice.includes('<p class="missing">例が無い</p>'));
+  assert.equal(indexRow(looseHtml, '申請を作成する')[4], '<span class="missing">無い</span>');
+
+  // 外されていない例が残る枠は警告の様式を保つ
+  const partly = diffViewOf(
+    createInputs(ruleLines('下書きを残す', ['下書きが残る', '下書きを消せる'])),
+    createInputs(ruleLines('下書きを残す', ['下書きが残る'])),
+  );
+  assert.equal(frame(sliceOf(renderHtml(partly, new Date(0)), useCase(partly, '申請を作成する'))), 'unlinked');
+
+  // 外された UC の枠は全ての子で決めるので、警告の様式を保つ
+  const withdrawUc = '- UC: 申請を取り下げる\n  説明: 作成中の申請を取り下げる\n';
+  const withdrawFeature = ['# language: ja', '機能: 申請を取り下げる', '', ...ruleLines('取り下げを残す', ['取り下げが残る'])].join('\n');
+  const removedUc = diffViewOf(
+    sourcesFromFiles({
+      'docs/rdra/use-case.yaml': SMALL_CREATE_UC + withdrawUc,
+      'docs/examples/withdraw.feature': withdrawFeature,
+    }),
+    sourcesFromFiles({ 'docs/rdra/use-case.yaml': SMALL_CREATE_UC }),
+  );
+  const withdraw = useCase(removedUc, '申請を取り下げる');
+  assert.equal(tag(withdraw), 'removed');
+  assert.equal(frame(sliceOf(renderHtml(removedUc, new Date(0)), withdraw)), 'unlinked');
+
+  // 区分の無い材料で、例の無い結び付かないルールだけを持つ枠は今どおり警告の様式を持つ
+  const empty = buildView('/unused', createInputs(ruleLines('下書きを残す', [])));
+  assert.equal(frame(sliceOf(renderHtml(empty, new Date(0)), useCase(empty, '申請を作成する'))), 'unlinked');
+});
+
+test('描き分けの材料と図: __proto__ という名前の状態も、自分の欄として区分を持つ', () => {
+  const ucs = `${SMALL_CREATE_UC}- UC: 申請を消す\n  説明: 作成中の申請を消す\n`;
+  const created = '- 状態モデル: 申請の状態\n  遷移UC: 申請を作成する\n  遷移先状態: 作成中\n';
+  const erased =
+    '- 状態モデル: 申請の状態\n  状態: 作成中\n  遷移UC: 申請を消す\n  遷移先状態: __proto__\n- 状態モデル: 申請の状態\n  状態: __proto__\n';
+  const m = model(
+    diffViewOf(
+      sourcesFromFiles({ 'docs/rdra/use-case.yaml': ucs, 'docs/rdra/state.yaml': created }),
+      sourcesFromFiles({ 'docs/rdra/use-case.yaml': ucs, 'docs/rdra/state.yaml': created + erased }),
+    ),
+  );
+  assert.ok(m.stateDiff !== undefined && Object.hasOwn(m.stateDiff, '__proto__'), '区分が自分の欄にある');
+  assert.deepEqual(Object.entries(m.stateDiff), [['__proto__', 'added']]);
+  const node = nodeOf(stateChart(m, null), '__proto__');
+  assert.ok(node.line.includes('["［足された］ __proto__"]') && node.line.endsWith(':::added'), node.line);
+});
+
+// ---- CLI: render --base。一時ディレクトリに本物の git のリポジトリを作り、基準の版をコミットしてから作業ツリーを書き換える ----
+// git と検査器には、手元の利用者の設定（署名・既定のブランチ名・リポジトリを指す GIT_ の環境変数）に結果が左右されない環境を渡す。
+// リポジトリは件ごとに1つ作り、確かめに要る起動だけをする（CI の時間を延ばさないため）。git が無ければ落ちる（緑で素通りしない）
+
+const DIFF_BASE = join(here, 'render', 'diff-base.txtar');
+const DIFF_HEAD = join(here, 'render', 'diff-head.txtar');
+const PASS_ALL = join(here, '..', 'examples', 'unknown-key', 'pass-all-allowed-keys.txtar');
+
+const gitEnv: NodeJS.ProcessEnv = {
+  ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_'))),
+  GIT_CONFIG_GLOBAL: devNull,
+  GIT_CONFIG_NOSYSTEM: '1',
+  GIT_AUTHOR_NAME: 'living-spec',
+  GIT_AUTHOR_EMAIL: 'living-spec@example.invalid',
+  GIT_COMMITTER_NAME: 'living-spec',
+  GIT_COMMITTER_EMAIL: 'living-spec@example.invalid',
+};
+
+// git を起動して標準出力を返す。失敗したら落とす
+function git(dir: string, ...args: string[]): string {
+  const result = spawnSync('git', args, { cwd: dir, env: gitEnv, encoding: 'utf8' });
+  assert.equal(result.status, 0, `git ${args.join(' ')}: ${result.error?.message ?? result.stderr}`);
+  return result.stdout;
+}
+
+// シンボリックリンクを解いた一時ディレクトリ（cli.test.ts の repo() と同じ理由）に、git のリポジトリを作る
+function gitRepo(): string {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'living-spec-base-')));
+  git(dir, 'init', '-q', '-b', 'main');
+  return dir;
+}
+
+// 作業ツリーの全てを基準の版としてコミットする
+function commitAll(dir: string): void {
+  git(dir, 'add', '-A');
+  git(dir, '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'base');
+}
+
+function renderBase(cwd: string, args: string[], env: NodeJS.ProcessEnv = gitEnv) {
+  return spawnSync(process.execPath, [main, 'render', ...args], { cwd, env, encoding: 'utf8' });
+}
+
+function diffOut(root: string): string {
+  return join(root, '.cache', 'living-spec', 'index-diff.html');
+}
+
+function marksOf(html: string): string[] {
+  return [...html.matchAll(MARK)].map((m) => m[0]);
+}
+
+// 描かずに止まる: 終了コード 2、標準出力が空、標準エラーに文面の語句、描き分けの HTML を書かない
+function assertStopped(result: ReturnType<typeof renderBase>, root: string, phrase: string): void {
+  assert.equal(result.status, 2, result.stderr);
+  assert.equal(result.stdout, '');
+  assert.ok(result.stderr.includes(phrase), `標準エラーに『${phrase}』がある\n${result.stderr}`);
+  assert.ok(!existsSync(diffOut(root)), '描き分けの HTML を書かない');
+}
+
+test('CLI: render --base は、git の版を基準の版として作業ツリー（コミット前の変更を含む）と比べ、index-diff.html だけに書き、フックはそれを描き直さない', () => {
+  const repo = gitRepo();
+  try {
+    extract(DIFF_BASE, repo);
+    commitAll(repo);
+    const commit = git(repo, 'rev-parse', 'main').trim();
+    rmSync(join(repo, 'docs'), { recursive: true });
+    extract(DIFF_HEAD, repo);
+
+    const result = renderBase(repo, ['--base', 'main', repo]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, `${diffOut(repo)}\n`, '書き出した場所の1行だけを出す');
+    assert.ok(!existsSync(join(repo, '.cache', 'living-spec', 'index.html')), 'output（index.html）には書かない');
+    const html = readFileSync(diffOut(repo), 'utf8');
+    assert.equal(markAt(html, '表の名前の欄', '申請を監査する'), ADDED);
+    assert.equal(markAt(html, '表の名前の欄', '申請を差し戻す'), REMOVED);
+    assert.equal(markAt(html, 'ファイル名の行', 'docs/requirements/差し戻し.md'), REMOVED);
+    assert.ok(html.includes(`<p>基準の版: main（${commit.slice(0, 12)}）</p>`), 'ヘッダに基準の版とコミットの先頭12字');
+    assert.deepEqual(marksOf(html), marksOf(diffHtml()), '見本を直接読んだ描き分けと同じ印を同じ並びで持つ');
+
+    // フックは output（index.html）だけを描き直し、描き分けの HTML を上書きしない
+    const hook = runHook(repo, 'docs/rdra/actor.yaml');
+    assert.equal(hook.status, 0, hook.stderr);
+    assert.ok(existsSync(join(repo, '.cache', 'living-spec', 'index.html')), 'フックが index.html を描いた');
+    assert.equal(readFileSync(diffOut(repo), 'utf8'), html);
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、根がリポジトリの下位ディレクトリにあり両版で同じ位置なら止まらずに描く（--base は起点の後ろに置いてもよい）', () => {
+  const repo = gitRepo();
+  const area = join(repo, 'area');
+  try {
+    extract(DIFF_BASE, area);
+    commitAll(repo);
+    rmSync(join(area, 'docs'), { recursive: true });
+    extract(DIFF_HEAD, area);
+
+    const result = renderBase(repo, [area, '--base', 'main']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, `${diffOut(area)}\n`);
+    const html = readFileSync(diffOut(area), 'utf8');
+    assert.equal(markAt(html, '表の名前の欄', '申請を監査する'), ADDED);
+    assert.equal(markAt(html, '表の名前の欄', '申請を差し戻す'), REMOVED);
+    assert.deepEqual(marksOf(html), marksOf(diffHtml()));
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、根の中の置き場の設定だけが版で違っても、基準の版の設定で読んで止まらずに描く', () => {
+  const repo = gitRepo();
+  try {
+    // 基準の版: 表を spec/rdra に置き、.living-spec.json で指す
+    extract(PASS_ALL, repo);
+    renameSync(join(repo, 'docs'), join(repo, 'spec'));
+    writeFileSync(join(repo, '.living-spec.json'), '{"tables":"spec/rdra"}\n');
+    commitAll(repo);
+    // 作業ツリー: 設定を消し、同じ表を既定の docs/rdra へ移す
+    rmSync(join(repo, '.living-spec.json'));
+    renameSync(join(repo, 'spec'), join(repo, 'docs'));
+
+    const result = renderBase(repo, ['--base', 'main', repo]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, `${diffOut(repo)}\n`);
+    const html = readFileSync(diffOut(repo), 'utf8');
+    assert.deepEqual(marksOf(html), [], 'どの要素にも印が付かない');
+    const charts = [...html.matchAll(/<pre class="mermaid">([\s\S]*?)<\/pre>/g)].map((m) => m[1]);
+    assert.ok(charts.length > 0, '状態遷移図がある');
+    assert.ok(charts.every((c) => !/［(?:足された|変わった|外された)］/.test(c)), '図の名札にも印が無い');
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、版が無いと終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  try {
+    extract(PASS_ALL, repo);
+    assertStopped(renderBase(repo, ['--base', 'no-such', repo]), repo, `基準の版が見つからない: no-such（根: ${repo}）`);
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、注釈付きタグをそれが指すコミットとして読み、tree を指す参照は版が見つからないとして終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  try {
+    extract(PASS_ALL, repo);
+    commitAll(repo);
+    const commit = git(repo, 'rev-parse', 'main').trim();
+    git(repo, 'tag', '-a', 'v1', '-m', 'v1');
+    const tagged = renderBase(repo, ['--base', 'v1', repo]);
+    assert.equal(tagged.status, 0, tagged.stderr);
+    const html = readFileSync(diffOut(repo), 'utf8');
+    assert.ok(html.includes(`<p>基準の版: v1（${commit.slice(0, 12)}）</p>`), 'タグのオブジェクトではなく、タグが指すコミットを出す');
+    assert.deepEqual(marksOf(html), [], '同じ中身なので印が付かない');
+    rmSync(diffOut(repo));
+    // tree はコミットに解けないので、版として受けない
+    assertStopped(renderBase(repo, ['--base', 'main^{tree}', repo]), repo, `基準の版が見つからない: main^{tree}（根: ${repo}）`);
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、基準の版に正本の根が無い（目印をコミットする前の版）と終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  try {
+    writeFileSync(join(repo, 'README.md'), '# 正本を置く前\n');
+    commitAll(repo);
+    git(repo, 'branch', 'before');
+    extract(PASS_ALL, repo);
+    assertStopped(renderBase(repo, ['--base', 'before', repo]), repo, `基準の版 before に正本の根が無い（起点: .。根: ${repo}）`);
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、基準の版の根に表の置き場が無いと終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  try {
+    extract(PASS_ALL, repo);
+    writeFileSync(join(repo, '.living-spec.json'), '{"tables":"spec/rdra"}\n');
+    commitAll(repo);
+    rmSync(join(repo, '.living-spec.json'));
+    assertStopped(renderBase(repo, ['--base', 'main', repo]), repo, `基準の版 main に表の置き場が無い: spec/rdra（根: ${repo}）`);
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、作業ツリーで根を下へ移すと、根の位置が版で異なるとして終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  const sub = join(repo, 'sub');
+  try {
+    extract(PASS_ALL, repo);
+    commitAll(repo);
+    rmSync(join(repo, 'docs'), { recursive: true });
+    extract(PASS_ALL, sub);
+    assertStopped(
+      renderBase(repo, ['--base', 'main', sub]),
+      sub,
+      `基準の版 main と作業ツリーで正本の根の位置が異なる（作業ツリー: sub、基準の版: .。根: ${sub}）`,
+    );
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、基準の版では起点に近いディレクトリが目印を持っていたなら、根の位置が版で異なるとして終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  const area = join(repo, 'area');
+  try {
+    extract(PASS_ALL, repo);
+    mkdirSync(area);
+    writeFileSync(join(area, 'README.md'), '# 領域\n');
+    writeFileSync(join(area, '.living-spec.json'), '{}\n');
+    commitAll(repo);
+    // 作業ツリーでは area の目印を外し、起点 area から上へ辿った根は最上段になる
+    rmSync(join(area, '.living-spec.json'));
+    assertStopped(
+      renderBase(repo, ['--base', 'main', area]),
+      repo,
+      `基準の版 main と作業ツリーで正本の根の位置が異なる（作業ツリー: .、基準の版: area。根: ${repo}）`,
+    );
+    assert.ok(!existsSync(diffOut(area)));
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、基準の版の .living-spec.json を読めないと終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  try {
+    extract(PASS_ALL, repo);
+    writeFileSync(join(repo, '.living-spec.json'), '{\n');
+    commitAll(repo);
+    rmSync(join(repo, '.living-spec.json'));
+    assertStopped(renderBase(repo, ['--base', 'main', repo]), repo, `基準の版 main の .living-spec.json を読めない（根: ${repo}）: `);
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、基準の版の読む位置の項が通常のファイルでない（シンボリックリンク）と、リンク先を辿らず終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  const actor = join(repo, 'docs', 'rdra', 'actor.yaml');
+  try {
+    extract(PASS_ALL, repo);
+    renameSync(actor, join(repo, 'docs', 'rdra', 'actor.real'));
+    symlinkSync('actor.real', actor);
+    commitAll(repo);
+    const result = renderBase(repo, ['--base', 'main', repo]);
+    assertStopped(result, repo, `基準の版 main の正本を読めない（根: ${repo}）: `);
+    assert.ok(result.stderr.includes('docs/rdra/actor.yaml'), '読めない項のパスを示す');
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、基準の版の票の置き場がディレクトリでない（シンボリックリンク）と、黙って空にせず終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  try {
+    extract(PASS_ALL, repo);
+    mkdirSync(join(repo, 'reqs-real'));
+    writeFileSync(join(repo, 'reqs-real', 'a.md'), '# 要求票: どれか\n');
+    symlinkSync('../reqs-real', join(repo, 'docs', 'requirements'));
+    commitAll(repo);
+    const result = renderBase(repo, ['--base', 'main', repo]);
+    assertStopped(result, repo, `基準の版 main の正本を読めない（根: ${repo}）: `);
+    assert.ok(result.stderr.includes('docs/requirements'), '読めない項のパスを示す');
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、基準の版の多段の票の置き場の途中が木でない（シンボリックリンク）と、黙って空にせず終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  try {
+    // 票の置き場 notes/requirements の途中の notes だけがシンボリックリンク（表の置き場 docs/rdra とは途中を共有しない）
+    extract(PASS_ALL, repo);
+    mkdirSync(join(repo, 'notes-real', 'requirements'), { recursive: true });
+    writeFileSync(join(repo, 'notes-real', 'requirements', 'a.md'), '# 要求票: どれか\n');
+    symlinkSync('notes-real', join(repo, 'notes'));
+    writeFileSync(join(repo, '.living-spec.json'), '{"requirements":"notes/requirements"}\n');
+    commitAll(repo);
+    const result = renderBase(repo, ['--base', 'main', repo]);
+    assertStopped(result, repo, `基準の版 main の正本を読めない（根: ${repo}）: `);
+    assert.ok(result.stderr.includes('notes/requirements'), '読めない位置のパスを示す');
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、基準の版の票の置き場が git の作業ツリーの根の外を指すと、黙って空にせず終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  try {
+    // 基準の版だけが票の置き場を根の外へ向ける。作業ツリーは既定の置き場に戻す（作業ツリーの側の設定の誤りで先に止めない）
+    extract(PASS_ALL, repo);
+    writeFileSync(join(repo, '.living-spec.json'), '{"requirements":"../req"}\n');
+    commitAll(repo);
+    rmSync(join(repo, '.living-spec.json'));
+    assertStopped(
+      renderBase(repo, ['--base', 'main', repo]),
+      repo,
+      `基準の版 main の正本を読めない（根: ${repo}）: git の作業ツリーの根の外を指す置き場: ../req`,
+    );
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、基準の版の例の置き場が submodule の参照なら、無いとして空にせず終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  try {
+    // 見本は例の置き場を持たない。その位置に submodule の参照（mode 160000）だけを索引へ置いてコミットする（ネットワークを使わない）
+    extract(PASS_ALL, repo);
+    git(repo, 'add', '-A');
+    git(repo, 'update-index', '--add', '--cacheinfo', `160000,${'0'.repeat(39)}1,docs/examples`);
+    git(repo, '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'base');
+    assertStopped(
+      renderBase(repo, ['--base', 'main', repo]),
+      repo,
+      `基準の版 main の正本を読めない（根: ${repo}）: ディレクトリでない項: docs/examples（mode 160000）`,
+    );
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、基準の版の置き場の名前が : で始まっても、pathspec の魔法にせず字面どおりに読む', () => {
+  const repo = gitRepo();
+  try {
+    extract(DIFF_HEAD, repo);
+    renameSync(join(repo, 'docs', 'requirements'), join(repo, ':req'));
+    writeFileSync(join(repo, '.living-spec.json'), '{"requirements":":req"}\n');
+    commitAll(repo);
+    // 作業ツリーは基準の版と同じ中身なので、票を読めていれば印は付かない
+    const result = renderBase(repo, ['--base', 'main', repo]);
+    assert.equal(result.status, 0, result.stderr);
+    const html = readFileSync(diffOut(repo), 'utf8');
+    assert.equal(markAt(html, 'ファイル名の行', ':req/監査.md'), '', '作業ツリーの票が描かれ、印を持たない');
+    assert.deepEqual(marksOf(html), []);
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、根が git の作業ツリーの中に無いと終了コード 2 で止まり、git の標準エラーの1行目を理由に添える', () => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'living-spec-base-')));
+  try {
+    extract(PASS_ALL, dir);
+    // 一時ディレクトリの祖先のリポジトリを拾わない
+    const env = { ...gitEnv, GIT_CEILING_DIRECTORIES: dirname(dir) };
+    const phrase = `基準の版を読めない: 根が git の作業ツリーの中に無い（根: ${dir}）`;
+    const result = renderBase(dir, ['--base', 'main', dir], env);
+    assertStopped(result, dir, phrase);
+    assert.match(result.stderr, new RegExp(`^${phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}: \\S[^\\n]*\\n$`), '理由を1行で添える');
+  } finally {
+    rmSync(dir, { recursive: true });
+  }
+});
+
+test('CLI: git を起動できないと、render --base は終了コード 2 で止まり、check と --base なしの render は git なしで通る', () => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'living-spec-base-')));
+  const noGit = join(dir, 'bin');
+  try {
+    extract(PASS_ALL, dir);
+    mkdirSync(noGit);
+    const env = { ...gitEnv, PATH: noGit };
+    // git が要るのは --base を付けたときだけ
+    const checked = spawnSync(process.execPath, [main, 'check', dir], { cwd: dir, env, encoding: 'utf8' });
+    assert.equal(checked.status, 0, checked.stderr);
+    const rendered = renderBase(dir, [dir], env);
+    assert.equal(rendered.status, 0, rendered.stderr);
+    assert.equal(rendered.stdout, `${join(dir, '.cache', 'living-spec', 'index.html')}\n`);
+    assertStopped(renderBase(dir, ['--base', 'main', dir], env), dir, '基準の版を読めない: git を実行できない（ENOENT）');
+  } finally {
+    rmSync(dir, { recursive: true });
+  }
+});
+
+// f が投げた物（投げなければ落とす）
+function thrownBy(f: () => unknown): unknown {
+  try {
+    f();
+  } catch (e) {
+    return e;
+  }
+  assert.fail('投げない');
+}
+
+test('基準の版の読み出し: 包む関数は、利用者の誤りと読み出しの失敗の型だけを BaseError に包み、想定外の例外は包まずに投げ直す', () => {
+  const message = (reason: string) => `包んだ: ${reason}`;
+  // 実装の欠陥（TypeError 等）と型の無い Error は、同じ物のまま投げ直す（入口が捕えず、スタックが残る）
+  for (const e of [new TypeError("Cannot read properties of undefined (reading 'name')"), new Error('想定外')]) {
+    assert.equal(
+      thrownBy(() =>
+        guard(() => {
+          throw e;
+        }, message),
+      ),
+      e,
+      e.message,
+    );
+  }
+  // 既に BaseError なら、包み直さない
+  const already = new BaseError('基準の版を読めない: git を実行できない（ENOENT）');
+  assert.equal(
+    thrownBy(() =>
+      guard(() => {
+        throw already;
+      }, message),
+    ),
+    already,
+  );
+  // git の失敗・読めない項・設定の誤り・一覧に出たのに読めない項は、文面を添えて包む
+  const reasons = [
+    new GitReadError('git cat-file が失敗した（fatal: bad object）'),
+    new UnreadableEntryError('通常のファイルでない項: docs/rdra/actor.yaml（mode 120000）'),
+    new LayoutError('.living-spec.json の未知のキー『x』'),
+    new SourceReadError('読めないファイル: docs/requirements/a.md'),
+  ];
+  for (const e of reasons) {
+    const wrapped = thrownBy(() =>
+      guard(() => {
+        throw e;
+      }, message),
+    );
+    assert.ok(wrapped instanceof BaseError, e.message);
+    assert.equal(wrapped.message, `包んだ: ${e.message}`);
+  }
+  // JSON の構文の誤りも、設定の誤りとして包む
+  const syntax = thrownBy(() => guard(() => parseLayout('{'), message));
+  assert.ok(syntax instanceof BaseError && syntax.message.startsWith('包んだ: '), String(syntax));
+});
+
+test('CLI: render の --base の値が無い・空・- で始まる・2回ある、知らない -- の引数は、使い方を出して終了コード 2', () => {
+  const root = copySample(passExample);
+  try {
+    for (const args of [
+      ['--base'],
+      ['--base', '', root],
+      ['--base', '-x', root],
+      ['--base', 'main', '--base', 'main', root],
+      ['--base', 'main', '--x', root],
+    ]) {
+      const result = renderBase(root, args);
+      assert.equal(result.status, 2, `${args.join(' ')}: ${result.stderr}`);
+      assert.equal(result.stdout, '');
+      assert.match(result.stderr, /使い方/, args.join(' '));
+      assert.ok(!existsSync(diffOut(root)));
+    }
+  } finally {
+    rmSync(root, { recursive: true });
+  }
+});
+
+// ---- UC の一覧のアクター欄と、重ね合わせで同じ名前の要素を二重に足さないこと ----
+
+// アクターの表 table と、UC 名 → その UC が挙げるアクターの UC の表の一式
+function actorInputs(table: string[], ucs: Record<string, string[]>): Sources {
+  return sourcesFromFiles({
+    'docs/rdra/actor.yaml': table.map((a) => `- アクター: ${a}\n  役割: 申請に関わる\n  社内外: 社内\n`).join(''),
+    'docs/rdra/use-case.yaml': Object.entries(ucs)
+      .map(([uc, actors]) => `- UC: ${uc}\n  説明: ${uc}\n  アクター: [${actors.join(', ')}]\n`)
+      .join(''),
+  });
+}
+
+test('描き分けの HTML: UC の一覧のアクター欄は、残る UC の行に表と UC の両方から外したアクターを並べず、外された UC の行には基準の版のアクターを全て並べる', () => {
+  // 基準の版で 申請を作成する が挙げた 上長 を、作業ツリーで表と UC の両方から外す。申請を取り下げる は UC ごと外す
+  const view = diffViewOf(
+    actorInputs(['従業員', '上長'], { 申請を作成する: ['従業員', '上長'], 申請を取り下げる: ['従業員', '上長'] }),
+    actorInputs(['従業員'], { 申請を作成する: ['従業員'] }),
+  );
+  const create = useCase(view, '申請を作成する');
+  assert.equal(tag(create), 'changed ["アクター"]', 'UC は残る');
+  assert.deepEqual(marks(create.actors), [
+    ['従業員', ''],
+    ['上長', 'removed'],
+  ]);
+  const html = renderHtml(view, new Date(0));
+  assert.equal(indexRow(html, '申請を作成する')[1], '従業員');
+  assert.equal(markAt(sliceOf(html, create), 'アクター・外部システムの項', '上長'), REMOVED);
+
+  const withdraw = useCase(view, '申請を取り下げる');
+  assert.equal(tag(withdraw), 'removed');
+  assert.equal(indexRow(html, '申請を取り下げる')[1], '従業員、上長');
+});
+
+test('描き分けの材料: 作業ツリーの UC・条件が表から外した名前をまだ挙げていても、同じ名前の要素を二重に並べない', () => {
+  const version = (actors: string[], conditions: string[], variations: string[]) =>
+    sourcesFromFiles({
+      'docs/rdra/actor.yaml': actors.map((a) => `- アクター: ${a}\n  役割: 申請に関わる\n  社内外: 社内\n`).join(''),
+      'docs/rdra/condition.yaml': conditions
+        .map((c) => `- 条件: ${c}\n  条件の説明: ${c}で分ける\n  バリエーション: 甲区分、乙区分\n`)
+        .join(''),
+      'docs/rdra/variation.yaml': variations.map((v) => `- バリエーション: ${v}\n  値: 甲、乙\n`).join(''),
+      'docs/rdra/use-case.yaml': `${SMALL_CREATE_UC}  アクター: [従業員, 上長]\n  条件: [金額の条件, 期限の条件]\n`,
+    });
+  // 作業ツリーでは 上長・期限の条件・乙区分 を表からだけ外し、UC と条件はまだ挙げる（検査の undefined-reference に当たる過渡の形）
+  const view = diffViewOf(
+    version(['従業員', '上長'], ['金額の条件', '期限の条件'], ['甲区分', '乙区分']),
+    version(['従業員'], ['金額の条件'], ['甲区分']),
+  );
+  const uc = useCase(view, '申請を作成する');
+  const named = (xs: (Marked & { name: string; known: boolean })[]) => xs.map((x) => [x.name, x.known, tag(x)]);
+  assert.deepEqual(named(uc.actors), [
+    ['従業員', true, ''],
+    ['上長', false, 'removed'],
+  ]);
+  assert.deepEqual(named(uc.conditions), [
+    ['金額の条件', true, ''],
+    ['期限の条件', false, 'removed'],
+  ]);
+  assert.deepEqual(named(conditionOf(uc, '金額の条件').variations), [
+    ['甲区分', true, ''],
+    ['乙区分', false, 'removed'],
+  ]);
+  // 縦串のアクターの項にも 上長 は1つだけ並ぶ
+  const slice = sliceOf(renderHtml(view, new Date(0)), uc);
+  const boss = spots(slice).filter((s) => s.at === 'アクター・外部システムの項' && textOf(s.html).includes('上長'));
+  assert.equal(boss.length, 1, slice);
+});
+
+test('描き分けの HTML: UC の一覧のアクター欄は、表から外して作業ツリーの UC がまだ挙げるアクターを、基準の版なしと同じく並べる', () => {
+  // 基準の版で 申請を作成する が挙げた 上長 を、作業ツリーでは表からだけ外し、UC にはまだ挙げる（検査の undefined-reference に当たる形）
+  const before = actorInputs(['申請者', '上長'], { 申請を作成する: ['申請者', '上長'] });
+  const after = actorInputs(['申請者'], { 申請を作成する: ['申請者', '上長'] });
+  const plain = indexRow(renderHtml(buildView('/unused', after), new Date(0)), '申請を作成する')[1];
+  assert.equal(plain, '申請者、<span class="unknown" title="表に無い名前">⚠ 上長</span>');
+  const view = diffViewOf(before, after);
+  assert.deepEqual(marks(useCase(view, '申請を作成する').actors), [
+    ['申請者', ''],
+    ['上長', 'removed'],
+  ]);
+  assert.equal(indexRow(renderHtml(view, new Date(0)), '申請を作成する')[1], plain, '参照切れを一覧から隠さない');
+});
+
+// ---- 結び付かないルールを基準の版から加える範囲と、結び付かない例の枠の警告 ----
+
+function unlinkedFrame(slice: string): string | undefined {
+  return slice.match(/<div class="(unlinked[^"]*)"><h4>要求票の行に結び付かない例<\/h4>/)?.[1];
+}
+
+test('描き分けの HTML: 作業ツリーで消した例の無いルールは、基準の版から加えず、縦串に出さない（警告の枠も出さない）', () => {
+  // 基準の版の例は機能と例の無いルールだけ。作業ツリーではそのルールを消す
+  const view = diffViewOf(createInputs(['  ルール: 空のルール', '']), createInputs([]));
+  const uc = useCase(view, '申請を作成する');
+  assert.deepEqual(uc.unlinkedRules, []);
+  const slice = sliceOf(renderHtml(view, new Date(0)), uc);
+  assert.ok(!slice.includes('ルール: 空のルール'), slice);
+  assert.equal(unlinkedFrame(slice), undefined, slice);
+});
+
+test('描き分けの HTML: 結び付かない例の枠は、作業ツリーに結び付かないルールが残れば、その例を全て外していても警告の枠線で囲む', () => {
+  // 作業ツリーでは ルール 下書きを残す を例の無いルールとして残す。基準の版なしでも警告の枠線で囲む形である
+  const after = createInputs(ruleLines('下書きを残す', []));
+  const plain = buildView('/unused', after);
+  assert.equal(unlinkedFrame(sliceOf(renderHtml(plain, new Date(0)), useCase(plain, '申請を作成する'))), 'unlinked');
+  const view = diffViewOf(createInputs(ruleLines('下書きを残す', ['下書きが残る'])), after);
+  const slice = sliceOf(renderHtml(view, new Date(0)), useCase(view, '申請を作成する'));
+  assert.equal(unlinkedFrame(slice), 'unlinked', slice);
+  assert.equal(markAt(slice, '例の項', '下書きが残る'), REMOVED);
 });

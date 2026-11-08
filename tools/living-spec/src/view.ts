@@ -12,7 +12,24 @@ import { REQUIREMENT_STATE_SEP } from './schema.ts';
 type Rows = ReturnType<typeof loadTables>;
 type Row = Rows[string][number];
 
-export interface TransitionView {
+// 基準の版と比べた要素の区分（足された・変わった・外された）。定義は diff.ts
+export type DiffStatus = 'added' | 'changed' | 'removed';
+
+// 描き分けで、重ね合わせが基準の版の材料から加えた要素の欄。diffview.ts が加えた要素にだけ付け、buildView は欄そのものを作らない。
+// 区分（diff）とは別に持つ。表から外した名前を作業ツリーの UC がまだ挙げているとき、その要素は区分が「外された」でも
+// 作業ツリーの材料から来る。作業ツリーにある子かどうかは、区分ではなくこの欄で決める（html.ts の liveIn）
+export interface Origin {
+  fromBase?: true;
+}
+
+// 描き分けの区分の欄。diffview.ts が区分のある要素にだけ付け、buildView は欄そのものを作らない（値が undefined の欄も作らない）
+export interface Marked extends Origin {
+  diff?: DiffStatus;
+  // 変わった欄の名前（定義の順）。区分が changed のときだけ持つ
+  changed?: string[];
+}
+
+export interface TransitionView extends Marked {
   // 遷移元の状態。初期遷移（状態の無い記録）は null
   from: string | null;
   // 遷移先の状態。終端の状態の記録（遷移先の無い記録）は null
@@ -31,20 +48,22 @@ export interface StateModelView {
   // 状態の並び（表に現れた順。遷移元・遷移先の両方）
   states: string[];
   transitions: TransitionView[];
+  // 区分のある状態 → 区分（描き分けの材料だけが持つ。状態は足された・外されただけ）
+  stateDiff?: Record<string, DiffStatus>;
 }
 
-export interface NamedView {
+export interface NamedView extends Marked {
   name: string;
   known: boolean;
 }
 
-export interface ScenarioView {
+export interface ScenarioView extends Marked {
   name: string;
   // 例の件数（シナリオアウトラインは例の表の行数）
   count: number;
 }
 
-export interface RuleView {
+export interface RuleView extends Origin {
   name: string;
   scenarios: ScenarioView[];
 }
@@ -66,7 +85,7 @@ export interface DefinitionView {
   variations: VariationView[];
 }
 
-export interface ReferenceView {
+export interface ReferenceView extends Marked {
   raw: string;
   // 種類と名前が読め、表にあるか
   known: boolean;
@@ -77,7 +96,7 @@ export interface ReferenceView {
   definition: DefinitionView | null;
 }
 
-export interface RequirementLineView {
+export interface RequirementLineView extends Marked {
   ordinal: number;
   text: string;
   reason: string | null;
@@ -86,13 +105,13 @@ export interface RequirementLineView {
   scenarios: ScenarioView[];
 }
 
-export interface RequirementView {
+export interface RequirementView extends Marked {
   file: string;
   reason: string | null;
   lines: RequirementLineView[];
 }
 
-export interface UseCaseView {
+export interface UseCaseView extends Marked {
   name: string;
   // ページ内リンクの先（uc-1 から）
   anchor: string;
@@ -125,15 +144,17 @@ export interface View {
   unreadableExamples: { file: string; message: string }[];
   // 表にある名前すべて（状態を含む）。要求文の中の名前に印を付けるとき、長い名前の一部へ誤って付けないために使う
   tableNames: string[];
+  // 比べた基準の版（描き分けの材料だけが持つ）。commit は版が指すコミット
+  base?: { ref: string; commit: string };
 }
 
-function str(row: Row, key: string): string {
+export function str(row: Row, key: string): string {
   const v = row.data[key];
   return typeof v === 'string' ? v.trim() : '';
 }
 
 // 「、」区切りの1文字列のキーと、文字列の並びのキーの両方を並びとして読む（check.ts の values と同じ寛容さ）
-function list(row: Row, key: string): string[] {
+export function list(row: Row, key: string): string[] {
   const v = row.data[key];
   if (typeof v === 'string') {
     const parts = row.def.splitKeys.includes(key) ? v.split('、') : [v];
