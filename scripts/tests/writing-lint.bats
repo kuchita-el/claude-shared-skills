@@ -699,3 +699,42 @@ lint_project() {
   [ "$status" -eq 1 ]
   [[ "$output" == *"UP.MD:1:一文長: 102字"* ]]
 }
+
+# 作り直しの前後で保つ振る舞いを固定する試験（#959）。
+
+@test "差分の方式は、変えていない行で始まり変えた行で終わる長文を報告する" {
+  make_diff_repo head-unchanged "$(rep あ 60)" "$(rep い 40)。"
+  printf '%s\n%s。\n' "$(rep あ 60)" "$(rep う 40)" > "$repo/doc.md"
+  run_doc_diff
+  [ "$status" -eq 1 ]
+  [ "$output" = "doc.md:1:一文長: 101字（上限100）" ]
+}
+
+@test "プロジェクト固有のプロファイルも同梱の既定も読めないときは、上限100を採る" {
+  plugin="$BATS_TEST_TMPDIR/bare-plugin"
+  mkdir -p "$plugin/scripts"
+  cp "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" "$plugin/scripts/"
+  printf '%s。\n' "$(rep あ 99)" > "$BATS_TEST_TMPDIR/bare-100.md"
+  run env -u CLAUDE_PROJECT_DIR bash "$plugin/scripts/lint-ja.sh" --file "$BATS_TEST_TMPDIR/bare-100.md"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  printf '%s。\n' "$(rep あ 100)" > "$BATS_TEST_TMPDIR/bare-101.md"
+  run env -u CLAUDE_PROJECT_DIR bash "$plugin/scripts/lint-ja.sh" --file "$BATS_TEST_TMPDIR/bare-101.md"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *":1:一文長: 101字（上限100）"* ]]
+}
+
+@test "引数の誤りを終了コード2で拒む" {
+  printf '短い文。\n' > "$BATS_TEST_TMPDIR/args.md"
+  local lint="$REPO_ROOT/plugins/writing/scripts/lint-ja.sh"
+  run bash "$lint" --bogus --file "$BATS_TEST_TMPDIR/args.md"
+  [ "$status" -eq 2 ]
+  run bash "$lint" --file "$BATS_TEST_TMPDIR/args.md" --
+  [ "$status" -eq 2 ]
+  run bash "$lint" --diff HEAD
+  [ "$status" -eq 2 ]
+  run bash "$lint" --diff HEAD --
+  [ "$status" -eq 2 ]
+  run bash "$lint"
+  [ "$status" -eq 2 ]
+}
