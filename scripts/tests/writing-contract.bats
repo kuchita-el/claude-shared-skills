@@ -92,3 +92,9 @@
   run grep -R -E 'allowlist path|登録簿|免除語集合' "$root/plugins/writing/compatibility.json" "$root/plugins/writing/permission-ledger.json" "$root/scripts/fixtures/writing"
   [ "$status" -eq 1 ]
 }
+
+@test "write-docの機械検査は受け取ったdocumentTypeを--typeでlintへ渡す" {
+  skill="$BATS_TEST_DIRNAME/../../plugins/writing/skills/write-doc/SKILL.md"
+  run grep -E 'lint-ja\.sh --type <documentType> --diff <base> -- <changed-paths>' "$skill"
+  [ "$status" -eq 0 ]
+}
