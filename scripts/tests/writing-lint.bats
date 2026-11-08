@@ -222,3 +222,68 @@ lint_tmp() {
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
+
+# 構造の判定の境界の試験。構造と見なす範囲を広げすぎると、地の文の長文を見逃す。
+# 以下は、境界の外の行が地の文のまま数えられ、長文として報告されることを押さえる。
+
+@test "行の途中に|がある地の文は表と見ず、長文を報告する" {
+  lint_tmp mid-pipe.md "$(rep あ 50) | $(rep い 50)。"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *":1:一文長: 104字"* ]]
+}
+
+@test "#の直後に空白の無い行は見出しと見ず、前の行とつないで報告する" {
+  lint_tmp hash-number.md "$(rep あ 60)" "#417 は$(rep い 40)。"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *":1:一文長: 107字"* ]]
+}
+
+@test "記号の直後に空白の無い行は項目と見ず、前の行とつないで報告する" {
+  lint_tmp emphasis.md "$(rep あ 60)" "*強調*$(rep い 40)。"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *":1:一文長: 105字"* ]]
+  lint_tmp minus-number.md "$(rep あ 60)" "-1は$(rep い 40)。"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *":1:一文長: 104字"* ]]
+}
+
+@test "4つのバッククォートで開いたフェンスは、中の3つのバッククォートの行で閉じない" {
+  lint_tmp long-fence.md '````markdown' '```' "$(rep あ 120)。" '```' '````'
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "情報文字列の付いたフェンスの行ではコードブロックを閉じない" {
+  lint_tmp info-not-close.md '```' '```bash' "$(rep あ 120)。" '```'
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "字下げしたフェンスも、字下げの深さによらずコードブロックとして扱う" {
+  lint_tmp indented-fence.md '- 項目' '    ```' "    $(rep あ 120)。" '    ```'
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "字下げした表の行も、字下げの深さによらず表として扱う" {
+  lint_tmp indented-table.md "$(rep あ 60)" '    | 列 | 値 |' "$(rep い 60)。"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "改行がCRLFの文書でも閉じのフェンスと空行を認める" {
+  printf '```\r\necho\r\n```\r\n\r\n%s。\r\n' "$(rep あ 101)" > "$BATS_TEST_TMPDIR/crlf-fence.md"
+  run bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --file "$BATS_TEST_TMPDIR/crlf-fence.md"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *":5:一文長: 102字"* ]]
+  printf '%s\r\n\r\n%s。\r\n' "$(rep あ 60)" "$(rep い 60)" > "$BATS_TEST_TMPDIR/crlf-blank.md"
+  run bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --file "$BATS_TEST_TMPDIR/crlf-blank.md"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "行頭のインラインコードではコードブロックを開かない" {
+  lint_tmp inline-code.md '```foo``` を使う。' "$(rep あ 101)。"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *":2:一文長: 102字"* ]]
+}

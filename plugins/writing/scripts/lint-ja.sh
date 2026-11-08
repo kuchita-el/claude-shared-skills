@@ -104,9 +104,11 @@ while IFS=$'\t' read -r path; do
     }
     # Markdown の構造を見分ける処理はここに集める。行の種類を返し、フェンスの内外を状態に持つ。
     #   fence: 開き・閉じのフェンスの行。code: フェンスの内側の行（閉じが無ければ文書の終わりまで）
-    #   table: 行頭が | の表の行。heading: 見出しの行。item: 箇条書きの項目の始まり
+    #   table: 字下げを除いた先頭が | の表の行。heading: 見出しの行。item: 箇条書きの項目の始まり
     #   blank: 空行。text: それ以外（地の文と、字下げした項目の継続行）
+    # フェンス・表・見出し・項目は、字下げの深さによらず認める。
     # フェンスの内側を先に判定するので、コードブロックの中の | や # や - で始まる行は表・見出し・項目にならない。
+    # バッククォートの開きのフェンスは、情報文字列にバッククォートを含まない行に限る（行頭のインラインコードを除く）。
     function line_kind(line,    run) {
       if (in_code) {
         if (match(line, /^[ \t]*(```+|~~~+)[ \t]*$/)) {
@@ -119,7 +121,8 @@ while IFS=$'\t' read -r path; do
         }
         return "code"
       }
-      if (match(line, /^[ \t]*(```+|~~~+)/)) {
+      if (line ~ /^[ \t]*```+[^`]*$/ || line ~ /^[ \t]*~~~+/) {
+        match(line, /^[ \t]*(```+|~~~+)/)
         run=substr(line, RSTART, RLENGTH)
         gsub(/[ \t]/, "", run)
         fence_char=substr(run, 1, 1)
@@ -134,6 +137,8 @@ while IFS=$'\t' read -r path; do
       return "text"
     }
     {
+      # CRLF の文書でも、閉じのフェンスと空行を LF の文書と同じに見分ける。
+      sub(/\r$/, "")
       kind=line_kind($0)
       # 文ではない行は一文に足さず、そこで前の文を区切る。
       if (kind == "fence" || kind == "code" || kind == "table") { finish(); next }
