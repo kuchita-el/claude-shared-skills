@@ -1,5 +1,5 @@
 // 差分の一覧（difflist.ts）の行を、ファイルを置かずに確かめる。見本の2版は diff.test.ts と同じく test/render/diff-base.txtar・diff-head.txtar。
-// 行の形（種類・区分の語・同一性の値のタブ区切り）の正本は references/format.md の「一覧の行の形」である。
+// 行の形（種類・区分の語・同一性の値のタブ区切り）の正本は references/format.md の「基準の版から変わった要素の一覧（`diff`）」である。
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -25,7 +25,7 @@ const head = sample('diff-head.txtar');
 
 const WORD = { added: '足された', changed: '変わった', removed: '外された' } as const;
 
-// 種類ごとの同一性の値の数（format.md「一覧の行の形」の表）
+// 種類ごとの同一性の値の数。format.md「同一性と比べる中身」の表の「同一性」の列の値の数に従う
 const VALUES: Record<ElementKind, number> = {
   状態: 2,
   遷移: 4,
