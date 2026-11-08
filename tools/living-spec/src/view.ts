@@ -12,6 +12,9 @@ import { REQUIREMENT_STATE_SEP } from './schema.ts';
 type Rows = ReturnType<typeof loadTables>;
 type Row = Rows[string][number];
 
+// 基準の版と比べた要素の区分（足された・変わった・外された）。定義は diff.ts
+export type DiffStatus = 'added' | 'changed' | 'removed';
+
 export interface TransitionView {
   // 遷移元の状態。初期遷移（状態の無い記録）は null
   from: string | null;
@@ -127,13 +130,13 @@ export interface View {
   tableNames: string[];
 }
 
-function str(row: Row, key: string): string {
+export function str(row: Row, key: string): string {
   const v = row.data[key];
   return typeof v === 'string' ? v.trim() : '';
 }
 
 // 「、」区切りの1文字列のキーと、文字列の並びのキーの両方を並びとして読む（check.ts の values と同じ寛容さ）
-function list(row: Row, key: string): string[] {
+export function list(row: Row, key: string): string[] {
   const v = row.data[key];
   if (typeof v === 'string') {
     const parts = row.def.splitKeys.includes(key) ? v.split('、') : [v];
