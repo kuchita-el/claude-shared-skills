@@ -2,6 +2,7 @@
 // ファイルを読まない純関数で、入力は2版の中身（Sources）だけである。基準の版の読み出しは base.ts、描画は diffview.ts・html.ts が持つ。
 // 要素の種類・同一性・比べる中身・区分の定義の正本は references/format.md の描き分けの節で、ここはそれを実装する。
 // 定義はこのファイルの1か所に持ち、描き分けの材料（diffview.ts）はこの結果から要素の区分を引くだけで、比べ方を持たない。
+// 一覧（difflist.ts）もこの結果を読むだけで、比べ方を持たない。
 // 描画の材料（View）同士を比べないのは、View が UC ごとに要素を写して持ち、アクターの社内外・情報の関連情報・例の手順などを
 // 落としているため、「変わった」を判定できないからである。描画（diffview.ts・html.ts・render.ts）の中に埋め込まないのは、
 // 読み出し（base.ts）・比較（このファイル）・描画を分け、比較を描画から切り離して、2版の中身だけを入力にした試験
@@ -66,6 +67,9 @@ export interface ElementDiff {
   kind: ElementKind;
   // 同一性のキー（elementKey）
   key: string;
+  // 同一性の値。elementKey に渡す並びそのもので、format.md の同一性の列の順である。無い値は null。
+  // 足された・変わったは作業ツリーの要素の値、外されたは基準の版の要素の値
+  identity: (string | null)[];
   // 表示名。状態は <状態モデル>/<状態>、遷移は <状態モデル>/<遷移元>→<遷移先>（<遷移UC>）、要求票は表題の UC 名、要求文は文、
   // 例はシナリオ名、UC・アクター・外部システム・情報・条件・バリエーションは表の名前
   name: string;
@@ -97,6 +101,7 @@ type Fields = Map<string, string | null>;
 interface Element {
   kind: ElementKind;
   key: string;
+  identity: (string | null)[];
   name: string;
   // 比べる欄の定義の順。表の定義に無いキーは含めず、比べるときに後ろへ足す
   fieldOrder: readonly string[];
@@ -139,7 +144,7 @@ function collect(sources: Sources): Map<string, Element> {
   const add = (kind: ElementKind, parts: (string | null)[], name: string, fieldOrder: readonly string[], fields: Fields) => {
     const key = elementKey(kind, parts);
     const found = elements.get(key);
-    if (found === undefined) elements.set(key, { kind, key, name, fieldOrder, records: [fields] });
+    if (found === undefined) elements.set(key, { kind, key, identity: parts, name, fieldOrder, records: [fields] });
     else found.records.push(fields);
   };
 
@@ -231,14 +236,14 @@ export function diffSources(base: Sources, head: Sources): SpecDiff {
       if (e.kind !== kind) continue;
       const old = before.get(e.key);
       if (old === undefined) {
-        elements.push({ kind, key: e.key, name: e.name, status: 'added', changed: [] });
+        elements.push({ kind, key: e.key, identity: e.identity, name: e.name, status: 'added', changed: [] });
         continue;
       }
       const changed = changedFields(old, e);
-      if (changed.length > 0) elements.push({ kind, key: e.key, name: e.name, status: 'changed', changed });
+      if (changed.length > 0) elements.push({ kind, key: e.key, identity: e.identity, name: e.name, status: 'changed', changed });
     }
     for (const e of before.values()) {
-      if (e.kind === kind && !after.has(e.key)) elements.push({ kind, key: e.key, name: e.name, status: 'removed', changed: [] });
+      if (e.kind === kind && !after.has(e.key)) elements.push({ kind, key: e.key, identity: e.identity, name: e.name, status: 'removed', changed: [] });
     }
   }
   return { elements };
