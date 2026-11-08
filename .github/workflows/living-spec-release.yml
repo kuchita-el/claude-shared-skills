@@ -116,7 +116,7 @@ jobs:
       - name: 入口と描画の試験を生成物に掛ける
         env:
           RDRA_ENTRY: ${{ runner.temp }}/release/${{ env.ASSET }}
-        run: node --test tools/living-spec/test/cli.test.ts tools/living-spec/test/render.test.ts
+        run: node --test tools/living-spec/test/cli.test.ts tools/living-spec/test/render.test.ts tools/living-spec/test/difflist.test.ts
 
       - name: 生成物を受け渡す
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2

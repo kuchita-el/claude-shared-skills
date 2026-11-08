@@ -1,11 +1,14 @@
 // 差分の一覧（difflist.ts）の行を、ファイルを置かずに確かめる。見本の2版は diff.test.ts と同じく test/render/diff-base.txtar・diff-head.txtar。
 // 行の形（種類・区分の語・同一性の値のタブ区切り）の正本は references/format.md の「基準の版から変わった要素の一覧（`diff`）」である。
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { parseTxtar } from './fixture.ts';
+import { extract, parseTxtar } from './fixture.ts';
+import { commitAll, gitEnv, gitRepo } from './git.ts';
 import { diffSources } from '../src/diff.ts';
 import type { ElementKind } from '../src/diff.ts';
 import { diffListLines } from '../src/difflist.ts';
@@ -85,4 +88,153 @@ test('無い値は なし と書き、列の数を保つ', () => {
 
 test('差分が空なら行も空', () => {
   assert.deepEqual(diffListLines(diffSources(base, base)), []);
+});
+
+// ---- CLI: diff --base。標準出力は一覧の行だけ（根の行も注記も混ぜない） ----
+
+const main = process.env.RDRA_ENTRY ?? join(here, '..', 'src', 'main.ts');
+const DIFF_BASE = join(here, 'render', 'diff-base.txtar');
+const DIFF_HEAD = join(here, 'render', 'diff-head.txtar');
+const expected = diffListLines(diffSources(base, head)).map((l) => `${l}\n`).join('');
+
+function runDiff(cwd: string, args: string[]) {
+  return spawnSync(process.execPath, [main, 'diff', ...args], { cwd, env: gitEnv, encoding: 'utf8' });
+}
+
+// 止まる: 終了コード 2、標準出力が空、標準エラーに文面の語句、描き分けの置き場（.cache）を作らない
+function assertStopped(result: ReturnType<typeof runDiff>, root: string, phrase: string): void {
+  assert.equal(result.status, 2, result.stderr);
+  assert.equal(result.stdout, '');
+  assert.ok(result.stderr.includes(phrase), `標準エラーに『${phrase}』がある\n${result.stderr}`);
+  assert.ok(!existsSync(join(root, '.cache')), '.cache を作らない');
+}
+
+function withDiffRepo(f: (repo: string) => void): void {
+  const repo = gitRepo();
+  try {
+    extract(DIFF_BASE, repo);
+    commitAll(repo);
+    rmSync(join(repo, 'docs'), { recursive: true });
+    extract(DIFF_HEAD, repo);
+    f(repo);
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+}
+
+test('CLI: diff --base は、基準の版と作業ツリーの差を一覧の行だけで標準出力へ出し、何も書かず終了コード 0', () => {
+  assert.notEqual(expected, '');
+  withDiffRepo((repo) => {
+    const result = runDiff(repo, ['--base', 'main', repo]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, expected);
+    assert.ok(!result.stdout.startsWith('根: '));
+    assert.ok(!existsSync(join(repo, '.cache')));
+  });
+});
+
+test('CLI: diff --base は、作業ツリーが基準の版と同じなら標準出力が空で終了コード 0', () => {
+  const repo = gitRepo();
+  try {
+    extract(DIFF_BASE, repo);
+    commitAll(repo);
+    const result = runDiff(repo, ['--base', 'main', repo]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, '');
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: diff --base は、根が下位ディレクトリにあり両版で同じ位置なら同じ一覧を出す（--base は起点の後ろでもよい）', () => {
+  const repo = gitRepo();
+  const area = join(repo, 'area');
+  try {
+    extract(DIFF_BASE, area);
+    commitAll(repo);
+    rmSync(join(area, 'docs'), { recursive: true });
+    extract(DIFF_HEAD, area);
+    const result = runDiff(repo, [area, '--base', 'main']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, expected);
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: diff --base は、起点が範囲外でも注記を標準エラーだけへ出し、標準出力へ混ぜない', () => {
+  const repo = gitRepo();
+  try {
+    extract(DIFF_BASE, repo);
+    writeFileSync(join(repo, 'README.md'), '# 説明\n');
+    commitAll(repo);
+    const result = runDiff(repo, ['--base', 'main', join(repo, 'README.md')]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.ok(result.stderr.includes(`注記: ${join(repo, 'README.md')} は根 ${repo} の置き場`), result.stderr);
+    assert.equal(result.stdout, '');
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: diff --base は、版が無ければ止まる', () => {
+  const repo = gitRepo();
+  try {
+    extract(DIFF_BASE, repo);
+    commitAll(repo);
+    assertStopped(runDiff(repo, ['--base', 'no-such', repo]), repo, `基準の版が見つからない: no-such（根: ${repo}）`);
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: diff --base は、基準の版の .living-spec.json を読めなければ止まる', () => {
+  const repo = gitRepo();
+  try {
+    extract(DIFF_BASE, repo);
+    writeFileSync(join(repo, '.living-spec.json'), '{');
+    commitAll(repo);
+    rmSync(join(repo, '.living-spec.json'));
+    assertStopped(runDiff(repo, ['--base', 'main', repo]), repo, `基準の版 main の .living-spec.json を読めない（根: ${repo}）: `);
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: diff の引数の誤り（--base が無い・値が無い・空・- で始まる・2回・知らない --・起点が2つ）は、使い方を出して終了コード 2', () => {
+  const root = mkdtempSync(join(tmpdir(), 'living-spec-diff-args-'));
+  try {
+    extract(DIFF_BASE, root);
+    for (const args of [
+      [],
+      [root],
+      ['--base'],
+      ['--base', '', root],
+      ['--base', '-x', root],
+      ['--base', 'main', '--base', 'main', root],
+      ['--base', 'main', '--x', root],
+      ['--base', 'main', root, root],
+    ]) {
+      const result = runDiff(root, args);
+      assert.equal(result.status, 2, `${args.join(' ')}: ${result.stderr}`);
+      assert.equal(result.stdout, '', args.join(' '));
+      assert.match(result.stderr, /使い方/, args.join(' '));
+    }
+  } finally {
+    rmSync(root, { recursive: true });
+  }
+});
+
+test('CLI: diff --base は、目印の無い場所では作業ツリーの側で止まり、基準の版の文面ではない', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'living-spec-diff-nomark-'));
+  try {
+    mkdirSync(join(dir, 'sub'));
+    const result = runDiff(join(dir, 'sub'), ['--base', 'main']);
+    assert.equal(result.status, 2, result.stderr);
+    assert.equal(result.stdout, '');
+    assert.ok(result.stderr.includes('正本が見つからない: '), result.stderr);
+    assert.ok(!/^基準の版/m.test(result.stderr), result.stderr);
+  } finally {
+    rmSync(dir, { recursive: true });
+  }
 });
