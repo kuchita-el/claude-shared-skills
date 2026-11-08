@@ -15,6 +15,10 @@ import { escapeHtml, renderHtml, stateChart } from '../src/html.ts';
 import { sourcesFromFiles } from '../src/sources.ts';
 import { buildView } from '../src/view.ts';
 import type { StateModelView, UseCaseView, View } from '../src/view.ts';
+import { parseTxtar } from './fixture.ts';
+import { buildDiffView } from '../src/diffview.ts';
+import type { Sources } from '../src/sources.ts';
+import type { Marked } from '../src/view.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const sample = materialize(join(here, 'render', 'sample.txtar'));
@@ -412,4 +416,246 @@ test('フック: 対象外のファイルの編集では描かない', () => {
   } finally {
     rmSync(root, { recursive: true });
   }
+});
+
+// ---- 描き分けの材料（diffview.ts の buildDiffView）。見本の2版は test/render/diff-base.txtar と diff-head.txtar ----
+// 材料の区分だけを見る（HTML と図の文字列は見ない）。区分の無い要素は diff・changed を自分の欄として持たない。
+
+function diffSample(name: string): Sources {
+  const files: Record<string, string> = {};
+  for (const { path, data } of parseTxtar(readFileSync(join(here, 'render', name), 'utf8'))) files[path] = data;
+  return sourcesFromFiles(files);
+}
+
+const diffBase = diffSample('diff-base.txtar');
+const diffHead = diffSample('diff-head.txtar');
+const BASE_COMMIT = '0123456789abcdef0123456789abcdef01234567';
+
+function diffView(): View {
+  return buildDiffView('/unused', { ref: 'main', commit: BASE_COMMIT, sources: diffBase }, diffHead);
+}
+
+// 区分を文字列にする。区分の無い要素は ''。変わった要素は欄名を添える
+function tag(x: Marked): string {
+  if (!Object.hasOwn(x, 'diff') && !Object.hasOwn(x, 'changed')) return '';
+  return x.changed === undefined ? String(x.diff) : `${x.diff} ${JSON.stringify(x.changed)}`;
+}
+
+function marks(xs: (Marked & { name: string })[]): [string, string][] {
+  return xs.map((x) => [x.name, tag(x)]);
+}
+
+function lineOf(uc: UseCaseView, text: string): UseCaseView['requirements'][number]['lines'][number] {
+  const found = uc.requirements.flatMap((r) => r.lines).filter((l) => l.text === text);
+  assert.equal(found.length, 1, `UC『${uc.name}』に行『${text}』が1つある`);
+  return found[0];
+}
+
+function conditionOf(uc: UseCaseView, name: string): UseCaseView['conditions'][number] {
+  const c = uc.conditions.find((x) => x.name === name);
+  assert.ok(c, `UC『${uc.name}』に条件『${name}』がある`);
+  return c;
+}
+
+const D_SUBMIT = '申請を提出する';
+const D_S1 = '提出できる条件を満たさないならば、システムは申請の提出を受け付けない';
+const D_S2 = '従業員が申請を提出するとき、システムは申請を提出済みにする';
+const D_S3 = '従業員が申請を提出するとき、システムは申請を提出済みにして上長へ知らせる';
+const D_AUDIT_LINE = '監査役が申請を監査するとき、システムは申請を監査済みにする';
+const D_RETURN_LINE = '上長が申請を差し戻すとき、システムは申請を差し戻しにして旧台帳へ控える';
+
+test('描き分けの材料: 状態と遷移は、作業ツリーの並びに区分を付け、外された状態・遷移を後ろに足す', () => {
+  const m = model(diffView());
+  assert.deepEqual(m.states, ['作成中', '提出済み', '承認済み', '監査済み', '差し戻し']);
+  assert.deepEqual(m.stateDiff, { 監査済み: 'added', 差し戻し: 'removed' });
+  assert.deepEqual(
+    m.transitions.map((t) => [t.from, t.to, t.uc, tag(t)]),
+    [
+      [null, '作成中', '申請を作成する', ''],
+      ['作成中', '提出済み', '申請を提出する', 'changed ["状態モデル・状態の説明"]'],
+      ['提出済み', '承認済み', '申請を承認する', ''],
+      ['承認済み', '監査済み', '申請を監査する', 'added'],
+      ['監査済み', null, null, 'added'],
+      ['提出済み', '差し戻し', '申請を差し戻す', 'removed'],
+      ['差し戻し', null, null, 'removed'],
+      ['承認済み', null, null, 'removed'],
+    ],
+  );
+});
+
+test('描き分けの材料: 外された UC は作業ツリーの UC の後ろに続き番号のアンカーで並び、遷移 UC の状態モデルを重ね合わせた後の遷移から持つ', () => {
+  const view = diffView();
+  const headCount = buildView('/unused', diffHead).useCases.length;
+  assert.equal(headCount, 4);
+  assert.deepEqual(marks(view.useCases), [
+    ['申請を作成する', ''],
+    [D_SUBMIT, 'changed ["アクター","説明"]'],
+    ['申請を承認する', 'changed ["外部システム","情報","条件"]'],
+    ['申請を監査する', 'added'],
+    ['申請を差し戻す', 'removed'],
+  ]);
+  const removed = view.useCases[view.useCases.length - 1];
+  assert.equal(removed.anchor, `uc-${headCount + 1}`);
+  assert.deepEqual(removed.stateModels, ['申請の状態']);
+});
+
+test('描き分けの材料: 見本の足された・外された要素が、UC の中の該当の位置で区分を持つ', () => {
+  const view = diffView();
+  const approve = useCase(view, '申請を承認する');
+  assert.deepEqual(marks(approve.externalSystems), [
+    ['会計システム', 'changed ["役割"]'],
+    ['電子署名サービス', 'added'],
+    ['通知サービス', 'removed'],
+  ]);
+  assert.deepEqual(marks(approve.information), [
+    ['申請', 'changed ["属性"]'],
+    ['承認の記録', 'added'],
+    ['承認記録', 'removed'],
+  ]);
+  assert.deepEqual(marks(approve.conditions), [['期限の条件', 'removed']]);
+  assert.deepEqual(marks(conditionOf(approve, '期限の条件').variations), [['旧区分', 'removed']]);
+
+  const audit = useCase(view, '申請を監査する');
+  assert.deepEqual(marks(audit.actors), [['監査役', 'added']]);
+  assert.deepEqual(marks(audit.information), [
+    ['申請', 'changed ["属性"]'],
+    ['監査記録', 'added'],
+  ]);
+  assert.deepEqual(marks(audit.conditions), [['監査できる条件', 'added']]);
+  assert.deepEqual(marks(conditionOf(audit, '監査できる条件').variations), [['監査の区分', 'added']]);
+  assert.deepEqual(
+    audit.requirements.map((r) => [r.file, tag(r)]),
+    [['docs/requirements/監査.md', 'added']],
+  );
+  const auditLine = lineOf(audit, D_AUDIT_LINE);
+  assert.equal(tag(auditLine), 'added');
+  assert.deepEqual(marks(auditLine.scenarios), [['承認済みの申請を監査する', 'added']]);
+  // 行の参照の中身（条件・バリエーション・情報）は参照先の要素の区分を持つ。RDRA 欄の他の種類には付けない
+  assert.deepEqual(
+    auditLine.references.map((r) => [r.raw, tag(r)]),
+    [
+      ['アクター「監査役」', ''],
+      ['情報「監査記録」', 'added'],
+      ['条件「監査できる条件」', 'added'],
+      ['バリエーション「監査の区分」', 'added'],
+      ['状態「申請の状態/監査済み」', ''],
+    ],
+  );
+  const auditCondition = auditLine.references.find((r) => r.name === '監査できる条件');
+  assert.ok(auditCondition?.definition);
+  assert.deepEqual(marks(auditCondition.definition.variations), [['監査の区分', 'added']]);
+
+  const submit = useCase(view, D_SUBMIT);
+  assert.deepEqual(
+    submit.requirements.map((r) => [r.file, tag(r)]),
+    [['docs/requirements/submit.md', 'changed ["要求文"]']],
+  );
+  // 外された行は同じ UC の最初の票の後ろに足す
+  assert.deepEqual(
+    submit.requirements[0].lines.map((l) => [l.text, tag(l)]),
+    [
+      [D_S1, 'changed ["理由"]'],
+      [D_S3, 'added'],
+      [D_S2, 'removed'],
+    ],
+  );
+  assert.deepEqual(marks(lineOf(submit, D_S1).scenarios), [
+    ['種類の無い申請は出せない', 'changed ["手順"]'],
+    ['金額の無い申請は出せない', 'added'],
+    ['期限切れの申請は出せない', 'removed'],
+  ]);
+  // 同じシナリオ名でも、ルール（要求文）が違えば別の例として区分を持つ
+  assert.deepEqual(marks(lineOf(submit, D_S3).scenarios), [['提出すると提出済みになる', 'added']]);
+  assert.deepEqual(marks(lineOf(submit, D_S2).scenarios), [['提出すると提出済みになる', 'removed']]);
+
+  // 外された UC の中は、子自身の区分を持つ
+  const returned = useCase(view, '申請を差し戻す');
+  assert.deepEqual(marks(returned.actors), [
+    ['上長', ''],
+    ['経理', 'removed'],
+  ]);
+  assert.deepEqual(marks(returned.information), [
+    ['申請', 'changed ["属性"]'],
+    ['旧台帳', 'removed'],
+  ]);
+  assert.deepEqual(
+    returned.requirements.map((r) => [r.file, tag(r)]),
+    [['docs/requirements/差し戻し.md', 'removed']],
+  );
+  const returnLine = lineOf(returned, D_RETURN_LINE);
+  assert.equal(tag(returnLine), 'removed');
+  assert.deepEqual(marks(returnLine.scenarios), [['差し戻すと差し戻しになる', 'removed']]);
+  assert.deepEqual(
+    returnLine.references.map((r) => [r.raw, tag(r)]),
+    [
+      ['アクター「上長」', ''],
+      ['情報「申請」', 'changed ["属性"]'],
+      ['情報「旧台帳」', 'removed'],
+      ['状態「申請の状態/差し戻し」', ''],
+    ],
+  );
+});
+
+test('描き分けの材料: 変わった要素は区分 changed と変わった欄の名前を持つ', () => {
+  const submit = useCase(diffView(), D_SUBMIT);
+  assert.deepEqual(marks(submit.actors), [['従業員', 'changed ["役割"]']]);
+  assert.deepEqual(submit.actors[0].changed, ['役割']);
+  assert.deepEqual(marks(submit.conditions), [['提出できる条件', 'changed ["条件の説明"]']]);
+  assert.deepEqual(marks(conditionOf(submit, '提出できる条件').variations), [['申請の種類', 'changed ["値"]']]);
+  assert.deepEqual(
+    lineOf(submit, D_S1).references.map((r) => [r.raw, tag(r)]),
+    [
+      ['条件「提出できる条件」', 'changed ["条件の説明"]'],
+      ['バリエーション「申請の種類」', 'changed ["値"]'],
+    ],
+  );
+});
+
+test('描き分けの材料: 容れ物（UC）から外れただけで表に残る要素は、その容れ物に載せない', () => {
+  const submit = useCase(diffView(), D_SUBMIT);
+  assert.ok(!submit.actors.some((a) => a.name === '上長'), '申請を提出する のアクターに 上長 が無い');
+});
+
+test('描き分けの材料: 外された容れ物の中の変わっていない要素と、変わっていない要素は区分を持たない', () => {
+  const view = diffView();
+  const boss = useCase(view, '申請を差し戻す').actors.find((a) => a.name === '上長');
+  assert.ok(boss, '外された UC 申請を差し戻す に 上長 がある');
+  assert.ok(!Object.hasOwn(boss, 'diff') && !Object.hasOwn(boss, 'changed'), '上長 は区分を持たない');
+
+  const create = useCase(view, '申請を作成する');
+  const unmarked = [
+    create,
+    ...create.requirements,
+    ...create.requirements.flatMap((r) => r.lines),
+    ...create.requirements.flatMap((r) => r.lines.flatMap((l) => l.scenarios)),
+    ...create.unlinkedRules.flatMap((r) => r.scenarios),
+    ...create.looseScenarios,
+  ];
+  assert.equal(unmarked.length, 1 + 1 + 2 + 2);
+  for (const x of unmarked) assert.ok(!Object.hasOwn(x, 'diff') && !Object.hasOwn(x, 'changed'), JSON.stringify(x));
+
+  // 金額の区分は値の順を入れ替えただけなので、参照の中身に区分を持たない
+  const amount = create.requirements
+    .flatMap((r) => r.lines.flatMap((l) => l.references))
+    .find((r) => r.name === '金額の区分');
+  assert.ok(amount, '申請を作成する の行が 金額の区分 を参照する');
+  assert.ok(!Object.hasOwn(amount, 'diff') && !Object.hasOwn(amount, 'changed'));
+});
+
+test('描き分けの材料: 基準の版の版とコミットを持つ', () => {
+  assert.deepEqual(diffView().base, { ref: 'main', commit: BASE_COMMIT });
+});
+
+test('区分の無い材料（buildView）は、描き分けの欄を自分の欄として持たない（値が undefined の欄も持たない）', () => {
+  const found: string[] = [];
+  const walk = (value: unknown, path: string): void => {
+    if (Array.isArray(value)) {
+      value.forEach((v, i) => walk(v, `${path}[${i}]`));
+    } else if (value !== null && typeof value === 'object') {
+      for (const key of ['diff', 'changed', 'stateDiff', 'base']) if (Object.hasOwn(value, key)) found.push(`${path}.${key}`);
+      for (const [key, v] of Object.entries(value)) walk(v, `${path}.${key}`);
+    }
+  };
+  walk(buildView(sample), 'view');
+  assert.deepEqual(found, []);
 });
