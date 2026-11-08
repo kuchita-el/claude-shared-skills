@@ -15,8 +15,15 @@ type Row = Rows[string][number];
 // 基準の版と比べた要素の区分（足された・変わった・外された）。定義は diff.ts
 export type DiffStatus = 'added' | 'changed' | 'removed';
 
+// 描き分けで、重ね合わせが基準の版の材料から加えた要素の欄。diffview.ts が加えた要素にだけ付け、buildView は欄そのものを作らない。
+// 区分（diff）とは別に持つ。表から外した名前を作業ツリーの UC がまだ挙げているとき、その要素は区分が「外された」でも
+// 作業ツリーの材料から来る。作業ツリーにある子かどうかは、区分ではなくこの欄で決める（html.ts の liveIn）
+export interface Origin {
+  fromBase?: true;
+}
+
 // 描き分けの区分の欄。diffview.ts が区分のある要素にだけ付け、buildView は欄そのものを作らない（値が undefined の欄も作らない）
-export interface Marked {
+export interface Marked extends Origin {
   diff?: DiffStatus;
   // 変わった欄の名前（定義の順）。区分が changed のときだけ持つ
   changed?: string[];
@@ -56,7 +63,7 @@ export interface ScenarioView extends Marked {
   count: number;
 }
 
-export interface RuleView {
+export interface RuleView extends Origin {
   name: string;
   scenarios: ScenarioView[];
 }

@@ -3,6 +3,7 @@
 // 基準の版の容れ物（UC・条件）の中身を全て加えないのは、容れ物から外れただけで表に残る要素（UC のアクターから外した上長等）に
 // 「外された」が付き、変わっていない要素に印を付けることになるためである。容れ物から外れたことは、容れ物の「変わった」と欄名が示す。
 // 加えた要素の中の子の要素（外された UC のアクター等）には、子自身の区分を付ける。
+// 基準の版から加えた要素には fromBase を付ける（view.ts の Origin）。html.ts は、作業ツリーにある子かをこの欄で決める。
 import type { BaseVersion } from './base.ts';
 import { diffIndex, diffSources, OUTSIDE_RULE } from './diff.ts';
 import type { ElementKind } from './diff.ts';
@@ -12,6 +13,7 @@ import type {
   DiffStatus,
   Marked,
   NamedView,
+  Origin,
   ReferenceView,
   RequirementLineView,
   RequirementView,
@@ -30,6 +32,11 @@ type ConditionView = UseCaseView['conditions'][number];
 // 行の参照のうち、行の直下に畳む中身を持ちうる種類。他の種類（RDRA 欄の文字列としてだけ出る）には区分を付けない
 const DEFINED_KINDS: readonly ElementKind[] = ['条件', 'バリエーション', '情報'];
 
+// 基準の版の材料から加えた要素の印を付ける
+function fromBase<T extends Origin>(x: T): T {
+  return { ...x, fromBase: true };
+}
+
 export function buildDiffView(root: string, base: BaseVersion, head: Sources): View {
   const find = diffIndex(diffSources(base.sources, head));
   const before = buildView(root, base.sources);
@@ -44,9 +51,10 @@ export function buildDiffView(root: string, base: BaseVersion, head: Sources): V
   const removed = (kind: ElementKind, parts: Parts): boolean => find(kind, parts)?.status === 'removed';
   // 基準の版の容れ物 xs の中で区分が「外された」の要素のうち、作業ツリーの同じ容れ物の並び heads に同じ名前が無いもの。
   // 表から外した名前を作業ツリーの UC・条件がまだ挙げている（検査の undefined-reference に当たる）とき、
-  // その名前は heads に残るので、基準の版から同じ名前を足さない（同じ要素を二重に並べない）
+  // その名前は heads に残るので、基準の版から同じ名前を足さない（同じ要素を二重に並べない）。
+  // heads に残る名前の要素は区分が「外された」でも作業ツリーの材料なので、fromBase を持たない
   const gone = <T extends NamedView>(kind: ElementKind, xs: T[], heads: readonly NamedView[]): T[] =>
-    xs.filter((x) => removed(kind, [x.name]) && !heads.some((h) => h.name === x.name));
+    xs.filter((x) => removed(kind, [x.name]) && !heads.some((h) => h.name === x.name)).map(fromBase);
   const named =
     <T extends NamedView>(kind: ElementKind) =>
     (x: T): T => ({ ...x, ...mark(kind, [x.name]) });
@@ -128,7 +136,7 @@ export function buildDiffView(root: string, base: BaseVersion, head: Sources): V
     );
     const transitions = [
       ...(now?.transitions ?? []),
-      ...(was?.transitions ?? []).filter((t) => removed('遷移', key(t))),
+      ...(was?.transitions ?? []).filter((t) => removed('遷移', key(t))).map(fromBase),
     ].map((t) => ({ ...t, ...mark('遷移', key(t)) }));
     return { name, states, transitions, stateDiff };
   };
@@ -153,12 +161,15 @@ export function buildDiffView(root: string, base: BaseVersion, head: Sources): V
       const line = old.requirements.flatMap((r) => r.lines).find((l) => l.text === rule);
       const scenarios =
         line !== undefined ? line.scenarios : old.unlinkedRules.filter((r) => r.name === rule).flatMap((r) => r.scenarios);
-      return scenarios.filter((s) => removed('例', [name, rule, s.name]));
+      return scenarios.filter((s) => removed('例', [name, rule, s.name])).map(fromBase);
     };
 
     // 外された行は同じ UC の最初の票の後ろに足す。作業ツリーにこの UC の票が無ければ、
     // 票の区分が「外された」になり、基準の版の票が行ごと加わる
-    const goneLines = (old?.requirements ?? []).flatMap((r) => r.lines).filter((l) => removed('要求文', [name, l.text]));
+    const goneLines = (old?.requirements ?? [])
+      .flatMap((r) => r.lines)
+      .filter((l) => removed('要求文', [name, l.text]))
+      .map(fromBase);
     const requirements = [
       ...uc.requirements.map((r, i): RequirementView => ({
         ...r,
@@ -168,19 +179,25 @@ export function buildDiffView(root: string, base: BaseVersion, head: Sources): V
           ...(i === 0 ? goneLines : []).map(markLine(name, false)),
         ],
       })),
-      ...(removed('要求票', [name]) ? (old?.requirements ?? []) : []).map(markRequirement(name, false)),
+      ...(removed('要求票', [name]) ? (old?.requirements ?? []) : []).map(fromBase).map(markRequirement(name, false)),
     ];
 
-    // 結び付かないルールは、作業ツリーの同じ名前の最初のルールに外された例を足し、
-    // 作業ツリーのこの UC に同じ名前のルール（行か結び付かないルール）が無い基準の版のルールを後ろに足す
+    // 結び付かないルールは、作業ツリーの同じ名前の最初のルールに外された例を足す。
+    // 作業ツリーのこの UC に同じ名前のルール（行か結び付かないルール）が無い基準の版のルールは、外された例を持つものだけを
+    // 後ろに足す。例の無いルールは外された子を持たず、足すと作業ツリーに無い「例の無いルール」を示すため足さない
     const headRules = new Set([...uc.requirements.flatMap((r) => r.lines.map((l) => l.text)), ...uc.unlinkedRules.map((r) => r.name)]);
+    const baseRules = (old?.unlinkedRules ?? []).flatMap((r): RuleView[] => {
+      if (headRules.has(r.name)) return [];
+      const scenarios = r.scenarios.filter((s) => removed('例', [name, r.name, s.name])).map(fromBase);
+      return scenarios.length === 0 ? [] : [fromBase({ ...r, scenarios })];
+    });
     const unlinkedRules = [
       ...uc.unlinkedRules.map((r, i) =>
         uc.unlinkedRules.findIndex((x) => x.name === r.name) === i
           ? { ...r, scenarios: [...r.scenarios, ...goneScenarios(r.name)] }
           : r,
       ),
-      ...(old?.unlinkedRules ?? []).filter((r) => !headRules.has(r.name)),
+      ...baseRules,
     ].map(markRule(name));
 
     return {
@@ -200,7 +217,7 @@ export function buildDiffView(root: string, base: BaseVersion, head: Sources): V
       unlinkedRules,
       looseScenarios: [
         ...uc.looseScenarios,
-        ...(old?.looseScenarios ?? []).filter((s) => removed('例', [name, OUTSIDE_RULE, s.name])),
+        ...(old?.looseScenarios ?? []).filter((s) => removed('例', [name, OUTSIDE_RULE, s.name])).map(fromBase),
       ].map(markScenario(name, OUTSIDE_RULE)),
     };
   };
@@ -210,7 +227,7 @@ export function buildDiffView(root: string, base: BaseVersion, head: Sources): V
     ...after.useCases.map((uc) => overlayUseCase(uc, uc.anchor, before.useCases.find((u) => u.name === uc.name), true)),
     ...before.useCases
       .filter((u) => removed('UC', [u.name]))
-      .map((u, i) => overlayUseCase(u, `uc-${after.useCases.length + i + 1}`, undefined, false)),
+      .map((u, i) => overlayUseCase(fromBase(u), `uc-${after.useCases.length + i + 1}`, undefined, false)),
   ];
 
   // 表にある名前・結び付かない要求票と例の枠は作業ツリーの物をそのまま使い、区分を付けない

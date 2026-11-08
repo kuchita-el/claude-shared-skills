@@ -7,6 +7,7 @@ import type {
   DiffStatus,
   Marked,
   NamedView,
+  Origin,
   ReferenceView,
   RequirementLineView,
   ScenarioView,
@@ -73,12 +74,14 @@ function diffMark(x: Marked): string {
 }
 
 // 描き分けで、容れ物の欠けの注記・警告の様式と件数を決めるときに数える子か。残る容れ物（自身もその上の容れ物も
-// 区分が removed でない）は外されていない子だけを数え（作業ツリーの姿）、外された容れ物は全ての子を数える（基準の版の姿）。
-// 外された子は、数えるかどうかによらず印付きで並べる。ただし印を付けない位置の UC の一覧のアクター欄には、数える子だけを並べる。
-// 区分の無い材料では全ての子を数える（今と同じ）
-function liveIn(...containers: Marked[]): (x: Marked) => boolean {
-  const gone = containers.some((c) => c.diff === 'removed');
-  return (x) => gone || x.diff !== 'removed';
+// 作業ツリーの材料から来た物）は作業ツリーにある子だけを数え（作業ツリーの姿）、基準の版から加えた容れ物は全ての子を数える
+// （基準の版の姿）。作業ツリーにある子かは、区分ではなく、基準の版から加えた子でないか（fromBase を持たないか）で決める。
+// 表から外した名前を作業ツリーの UC がまだ挙げていれば、その子は区分が「外された」でも作業ツリーにある子である。
+// 基準の版から加えた子は、数えるかどうかによらず印付きで並べる。ただし印を付けない位置の UC の一覧のアクター欄には、
+// 数える子だけを並べる。区分の無い材料では全ての子を数える（今と同じ）
+function liveIn(...containers: Origin[]): (x: Origin) => boolean {
+  const gone = containers.some((c) => c.fromBase === true);
+  return (x) => gone || x.fromBase !== true;
 }
 
 // 状態の区分。区分は状態の名前をキーにした物なので、自分の欄だけを見る（Object の継承した欄の名前の状態で誤らないため）
@@ -180,11 +183,12 @@ function presence(n: number, unit: string): string {
 
 function useCaseIndex(view: View): string {
   const rows = view.useCases.map((uc) => {
-    // 描き分けの材料では、残る UC の行は外された票・行・例を数えず（作業ツリーの数）、外された UC の行は基準の版で
+    // 描き分けの材料では、残る UC の行は基準の版から加えた票・行・例を数えず（作業ツリーの数）、外された UC の行は基準の版で
     // 持っていた数（縦串に残る外された行・例の数）を出す。外された UC の行を作業ツリーの数にすると0になり、
     // 要求票を欠いた欠陥のように「無い」が出るため。区分の無い材料では全てを数える（今と同じ）。
-    // アクターの欄も同じ規則で絞る（残る UC の行は外されていないアクターだけ、外された UC の行は全て）。
-    // この欄は印を付けない位置なので、外されたアクターを並べると今のアクターに見えるため
+    // アクターの欄も同じ規則で絞る（残る UC の行は作業ツリーの UC が挙げるアクターだけ、外された UC の行は全て）。
+    // この欄は印を付けない位置なので、基準の版から加えたアクターを並べると今のアクターに見えるため。
+    // 表から外して UC にだけ残るアクターは作業ツリーの UC が挙げるので並べ、基準の版なしと同じく表に無い名前として示す
     const counted = liveIn(uc);
     const requirements = uc.requirements.filter(counted);
     const lines = requirements.flatMap((r) => r.lines.filter(counted));
@@ -273,7 +277,7 @@ function requirementBlock(uc: UseCaseView, view: View): string {
               : `<span class="unknown" title="表に無い、または読めない参照">${escapeHtml(marked(ref.raw, false))}</span>`,
           )
           .join('、');
-        // 例の欠けの注記は、残る行では外されていない例だけで決め、外された例はその後ろに印付きで並べる
+        // 例の欠けの注記は、残る行では作業ツリーにある例だけで決め、基準の版から加えた例はその後ろに印付きで並べる
         const note =
           !l.scenarios.some(liveIn(uc, r, l)) && uc.exampleFiles.length > 0
             ? '<p class="missing">この行に結び付く例が無い</p>'
@@ -291,7 +295,7 @@ ${examples}</li>`;
 <ol class="lines">${lines.join('\n')}</ol>`;
     })
     .join('\n');
-  // 残る UC で外されていない票が無い（票を全て外した）ときは、「要求票が無い」を出し、外された票を後ろに印付きで並べる
+  // 残る UC で作業ツリーにある票が無い（票を全て外した）ときは、「要求票が無い」を出し、外された票を後ろに印付きで並べる
   return uc.requirements.some(liveIn(uc)) ? blocks : `${missing}\n${blocks}`;
 }
 
@@ -311,11 +315,11 @@ function exampleBlock(uc: UseCaseView): string {
     if (uc.looseScenarios.length > 0) {
       rules.push(`<li><p class="sentence">ルールの外のシナリオ</p>${scenarioList(uc.looseScenarios)}</li>`);
     }
-    // 警告の様式は、外されていない子（例の無いルールと、外されていない例）があるときだけ付ける。
-    // 残る UC で外された例だけが残る枠は、作業ツリーに無い欠陥を示さないよう、警告の様式を付けずに出す
+    // 警告の様式は、作業ツリーにある子（結び付かないルールとルールの外の例）があるときだけ付ける。作業ツリーにある
+    // 結び付かないルールは、例の有無によらず検査の example-rule-mismatch に当たる（例を全て外して残したルールも同じ）。
+    // 残る UC で基準の版から加えた外された例だけが残る枠は、作業ツリーに無い欠陥を示さないよう、警告の様式を付けずに出す
     const live = liveIn(uc);
-    const warn =
-      uc.unlinkedRules.some((r) => r.scenarios.length === 0 || r.scenarios.some(live)) || uc.looseScenarios.some(live);
+    const warn = uc.unlinkedRules.some(live) || uc.looseScenarios.some(live);
     parts.push(
       `<div class="${warn ? 'unlinked' : 'unlinked-gone'}"><h4>要求票の行に結び付かない例</h4><ul>${rules.join('\n')}</ul></div>`,
     );

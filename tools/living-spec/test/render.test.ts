@@ -1297,7 +1297,7 @@ test('描き分けの書き出し: 作業ツリーを読んで描き分けを別
   assert.ok(!existsSync(join(root, '.cache', 'living-spec', 'index.html')));
 });
 
-// ---- 残る容れ物の件数・欠けの注記・警告の枠は外されていない子で、外された容れ物は全ての子で決める ----
+// ---- 残る容れ物の件数・欠けの注記・警告の枠は作業ツリーにある子で、外された容れ物は全ての子で決める ----
 // 件ごとに要るファイルだけを書いた小さな入力で見る。UC は SMALL_CREATE_UC の 申請を作成する
 
 const CREATE_LINE = '従業員が申請を作成するとき、システムは作成中の申請を作る';
@@ -1803,7 +1803,7 @@ function actorInputs(table: string[], ucs: Record<string, string[]>): Sources {
   });
 }
 
-test('描き分けの HTML: UC の一覧のアクター欄は、残る UC の行に外されたアクターを並べず、外された UC の行には基準の版のアクターを全て並べる', () => {
+test('描き分けの HTML: UC の一覧のアクター欄は、残る UC の行に表と UC の両方から外したアクターを並べず、外された UC の行には基準の版のアクターを全て並べる', () => {
   // 基準の版で 申請を作成する が挙げた 上長 を、作業ツリーで表と UC の両方から外す。申請を取り下げる は UC ごと外す
   const view = diffViewOf(
     actorInputs(['従業員', '上長'], { 申請を作成する: ['従業員', '上長'], 申請を取り下げる: ['従業員', '上長'] }),
@@ -1857,4 +1857,45 @@ test('描き分けの材料: 作業ツリーの UC・条件が表から外した
   const slice = sliceOf(renderHtml(view, new Date(0)), uc);
   const boss = spots(slice).filter((s) => s.at === 'アクター・外部システムの項' && textOf(s.html).includes('上長'));
   assert.equal(boss.length, 1, slice);
+});
+
+test('描き分けの HTML: UC の一覧のアクター欄は、表から外して作業ツリーの UC がまだ挙げるアクターを、基準の版なしと同じく並べる', () => {
+  // 基準の版で 申請を作成する が挙げた 上長 を、作業ツリーでは表からだけ外し、UC にはまだ挙げる（検査の undefined-reference に当たる形）
+  const before = actorInputs(['申請者', '上長'], { 申請を作成する: ['申請者', '上長'] });
+  const after = actorInputs(['申請者'], { 申請を作成する: ['申請者', '上長'] });
+  const plain = indexRow(renderHtml(buildView('/unused', after), new Date(0)), '申請を作成する')[1];
+  assert.equal(plain, '申請者、<span class="unknown" title="表に無い名前">⚠ 上長</span>');
+  const view = diffViewOf(before, after);
+  assert.deepEqual(marks(useCase(view, '申請を作成する').actors), [
+    ['申請者', ''],
+    ['上長', 'removed'],
+  ]);
+  assert.equal(indexRow(renderHtml(view, new Date(0)), '申請を作成する')[1], plain, '参照切れを一覧から隠さない');
+});
+
+// ---- 結び付かないルールを基準の版から加える範囲と、結び付かない例の枠の警告 ----
+
+function unlinkedFrame(slice: string): string | undefined {
+  return slice.match(/<div class="(unlinked[^"]*)"><h4>要求票の行に結び付かない例<\/h4>/)?.[1];
+}
+
+test('描き分けの HTML: 作業ツリーで消した例の無いルールは、基準の版から加えず、縦串に出さない（警告の枠も出さない）', () => {
+  // 基準の版の例は機能と例の無いルールだけ。作業ツリーではそのルールを消す
+  const view = diffViewOf(createInputs(['  ルール: 空のルール', '']), createInputs([]));
+  const uc = useCase(view, '申請を作成する');
+  assert.deepEqual(uc.unlinkedRules, []);
+  const slice = sliceOf(renderHtml(view, new Date(0)), uc);
+  assert.ok(!slice.includes('ルール: 空のルール'), slice);
+  assert.equal(unlinkedFrame(slice), undefined, slice);
+});
+
+test('描き分けの HTML: 結び付かない例の枠は、作業ツリーに結び付かないルールが残れば、その例を全て外していても警告の枠線で囲む', () => {
+  // 作業ツリーでは ルール 下書きを残す を例の無いルールとして残す。基準の版なしでも警告の枠線で囲む形である
+  const after = createInputs(ruleLines('下書きを残す', []));
+  const plain = buildView('/unused', after);
+  assert.equal(unlinkedFrame(sliceOf(renderHtml(plain, new Date(0)), useCase(plain, '申請を作成する'))), 'unlinked');
+  const view = diffViewOf(createInputs(ruleLines('下書きを残す', ['下書きが残る'])), after);
+  const slice = sliceOf(renderHtml(view, new Date(0)), useCase(view, '申請を作成する'));
+  assert.equal(unlinkedFrame(slice), 'unlinked', slice);
+  assert.equal(markAt(slice, '例の項', '下書きが残る'), REMOVED);
 });
