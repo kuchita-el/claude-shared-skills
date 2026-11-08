@@ -19,6 +19,7 @@ import { parseTxtar } from './fixture.ts';
 import { buildDiffView } from '../src/diffview.ts';
 import type { Sources } from '../src/sources.ts';
 import type { Marked } from '../src/view.ts';
+import type { ReferenceView } from '../src/view.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const sample = materialize(join(here, 'render', 'sample.txtar'));
@@ -658,4 +659,132 @@ test('区分の無い材料（buildView）は、描き分けの欄を自分の�
   };
   walk(buildView(sample), 'view');
   assert.deepEqual(found, []);
+});
+
+// ---- 描き分けの材料の、見本で通らない枝。件ごとに要るファイルだけを書いた小さな入力で見る ----
+
+function diffViewOf(before: Sources, after: Sources): View {
+  return buildDiffView('/unused', { ref: 'main', commit: BASE_COMMIT, sources: before }, after);
+}
+
+const SMALL_CREATE_UC = '- UC: 申請を作成する\n  説明: 空の申請を作る\n';
+
+// 条件 金額の条件 を行の RDRA 欄から指す一式。listInUc なら UC の表もその条件を挙げる。
+// 基準の版では条件が 金額の区分・旧区分 を持ち、作業ツリーでは 旧区分 をバリエーションの表ごと外す
+function conditionInputs(listInUc: boolean): [Sources, Sources] {
+  const ucs = listInUc ? `${SMALL_CREATE_UC}  条件: [金額の条件]\n` : SMALL_CREATE_UC;
+  const requirement = [
+    '# 要求票: 申請を作成する',
+    '',
+    '## 理由',
+    '',
+    '申請を先に作るため',
+    '',
+    '## 仕様',
+    '',
+    '1. 金額の条件を満たすとき、システムは申請を作る',
+    '   - RDRA: 条件「金額の条件」',
+    '   - 理由: なし',
+    '',
+  ].join('\n');
+  const version = (variations: string[]) =>
+    sourcesFromFiles({
+      'docs/rdra/use-case.yaml': ucs,
+      'docs/rdra/condition.yaml': `- 条件: 金額の条件\n  条件の説明: 金額で分ける\n  バリエーション: ${variations.join('、')}\n`,
+      'docs/rdra/variation.yaml': variations.map((v) => `- バリエーション: ${v}\n  値: 甲、乙\n`).join(''),
+      'docs/requirements/create.md': requirement,
+    });
+  return [version(['金額の区分', '旧区分']), version(['金額の区分'])];
+}
+
+function amountReference(uc: UseCaseView): ReferenceView {
+  const ref = uc.requirements.flatMap((r) => r.lines.flatMap((l) => l.references)).find((r) => r.name === '金額の条件');
+  assert.ok(ref?.definition, '行が 金額の条件 を指し、中身を持つ');
+  return ref;
+}
+
+test('描き分けの材料: 行の RDRA 欄からだけ指す条件の中身に、表ごと外したバリエーションを区分 removed で後ろに足す', () => {
+  const uc = useCase(diffViewOf(...conditionInputs(false)), '申請を作成する');
+  assert.deepEqual(uc.conditions, [], 'UC の表は条件を挙げない');
+  const ref = amountReference(uc);
+  assert.equal(tag(ref), 'changed ["バリエーション"]');
+  assert.deepEqual(marks(ref.definition!.variations), [
+    ['金額の区分', ''],
+    ['旧区分', 'removed'],
+  ]);
+});
+
+test('描き分けの材料: UC の表が挙げる条件にも、表ごと外したバリエーションを区分 removed で後ろに足す', () => {
+  const uc = useCase(diffViewOf(...conditionInputs(true)), '申請を作成する');
+  assert.deepEqual(marks(uc.conditions), [['金額の条件', 'changed ["バリエーション"]']]);
+  assert.deepEqual(marks(uc.conditions[0].variations), [
+    ['金額の区分', ''],
+    ['旧区分', 'removed'],
+  ]);
+  assert.deepEqual(marks(amountReference(uc).definition!.variations), [
+    ['金額の区分', ''],
+    ['旧区分', 'removed'],
+  ]);
+});
+
+test('描き分けの材料: 作業ツリーの UC の遷移を外すと、外された遷移が戻り、その UC は重ね合わせた後の状態モデルを持つ', () => {
+  const ucs = `${SMALL_CREATE_UC}- UC: 申請を取り下げる\n  説明: 作成中の申請を取り下げる\n`;
+  const created = '- 状態モデル: 申請の状態\n  遷移UC: 申請を作成する\n  遷移先状態: 作成中\n';
+  const withdrawn = '- 状態モデル: 申請の状態\n  状態: 作成中\n  遷移UC: 申請を取り下げる\n  遷移先状態: 取り下げ済み\n';
+  const before = sourcesFromFiles({ 'docs/rdra/use-case.yaml': ucs, 'docs/rdra/state.yaml': created + withdrawn });
+  const after = sourcesFromFiles({ 'docs/rdra/use-case.yaml': ucs, 'docs/rdra/state.yaml': created });
+  // 作業ツリーだけで組んだ材料では、取り下げる UC はどの状態モデルとも結び付かない
+  assert.deepEqual(useCase(buildView('/unused', after), '申請を取り下げる').stateModels, []);
+  const uc = useCase(diffViewOf(before, after), '申請を取り下げる');
+  assert.equal(tag(uc), '', 'UC 自身は変わっていない');
+  assert.deepEqual(uc.stateModels, ['申請の状態']);
+});
+
+test('描き分けの材料: 行に結び付かないルールの外された例はそのルールの枠の後ろに在り、作業ツリーに無いルールは枠ごと加わる', () => {
+  const draft = ['  ルール: 下書きを残す', '', '    シナリオ: 下書きが残る', '      もし 従業員Aが申請を作成する', '      ならば 下書きが残る', ''];
+  const discard = ['    シナリオ: 下書きを消せる', '      もし 従業員Aが下書きを消す', '      ならば 下書きが無くなる', ''];
+  const cleanup = ['  ルール: 古い下書きを片付ける', '', '    シナリオ: 古い下書きが消える', '      もし 30日が過ぎる', '      ならば 古い下書きが消える', ''];
+  const feature = (body: string[]) =>
+    sourcesFromFiles({
+      'docs/rdra/use-case.yaml': SMALL_CREATE_UC,
+      'docs/examples/create.feature': ['# language: ja', '機能: 申請を作成する', '', ...body].join('\n'),
+    });
+  const uc = useCase(diffViewOf(feature([...draft, ...discard, ...cleanup]), feature(draft)), '申請を作成する');
+  assert.deepEqual(
+    uc.unlinkedRules.map((r) => [r.name, marks(r.scenarios)]),
+    [
+      [
+        '下書きを残す',
+        [
+          ['下書きが残る', ''],
+          ['下書きを消せる', 'removed'],
+        ],
+      ],
+      ['古い下書きを片付ける', [['古い下書きが消える', 'removed']]],
+    ],
+  );
+});
+
+test('描き分けの材料: ルールの外のシナリオは、ルールの外の位置で区分を持ち、外されたシナリオが後ろに在る', () => {
+  const scenario = (name: string, steps: string[]) => [`  シナリオ: ${name}`, ...steps.map((s) => `    ${s}`), ''];
+  const feature = (body: string[]) =>
+    sourcesFromFiles({
+      'docs/rdra/use-case.yaml': SMALL_CREATE_UC,
+      'docs/examples/create.feature': ['# language: ja', '機能: 申請を作成する', '', ...body].join('\n'),
+    });
+  const before = feature([
+    ...scenario('申請を作る', ['もし 従業員Aが申請を作成する', 'ならば 作成中の申請ができる']),
+    ...scenario('申請を複製する', ['もし 従業員Aが申請を複製する', 'ならば 同じ中身の申請ができる']),
+  ]);
+  const after = feature([
+    ...scenario('申請を作る', ['もし 従業員Aが申請を作成する', 'ならば 作成中の申請が1件できる']),
+    ...scenario('申請を下書きから作る', ['もし 従業員Aが下書きから申請を作成する', 'ならば 作成中の申請ができる']),
+  ]);
+  const uc = useCase(diffViewOf(before, after), '申請を作成する');
+  assert.deepEqual(uc.unlinkedRules, []);
+  assert.deepEqual(marks(uc.looseScenarios), [
+    ['申請を作る', 'changed ["手順"]'],
+    ['申請を下書きから作る', 'added'],
+    ['申請を複製する', 'removed'],
+  ]);
 });

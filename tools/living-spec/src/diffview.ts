@@ -9,7 +9,6 @@ import type { ElementKind } from './diff.ts';
 import type { Sources } from './sources.ts';
 import { buildView } from './view.ts';
 import type {
-  DefinitionView,
   DiffStatus,
   Marked,
   NamedView,
@@ -50,34 +49,60 @@ export function buildDiffView(root: string, base: BaseVersion, head: Sources): V
     (x: T): T => ({ ...x, ...mark(kind, [x.name]) });
 
   const markVariation = named<VariationView>('バリエーション');
-  // extra は基準の版の同じ条件にあって外されたバリエーション（作業ツリーの並びの後ろに足す）
-  const markCondition = (c: ConditionView, extra: VariationView[] = []): ConditionView => ({
-    ...c,
-    ...mark('条件', [c.name]),
-    variations: [...c.variations, ...extra].map(markVariation),
-  });
-  const markDefinition = (d: DefinitionView | null): DefinitionView | null =>
-    d === null ? null : { ...d, variations: d.variations.map(markVariation) };
-  // 行の参照の中身（条件・バリエーション・情報）には、参照先の要素の区分を付ける
-  const markReference = (r: ReferenceView): ReferenceView => {
-    const kind = DEFINED_KINDS.find((k) => k === r.kind);
-    if (kind === undefined || r.name === null) return r;
-    return { ...r, ...mark(kind, [r.name]), definition: markDefinition(r.definition) };
-  };
+  // 基準の版の条件 → そのバリエーションの並び。条件のバリエーションは条件の表の記録から決まり、UC の条件の表にも
+  // 行の直下の中身にも同じ並びで出るので、基準の版の材料のどちらに出た物からでも条件の名前で引く
+  // （条件を UC が挙げず、行の RDRA 欄からだけ指す形を落とさないため）
+  const baseVariations = new Map<string, VariationView[]>();
+  for (const uc of before.useCases) {
+    for (const c of uc.conditions) if (!baseVariations.has(c.name)) baseVariations.set(c.name, c.variations);
+    for (const ref of uc.requirements.flatMap((r) => r.lines.flatMap((l) => l.references))) {
+      if (ref.kind === '条件' && ref.name !== null && ref.definition !== null && !baseVariations.has(ref.name)) {
+        baseVariations.set(ref.name, ref.definition.variations);
+      }
+    }
+  }
+  // 条件のバリエーションの並びに区分を付ける。作業ツリーの条件（fromHead）には、基準の版の同じ条件にあって区分が「外された」の
+  // バリエーションを後ろに足す。基準の版から加えた条件（外された条件・外された行の中身）は基準の版の並びのままなので足さない。
+  // UC の条件の表と行の直下の条件の中身が共用する
+  const conditionVariations = (condition: string, variations: VariationView[], fromHead: boolean): VariationView[] =>
+    [...variations, ...(fromHead ? gone('バリエーション', baseVariations.get(condition) ?? []) : [])].map(markVariation);
+  const markCondition =
+    (fromHead: boolean) =>
+    (c: ConditionView): ConditionView => ({
+      ...c,
+      ...mark('条件', [c.name]),
+      variations: conditionVariations(c.name, c.variations, fromHead),
+    });
+  // 行の参照の中身（条件・バリエーション・情報）には、参照先の要素の区分を付ける。中身のバリエーションは条件だけが持つ
+  const markReference =
+    (fromHead: boolean) =>
+    (r: ReferenceView): ReferenceView => {
+      const kind = DEFINED_KINDS.find((k) => k === r.kind);
+      const name = r.name;
+      if (kind === undefined || name === null) return r;
+      const d = r.definition;
+      const definition =
+        d === null || kind !== '条件' ? d : { ...d, variations: conditionVariations(name, d.variations, fromHead) };
+      return { ...r, ...mark(kind, [name]), definition };
+    };
   const markScenario =
     (uc: string, rule: string) =>
     (s: ScenarioView): ScenarioView => ({ ...s, ...mark('例', [uc, rule, s.name]) });
   const markLine =
-    (uc: string) =>
+    (uc: string, fromHead: boolean) =>
     (l: RequirementLineView): RequirementLineView => ({
       ...l,
       ...mark('要求文', [uc, l.text]),
-      references: l.references.map(markReference),
+      references: l.references.map(markReference(fromHead)),
       scenarios: l.scenarios.map(markScenario(uc, l.text)),
     });
   const markRequirement =
-    (uc: string) =>
-    (r: RequirementView): RequirementView => ({ ...r, ...mark('要求票', [uc]), lines: r.lines.map(markLine(uc)) });
+    (uc: string, fromHead: boolean) =>
+    (r: RequirementView): RequirementView => ({
+      ...r,
+      ...mark('要求票', [uc]),
+      lines: r.lines.map(markLine(uc, fromHead)),
+    });
   const markRule =
     (uc: string) =>
     (r: RuleView): RuleView => ({ ...r, scenarios: r.scenarios.map(markScenario(uc, r.name)) });
@@ -106,8 +131,9 @@ export function buildDiffView(root: string, base: BaseVersion, head: Sources): V
   ];
 
   // UC 1つ。uc の並びに区分を付け、基準の版の同じ UC（old）にあって区分が「外された」の要素を後ろに足す。
-  // 外された UC は old を渡さずに呼び、中の要素の全てに子自身の区分を付ける
-  const overlayUseCase = (uc: UseCaseView, anchor: string, old: UseCaseView | undefined): UseCaseView => {
+  // fromHead は uc が作業ツリーの材料か。外された UC は基準の版の材料を old なし・fromHead なしで渡し、
+  // 中の要素の全てに子自身の区分を付ける
+  const overlayUseCase = (uc: UseCaseView, anchor: string, old: UseCaseView | undefined, fromHead: boolean): UseCaseView => {
     const name = uc.name;
     const withGone = <T extends NamedView>(kind: ElementKind, heads: T[], bases: T[] | undefined): T[] =>
       [...heads, ...gone(kind, bases ?? [])].map(named<T>(kind));
@@ -125,15 +151,16 @@ export function buildDiffView(root: string, base: BaseVersion, head: Sources): V
     // 票の区分が「外された」になり、基準の版の票が行ごと加わる
     const goneLines = (old?.requirements ?? []).flatMap((r) => r.lines).filter((l) => removed('要求文', [name, l.text]));
     const requirements = [
-      ...uc.requirements.map((r, i) => ({
+      ...uc.requirements.map((r, i): RequirementView => ({
         ...r,
+        ...mark('要求票', [name]),
         lines: [
-          ...r.lines.map((l) => ({ ...l, scenarios: [...l.scenarios, ...goneScenarios(l.text)] })),
-          ...(i === 0 ? goneLines : []),
+          ...r.lines.map((l) => ({ ...l, scenarios: [...l.scenarios, ...goneScenarios(l.text)] })).map(markLine(name, fromHead)),
+          ...(i === 0 ? goneLines : []).map(markLine(name, false)),
         ],
       })),
-      ...(removed('要求票', [name]) ? (old?.requirements ?? []) : []),
-    ].map(markRequirement(name));
+      ...(removed('要求票', [name]) ? (old?.requirements ?? []) : []).map(markRequirement(name, false)),
+    ];
 
     // 結び付かないルールは、作業ツリーの同じ名前の最初のルールに外された例を足し、
     // 作業ツリーのこの UC に同じ名前のルール（行か結び付かないルール）が無い基準の版のルールを後ろに足す
@@ -154,12 +181,7 @@ export function buildDiffView(root: string, base: BaseVersion, head: Sources): V
       actors: withGone('アクター', uc.actors, old?.actors),
       externalSystems: withGone('外部システム', uc.externalSystems, old?.externalSystems),
       information: withGone('情報', uc.information, old?.information),
-      conditions: [
-        ...uc.conditions.map((c) =>
-          markCondition(c, gone('バリエーション', old?.conditions.find((x) => x.name === c.name)?.variations ?? [])),
-        ),
-        ...gone('条件', old?.conditions ?? []).map((c) => markCondition(c)),
-      ],
+      conditions: [...uc.conditions.map(markCondition(fromHead)), ...gone('条件', old?.conditions ?? []).map(markCondition(false))],
       // 遷移 UC になっている状態モデルは、重ね合わせた後の遷移から決め直す（外された UC は外された遷移から持つ）
       stateModels: stateModels.filter((m) => m.transitions.some((t) => t.uc === name)).map((m) => m.name),
       requirements,
@@ -173,10 +195,10 @@ export function buildDiffView(root: string, base: BaseVersion, head: Sources): V
 
   // 外された UC は作業ツリーの UC の後ろに並べ、アンカーを続き番号にする（作業ツリーの UC のアンカーを描き分けの有無で変えない）
   const useCases = [
-    ...after.useCases.map((uc) => overlayUseCase(uc, uc.anchor, before.useCases.find((u) => u.name === uc.name))),
+    ...after.useCases.map((uc) => overlayUseCase(uc, uc.anchor, before.useCases.find((u) => u.name === uc.name), true)),
     ...before.useCases
       .filter((u) => removed('UC', [u.name]))
-      .map((u, i) => overlayUseCase(u, `uc-${after.useCases.length + i + 1}`, undefined)),
+      .map((u, i) => overlayUseCase(u, `uc-${after.useCases.length + i + 1}`, undefined, false)),
   ];
 
   // 表にある名前・結び付かない要求票と例の枠は作業ツリーの物をそのまま使い、区分を付けない
