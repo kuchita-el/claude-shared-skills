@@ -91,6 +91,7 @@ while IFS=$'\t' read -r path; do
       sentence_start=1
       sentence_target=all
       bad=0
+      in_code=0
     }
     function marked(line) { return all || (line in wanted) }
     function finish() {
@@ -101,7 +102,43 @@ while IFS=$'\t' read -r path; do
       sentence=""
       sentence_target=all
     }
+    # Markdown の構造を見分ける処理はここに集める。行の種類を返し、フェンスの内外を状態に持つ。
+    #   fence: 開き・閉じのフェンスの行。code: フェンスの内側の行（閉じが無ければ文書の終わりまで）
+    #   table: 行頭が | の表の行。heading: 見出しの行。item: 箇条書きの項目の始まり
+    #   blank: 空行。text: それ以外（地の文と、字下げした項目の継続行）
+    # フェンスの内側を先に判定するので、コードブロックの中の | や # や - で始まる行は表・見出し・項目にならない。
+    function line_kind(line,    run) {
+      if (in_code) {
+        if (match(line, /^[ \t]*(```+|~~~+)[ \t]*$/)) {
+          run=line
+          gsub(/[ \t]/, "", run)
+          if (substr(run, 1, 1) == fence_char && length(run) >= fence_len) {
+            in_code=0
+            return "fence"
+          }
+        }
+        return "code"
+      }
+      if (match(line, /^[ \t]*(```+|~~~+)/)) {
+        run=substr(line, RSTART, RLENGTH)
+        gsub(/[ \t]/, "", run)
+        fence_char=substr(run, 1, 1)
+        fence_len=length(run)
+        in_code=1
+        return "fence"
+      }
+      if (line ~ /^[ \t]*\|/) return "table"
+      if (line ~ /^[ \t]*#+([ \t]|$)/) return "heading"
+      if (line ~ /^[ \t]*([-*+]|[0-9]+[.)])([ \t]|$)/) return "item"
+      if (line == "") return "blank"
+      return "text"
+    }
     {
+      kind=line_kind($0)
+      # 文ではない行は一文に足さず、そこで前の文を区切る。
+      if (kind == "fence" || kind == "code" || kind == "table") { finish(); next }
+      # 見出しと項目の始まりは前の文を区切る。見出しはそれ自体で1つの単位として閉じる。
+      if (kind == "heading" || kind == "item") finish()
       if (sentence == "") sentence_start=NR
       if (marked(NR)) sentence_target=1
       for (i=1; i<=length($0); i++) {
@@ -109,7 +146,7 @@ while IFS=$'\t' read -r path; do
         sentence=sentence ch
         if (ch ~ /[。！？!?]/) finish()
       }
-      if ($0 == "" && sentence != "") finish()
+      if (kind == "heading" || (kind == "blank" && sentence != "")) finish()
     }
     END { finish(); exit bad }
   ' "$path"
