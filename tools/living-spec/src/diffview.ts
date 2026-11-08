@@ -112,11 +112,14 @@ export function buildDiffView(root: string, base: BaseVersion, head: Sources): V
   const overlayModel = (name: string, now: StateModelView | undefined, was: StateModelView | undefined): StateModelView => {
     const key = (t: TransitionView): Parts => [name, t.from, t.to, t.uc];
     const states = [...(now?.states ?? []), ...(was?.states ?? []).filter((s) => removed('状態', [name, s]))];
-    const stateDiff: Record<string, DiffStatus> = {};
-    for (const s of states) {
-      const status = find('状態', [name, s])?.status;
-      if (status !== undefined) stateDiff[s] = status;
-    }
+    // Object.fromEntries は各々の状態の名前を自分の欄として定義する。代入（stateDiff[s] = …）で組むと、
+    // __proto__ という名前の状態の区分が継承の差し替えとして扱われ、黙って消える
+    const stateDiff: Record<string, DiffStatus> = Object.fromEntries(
+      states.flatMap((s): [string, DiffStatus][] => {
+        const status = find('状態', [name, s])?.status;
+        return status === undefined ? [] : [[s, status]];
+      }),
+    );
     const transitions = [
       ...(now?.transitions ?? []),
       ...(was?.transitions ?? []).filter((t) => removed('遷移', key(t))),

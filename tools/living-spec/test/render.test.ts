@@ -1293,3 +1293,158 @@ test('描き分けの書き出し: 作業ツリーを読んで描き分けを別
   assert.ok(html.includes(`<a href="#uc-5">申請を差し戻す</a>${REMOVED}</td>`));
   assert.ok(!existsSync(join(root, '.cache', 'living-spec', 'index.html')));
 });
+
+// ---- 残る容れ物の件数・欠けの注記・警告の枠は外されていない子で、外された容れ物は全ての子で決める ----
+// 件ごとに要るファイルだけを書いた小さな入力で見る。UC は SMALL_CREATE_UC の 申請を作成する
+
+const CREATE_LINE = '従業員が申請を作成するとき、システムは作成中の申請を作る';
+const CREATE_REQUIREMENT = [
+  '# 要求票: 申請を作成する',
+  '',
+  '## 理由',
+  '',
+  '申請を先に作るため',
+  '',
+  '## 仕様',
+  '',
+  `1. ${CREATE_LINE}`,
+  '   - RDRA: なし',
+  '   - 理由: なし',
+  '',
+].join('\n');
+
+// シナリオ1件の Gherkin の行。indent はシナリオの行の字下げ
+function scenarioLines(name: string, indent: string): string[] {
+  return [`${indent}シナリオ: ${name}`, `${indent}  もし 従業員Aが${name}`, `${indent}  ならば ${name}が済む`, ''];
+}
+
+function ruleLines(name: string, scenarios: string[]): string[] {
+  return [`  ルール: ${name}`, '', ...scenarios.flatMap((s) => scenarioLines(s, '    '))];
+}
+
+// 申請を作成する の一式。body が null なら例のファイルを置かない
+function createInputs(body: string[] | null, files: Record<string, string> = {}): Sources {
+  return sourcesFromFiles({
+    'docs/rdra/use-case.yaml': SMALL_CREATE_UC,
+    ...(body === null ? {} : { 'docs/examples/create.feature': ['# language: ja', '機能: 申請を作成する', '', ...body].join('\n') }),
+    ...files,
+  });
+}
+
+test('描き分けの HTML: UC の一覧は、残る UC の結び付かないルールの外された例とルールの外の外された例を数えない', () => {
+  const unlinked = diffViewOf(
+    createInputs(ruleLines('下書きを残す', ['下書きが残る', '下書きを消せる'])),
+    createInputs(ruleLines('下書きを残す', ['下書きが残る'])),
+  );
+  assert.equal(countsOf(useCase(unlinked, '申請を作成する')).scenarios, 2, '材料には外された例も載る');
+  assert.equal(indexRow(renderHtml(unlinked, new Date(0)), '申請を作成する')[4], 'あり（1 シナリオ）');
+
+  const loose = diffViewOf(
+    createInputs([...scenarioLines('申請を作る', '  '), ...scenarioLines('申請を複製する', '  ')]),
+    createInputs(scenarioLines('申請を作る', '  ')),
+  );
+  assert.equal(countsOf(useCase(loose, '申請を作成する')).scenarios, 2, '材料には外された例も載る');
+  assert.equal(indexRow(renderHtml(loose, new Date(0)), '申請を作成する')[4], 'あり（1 シナリオ）');
+});
+
+test('描き分けの HTML: 票を全て外した残る UC の縦串は「要求票が無い」を出し、外された票を後ろに印付きで並べる。外された UC には出さない', () => {
+  const view = diffViewOf(createInputs(null, { 'docs/requirements/create.md': CREATE_REQUIREMENT }), createInputs(null));
+  const uc = useCase(view, '申請を作成する');
+  assert.equal(tag(uc), '', 'UC は残る');
+  const html = renderHtml(view, new Date(0));
+  const slice = sliceOf(html, uc);
+  const note = slice.indexOf('<p class="missing">要求票が無い</p>');
+  const file = slice.indexOf(`<p class="file">docs/requirements/create.md${REMOVED}</p>`);
+  assert.ok(note >= 0, slice);
+  assert.ok(file > note, '外された票は注記の後ろに印付きで並ぶ');
+  assert.equal(markAt(slice, '要求文の行', CREATE_LINE), REMOVED);
+  assert.equal(indexRow(html, '申請を作成する')[3], '<span class="missing">無い</span>');
+
+  // 外された容れ物（見本の 申請を差し戻す。票も外れている）は全ての子で決めるので、注記を出さない
+  const sample = diffView();
+  assert.ok(!sliceOf(renderHtml(sample, new Date(0)), useCase(sample, '申請を差し戻す')).includes('要求票が無い'));
+});
+
+test('描き分けの HTML: 例を全て外した残る行は「この行に結び付く例が無い」を出し、外された例を後ろに印付きで並べる。外された行には出さない', () => {
+  const files = { 'docs/requirements/create.md': CREATE_REQUIREMENT };
+  const view = diffViewOf(
+    createInputs(ruleLines(CREATE_LINE, ['空の申請を作る']), files),
+    createInputs(ruleLines(CREATE_LINE, []), files),
+  );
+  const uc = useCase(view, '申請を作成する');
+  assert.equal(tag(lineOf(uc, CREATE_LINE)), '', '行は残る');
+  const block = lineBlock(sliceOf(renderHtml(view, new Date(0)), uc), CREATE_LINE);
+  const note = block.indexOf('<p class="missing">この行に結び付く例が無い</p>');
+  assert.ok(note >= 0, block);
+  assert.ok(block.indexOf('<ul class="scenarios">') > note, '外された例は注記の後ろに並ぶ');
+  assert.equal(markAt(block, '例の項', '空の申請を作る'), REMOVED);
+
+  // 外された行（見本の S2。例も外れている）は全ての子で決めるので、注記を出さない
+  const sample = diffView();
+  const submit = sliceOf(renderHtml(sample, new Date(0)), useCase(sample, D_SUBMIT));
+  const gone = lineBlock(submit, D_S2);
+  assert.ok(!gone.includes('この行に結び付く例が無い'), gone);
+  assert.equal(markAt(gone, '例の項', '提出すると提出済みになる'), REMOVED);
+});
+
+test('描き分けの HTML: 外された例だけが残る結び付かない例の枠は警告の様式を付けずに出し、外されていない子がある枠と外された UC の枠は警告の様式を保つ', () => {
+  const frame = (html: string) => html.match(/<div class="(unlinked[^"]*)"><h4>要求票の行に結び付かない例<\/h4>/)?.[1];
+
+  // 残る UC で、結び付かないルールの例を全て外した（例のファイルは残る）
+  const ruleGone = diffViewOf(createInputs(ruleLines('下書きを残す', ['下書きが残る'])), createInputs([]));
+  const ruleSlice = sliceOf(renderHtml(ruleGone, new Date(0)), useCase(ruleGone, '申請を作成する'));
+  assert.equal(frame(ruleSlice), 'unlinked-gone', ruleSlice);
+  assert.equal(markAt(ruleSlice, '例の項', '下書きが残る'), REMOVED);
+  assert.ok(ruleSlice.includes('<p class="file">docs/examples/create.feature</p>'));
+
+  // 残る UC で、ルールの外の例を例のファイルごと外した。「例が無い」は作業ツリーの例のファイルで決まる
+  const looseGone = diffViewOf(createInputs(scenarioLines('申請を作る', '  ')), createInputs(null));
+  const looseHtml = renderHtml(looseGone, new Date(0));
+  const looseSlice = sliceOf(looseHtml, useCase(looseGone, '申請を作成する'));
+  assert.equal(frame(looseSlice), 'unlinked-gone', looseSlice);
+  assert.equal(markAt(looseSlice, '例の項', '申請を作る'), REMOVED);
+  assert.ok(looseSlice.includes('<p class="missing">例が無い</p>'));
+  assert.equal(indexRow(looseHtml, '申請を作成する')[4], '<span class="missing">無い</span>');
+
+  // 外されていない例が残る枠は警告の様式を保つ
+  const partly = diffViewOf(
+    createInputs(ruleLines('下書きを残す', ['下書きが残る', '下書きを消せる'])),
+    createInputs(ruleLines('下書きを残す', ['下書きが残る'])),
+  );
+  assert.equal(frame(sliceOf(renderHtml(partly, new Date(0)), useCase(partly, '申請を作成する'))), 'unlinked');
+
+  // 外された UC の枠は全ての子で決めるので、警告の様式を保つ
+  const withdrawUc = '- UC: 申請を取り下げる\n  説明: 作成中の申請を取り下げる\n';
+  const withdrawFeature = ['# language: ja', '機能: 申請を取り下げる', '', ...ruleLines('取り下げを残す', ['取り下げが残る'])].join('\n');
+  const removedUc = diffViewOf(
+    sourcesFromFiles({
+      'docs/rdra/use-case.yaml': SMALL_CREATE_UC + withdrawUc,
+      'docs/examples/withdraw.feature': withdrawFeature,
+    }),
+    sourcesFromFiles({ 'docs/rdra/use-case.yaml': SMALL_CREATE_UC }),
+  );
+  const withdraw = useCase(removedUc, '申請を取り下げる');
+  assert.equal(tag(withdraw), 'removed');
+  assert.equal(frame(sliceOf(renderHtml(removedUc, new Date(0)), withdraw)), 'unlinked');
+
+  // 区分の無い材料で、例の無い結び付かないルールだけを持つ枠は今どおり警告の様式を持つ
+  const empty = buildView('/unused', createInputs(ruleLines('下書きを残す', [])));
+  assert.equal(frame(sliceOf(renderHtml(empty, new Date(0)), useCase(empty, '申請を作成する'))), 'unlinked');
+});
+
+test('描き分けの材料と図: __proto__ という名前の状態も、自分の欄として区分を持つ', () => {
+  const ucs = `${SMALL_CREATE_UC}- UC: 申請を消す\n  説明: 作成中の申請を消す\n`;
+  const created = '- 状態モデル: 申請の状態\n  遷移UC: 申請を作成する\n  遷移先状態: 作成中\n';
+  const erased =
+    '- 状態モデル: 申請の状態\n  状態: 作成中\n  遷移UC: 申請を消す\n  遷移先状態: __proto__\n- 状態モデル: 申請の状態\n  状態: __proto__\n';
+  const m = model(
+    diffViewOf(
+      sourcesFromFiles({ 'docs/rdra/use-case.yaml': ucs, 'docs/rdra/state.yaml': created }),
+      sourcesFromFiles({ 'docs/rdra/use-case.yaml': ucs, 'docs/rdra/state.yaml': created + erased }),
+    ),
+  );
+  assert.ok(m.stateDiff !== undefined && Object.hasOwn(m.stateDiff, '__proto__'), '区分が自分の欄にある');
+  assert.deepEqual(Object.entries(m.stateDiff), [['__proto__', 'added']]);
+  const node = nodeOf(stateChart(m, null), '__proto__');
+  assert.ok(node.line.includes('["［足された］ __proto__"]') && node.line.endsWith(':::added'), node.line);
+});

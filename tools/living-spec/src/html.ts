@@ -72,6 +72,14 @@ function diffMark(x: Marked): string {
   return `<span class="diff" data-diff="${x.diff}">${escapeHtml(text)}</span>`;
 }
 
+// 描き分けで、容れ物の欠けの注記・警告の様式と件数を決めるときに数える子か。残る容れ物（自身もその上の容れ物も
+// 区分が removed でない）は外されていない子だけを数え（作業ツリーの姿）、外された容れ物は全ての子を数える（基準の版の姿）。
+// 外された子は、数えるかどうかによらず印付きで並べる。区分の無い材料では全ての子を数える（今と同じ）
+function liveIn(...containers: Marked[]): (x: Marked) => boolean {
+  const gone = containers.some((c) => c.diff === 'removed');
+  return (x) => gone || x.diff !== 'removed';
+}
+
 // 状態の区分。区分は状態の名前をキーにした物なので、自分の欄だけを見る（Object の継承した欄の名前の状態で誤らないため）
 function stateStatus(model: StateModelView, state: string): DiffStatus | undefined {
   return model.stateDiff !== undefined && Object.hasOwn(model.stateDiff, state) ? model.stateDiff[state] : undefined;
@@ -174,7 +182,7 @@ function useCaseIndex(view: View): string {
     // 描き分けの材料では、残る UC の行は外された票・行・例を数えず（作業ツリーの数）、外された UC の行は基準の版で
     // 持っていた数（縦串に残る外された行・例の数）を出す。外された UC の行を作業ツリーの数にすると0になり、
     // 要求票を欠いた欠陥のように「無い」が出るため。区分の無い材料では全てを数える（今と同じ）
-    const counted = (x: Marked): boolean => uc.diff === 'removed' || x.diff !== 'removed';
+    const counted = liveIn(uc);
     const requirements = uc.requirements.filter(counted);
     const lines = requirements.flatMap((r) => r.lines.filter(counted));
     const scenarios =
@@ -249,11 +257,10 @@ function definitionsHtml(line: RequirementLineView): string {
 }
 
 function requirementBlock(uc: UseCaseView, view: View): string {
-  if (uc.requirements.length === 0) {
-    const why = uc.hypothesis !== null ? '（仮説の UC。検査は要求票を求めない）' : '';
-    return `<p class="missing">要求票が無い${why}</p>`;
-  }
-  return uc.requirements
+  const why = uc.hypothesis !== null ? '（仮説の UC。検査は要求票を求めない）' : '';
+  const missing = `<p class="missing">要求票が無い${why}</p>`;
+  if (uc.requirements.length === 0) return missing;
+  const blocks = uc.requirements
     .map((r) => {
       const lines = r.lines.map((l) => {
         const refs = l.references
@@ -263,12 +270,12 @@ function requirementBlock(uc: UseCaseView, view: View): string {
               : `<span class="unknown" title="表に無い、または読めない参照">${escapeHtml(marked(ref.raw, false))}</span>`,
           )
           .join('、');
-        const examples =
-          l.scenarios.length > 0
-            ? scenarioList(l.scenarios)
-            : uc.exampleFiles.length > 0
-              ? '<p class="missing">この行に結び付く例が無い</p>'
-              : '';
+        // 例の欠けの注記は、残る行では外されていない例だけで決め、外された例はその後ろに印付きで並べる
+        const note =
+          !l.scenarios.some(liveIn(uc, r, l)) && uc.exampleFiles.length > 0
+            ? '<p class="missing">この行に結び付く例が無い</p>'
+            : '';
+        const examples = note + (l.scenarios.length > 0 ? scenarioList(l.scenarios) : '');
         // 要求文の区分の印は行の先頭に付ける。RDRA 欄の文字列とツールチップには付けない
         return `<li><p class="sentence">${diffMark(l)}${sentenceHtml(l, view.tableNames)}</p>
 ${definitionsHtml(l)}
@@ -281,8 +288,12 @@ ${examples}</li>`;
 <ol class="lines">${lines.join('\n')}</ol>`;
     })
     .join('\n');
+  // 残る UC で外されていない票が無い（票を全て外した）ときは、「要求票が無い」を出し、外された票を後ろに印付きで並べる
+  return uc.requirements.some(liveIn(uc)) ? blocks : `${missing}\n${blocks}`;
 }
 
+// 例の欄。「例が無い」は exampleFiles で決まる。残る UC の exampleFiles は作業ツリーの、外された UC のものは基準の版の
+// ファイルなので、件数と同じ原則（残る容れ物は作業ツリー、外された容れ物は基準の版）に既に沿う
 function exampleBlock(uc: UseCaseView): string {
   const parts: string[] = [];
   if (uc.exampleFiles.length === 0) {
@@ -297,7 +308,14 @@ function exampleBlock(uc: UseCaseView): string {
     if (uc.looseScenarios.length > 0) {
       rules.push(`<li><p class="sentence">ルールの外のシナリオ</p>${scenarioList(uc.looseScenarios)}</li>`);
     }
-    parts.push(`<div class="unlinked"><h4>要求票の行に結び付かない例</h4><ul>${rules.join('\n')}</ul></div>`);
+    // 警告の様式は、外されていない子（例の無いルールと、外されていない例）があるときだけ付ける。
+    // 残る UC で外された例だけが残る枠は、作業ツリーに無い欠陥を示さないよう、警告の様式を付けずに出す
+    const live = liveIn(uc);
+    const warn =
+      uc.unlinkedRules.some((r) => r.scenarios.length === 0 || r.scenarios.some(live)) || uc.looseScenarios.some(live);
+    parts.push(
+      `<div class="${warn ? 'unlinked' : 'unlinked-gone'}"><h4>要求票の行に結び付かない例</h4><ul>${rules.join('\n')}</ul></div>`,
+    );
   }
   return parts.join('\n');
 }
@@ -433,12 +451,13 @@ const DIFF_STYLE = `span.diff { display:inline-block; margin:0 4px; padding:0 6p
 span.diff[data-diff="added"] { background:#ebfbee; color:#2b8a3e; }
 span.diff[data-diff="changed"] { background:#f3f0ff; color:#5f3dc4; }
 span.diff[data-diff="removed"] { background:#fff5f5; color:#c92a2a; }
+.unlinked-gone { border:1px solid var(--line); border-radius:6px; padding:4px 12px; margin:8px 0; }
 `;
 
 // 状態遷移図の凡例の後ろに足す、描き分けの区分の説明
 const DIFF_LEGEND =
   '基準の版との違い: 状態の節点と遷移の辺は、名札の先頭の印（［足された］・［変わった］・［外された］）と色（緑・紫・赤）で示す。' +
-  '破線は今どおり仮説の遷移だけを示す。UC の縦串の図では辺の色が UC の強調を示し、違いは名札の印だけで示す。' +
+  '破線は今どおり仮説の遷移だけを示す。UC の縦串の図では、辺の色は UC の強調を示し、辺の区分は名札の印だけで示す。' +
   '表と縦串では、違いのある要素の名前に「足された」「変わった（変わった欄）」「外された」の印を付ける。';
 
 export function renderHtml(view: View, generatedAt: Date): string {
