@@ -26,6 +26,10 @@ export interface SourceReader {
   listFiles(relDir: string): string[];
 }
 
+// 置き場の一覧に出たファイルを読めない（読み手が「無い」と答えた）。基準の版の読み出し（base.ts）が実装の欠陥と見分けて
+// 文面に包むための型。文面は型を分ける前と同じ
+export class SourceReadError extends Error {}
+
 function listDir(reader: SourceReader, dir: string, ext: string): SourceFile[] {
   return reader
     .listFiles(dir)
@@ -34,7 +38,7 @@ function listDir(reader: SourceReader, dir: string, ext: string): SourceFile[] {
     .map((f) => {
       const file = `${dir}/${f}`;
       const text = reader.readFile(file);
-      if (text === undefined) throw new Error(`読めないファイル: ${file}`);
+      if (text === undefined) throw new SourceReadError(`読めないファイル: ${file}`);
       return { file, text };
     });
 }

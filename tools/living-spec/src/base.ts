@@ -20,8 +20,8 @@
 import { spawnSync } from 'node:child_process';
 import { posix, relative, sep } from 'node:path';
 import { isMarkerBy } from './root.ts';
-import { CONFIG_FILE, parseLayout } from './schema.ts';
-import { type SourceReader, type Sources, readSourcesFrom } from './sources.ts';
+import { CONFIG_FILE, LayoutError, parseLayout } from './schema.ts';
+import { type SourceReader, type Sources, SourceReadError, readSourcesFrom } from './sources.ts';
 
 export interface BaseVersion {
   // 利用者が指定した版の文字列
@@ -39,6 +39,13 @@ export class BaseError extends Error {
     this.name = 'BaseError';
   }
 }
+
+// git の読み出しの失敗（終了コードが 0 でない、出力を読めない）。guard が BaseError に包む
+export class GitReadError extends Error {}
+
+// 基準の版の木で読めない項（通常のファイルでない・途中が木でない・ディレクトリでない・git の作業ツリーの根の外を指す）。
+// guard が BaseError に包む
+export class UnreadableEntryError extends Error {}
 
 // 木の一覧と表・要求票・例の中身が収まる大きさ
 const MAX_BUFFER = 256 * 1024 * 1024;
@@ -62,10 +69,10 @@ function runGit(root: string, args: string[]): GitResult {
   return { status: result.status, stdout: result.stdout, stderr: result.stderr };
 }
 
-// 終了コードが 0 でなければ例外（読み出しの段で BaseError に包む）
+// 終了コードが 0 でなければ GitReadError（読み出しの段で BaseError に包む）
 function gitOut(root: string, args: string[]): string {
   const result = runGit(root, args);
-  if (result.status !== 0) throw new Error(`git ${args[0]} が失敗した（${result.stderr.trim() || `終了コード ${result.status}`}）`);
+  if (result.status !== 0) throw new GitReadError(`git ${args[0]} が失敗した（${result.stderr.trim() || `終了コード ${result.status}`}）`);
   return result.stdout;
 }
 
@@ -94,7 +101,7 @@ function treeOf(root: string, commit: string): Tree {
       // <mode> SP <type> SP <object> TAB <パス>。-z ではパスを引用しない
       const m = /^(\d{6}) [^ ]+ [0-9a-f]+\t(.+)$/s.exec(record);
       const name = m === null || !m[2].startsWith(head) ? '' : m[2].slice(head.length);
-      if (m === null || name === '' || name.includes('/')) throw new Error(`git ls-tree の出力を読めない: ${JSON.stringify(record)}`);
+      if (m === null || name === '' || name.includes('/')) throw new GitReadError(`git ls-tree の出力を読めない: ${JSON.stringify(record)}`);
       items.set(name, m[1]);
     }
     listings.set(dir, items);
@@ -155,9 +162,9 @@ function findBaseRoot(tree: Tree, from: string): string | undefined {
 function treeReader(tree: Tree, root: string, commit: string, prefix: string): SourceReader {
   // 読む位置の項の mode。無ければ undefined。what は、理由の文面で読む位置を呼ぶ語
   const modeToRead = (path: string, what: string): string | undefined => {
-    if (isOutside(path)) throw new Error(`git の作業ツリーの根の外を指す${what}: ${path}`);
+    if (isOutside(path)) throw new UnreadableEntryError(`git の作業ツリーの根の外を指す${what}: ${path}`);
     const found = tree.lookup(path);
-    if (found.kind === 'blocked') throw new Error(`途中が木でない位置: ${shown(path)}（${found.at} は mode ${found.mode}）`);
+    if (found.kind === 'blocked') throw new UnreadableEntryError(`途中が木でない位置: ${shown(path)}（${found.at} は mode ${found.mode}）`);
     return found.kind === 'found' ? found.mode : undefined;
   };
   return {
@@ -165,26 +172,30 @@ function treeReader(tree: Tree, root: string, commit: string, prefix: string): S
       const path = treePath(prefix, rel);
       const mode = modeToRead(path, '位置');
       if (mode === undefined) return undefined;
-      if (!REGULAR_MODES.includes(mode)) throw new Error(`通常のファイルでない項: ${shown(path)}（mode ${mode}）`);
+      if (!REGULAR_MODES.includes(mode)) throw new UnreadableEntryError(`通常のファイルでない項: ${shown(path)}（mode ${mode}）`);
       return gitOut(root, ['cat-file', 'blob', `${commit}:${path}`]);
     },
     listFiles: (relDir) => {
       const path = treePath(prefix, relDir);
       const mode = modeToRead(path, '置き場');
       if (mode === undefined) return [];
-      if (mode !== TREE_MODE) throw new Error(`ディレクトリでない項: ${shown(path)}（mode ${mode}）`);
+      if (mode !== TREE_MODE) throw new UnreadableEntryError(`ディレクトリでない項: ${shown(path)}（mode ${mode}）`);
       return [...tree.children(path)].filter(([, m]) => m !== TREE_MODE).map(([name]) => name);
     },
   };
 }
 
-// f が投げた BaseError 以外の例外を、message の文面の BaseError に包む
-function guard<T>(f: () => T, message: (reason: string) => string): T {
+// 利用者の版・設定・木の誤りと、git の読み出しの失敗を示す型。guard はこの型だけを BaseError に包む
+const READ_ERRORS = [GitReadError, UnreadableEntryError, LayoutError, SourceReadError];
+
+// f が投げた READ_ERRORS の型の例外を、message の文面の BaseError に包む。それ以外（実装の欠陥による TypeError 等）は
+// 包まずに投げ直す。包むと入口が利用者向けの文面と終了コード 2 で止め、スタックを捨てて利用者の誤りに見せるため
+export function guard<T>(f: () => T, message: (reason: string) => string): T {
   try {
     return f();
   } catch (e) {
-    if (e instanceof BaseError) throw e;
-    throw new BaseError(message((e as Error).message));
+    if (READ_ERRORS.some((type) => e instanceof type)) throw new BaseError(message((e as Error).message));
+    throw e;
   }
 }
 

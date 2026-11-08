@@ -26,18 +26,28 @@ export const DEFAULT_LAYOUT: Readonly<Layout> = Object.freeze({
 
 export const LAYOUT: Layout = { ...DEFAULT_LAYOUT };
 
-// 設定ファイルの中身（無ければ undefined）から置き場を作る。版（作業ツリー・git の版）を問わず使う。誤りは例外
+// 設定ファイルの中身の誤り（JSON の構文の誤り・オブジェクトでない・未知のキー・型の誤り）。利用者が直す誤りで、
+// 基準の版の読み出し（base.ts）が実装の欠陥と見分けて文面に包むための型。文面は型を分ける前と同じ
+export class LayoutError extends Error {}
+
+// 設定ファイルの中身（無ければ undefined）から置き場を作る。版（作業ツリー・git の版）を問わず使う。誤りは LayoutError
 export function parseLayout(text: string | undefined): Layout {
   const layout: Layout = { ...DEFAULT_LAYOUT };
   if (text === undefined) return layout;
-  const data: unknown = JSON.parse(text);
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    if (e instanceof SyntaxError) throw new LayoutError(e.message);
+    throw e;
+  }
   if (typeof data !== 'object' || data === null || Array.isArray(data)) {
-    throw new Error(`${CONFIG_FILE} はオブジェクトで書く`);
+    throw new LayoutError(`${CONFIG_FILE} はオブジェクトで書く`);
   }
   for (const [key, value] of Object.entries(data)) {
-    if (!Object.hasOwn(DEFAULT_LAYOUT, key)) throw new Error(`${CONFIG_FILE} の未知のキー『${key}』`);
+    if (!Object.hasOwn(DEFAULT_LAYOUT, key)) throw new LayoutError(`${CONFIG_FILE} の未知のキー『${key}』`);
     const want = typeof DEFAULT_LAYOUT[key as keyof Layout];
-    if (typeof value !== want || value === '') throw new Error(`${CONFIG_FILE} の『${key}』は${want === 'boolean' ? '真偽値' : '空でない文字列'}で書く`);
+    if (typeof value !== want || value === '') throw new LayoutError(`${CONFIG_FILE} の『${key}』は${want === 'boolean' ? '真偽値' : '空でない文字列'}で書く`);
     (layout as unknown as Record<string, unknown>)[key] = typeof value === 'string' ? value.replace(/\/+$/, '') : value;
   }
   return layout;

@@ -24,6 +24,9 @@ import { diffOutputPath, writeDiffView } from '../src/render.ts';
 import { mkdirSync, realpathSync, renameSync, symlinkSync } from 'node:fs';
 import { devNull } from 'node:os';
 import { extract } from './fixture.ts';
+import { BaseError, GitReadError, UnreadableEntryError, guard } from '../src/base.ts';
+import { LayoutError, parseLayout } from '../src/schema.ts';
+import { SourceReadError } from '../src/sources.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const sample = materialize(join(here, 'render', 'sample.txtar'));
@@ -1786,6 +1789,61 @@ test('CLI: render --base は、git を起動できないと終了コード 2 で
   } finally {
     rmSync(dir, { recursive: true });
   }
+});
+
+// f が投げた物（投げなければ落とす）
+function thrownBy(f: () => unknown): unknown {
+  try {
+    f();
+  } catch (e) {
+    return e;
+  }
+  assert.fail('投げない');
+}
+
+test('基準の版の読み出し: 包む関数は、利用者の誤りと読み出しの失敗の型だけを BaseError に包み、想定外の例外は包まずに投げ直す', () => {
+  const message = (reason: string) => `包んだ: ${reason}`;
+  // 実装の欠陥（TypeError 等）と型の無い Error は、同じ物のまま投げ直す（入口が捕えず、スタックが残る）
+  for (const e of [new TypeError("Cannot read properties of undefined (reading 'name')"), new Error('想定外')]) {
+    assert.equal(
+      thrownBy(() =>
+        guard(() => {
+          throw e;
+        }, message),
+      ),
+      e,
+      e.message,
+    );
+  }
+  // 既に BaseError なら、包み直さない
+  const already = new BaseError('基準の版を読めない: git を実行できない（ENOENT）');
+  assert.equal(
+    thrownBy(() =>
+      guard(() => {
+        throw already;
+      }, message),
+    ),
+    already,
+  );
+  // git の失敗・読めない項・設定の誤り・一覧に出たのに読めない項は、文面を添えて包む
+  const reasons = [
+    new GitReadError('git cat-file が失敗した（fatal: bad object）'),
+    new UnreadableEntryError('通常のファイルでない項: docs/rdra/actor.yaml（mode 120000）'),
+    new LayoutError('.living-spec.json の未知のキー『x』'),
+    new SourceReadError('読めないファイル: docs/requirements/a.md'),
+  ];
+  for (const e of reasons) {
+    const wrapped = thrownBy(() =>
+      guard(() => {
+        throw e;
+      }, message),
+    );
+    assert.ok(wrapped instanceof BaseError, e.message);
+    assert.equal(wrapped.message, `包んだ: ${e.message}`);
+  }
+  // JSON の構文の誤りも、設定の誤りとして包む
+  const syntax = thrownBy(() => guard(() => parseLayout('{'), message));
+  assert.ok(syntax instanceof BaseError && syntax.message.startsWith('包んだ: '), String(syntax));
 });
 
 test('CLI: render の --base の値が無い・空・- で始まる・2回ある、知らない -- の引数は、使い方を出して終了コード 2', () => {
