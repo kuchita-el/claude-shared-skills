@@ -7,6 +7,8 @@
     "fixtures": [
       "writing/reviewer/f1-valid.md",
       "writing/reviewer/f1-invalid.md",
+      "writing/reviewer/f2-valid.md",
+      "writing/reviewer/f2-invalid.md",
       "writing/reviewer/f3-valid.md",
       "writing/reviewer/f3-invalid.md",
       "writing/reviewer/f4-valid.md",

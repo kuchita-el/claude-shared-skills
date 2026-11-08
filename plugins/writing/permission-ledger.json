@@ -33,5 +33,12 @@
     "witness": "Agentでdoc-reviewerを起動する",
     "narrowerAlternative": "Codexでは同じ入力を使う手動degraded検査",
     "verdict": "degraded"
+  },
+  {
+    "permission": "reviewer-read-only",
+    "requiredOperation": "doc-reviewerが渡された対象文書、profile、共通規約だけを読む",
+    "witness": "doc-reviewer.mdのfront-matterでtoolsをReadだけに限る",
+    "narrowerAlternative": "Codexではagent単位のtools指定を強制できないため、手動degraded検査で読み取りだけを行ったことを人が確かめる",
+    "verdict": "degraded"
   }
 ]
