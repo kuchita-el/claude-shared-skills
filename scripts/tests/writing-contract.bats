@@ -129,6 +129,18 @@
   [[ "$art2" != *"指示は使わない"* ]]
 }
 
+@test "共通規約の第4条とreviewerのF4は、推奨の理由を判断軸の上で述べることを求める" {
+  rules="$BATS_TEST_DIRNAME/../../plugins/writing/references/japanese-writing.md"
+  reviewer="$BATS_TEST_DIRNAME/../../plugins/writing/agents/doc-reviewer.md"
+  art4=$(sed -n '/^## 第4条/,/^## 第5条/p' "$rules")
+  [[ "$art4" == *"推奨の理由は、挙げた判断軸の上で述べる"* ]]
+  [[ "$art4" == *"その観点を判断軸に加える"* ]]
+  run grep -E '^- `F4`:' "$reviewer"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"推奨の理由が、挙げた判断軸の上で述べられているか"* ]]
+  [[ "$output" == *"第4条を判定する"* ]]
+}
+
 @test "判定規則の集合を名指す箇所がF2を欠かない" {
   root="$BATS_TEST_DIRNAME/../.."
   # F1を含む規則の集合の記述を、区切りの種類によらず拾い、F1〜F5が全てあるかを見る。範囲の形は「F1〜F5」だけを完全とみなす。
