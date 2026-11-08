@@ -54,11 +54,11 @@ doc-writerにはprofileと共通規約のpathを渡す。素材にない事実�
 起草後、次の形でlintを実行する。
 
 ```text
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/lint-ja.sh --diff <base> -- <changed-paths>
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/lint-ja.sh --type <documentType> --diff <base> -- <changed-paths>
 ```
 
 既存箇所を明示的に確認するときだけ`--file <path>`を使う。lintの一文長違反は未解決として扱う。
-識別子の説明不足は候補であり、終了コードだけで意味判定しない。allowlist、登録簿、免除語集合は作らない。
+識別子と参照の説明はlintでは検査せず、doc-reviewerが判定する。allowlist、登録簿、免除語集合は作らない。
 
 ## 独立レビュー
 

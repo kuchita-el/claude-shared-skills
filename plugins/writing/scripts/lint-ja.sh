@@ -1,16 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# 一文の長さを、文書種別ごとの上限で検査する。数え方の正本は references/japanese-writing.md 第5条の補則。
 usage() {
-  printf 'usage: %s --file PATH | --diff BASE -- PATH...\n' "${0##*/}" >&2
+  printf 'usage: %s [--type TYPE] --file PATH | [--type TYPE] --diff BASE -- PATH...\n' "${0##*/}" >&2
+  printf '  TYPE: 文書種別。省略時は「汎用」。上限はプロジェクト固有のプロファイルの TYPE の行、無ければ同梱の既定の「汎用」の行から採る。\n' >&2
+  printf '  PATH: Markdown として扱う拡張子 .md・.markdown（大文字小文字を問わない）のファイルに限る。\n' >&2
+  printf '  終了コード: 0 違反なし、1 一文長の違反あり、2 引数の誤りか検査できない入力。\n' >&2
 }
 
 mode=''
 file=''
 base=''
+type=''
+type_given=0
 paths=()
 while (($#)); do
   case "$1" in
+    --type)
+      [[ "$type_given" -eq 0 && $# -ge 2 && -n "$2" ]] || { usage; exit 2; }
+      type=$2; type_given=1; shift 2
+      ;;
     --file)
       [[ -z "$mode" && $# -ge 2 ]] || { usage; exit 2; }
       mode=file; file=$2; shift 2
@@ -18,7 +28,9 @@ while (($#)); do
     --diff)
       [[ -z "$mode" && $# -ge 2 ]] || { usage; exit 2; }
       mode=diff; base=$2; shift 2
-      [[ "${1:-}" == -- ]] || { usage; exit 2; }
+      ;;
+    --)
+      [[ "$mode" == diff ]] || { usage; exit 2; }
       shift
       (($#)) || { usage; exit 2; }
       paths=("$@")
@@ -28,6 +40,21 @@ while (($#)); do
   esac
 done
 [[ -n "$mode" ]] || { usage; exit 2; }
+[[ "$mode" == file || ${#paths[@]} -gt 0 ]] || { usage; exit 2; }
+type=${type:-汎用}
+
+# 検査できない入力は、違反の有無（0・1）と区別して 2 で返す。
+check_input() {
+  [[ -f "$1" ]] || { printf '入力ファイルが無い: %s\n' "$1" >&2; exit 2; }
+  case "${1,,}" in
+    *.md|*.markdown) ;;
+    *) printf 'Markdown として扱えない（拡張子が .md・.markdown でない）: %s\n' "$1" >&2; exit 2 ;;
+  esac
+}
+if [[ "$mode" == diff ]] && ! git rev-parse --verify --quiet "${base}^{commit}" >/dev/null; then
+  printf '差分の基点が commit を指さない: %s\n' "$base" >&2
+  exit 2
+fi
 
 declare -a inputs=()
 target_dir=$(mktemp -d)
@@ -36,12 +63,12 @@ targets="$target_dir/targets.tsv"
 : > "$targets"
 
 if [[ "$mode" == file ]]; then
-  [[ -f "$file" ]] || { printf '入力ファイルが無い: %s\n' "$file" >&2; exit 2; }
+  check_input "$file"
   inputs=("$file")
   printf '*\t%s\n' "$file" > "$targets"
 else
   for path in "${paths[@]}"; do
-    [[ -f "$path" ]] || continue
+    check_input "$path"
     inputs+=("$path")
     if ! git ls-files --error-unmatch -- "$path" >/dev/null 2>&1; then
       # A new writer output is not in git diff yet, so the whole file is the diff.
@@ -72,11 +99,39 @@ else
   done
 fi
 
+# 上限は references/document-type-profiles.md の読み込み優先順位で引く。
+# プロジェクト固有のプロファイルに種別の行があればその上限、無いか読めなければ同梱の既定の「汎用」の行、
+# それも読めなければ共通規約の既定値（100字）を採る。
+# profile_cell はプロファイルの表で、先頭の列が種別と一致する最初の行の「一文長の上限」の欄を出力する。
+# 行が無ければ失敗を返す。
+profile_cell() {
+  LINT_TYPE=$2 awk -F'|' '
+    /^[[:space:]]*\|/ {
+      name=$2; gsub(/^[[:space:]]+|[[:space:]]+$/, "", name)
+      if (name != ENVIRON["LINT_TYPE"]) next
+      cell=$5; gsub(/^[[:space:]]+|[[:space:]]+$/, "", cell)
+      print cell; found=1; exit
+    }
+    END { exit !found }
+  ' "$1"
+}
+# resolve_limit は種別の行が見つかれば、その上限を数値として読んで limit に入れる。読めなければ 2 で終える。
+resolve_limit() {
+  local cell
+  [[ -r "$1" ]] || return 1
+  cell=$(profile_cell "$1" "$2") || return 1
+  if [[ "$cell" =~ ^([0-9]+)[[:space:]]*字?$ ]]; then
+    limit=${BASH_REMATCH[1]}
+    return 0
+  fi
+  printf 'プロファイルの種別「%s」の一文長の上限を数値として読めない: %s: %s\n' "$2" "$1" "$cell" >&2
+  exit 2
+}
 limit=100
-profile="${CLAUDE_PROJECT_DIR:-}/.claude/writing/type-profiles.md"
-if [[ -n "${CLAUDE_PROJECT_DIR:-}" && -f "$profile" ]]; then
-  parsed=$(awk -F'|' '/\|[[:space:]]*汎用[[:space:]]*\|/ { gsub(/[^0-9]/, "", $5); print $5; exit }' "$profile")
-  [[ "$parsed" =~ ^[0-9]+$ ]] && limit=$parsed
+project_profile="${CLAUDE_PROJECT_DIR:-}/.claude/writing/type-profiles.md"
+bundled_profile="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/references/document-type-profiles.md"
+if ! { [[ -n "${CLAUDE_PROJECT_DIR:-}" ]] && resolve_limit "$project_profile" "$type"; }; then
+  resolve_limit "$bundled_profile" 汎用 || true
 fi
 
 status=0
@@ -173,27 +228,6 @@ while IFS=$'\t' read -r path; do
   rc=$?
   set -e
   [[ "$rc" -eq 0 ]] || status=1
-
-  awk -v path="$path" -v target_file="$target_file" '
-    BEGIN {
-      all=0
-      while ((getline target < target_file) > 0) {
-        if (target == "*") all=1
-        else wanted[target]=1
-      }
-      close(target_file)
-    }
-    function marked(line) { return all || (line in wanted) }
-    {
-      if (!marked(NR)) next
-      token=""
-      if (match($0, /ADR-[0-9][0-9][0-9][0-9]+/)) token=substr($0, RSTART, RLENGTH)
-      else if (match($0, /Issue[[:space:]]*#[0-9][0-9]+/)) token=substr($0, RSTART, RLENGTH)
-      else if (match($0, /#[0-9][0-9]+/)) token=substr($0, RSTART, RLENGTH)
-      if (token != "" && $0 !~ /(記録|課題|決定|仕様|修正|追加)/)
-        printf "%s:%d:候補: 説明のない不透明な識別子: %s\n", path, NR, token
-    }
-  ' "$path"
 done < <(cut -f2 "$targets" | sort -u)
 
 exit "$status"
