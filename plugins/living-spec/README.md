@@ -95,7 +95,7 @@ jobs:
 ## host 差分
 
 - Claude Code: スキル・エージェント・フックのすべてが動きます。
-- Codex: スキルと検査器は動きます。plugin 単位のフックが無いため、編集ごとの自動検査と描き直しはありません。スキルの手順どおり `node scripts/run.mjs check` と `node scripts/run.mjs render` を明示的に実行します。基準の版を渡した `crosscheck` では、`node scripts/run.mjs diff` も明示的に実行します。端末で自分で実行するなら、取ったファイルを `node <取ったファイルのパス> check` で直接走らせてもかまいません。`render` と `diff` も同じ形で走らせられます。突き合わせのエージェントが使えない場合は、別の会話で `agents/rule-crosschecker.md` の指示を与えて実行します。入力には plugin root path（`references/format.md` を含むこのディレクトリ）も渡します。
+- Codex: スキルと検査器は動きます。plugin 単位のフックが無いため、編集ごとの自動検査と描き直しはありません。スキルの手順どおり `node scripts/run.mjs check` と `node scripts/run.mjs render` を明示的に実行します。基準の版を渡した `crosscheck` では、`node scripts/run.mjs diff --base <版> [起点]` も明示的に実行します。版の渡し方は `references/starting-point.md` の「基準の版の渡し方」に従います。端末で自分で実行するなら、取ったファイルを `node <取ったファイルのパス> check` で直接走らせてもかまいません。`render` と `diff --base <版> [起点]` も、`scripts/run.mjs` と同じ引数で走らせられます。突き合わせのエージェントが使えない場合は、別の会話で `agents/rule-crosschecker.md` の指示を与えて実行します。入力には plugin root path（`references/format.md` を含むこのディレクトリ）も渡します。
 
 ## 検査と書式に期待できること
 
