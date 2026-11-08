@@ -56,7 +56,6 @@ if [[ "$mode" == diff ]] && ! git rev-parse --verify --quiet "${base}^{commit}" 
   exit 2
 fi
 
-declare -a inputs=()
 target_dir=$(mktemp -d)
 trap 'rm -rf "$target_dir"' EXIT
 targets="$target_dir/targets.tsv"
@@ -64,12 +63,10 @@ targets="$target_dir/targets.tsv"
 
 if [[ "$mode" == file ]]; then
   check_input "$file"
-  inputs=("$file")
   printf '*\t%s\n' "$file" > "$targets"
 else
   for path in "${paths[@]}"; do
     check_input "$path"
-    inputs+=("$path")
     if ! git ls-files --error-unmatch -- "$path" >/dev/null 2>&1; then
       # A new writer output is not in git diff yet, so the whole file is the diff.
       printf '*\t%s\n' "$path" >> "$targets"
@@ -169,7 +166,7 @@ while IFS=$'\t' read -r path; do
     # Markdown の構造を見分ける処理はここに集める。行の種類を返し、フェンスの内外を状態に持つ。
     #   fence: 開き・閉じのフェンスの行。code: フェンスの内側の行（閉じが無ければ文書の終わりまで）
     #   table: 字下げを除いた先頭が | の表の行。heading: 見出しの行。item: 箇条書きの項目の始まり
-    #   blank: 空行。text: それ以外（地の文と、字下げした項目の継続行）
+    #   blank: 空行（字が無いか、半角空白とタブだけの行）。text: それ以外（地の文と、字下げした項目の継続行）
     # フェンス・表・見出し・項目は、字下げの深さによらず認める。
     # フェンスの内側を先に判定するので、コードブロックの中の | や # や - で始まる行は表・見出し・項目にならない。
     # バッククォートの開きのフェンスは、情報文字列にバッククォートを含まない行に限る（行頭のインラインコードを除く）。
@@ -197,13 +194,15 @@ while IFS=$'\t' read -r path; do
       if (line ~ /^[ \t]*\|/) return "table"
       if (line ~ /^[ \t]*#+([ \t]|$)/) return "heading"
       if (line ~ /^[ \t]*([-*+]|[0-9]+[.)])([ \t]|$)/) return "item"
-      if (line == "") return "blank"
+      if (line ~ /^[ \t]*$/) return "blank"
       return "text"
     }
     {
       # CRLF の文書でも、閉じのフェンスと空行を LF の文書と同じに見分ける。
       sub(/\r$/, "")
       kind=line_kind($0)
+      # 空白だけの空行は、字の無い空行と同じに扱う。空白を次の文の字として持ち越さない。
+      if (kind == "blank") $0=""
       # 文ではない行は一文に足さず、そこで前の文を区切る。
       if (kind == "fence" || kind == "code" || kind == "table") { finish(); next }
       # 見出しと項目の始まりは前の文を区切る。見出しはそれ自体で1つの単位として閉じる。
