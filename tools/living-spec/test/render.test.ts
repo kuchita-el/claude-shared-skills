@@ -1625,7 +1625,7 @@ test('CLI: render --base は、基準の版の根に表の置き場が無いと�
   }
 });
 
-test('CLI: render --base は、作業ツリーで根を下へ移すと、根の置き場が版で異なるとして終了コード 2 で止まる', () => {
+test('CLI: render --base は、作業ツリーで根を下へ移すと、根の位置が版で異なるとして終了コード 2 で止まる', () => {
   const repo = gitRepo();
   const sub = join(repo, 'sub');
   try {
@@ -1636,14 +1636,14 @@ test('CLI: render --base は、作業ツリーで根を下へ移すと、根の�
     assertStopped(
       renderBase(repo, ['--base', 'main', sub]),
       sub,
-      `基準の版 main と作業ツリーで正本の根の置き場が異なる（作業ツリー: sub、基準の版: .。根: ${sub}）`,
+      `基準の版 main と作業ツリーで正本の根の位置が異なる（作業ツリー: sub、基準の版: .。根: ${sub}）`,
     );
   } finally {
     rmSync(repo, { recursive: true });
   }
 });
 
-test('CLI: render --base は、基準の版では起点に近いディレクトリが目印を持っていたなら、根の置き場が版で異なるとして終了コード 2 で止まる', () => {
+test('CLI: render --base は、基準の版では起点に近いディレクトリが目印を持っていたなら、根の位置が版で異なるとして終了コード 2 で止まる', () => {
   const repo = gitRepo();
   const area = join(repo, 'area');
   try {
@@ -1657,7 +1657,7 @@ test('CLI: render --base は、基準の版では起点に近いディレクト�
     assertStopped(
       renderBase(repo, ['--base', 'main', area]),
       repo,
-      `基準の版 main と作業ツリーで正本の根の置き場が異なる（作業ツリー: .、基準の版: area。根: ${repo}）`,
+      `基準の版 main と作業ツリーで正本の根の位置が異なる（作業ツリー: .、基準の版: area。根: ${repo}）`,
     );
     assert.ok(!existsSync(diffOut(area)));
   } finally {

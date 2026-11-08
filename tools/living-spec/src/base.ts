@@ -1,10 +1,10 @@
 // 基準の版（git の版）から正本の中身を読む。render --base が、作業ツリーとの描き分けの入力にする。
-// このモジュール自身は描画のモジュール（view.ts・diffview.ts・html.ts・render.ts）に依存しない。基準の版との差分の一覧が
-// このモジュールと diff.ts を使うとき、描き分けの材料と HTML を組む側（diffview.ts・html.ts・render.ts）が付いてこないようにするため。
-// ただし diff.ts は表の値の読み方（str・list）と区分の型を view.ts と共用するので、view.ts は付いてくる。
+// 読み出し（このモジュール）・比較（diff.ts）・描画（view.ts・diffview.ts・html.ts・render.ts）を分け、読み出しは比較にも
+// 描画にも依存せず、基準の版の中身（Sources）を返すだけにする。描き分けの材料の形が読み出しへ入り込まず、
+// git の読み方を描画の変更と切り離して直せるようにするため。
 //
 // 読み方: git の CLI を子プロセスで呼ぶ（rev-parse・ls-tree・cat-file）。git が要るのは --base を付けたときだけ。却下した案:
-//   - git を読む npm の依存を足す: 検査器の実行時依存と同梱の量が増える（基準の版との差分の一覧が負う「実行時依存を増やさない」にも反する）
+//   - git を読む npm の依存を足す: 検査器の実行時依存と、依存を同梱した配布物（dist/living-spec.mjs）の量が増える
 //   - 一時の worktree を作って読む: リポジトリの .git に worktree の登録が残り、異常終了で後始末が漏れる
 //   - git archive を展開する: tar の展開を Node の標準だけでは持てない
 // ADR にしない: 粒度判定で当たるのは、後戻りのコスト（配布済みの検査器の利用者に git が要る）と自動強制が無いことの2点に留まる。
@@ -222,7 +222,7 @@ export function readBase(root: string, start: string, ref: string): BaseVersion 
   if (found === undefined) throw new BaseError(`基準の版 ${ref} に正本の根が無い（起点: ${shown(from)}。根: ${root}）`);
   if (found !== prefix) {
     throw new BaseError(
-      `基準の版 ${ref} と作業ツリーで正本の根の置き場が異なる（作業ツリー: ${shown(prefix)}、基準の版: ${shown(found)}。根: ${root}）`,
+      `基準の版 ${ref} と作業ツリーで正本の根の位置が異なる（作業ツリー: ${shown(prefix)}、基準の版: ${shown(found)}。根: ${root}）`,
     );
   }
 
