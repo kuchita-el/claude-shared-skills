@@ -7,10 +7,21 @@
 
 - `skills/write-doc/SKILL.md`: `documentType`、`structure`、`materials`、`audience`、`outputPath`を受け、起草→lint→review→最大2回修正を調整します。
 - `agents/doc-writer.md`: 確定素材だけから起草します。
-- `agents/doc-reviewer.md`: 初見入力でF1/F3/F4/F5を判定し、`ruleId,severity,evidence,suggestion`を返します。
+- `agents/doc-reviewer.md`: 初見入力でF1/F2/F3/F4/F5を判定し、`ruleId,severity,evidence,suggestion`を返します。toolsは`Read`だけです。
 - `scripts/lint-ja.sh`: `--diff BASE -- PATH...`（差分既定）または`--file PATH`と、任意の`--type 種別`（省略時は汎用）を受けます。種別の上限を超える一文長違反を報告します。
 - `compatibility.json`: Claude CodeとCodexのportable/adapted/degraded境界とfixtureを記録します。
 - `permission-ledger.json`: 必須操作、witness、より狭い代替、判定をhost差分ごとに記録します。
+
+## サブエージェントのmodelとeffort
+
+| サブエージェント | model | effort | 値の意図 |
+|---|---|---|---|
+| `doc-reviewer` | `sonnet` | `high` | 必要最小水準 |
+| `doc-writer` | `sonnet` | `high` | 必要最小水準 |
+
+値は各`agents/{name}.md`のfront-matterが権威であり、この表はその値と意図を示します。
+「必要最小水準」は、その役割が成立するために必要な下限として選んだ値です。「許容最大水準」は逆に、その役割に対して許容する上限として選んだ値です。
+2つとも、起草と検証という品質が成果を左右する役割なので、下限として選んでいます。
 
 ## 契約と縮退
 

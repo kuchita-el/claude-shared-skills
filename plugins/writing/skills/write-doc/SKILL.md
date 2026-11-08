@@ -62,9 +62,11 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/lint-ja.sh --type <documentType> --diff <base
 
 ## 独立レビュー
 
-lint後、対象文書、profile、規約、plugin root pathだけをdoc-reviewerへ渡す。
+lint後、次の6つだけをdoc-reviewerへ渡す。対象文書、読み手（`audience`）、文書種別（`documentType`）、文書種別profileのpath、共通規約のpath、plugin root pathである。
+文書種別profileのpathは、「規約とprofile」節の手順で解決した後のファイルを指す。種別の行が無く同梱の既定を読んだときは、同梱のファイルを渡す。
+profileと共通規約は、本文ではなくpathで渡す。reviewerが自分で読む。
 素材、起草経緯、writerの判断、allowlist pathは渡さない。
-reviewerはF1、F3、F4、F5をそれぞれ判定し、`ruleId,severity,evidence,suggestion`を返す。
+reviewerはF1、F2、F3、F4、F5をそれぞれ判定し、`ruleId,severity,evidence,suggestion`を返す。
 
 修正は最大2回まで行う。各回で修正、lint、reviewを記録する。
 2回後も指摘が残れば`status=unresolved`と指摘一覧を返し、成功成果として表示しない。

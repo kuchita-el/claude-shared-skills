@@ -22,7 +22,7 @@ runner はいずれかが失敗しても残りを最後まで実行してから�
 
 工場側は `tools/living-spec` からソースでビルドして試験し（生成物 `dist/` は追跡しない）、利用者へは GitHub Release の添付物として配る。規則の分岐（ファイルを置かない試験）・読み込みから出力までの見本・入口・描画・基準の版との差分は工場側の試験が持ち、runner の `living-spec` スイートが走らせる（`pnpm` は `mise.toml` が版を固定する）。プラグインの中継の振る舞いは、偽の検査器を使う `living-spec-run.bats` が見る。Release のワークフロー（`.github/workflows/living-spec-release.yml`）は runner の外にあり、手動の起動でだけ走るため、§2 の自動起動の射程に入らない（構造の不変条件は `living-spec-release-workflow.bats` が固定し、覆わないものと Release を切る手順は `living-spec-release.md` が定める）。
 
-Writing Wave 2の追加検査は`writing-lint.bats`と`writing-contract.bats`で行う。前者は`lint-ja.sh`のfile/diff、種別ごとの上限、一文長の数え方、検査できない入力の終了コードを検査する。後者はskill/agent、F1/F3/F4/F5正負fixture、最大2回loop、両host matrix、permission ledgerを検査する。Codex agent登録面が利用できない場合の明示起動・degraded手動検査は、`plugins/writing/compatibility.json`へ記録する。
+Writing Wave 2の追加検査は`writing-lint.bats`と`writing-contract.bats`で行う。前者は`lint-ja.sh`のfile/diff、種別ごとの上限、一文長の数え方、検査できない入力の終了コードを検査する。後者はskill/agent、doc-reviewerの入力とtools、F1/F2/F3/F4/F5正負fixtureを検査する。最大2回loop、両host matrix、permission ledgerも後者が検査する。Codex agent登録面が利用できない場合の明示起動・degraded手動検査は、`plugins/writing/compatibility.json`へ記録する。
 
 配布プラグインの `claude plugin eval` ケース（`evals/<plugin>/`）は runner に含めない。理由と実行手順は §7 を参照。
 
