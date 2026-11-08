@@ -42,8 +42,11 @@ export function buildDiffView(root: string, base: BaseVersion, head: Sources): V
     return e.status === 'changed' ? { diff: e.status, changed: e.changed } : { diff: e.status };
   };
   const removed = (kind: ElementKind, parts: Parts): boolean => find(kind, parts)?.status === 'removed';
-  // 基準の版の容れ物の中で、区分が「外された」の要素
-  const gone = <T extends NamedView>(kind: ElementKind, xs: T[]): T[] => xs.filter((x) => removed(kind, [x.name]));
+  // 基準の版の容れ物 xs の中で区分が「外された」の要素のうち、作業ツリーの同じ容れ物の並び heads に同じ名前が無いもの。
+  // 表から外した名前を作業ツリーの UC・条件がまだ挙げている（検査の undefined-reference に当たる）とき、
+  // その名前は heads に残るので、基準の版から同じ名前を足さない（同じ要素を二重に並べない）
+  const gone = <T extends NamedView>(kind: ElementKind, xs: T[], heads: readonly NamedView[]): T[] =>
+    xs.filter((x) => removed(kind, [x.name]) && !heads.some((h) => h.name === x.name));
   const named =
     <T extends NamedView>(kind: ElementKind) =>
     (x: T): T => ({ ...x, ...mark(kind, [x.name]) });
@@ -65,7 +68,10 @@ export function buildDiffView(root: string, base: BaseVersion, head: Sources): V
   // バリエーションを後ろに足す。基準の版から加えた条件（外された条件・外された行の中身）は基準の版の並びのままなので足さない。
   // UC の条件の表と行の直下の条件の中身が共用する
   const conditionVariations = (condition: string, variations: VariationView[], fromHead: boolean): VariationView[] =>
-    [...variations, ...(fromHead ? gone('バリエーション', baseVariations.get(condition) ?? []) : [])].map(markVariation);
+    [
+      ...variations,
+      ...(fromHead ? gone('バリエーション', baseVariations.get(condition) ?? [], variations) : []),
+    ].map(markVariation);
   const markCondition =
     (fromHead: boolean) =>
     (c: ConditionView): ConditionView => ({
@@ -139,7 +145,7 @@ export function buildDiffView(root: string, base: BaseVersion, head: Sources): V
   const overlayUseCase = (uc: UseCaseView, anchor: string, old: UseCaseView | undefined, fromHead: boolean): UseCaseView => {
     const name = uc.name;
     const withGone = <T extends NamedView>(kind: ElementKind, heads: T[], bases: T[] | undefined): T[] =>
-      [...heads, ...gone(kind, bases ?? [])].map(named<T>(kind));
+      [...heads, ...gone(kind, bases ?? [], heads)].map(named<T>(kind));
 
     // 基準の版でルール（＝要求文）rule に属した例のうち、外された例。行の下か結び付かないルールのどちらか一方にある
     const goneScenarios = (rule: string): ScenarioView[] => {
@@ -184,7 +190,10 @@ export function buildDiffView(root: string, base: BaseVersion, head: Sources): V
       actors: withGone('アクター', uc.actors, old?.actors),
       externalSystems: withGone('外部システム', uc.externalSystems, old?.externalSystems),
       information: withGone('情報', uc.information, old?.information),
-      conditions: [...uc.conditions.map(markCondition(fromHead)), ...gone('条件', old?.conditions ?? []).map(markCondition(false))],
+      conditions: [
+        ...uc.conditions.map(markCondition(fromHead)),
+        ...gone('条件', old?.conditions ?? [], uc.conditions).map(markCondition(false)),
+      ],
       // 遷移 UC になっている状態モデルは、重ね合わせた後の遷移から決め直す（外された UC は外された遷移から持つ）
       stateModels: stateModels.filter((m) => m.transitions.some((t) => t.uc === name)).map((m) => m.name),
       requirements,

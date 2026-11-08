@@ -20,7 +20,7 @@ allowed-tools:
 - 実行するのは `render` の1回だけである。`check` は実行しない
 - 注記を伝えたら、答えを待たずに終える（手順4）
 
-1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/run.mjs" render [--base <版>] [起点]` を実行する。基準の版の指定があれば、その版をそのまま `--base` に渡す（git を呼ばず、版を確かめない）。書き出した場所（既定 `<根>/.cache/living-spec/index.html`、`.living-spec.json` の `output` で変わる）が標準出力に出る。基準の版を指定したときは別のファイル（既定 `<根>/.cache/living-spec/index-diff.html`）へ書く
+1. `node "${CLAUDE_PLUGIN_ROOT}/scripts/run.mjs" render [--base <版>] [起点]` を実行する。基準の版の指定があれば、その版をそのまま `--base` に渡す（git を呼ばず、版を確かめない）。版は `--base '<版>'` のように単引用符で囲んで渡す（git の参照名は、シェルが読み替える `;`・`&`・`$`・`|` を含められる）。書き出した場所（既定 `<根>/.cache/living-spec/index.html`、`.living-spec.json` の `output` で変わる）が標準出力に出る。基準の版を指定したときは別のファイル（既定 `<根>/.cache/living-spec/index-diff.html`）へ書く
 2. 終了コード 2 なら、標準エラーの内容を示して止まる。終了コード 2 の理由は `${CLAUDE_PLUGIN_ROOT}/references/format.md` の「検査の規則」の終了コードが定め、基準の版を指定したときは同書の「基準の版との描き分け」の「止まる場合」も当たる
 3. 書き出した場所と開き方を示す。開くのは利用者に任せ、ブラウザを自動で起動しない
    - macOS: `open <path>` ／ Linux: `xdg-open <path>` ／ WSL: `explorer.exe "$(wslpath -w <path>)"`（WSL 内のブラウザは日本語のフォントが無いことがある）

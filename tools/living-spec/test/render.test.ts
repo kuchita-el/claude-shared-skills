@@ -1790,3 +1790,71 @@ test('CLI: render の --base の値が無い・空・- で始まる・2回ある
     rmSync(root, { recursive: true });
   }
 });
+
+// ---- UC の一覧のアクター欄と、重ね合わせで同じ名前の要素を二重に足さないこと ----
+
+// アクターの表 table と、UC 名 → その UC が挙げるアクターの UC の表の一式
+function actorInputs(table: string[], ucs: Record<string, string[]>): Sources {
+  return sourcesFromFiles({
+    'docs/rdra/actor.yaml': table.map((a) => `- アクター: ${a}\n  役割: 申請に関わる\n  社内外: 社内\n`).join(''),
+    'docs/rdra/use-case.yaml': Object.entries(ucs)
+      .map(([uc, actors]) => `- UC: ${uc}\n  説明: ${uc}\n  アクター: [${actors.join(', ')}]\n`)
+      .join(''),
+  });
+}
+
+test('描き分けの HTML: UC の一覧のアクター欄は、残る UC の行に外されたアクターを並べず、外された UC の行には基準の版のアクターを全て並べる', () => {
+  // 基準の版で 申請を作成する が挙げた 上長 を、作業ツリーで表と UC の両方から外す。申請を取り下げる は UC ごと外す
+  const view = diffViewOf(
+    actorInputs(['従業員', '上長'], { 申請を作成する: ['従業員', '上長'], 申請を取り下げる: ['従業員', '上長'] }),
+    actorInputs(['従業員'], { 申請を作成する: ['従業員'] }),
+  );
+  const create = useCase(view, '申請を作成する');
+  assert.equal(tag(create), 'changed ["アクター"]', 'UC は残る');
+  assert.deepEqual(marks(create.actors), [
+    ['従業員', ''],
+    ['上長', 'removed'],
+  ]);
+  const html = renderHtml(view, new Date(0));
+  assert.equal(indexRow(html, '申請を作成する')[1], '従業員');
+  assert.equal(markAt(sliceOf(html, create), 'アクター・外部システムの項', '上長'), REMOVED);
+
+  const withdraw = useCase(view, '申請を取り下げる');
+  assert.equal(tag(withdraw), 'removed');
+  assert.equal(indexRow(html, '申請を取り下げる')[1], '従業員、上長');
+});
+
+test('描き分けの材料: 作業ツリーの UC・条件が表から外した名前をまだ挙げていても、同じ名前の要素を二重に並べない', () => {
+  const version = (actors: string[], conditions: string[], variations: string[]) =>
+    sourcesFromFiles({
+      'docs/rdra/actor.yaml': actors.map((a) => `- アクター: ${a}\n  役割: 申請に関わる\n  社内外: 社内\n`).join(''),
+      'docs/rdra/condition.yaml': conditions
+        .map((c) => `- 条件: ${c}\n  条件の説明: ${c}で分ける\n  バリエーション: 甲区分、乙区分\n`)
+        .join(''),
+      'docs/rdra/variation.yaml': variations.map((v) => `- バリエーション: ${v}\n  値: 甲、乙\n`).join(''),
+      'docs/rdra/use-case.yaml': `${SMALL_CREATE_UC}  アクター: [従業員, 上長]\n  条件: [金額の条件, 期限の条件]\n`,
+    });
+  // 作業ツリーでは 上長・期限の条件・乙区分 を表からだけ外し、UC と条件はまだ挙げる（検査の undefined-reference に当たる過渡の形）
+  const view = diffViewOf(
+    version(['従業員', '上長'], ['金額の条件', '期限の条件'], ['甲区分', '乙区分']),
+    version(['従業員'], ['金額の条件'], ['甲区分']),
+  );
+  const uc = useCase(view, '申請を作成する');
+  const named = (xs: (Marked & { name: string; known: boolean })[]) => xs.map((x) => [x.name, x.known, tag(x)]);
+  assert.deepEqual(named(uc.actors), [
+    ['従業員', true, ''],
+    ['上長', false, 'removed'],
+  ]);
+  assert.deepEqual(named(uc.conditions), [
+    ['金額の条件', true, ''],
+    ['期限の条件', false, 'removed'],
+  ]);
+  assert.deepEqual(named(conditionOf(uc, '金額の条件').variations), [
+    ['甲区分', true, ''],
+    ['乙区分', false, 'removed'],
+  ]);
+  // 縦串のアクターの項にも 上長 は1つだけ並ぶ
+  const slice = sliceOf(renderHtml(view, new Date(0)), uc);
+  const boss = spots(slice).filter((s) => s.at === 'アクター・外部システムの項' && textOf(s.html).includes('上長'));
+  assert.equal(boss.length, 1, slice);
+});

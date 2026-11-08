@@ -74,7 +74,8 @@ function diffMark(x: Marked): string {
 
 // 描き分けで、容れ物の欠けの注記・警告の様式と件数を決めるときに数える子か。残る容れ物（自身もその上の容れ物も
 // 区分が removed でない）は外されていない子だけを数え（作業ツリーの姿）、外された容れ物は全ての子を数える（基準の版の姿）。
-// 外された子は、数えるかどうかによらず印付きで並べる。区分の無い材料では全ての子を数える（今と同じ）
+// 外された子は、数えるかどうかによらず印付きで並べる。ただし印を付けない位置の UC の一覧のアクター欄には、数える子だけを並べる。
+// 区分の無い材料では全ての子を数える（今と同じ）
 function liveIn(...containers: Marked[]): (x: Marked) => boolean {
   const gone = containers.some((c) => c.diff === 'removed');
   return (x) => gone || x.diff !== 'removed';
@@ -181,7 +182,9 @@ function useCaseIndex(view: View): string {
   const rows = view.useCases.map((uc) => {
     // 描き分けの材料では、残る UC の行は外された票・行・例を数えず（作業ツリーの数）、外された UC の行は基準の版で
     // 持っていた数（縦串に残る外された行・例の数）を出す。外された UC の行を作業ツリーの数にすると0になり、
-    // 要求票を欠いた欠陥のように「無い」が出るため。区分の無い材料では全てを数える（今と同じ）
+    // 要求票を欠いた欠陥のように「無い」が出るため。区分の無い材料では全てを数える（今と同じ）。
+    // アクターの欄も同じ規則で絞る（残る UC の行は外されていないアクターだけ、外された UC の行は全て）。
+    // この欄は印を付けない位置なので、外されたアクターを並べると今のアクターに見えるため
     const counted = liveIn(uc);
     const requirements = uc.requirements.filter(counted);
     const lines = requirements.flatMap((r) => r.lines.filter(counted));
@@ -189,7 +192,7 @@ function useCaseIndex(view: View): string {
       lines.reduce((n, l) => n + l.scenarios.filter(counted).length, 0) +
       uc.unlinkedRules.reduce((n, r) => n + r.scenarios.filter(counted).length, 0) +
       uc.looseScenarios.filter(counted).length;
-    return `<tr><td><a href="#${uc.anchor}">${escapeHtml(uc.name)}</a>${diffMark(uc)}</td><td>${uc.actors.map(nameHtml).join('、')}</td><td>${hypothesisBadge(uc.hypothesis)}</td><td>${requirements.length === 0 ? presence(0, '') : presence(lines.length, '行')}</td><td>${uc.exampleFiles.length === 0 ? presence(0, '') : presence(scenarios, 'シナリオ')}</td></tr>`;
+    return `<tr><td><a href="#${uc.anchor}">${escapeHtml(uc.name)}</a>${diffMark(uc)}</td><td>${uc.actors.filter(counted).map(nameHtml).join('、')}</td><td>${hypothesisBadge(uc.hypothesis)}</td><td>${requirements.length === 0 ? presence(0, '') : presence(lines.length, '行')}</td><td>${uc.exampleFiles.length === 0 ? presence(0, '') : presence(scenarios, 'シナリオ')}</td></tr>`;
   });
   return `<table><thead><tr><th>UC</th><th>アクター</th><th>仮説</th><th>要求票</th><th>例</th></tr></thead>
 <tbody>${rows.join('\n')}</tbody></table>`;
