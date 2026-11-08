@@ -71,7 +71,7 @@ test('見本の2版の差分の各要素が、種類・区分・同一性の値�
   for (const line of representative) assert.ok(lines.includes(line), line);
 });
 
-test('無い値は なし と書き、列の数を保つ', () => {
+test('無い値と、ルールの外のシナリオのルール名は なし と書き、列の数を保つ', () => {
   const state = 'docs/rdra/state.yaml';
   const feature = 'docs/examples/u.feature';
   const none = diffSources(sourcesFromFiles({}), sourcesFromFiles({ [state]: '- 状態モデル: M\n  遷移UC: U\n  遷移先状態: A\n' }));

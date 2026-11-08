@@ -13,7 +13,8 @@ const STATUS_WORD: Record<DiffStatus, string> = {
   removed: '外された',
 };
 
-// 無い値（初期遷移の元・終端の先・遷移 UC の無い記録・ルールの外）を表す語。列の数を保つために空にしない
+// 無い値（遷移の元・先・遷移 UC の無い記録）を表す語。列の数を保つために空にしない。
+// ルールの外のシナリオのルール名は無い値ではない。diff.ts の OUTSIDE_RULE が名前として同じ語を持ち、ここを通らない
 const NONE = 'なし';
 
 export function diffListLines(diff: SpecDiff): string[] {
