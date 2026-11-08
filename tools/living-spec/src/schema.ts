@@ -96,7 +96,7 @@ export const TABLES: TableDef[] = [
   {
     id: 'external-system',
     get file() {
-      return `${LAYOUT.tables}/external-system.yaml`;
+      return tableFile('external-system', LAYOUT.tables);
     },
     kind: '外部システム',
     nameKey: '外部システム',
@@ -148,7 +148,7 @@ export const TABLES: TableDef[] = [
   {
     id: 'use-case',
     get file() {
-      return `${LAYOUT.tables}/use-case.yaml`;
+      return tableFile('use-case', LAYOUT.tables);
     },
     kind: 'UC',
     nameKey: 'UC',
@@ -198,7 +198,7 @@ export const TABLES: TableDef[] = [
   {
     id: 'architecture-characteristic',
     get file() {
-      return `${LAYOUT.tables}/architecture-characteristic.yaml`;
+      return tableFile('architecture-characteristic', LAYOUT.tables);
     },
     kind: 'アーキテクチャ特性',
     nameKey: 'アーキテクチャ特性',
