@@ -21,7 +21,8 @@ export interface Sources {
 export interface SourceReader {
   // 項が無ければ undefined。項が在っても読めなければ例外
   readFile(rel: string): string | undefined;
-  // 直下のファイル名。無いディレクトリなら空
+  // 直下の項の名前（拡張子での絞り込みは readSourcesFrom が行う）。ディレクトリの名前を含むかは読み手による
+  // （作業ツリーの読み手は含み、git の版の読み手は木でない項だけを返す）。無いディレクトリなら空。項が在ってもディレクトリとして読めなければ例外
   listFiles(relDir: string): string[];
 }
 

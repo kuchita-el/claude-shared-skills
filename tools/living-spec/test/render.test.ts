@@ -21,6 +21,9 @@ import type { Sources } from '../src/sources.ts';
 import type { Marked } from '../src/view.ts';
 import type { ReferenceView } from '../src/view.ts';
 import { diffOutputPath, writeDiffView } from '../src/render.ts';
+import { mkdirSync, realpathSync, renameSync, symlinkSync } from 'node:fs';
+import { devNull } from 'node:os';
+import { extract } from './fixture.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const sample = materialize(join(here, 'render', 'sample.txtar'));
@@ -1447,4 +1450,282 @@ test('描き分けの材料と図: __proto__ という名前の状態も、自�
   assert.deepEqual(Object.entries(m.stateDiff), [['__proto__', 'added']]);
   const node = nodeOf(stateChart(m, null), '__proto__');
   assert.ok(node.line.includes('["［足された］ __proto__"]') && node.line.endsWith(':::added'), node.line);
+});
+
+// ---- CLI: render --base。一時ディレクトリに本物の git のリポジトリを作り、基準の版をコミットしてから作業ツリーを書き換える ----
+// git と検査器には、手元の利用者の設定（署名・既定のブランチ名・リポジトリを指す GIT_ の環境変数）に結果が左右されない環境を渡す。
+// リポジトリは件ごとに1つ作り、確かめに要る起動だけをする（CI の時間を延ばさないため）。git が無ければ落ちる（緑で素通りしない）
+
+const DIFF_BASE = join(here, 'render', 'diff-base.txtar');
+const DIFF_HEAD = join(here, 'render', 'diff-head.txtar');
+const PASS_ALL = join(here, '..', 'examples', 'unknown-key', 'pass-all-allowed-keys.txtar');
+
+const gitEnv: NodeJS.ProcessEnv = {
+  ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_'))),
+  GIT_CONFIG_GLOBAL: devNull,
+  GIT_CONFIG_NOSYSTEM: '1',
+  GIT_AUTHOR_NAME: 'living-spec',
+  GIT_AUTHOR_EMAIL: 'living-spec@example.invalid',
+  GIT_COMMITTER_NAME: 'living-spec',
+  GIT_COMMITTER_EMAIL: 'living-spec@example.invalid',
+};
+
+// git を起動して標準出力を返す。失敗したら落とす
+function git(dir: string, ...args: string[]): string {
+  const result = spawnSync('git', args, { cwd: dir, env: gitEnv, encoding: 'utf8' });
+  assert.equal(result.status, 0, `git ${args.join(' ')}: ${result.error?.message ?? result.stderr}`);
+  return result.stdout;
+}
+
+// シンボリックリンクを解いた一時ディレクトリ（cli.test.ts の repo() と同じ理由）に、git のリポジトリを作る
+function gitRepo(): string {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'living-spec-base-')));
+  git(dir, 'init', '-q', '-b', 'main');
+  return dir;
+}
+
+// 作業ツリーの全てを基準の版としてコミットする
+function commitAll(dir: string): void {
+  git(dir, 'add', '-A');
+  git(dir, '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'base');
+}
+
+function renderBase(cwd: string, args: string[], env: NodeJS.ProcessEnv = gitEnv) {
+  return spawnSync(process.execPath, [main, 'render', ...args], { cwd, env, encoding: 'utf8' });
+}
+
+function diffOut(root: string): string {
+  return join(root, '.cache', 'living-spec', 'index-diff.html');
+}
+
+function marksOf(html: string): string[] {
+  return [...html.matchAll(MARK)].map((m) => m[0]);
+}
+
+// 描かずに止まる: 終了コード 2、標準出力が空、標準エラーに文面の語句、描き分けの HTML を書かない
+function assertStopped(result: ReturnType<typeof renderBase>, root: string, phrase: string): void {
+  assert.equal(result.status, 2, result.stderr);
+  assert.equal(result.stdout, '');
+  assert.ok(result.stderr.includes(phrase), `標準エラーに『${phrase}』がある\n${result.stderr}`);
+  assert.ok(!existsSync(diffOut(root)), '描き分けの HTML を書かない');
+}
+
+test('CLI: render --base は、git の版を基準の版として作業ツリー（コミット前の変更を含む）と比べ、index-diff.html だけに書き、フックはそれを描き直さない', () => {
+  const repo = gitRepo();
+  try {
+    extract(DIFF_BASE, repo);
+    commitAll(repo);
+    const commit = git(repo, 'rev-parse', 'main').trim();
+    rmSync(join(repo, 'docs'), { recursive: true });
+    extract(DIFF_HEAD, repo);
+
+    const result = renderBase(repo, ['--base', 'main', repo]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, `${diffOut(repo)}\n`, '書き出した場所の1行だけを出す');
+    assert.ok(!existsSync(join(repo, '.cache', 'living-spec', 'index.html')), 'output（index.html）には書かない');
+    const html = readFileSync(diffOut(repo), 'utf8');
+    assert.equal(markAt(html, '表の名前の欄', '申請を監査する'), ADDED);
+    assert.equal(markAt(html, '表の名前の欄', '申請を差し戻す'), REMOVED);
+    assert.equal(markAt(html, 'ファイル名の行', 'docs/requirements/差し戻し.md'), REMOVED);
+    assert.ok(html.includes(`<p>基準の版: main（${commit.slice(0, 12)}）</p>`), 'ヘッダに基準の版とコミットの先頭12字');
+    assert.deepEqual(marksOf(html), marksOf(diffHtml()), '見本を直接読んだ描き分けと同じ印を同じ並びで持つ');
+
+    // フックは output（index.html）だけを描き直し、描き分けの HTML を上書きしない
+    const hook = runHook(repo, 'docs/rdra/actor.yaml');
+    assert.equal(hook.status, 0, hook.stderr);
+    assert.ok(existsSync(join(repo, '.cache', 'living-spec', 'index.html')), 'フックが index.html を描いた');
+    assert.equal(readFileSync(diffOut(repo), 'utf8'), html);
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、根がリポジトリの下位ディレクトリにあり両版で同じ位置なら止まらずに描く', () => {
+  const repo = gitRepo();
+  const area = join(repo, 'area');
+  try {
+    extract(DIFF_BASE, area);
+    commitAll(repo);
+    rmSync(join(area, 'docs'), { recursive: true });
+    extract(DIFF_HEAD, area);
+
+    const result = renderBase(repo, ['--base', 'main', area]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, `${diffOut(area)}\n`);
+    const html = readFileSync(diffOut(area), 'utf8');
+    assert.equal(markAt(html, '表の名前の欄', '申請を監査する'), ADDED);
+    assert.equal(markAt(html, '表の名前の欄', '申請を差し戻す'), REMOVED);
+    assert.deepEqual(marksOf(html), marksOf(diffHtml()));
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、根の中の置き場の設定だけが版で違っても、基準の版の設定で読んで止まらずに描く', () => {
+  const repo = gitRepo();
+  try {
+    // 基準の版: 表を spec/rdra に置き、.living-spec.json で指す
+    extract(PASS_ALL, repo);
+    renameSync(join(repo, 'docs'), join(repo, 'spec'));
+    writeFileSync(join(repo, '.living-spec.json'), '{"tables":"spec/rdra"}\n');
+    commitAll(repo);
+    // 作業ツリー: 設定を消し、同じ表を既定の docs/rdra へ移す
+    rmSync(join(repo, '.living-spec.json'));
+    renameSync(join(repo, 'spec'), join(repo, 'docs'));
+
+    const result = renderBase(repo, ['--base', 'main', repo]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, `${diffOut(repo)}\n`);
+    const html = readFileSync(diffOut(repo), 'utf8');
+    assert.deepEqual(marksOf(html), [], 'どの要素にも印が付かない');
+    const charts = [...html.matchAll(/<pre class="mermaid">([\s\S]*?)<\/pre>/g)].map((m) => m[1]);
+    assert.ok(charts.length > 0, '状態遷移図がある');
+    assert.ok(charts.every((c) => !/［(?:足された|変わった|外された)］/.test(c)), '図の名札にも印が無い');
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、版が無いと終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  try {
+    extract(PASS_ALL, repo);
+    assertStopped(renderBase(repo, ['--base', 'no-such', repo]), repo, `基準の版が見つからない: no-such（根: ${repo}）`);
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、基準の版に正本の根が無い（目印をコミットする前の版）と終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  try {
+    writeFileSync(join(repo, 'README.md'), '# 正本を置く前\n');
+    commitAll(repo);
+    git(repo, 'branch', 'before');
+    extract(PASS_ALL, repo);
+    assertStopped(renderBase(repo, ['--base', 'before', repo]), repo, `基準の版 before に正本の根が無い（起点: .。根: ${repo}）`);
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、基準の版の根に表の置き場が無いと終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  try {
+    extract(PASS_ALL, repo);
+    writeFileSync(join(repo, '.living-spec.json'), '{"tables":"spec/rdra"}\n');
+    commitAll(repo);
+    rmSync(join(repo, '.living-spec.json'));
+    assertStopped(renderBase(repo, ['--base', 'main', repo]), repo, `基準の版 main に表の置き場が無い: spec/rdra（根: ${repo}）`);
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、作業ツリーで根を下へ移すと、根の置き場が版で異なるとして終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  const sub = join(repo, 'sub');
+  try {
+    extract(PASS_ALL, repo);
+    commitAll(repo);
+    rmSync(join(repo, 'docs'), { recursive: true });
+    extract(PASS_ALL, sub);
+    assertStopped(
+      renderBase(repo, ['--base', 'main', sub]),
+      sub,
+      `基準の版 main と作業ツリーで正本の根の置き場が異なる（作業ツリー: sub、基準の版: .。根: ${sub}）`,
+    );
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、基準の版では起点に近いディレクトリが目印を持っていたなら、根の置き場が版で異なるとして終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  const area = join(repo, 'area');
+  try {
+    extract(PASS_ALL, repo);
+    mkdirSync(area);
+    writeFileSync(join(area, 'README.md'), '# 領域\n');
+    writeFileSync(join(area, '.living-spec.json'), '{}\n');
+    commitAll(repo);
+    // 作業ツリーでは area の目印を外し、起点 area から上へ辿った根は最上段になる
+    rmSync(join(area, '.living-spec.json'));
+    assertStopped(
+      renderBase(repo, ['--base', 'main', area]),
+      repo,
+      `基準の版 main と作業ツリーで正本の根の置き場が異なる（作業ツリー: .、基準の版: area。根: ${repo}）`,
+    );
+    assert.ok(!existsSync(diffOut(area)));
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、基準の版の .living-spec.json を読めないと終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  try {
+    extract(PASS_ALL, repo);
+    writeFileSync(join(repo, '.living-spec.json'), '{\n');
+    commitAll(repo);
+    rmSync(join(repo, '.living-spec.json'));
+    assertStopped(renderBase(repo, ['--base', 'main', repo]), repo, `基準の版 main の .living-spec.json を読めない（根: ${repo}）: `);
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、基準の版の読む位置の項が通常のファイルでない（シンボリックリンク）と、リンク先を辿らず終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  const actor = join(repo, 'docs', 'rdra', 'actor.yaml');
+  try {
+    extract(PASS_ALL, repo);
+    renameSync(actor, join(repo, 'docs', 'rdra', 'actor.real'));
+    symlinkSync('actor.real', actor);
+    commitAll(repo);
+    const result = renderBase(repo, ['--base', 'main', repo]);
+    assertStopped(result, repo, `基準の版 main の正本を読めない（根: ${repo}）: `);
+    assert.ok(result.stderr.includes('docs/rdra/actor.yaml'), '読めない項のパスを示す');
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、根が git の作業ツリーの中に無いと終了コード 2 で止まる', () => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'living-spec-base-')));
+  try {
+    extract(PASS_ALL, dir);
+    // 一時ディレクトリの祖先のリポジトリを拾わない
+    const env = { ...gitEnv, GIT_CEILING_DIRECTORIES: dirname(dir) };
+    assertStopped(renderBase(dir, ['--base', 'main', dir], env), dir, `基準の版を読めない: 根が git の作業ツリーの中に無い（根: ${dir}）`);
+  } finally {
+    rmSync(dir, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、git を起動できないと終了コード 2 で止まる', () => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'living-spec-base-')));
+  const noGit = join(dir, 'bin');
+  try {
+    extract(PASS_ALL, dir);
+    mkdirSync(noGit);
+    assertStopped(renderBase(dir, ['--base', 'main', dir], { ...gitEnv, PATH: noGit }), dir, '基準の版を読めない: git を実行できない（ENOENT）');
+  } finally {
+    rmSync(dir, { recursive: true });
+  }
+});
+
+test('CLI: render の --base の値が無い・- で始まる・2回ある、知らない -- の引数は、使い方を出して終了コード 2', () => {
+  const root = copySample(passExample);
+  try {
+    for (const args of [['--base'], ['--base', '-x', root], ['--base', 'main', '--base', 'main', root], ['--base', 'main', '--x', root]]) {
+      const result = renderBase(root, args);
+      assert.equal(result.status, 2, `${args.join(' ')}: ${result.stderr}`);
+      assert.equal(result.stdout, '');
+      assert.match(result.stderr, /使い方/, args.join(' '));
+      assert.ok(!existsSync(diffOut(root)));
+    }
+  } finally {
+    rmSync(root, { recursive: true });
+  }
 });
