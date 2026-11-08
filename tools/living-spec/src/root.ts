@@ -130,14 +130,22 @@ function isSubmodule(dir: string): boolean {
 // 既定の表の置き場の区切りの並び（docs/rdra なら ['docs', 'rdra']）
 const TABLES_SEGMENTS = DEFAULT_LAYOUT.tables.split('/');
 
-function isMarker(dir: string): boolean {
-  if (statIfExists(join(dir, CONFIG_FILE)) !== undefined) return true;
-  if (statIfExists(join(dir, DEFAULT_LAYOUT.tables))?.isDirectory() !== true) return false;
+// 候補のディレクトリからの相対の区切りの並びの種類を問い合わせる関数で、目印かを判定する（ファイルシステムにも git の版にも使う）
+export function isMarkerBy(kindAt: (segments: string[]) => 'dir' | 'file' | undefined): boolean {
+  if (kindAt([CONFIG_FILE]) !== undefined) return true;
+  if (kindAt(TABLES_SEGMENTS) !== 'dir') return false;
   // dir と既定の表の置き場の間のディレクトリか、置き場自身が設定を持てば、設定を持つ側が根になるので dir の目印に数えない
   for (let i = 1; i <= TABLES_SEGMENTS.length; i++) {
-    if (statIfExists(join(dir, ...TABLES_SEGMENTS.slice(0, i), CONFIG_FILE)) !== undefined) return false;
+    if (kindAt([...TABLES_SEGMENTS.slice(0, i), CONFIG_FILE]) !== undefined) return false;
   }
   return true;
+}
+
+function isMarker(dir: string): boolean {
+  return isMarkerBy((segments) => {
+    const stat = statIfExists(join(dir, ...segments));
+    return stat === undefined ? undefined : stat.isDirectory() ? 'dir' : 'file';
+  });
 }
 
 function isBoundary(dir: string): boolean {

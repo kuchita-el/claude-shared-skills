@@ -26,12 +26,11 @@ export const DEFAULT_LAYOUT: Readonly<Layout> = Object.freeze({
 
 export const LAYOUT: Layout = { ...DEFAULT_LAYOUT };
 
-// 根の .living-spec.json を読んで LAYOUT を差し替える。無ければ既定に戻す。読めない・型が違うときは例外
-export function configureLayout(root: string): Layout {
-  Object.assign(LAYOUT, DEFAULT_LAYOUT);
-  const path = join(root, CONFIG_FILE);
-  if (!existsSync(path)) return LAYOUT;
-  const data: unknown = JSON.parse(readFileSync(path, 'utf8'));
+// 設定ファイルの中身（無ければ undefined）から置き場を作る。版（作業ツリー・git の版）を問わず使う。誤りは例外
+export function parseLayout(text: string | undefined): Layout {
+  const layout: Layout = { ...DEFAULT_LAYOUT };
+  if (text === undefined) return layout;
+  const data: unknown = JSON.parse(text);
   if (typeof data !== 'object' || data === null || Array.isArray(data)) {
     throw new Error(`${CONFIG_FILE} はオブジェクトで書く`);
   }
@@ -39,9 +38,22 @@ export function configureLayout(root: string): Layout {
     if (!Object.hasOwn(DEFAULT_LAYOUT, key)) throw new Error(`${CONFIG_FILE} の未知のキー『${key}』`);
     const want = typeof DEFAULT_LAYOUT[key as keyof Layout];
     if (typeof value !== want || value === '') throw new Error(`${CONFIG_FILE} の『${key}』は${want === 'boolean' ? '真偽値' : '空でない文字列'}で書く`);
-    (LAYOUT as unknown as Record<string, unknown>)[key] = typeof value === 'string' ? value.replace(/\/+$/, '') : value;
+    (layout as unknown as Record<string, unknown>)[key] = typeof value === 'string' ? value.replace(/\/+$/, '') : value;
   }
+  return layout;
+}
+
+// 根の .living-spec.json を読んで LAYOUT を差し替える。無ければ既定に戻す。読めない・型が違うときは例外
+export function configureLayout(root: string): Layout {
+  const path = join(root, CONFIG_FILE);
+  Object.assign(LAYOUT, DEFAULT_LAYOUT);
+  Object.assign(LAYOUT, parseLayout(existsSync(path) ? readFileSync(path, 'utf8') : undefined));
   return LAYOUT;
+}
+
+// 表のファイルの根からの相対パス（<tables>/<id>.yaml）
+export function tableFile(id: string, tables: string): string {
+  return `${tables}/${id}.yaml`;
 }
 
 // string: YAML のスカラー文字列。list: 文字列のシーケンス。
@@ -72,7 +84,7 @@ export const TABLES: TableDef[] = [
   {
     id: 'actor',
     get file() {
-      return `${LAYOUT.tables}/actor.yaml`;
+      return tableFile('actor', LAYOUT.tables);
     },
     kind: 'アクター',
     nameKey: 'アクター',
@@ -96,7 +108,7 @@ export const TABLES: TableDef[] = [
   {
     id: 'information',
     get file() {
-      return `${LAYOUT.tables}/information.yaml`;
+      return tableFile('information', LAYOUT.tables);
     },
     kind: '情報',
     nameKey: '情報',
@@ -116,7 +128,7 @@ export const TABLES: TableDef[] = [
   {
     id: 'state',
     get file() {
-      return `${LAYOUT.tables}/state.yaml`;
+      return tableFile('state', LAYOUT.tables);
     },
     kind: '状態',
     nameKey: '状態モデル',
@@ -156,7 +168,7 @@ export const TABLES: TableDef[] = [
   {
     id: 'condition',
     get file() {
-      return `${LAYOUT.tables}/condition.yaml`;
+      return tableFile('condition', LAYOUT.tables);
     },
     kind: '条件',
     nameKey: '条件',
@@ -174,7 +186,7 @@ export const TABLES: TableDef[] = [
   {
     id: 'variation',
     get file() {
-      return `${LAYOUT.tables}/variation.yaml`;
+      return tableFile('variation', LAYOUT.tables);
     },
     kind: 'バリエーション',
     nameKey: 'バリエーション',
