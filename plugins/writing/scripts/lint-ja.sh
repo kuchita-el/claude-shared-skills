@@ -117,7 +117,7 @@ resolve_limit() {
   local cell
   [[ -r "$1" ]] || return 1
   cell=$(profile_cell "$1" "$2") || return 1
-  if [[ "$cell" =~ ^([0-9]+)[[:space:]]*字?$ ]]; then
+  if [[ "$cell" =~ ^([0-9]+)[[:space:]]*(字)?$ ]]; then
     limit=${BASH_REMATCH[1]}
     return 0
   fi

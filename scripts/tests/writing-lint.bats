@@ -465,6 +465,17 @@ lint_project() {
   [[ "$output" == *":1:一文長: 71字（上限70）"* ]]
 }
 
+@test "上限の欄の「字」の有無は、ロケールによらず読める" {
+  # 欄の読み取りは字の数え方と無関係なので、UTF-8 以外のロケールでも「字」の無い数値を読める。
+  write_profile '| 汎用 | 定めない | 一般読者 | 70 |' '| 報告書 | 定めない | 一般読者 | 70字 |'
+  printf 'short.\n' > "$BATS_TEST_TMPDIR/short.md"
+  for type in 汎用 報告書; do
+    run env LC_ALL=C CLAUDE_PROJECT_DIR="$BATS_TEST_TMPDIR/project" bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --type "$type" --file "$BATS_TEST_TMPDIR/short.md"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+  done
+}
+
 @test "--typeを省略したときは汎用の行の上限を採る" {
   write_profile '| 汎用 | 定めない | 一般読者 | 50字 |' '| 報告書 | 定めない | 一般読者 | 70字 |'
   printf '%s。\n' "$(rep あ 59)" > "$BATS_TEST_TMPDIR/sixty.md"
