@@ -63,6 +63,7 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/lint-ja.sh --type <documentType> --diff <base
 ## 独立レビュー
 
 lint後、次の6つだけをdoc-reviewerへ渡す。対象文書、読み手（`audience`）、文書種別（`documentType`）、文書種別profileのpath、共通規約のpath、plugin root pathである。
+文書種別profileのpathは、「規約とprofile」節の手順で解決した後のものとし、該当する種別の行を採ったファイルを指す。
 profileと共通規約は、本文ではなくpathで渡す。reviewerが自分で読む。
 素材、起草経緯、writerの判断、allowlist pathは渡さない。
 reviewerはF1、F2、F3、F4、F5をそれぞれ判定し、`ruleId,severity,evidence,suggestion`を返す。

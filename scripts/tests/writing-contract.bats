@@ -82,9 +82,15 @@
   for item in '対象文書' '読み手' '文書種別' '文書種別profileのpath' '共通規約のpath' 'plugin root path'; do
     grep -qE "^- ${item}(（|$)" <<<"$input_section"
   done
-  for item in '対象文書、' '読み手（`audience`）' '文書種別（`documentType`）' '文書種別profileのpath' '共通規約のpath' 'plugin root path'; do
-    [[ "$review_section" == *"$item"* ]]
-  done
+  # write-doc側は列挙の文を取り出して「、」で区切り、reviewer側と項目の集合を比べる（列挙の末尾へ項目を足す変更も赤にする）。
+  enum=$(grep -oE '次の6つだけをdoc-reviewerへ渡す。.*である。' <<<"$review_section" | sed -E 's/^次の6つだけをdoc-reviewerへ渡す。//; s/である。$//')
+  [ -n "$enum" ]
+  skill_items=$(sed 's/、/\n/g' <<<"$enum" | sed -E 's/（`[^`]*`）//g' | sort)
+  reviewer_items=$(grep -E '^- ' <<<"$input_section" | sed -E 's/^- //; s/（`[^`]*`）$//' | sort)
+  [ "$(wc -l <<<"$skill_items")" -eq 6 ]
+  [ "$skill_items" = "$reviewer_items" ]
+  # profileのpathは、2段の解決を経た後のファイルを指す（reviewerは渡されていないpathを探さないため）。
+  [[ "$review_section" == *"文書種別profileのpathは、「規約とprofile」節の手順で解決した後のもの"* ]]
   [[ "$input_section" == *"次の6つだけを入力とする"* ]]
   [[ "$review_section" == *"だけをdoc-reviewerへ渡す"* ]]
   # 規約とprofileは本文ではなくpathで渡し、reviewerが自分で読む。
@@ -110,7 +116,9 @@
   art1=$(sed -n '/^## 第1条/,/^## 第2条/p' "$rules")
   art2=$(sed -n '/^## 第2条/,/^## 第3条/p' "$rules")
   [ -n "$art1" ] && [ -n "$art2" ]
-  [[ "$art1" != *"許可リスト"* ]]
+  # 免除を与える記述は、語を変えても拾う。決まり文句「本条の義務に免除は無い」は取り除いてから見る。
+  run grep -nE '許可リスト|免除する|免除され|免除の対象|免除とする|除く|除外|登録|限りでない|適用しない' <<<"${art1//本条の義務に免除は無い/}"
+  [ "$status" -eq 1 ]
   [[ "$art1" == *"本条の義務に免除は無い"* ]]
   [[ "$art1" == *"読み手の語彙水準"* ]]
   [[ "$art2" == *"参照（ID・略称・指示語）は、その指す先が本文から復元できるように書く"* ]]
@@ -123,8 +131,18 @@
 
 @test "判定規則の集合を名指す箇所がF2を欠かない" {
   root="$BATS_TEST_DIRNAME/../.."
-  run grep -rnE 'F1[/、,] ?F3' "$root/plugins/writing" "$root/docs/development/test-execution.md" "$root/evals/writing" "$root/scripts/tests/writing-contract.bats"
-  [ "$status" -eq 1 ]
+  # F1を含む規則の集合の記述を、区切りの種類によらず拾い、F1〜F5が全てあるかを見る。範囲の形は「F1〜F5」だけを完全とみなす。
+  hits=$(LC_ALL=C grep -rhoE 'F1([^A-Za-z0-9]{1,6}F[0-9])+' "$root/plugins/writing" "$root/docs/development/test-execution.md" "$root/evals/writing" "$root/scripts/tests/writing-contract.bats" || true)
+  [ -n "$hits" ]
+  while IFS= read -r hit; do
+    if [[ "$hit" == *"〜"* ]]; then
+      [[ "$hit" == "F1〜F5" ]] || { echo "範囲が不完全: $hit"; return 1; }
+      continue
+    fi
+    for n in 1 2 3 4 5; do
+      [[ "$hit" == *"F${n}"* ]] || { echo "規則を欠く集合: $hit"; return 1; }
+    done
+  done <<<"$hits"
   run grep -n 'doc-reviewer の F1 判定' "$root/evals/writing/behavior-write-doc/graders/status-contract-value.md"
   [ "$status" -eq 1 ]
   run jq -e '[.[0].fixtures[]] | index("writing/reviewer/f2-valid.md") != null and index("writing/reviewer/f2-invalid.md") != null' "$root/plugins/writing/compatibility.json"
@@ -146,6 +164,12 @@
   # 配布物のREADMEから配布元のdocs/を参照しない。
   run grep -nE '(^|[^a-z])docs/' "$readme"
   [ "$status" -eq 1 ]
+}
+
+@test "permission ledgerがreviewerの読み取り専用をCodexの縮退として記録する" {
+  ledger="$BATS_TEST_DIRNAME/../../plugins/writing/permission-ledger.json"
+  run jq -e 'map(select(.permission == "reviewer-read-only")) | length == 1 and .[0].verdict == "degraded" and (.[0].witness | test("tools")) and (.[0].witness | test("Read"))' "$ledger"
+  [ "$status" -eq 0 ]
 }
 
 @test "compatibility matrixとpermission ledgerの全fixtureを持つ" {
