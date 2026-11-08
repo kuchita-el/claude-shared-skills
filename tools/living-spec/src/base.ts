@@ -15,7 +15,8 @@
 // 木に渡すパスは全て git の作業ツリーの根からの相対。ls-tree は <path> を今いるディレクトリからの相対で読むので --full-tree を付け、
 // 日本語のファイル名が引用されないよう -z で NUL 区切りに読む。cat-file は <コミット>:<パス> で渡す（パスを ./ で始めない）。
 // 木（tree）をディレクトリ、それ以外の項（通常のファイル・シンボリックリンク・submodule の参照）をファイルとして扱い、リンク先を辿らない。
-// 読む位置の項が通常のファイル（ディレクトリ）でないか、読む位置の途中の祖先が木でなければ、黙って「無い」にせず止める。
+// 読む位置の項が通常のファイル（ディレクトリ）でないか、読む位置の途中の祖先が木でないか、読む位置が git の作業ツリーの根の外を
+// 指せば、黙って「無い」にせず止める。
 import { spawnSync } from 'node:child_process';
 import { posix, relative, sep } from 'node:path';
 import { isMarkerBy } from './root.ts';
@@ -148,12 +149,13 @@ function findBaseRoot(tree: Tree, from: string): string | undefined {
 }
 
 // 基準の版の根（git の作業ツリーの根からの位置 prefix）の読み手。パスは根からの相対で受ける（SourceReader の約束）。
-// 通常のファイルでない項を読む位置と、途中の祖先が木でない位置では例外を投げ、黙って「無い」にしない
-// （票・例の置き場が黙って空になると、作業ツリーの全ての票・例に「足された」が付く）
+// 通常のファイルでない項を読む位置、途中の祖先が木でない位置、git の作業ツリーの根の外を指す位置では例外を投げ、
+// 黙って「無い」にしない（票・例の置き場が黙って空になると、作業ツリーの全ての票・例に「足された」が付く）。
+// 根の外は、表の置き場と同じく木を読めない位置として止める。根の中で項が無いだけなら「無い」とする
 function treeReader(tree: Tree, root: string, commit: string, prefix: string): SourceReader {
-  // 読む位置の項の mode。無ければ（git の作業ツリーの根の外を含む）undefined
-  const modeToRead = (path: string): string | undefined => {
-    if (isOutside(path)) return undefined;
+  // 読む位置の項の mode。無ければ undefined。what は、理由の文面で読む位置を呼ぶ語
+  const modeToRead = (path: string, what: string): string | undefined => {
+    if (isOutside(path)) throw new Error(`git の作業ツリーの根の外を指す${what}: ${path}`);
     const found = tree.lookup(path);
     if (found.kind === 'blocked') throw new Error(`途中が木でない位置: ${shown(path)}（${found.at} は mode ${found.mode}）`);
     return found.kind === 'found' ? found.mode : undefined;
@@ -161,14 +163,14 @@ function treeReader(tree: Tree, root: string, commit: string, prefix: string): S
   return {
     readFile: (rel) => {
       const path = treePath(prefix, rel);
-      const mode = modeToRead(path);
+      const mode = modeToRead(path, '位置');
       if (mode === undefined) return undefined;
       if (!REGULAR_MODES.includes(mode)) throw new Error(`通常のファイルでない項: ${shown(path)}（mode ${mode}）`);
       return gitOut(root, ['cat-file', 'blob', `${commit}:${path}`]);
     },
     listFiles: (relDir) => {
       const path = treePath(prefix, relDir);
-      const mode = modeToRead(path);
+      const mode = modeToRead(path, '置き場');
       if (mode === undefined) return [];
       if (mode !== TREE_MODE) throw new Error(`ディレクトリでない項: ${shown(path)}（mode ${mode}）`);
       return [...tree.children(path)].filter(([, m]) => m !== TREE_MODE).map(([name]) => name);

@@ -1725,6 +1725,24 @@ test('CLI: render --base は、基準の版の多段の票の置き場の途中�
   }
 });
 
+test('CLI: render --base は、基準の版の票の置き場が git の作業ツリーの根の外を指すと、黙って空にせず終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  try {
+    // 基準の版だけが票の置き場を根の外へ向ける。作業ツリーは既定の置き場に戻す（作業ツリーの側の設定の誤りで先に止めない）
+    extract(PASS_ALL, repo);
+    writeFileSync(join(repo, '.living-spec.json'), '{"requirements":"../req"}\n');
+    commitAll(repo);
+    rmSync(join(repo, '.living-spec.json'));
+    assertStopped(
+      renderBase(repo, ['--base', 'main', repo]),
+      repo,
+      `基準の版 main の正本を読めない（根: ${repo}）: git の作業ツリーの根の外を指す置き場: ../req`,
+    );
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
 test('CLI: render --base は、基準の版の置き場の名前が : で始まっても、pathspec の魔法にせず字面どおりに読む', () => {
   const repo = gitRepo();
   try {
