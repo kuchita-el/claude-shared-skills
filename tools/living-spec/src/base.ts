@@ -14,7 +14,7 @@
 // 木に渡すパスは全て git の作業ツリーの根からの相対。ls-tree は <path> を今いるディレクトリからの相対で読むので --full-tree を付け、
 // 日本語のファイル名が引用されないよう -z で NUL 区切りに読む。cat-file は <コミット>:<パス> で渡す（パスを ./ で始めない）。
 // 木（tree）をディレクトリ、それ以外の項（通常のファイル・シンボリックリンク・submodule の参照）をファイルとして扱い、リンク先を辿らない。
-// 読む位置の項が通常のファイル（ディレクトリ）でなければ、黙って「無い」にせず止める。
+// 読む位置の項が通常のファイル（ディレクトリ）でないか、読む位置の途中の祖先が木でなければ、黙って「無い」にせず止める。
 import { spawnSync } from 'node:child_process';
 import { posix, relative, sep } from 'node:path';
 import { isMarkerBy } from './root.ts';
@@ -67,9 +67,13 @@ function gitOut(root: string, args: string[]): string {
   return result.stdout;
 }
 
+// 木の中の項の在り方。blocked は途中の祖先 at が木でない（mode はその祖先の mode）。リンク先を辿らないので、その下は読めない
+type Lookup = { kind: 'found'; mode: string } | { kind: 'absent' } | { kind: 'blocked'; at: string; mode: string };
+
 // 基準の版の木。パスは git の作業ツリーの根からの相対で、最上段は ''
 interface Tree {
-  // 項の mode。無ければ（途中が木でないときも）undefined
+  lookup(path: string): Lookup;
+  // 項の mode。無ければ（途中が木でないときも）undefined。目印の判定と表の置き場の有無に使う
   modeAt(path: string): string | undefined;
   // 木 dir の直下の項の名前 → mode
   children(dir: string): Map<string, string>;
@@ -94,13 +98,21 @@ function treeOf(root: string, commit: string): Tree {
     listings.set(dir, items);
     return items;
   };
-  const modeAt = (path: string): string | undefined => {
-    if (path === '') return TREE_MODE;
+  const lookup = (path: string): Lookup => {
+    if (path === '') return { kind: 'found', mode: TREE_MODE };
     const slash = path.lastIndexOf('/');
     const parent = slash < 0 ? '' : path.slice(0, slash);
-    return modeAt(parent) === TREE_MODE ? children(parent).get(path.slice(slash + 1)) : undefined;
+    const up = lookup(parent);
+    if (up.kind !== 'found') return up;
+    if (up.mode !== TREE_MODE) return { kind: 'blocked', at: parent, mode: up.mode };
+    const mode = children(parent).get(path.slice(slash + 1));
+    return mode === undefined ? { kind: 'absent' } : { kind: 'found', mode };
   };
-  return { modeAt, children };
+  const modeAt = (path: string): string | undefined => {
+    const found = lookup(path);
+    return found.kind === 'found' ? found.mode : undefined;
+  };
+  return { lookup, modeAt, children };
 }
 
 // git の作業ツリーの根からの相対へ直す（最上段は ''）。prefix は根の位置、rel は根からの相対。
@@ -135,19 +147,27 @@ function findBaseRoot(tree: Tree, from: string): string | undefined {
 }
 
 // 基準の版の根（git の作業ツリーの根からの位置 prefix）の読み手。パスは根からの相対で受ける（SourceReader の約束）。
-// 通常のファイルでない項を読む位置では例外を投げ、黙って「無い」にしない
+// 通常のファイルでない項を読む位置と、途中の祖先が木でない位置では例外を投げ、黙って「無い」にしない
+// （票・例の置き場が黙って空になると、作業ツリーの全ての票・例に「足された」が付く）
 function treeReader(tree: Tree, root: string, commit: string, prefix: string): SourceReader {
+  // 読む位置の項の mode。無ければ（git の作業ツリーの根の外を含む）undefined
+  const modeToRead = (path: string): string | undefined => {
+    if (isOutside(path)) return undefined;
+    const found = tree.lookup(path);
+    if (found.kind === 'blocked') throw new Error(`途中が木でない位置: ${shown(path)}（${found.at} は mode ${found.mode}）`);
+    return found.kind === 'found' ? found.mode : undefined;
+  };
   return {
     readFile: (rel) => {
       const path = treePath(prefix, rel);
-      const mode = isOutside(path) ? undefined : tree.modeAt(path);
+      const mode = modeToRead(path);
       if (mode === undefined) return undefined;
       if (!REGULAR_MODES.includes(mode)) throw new Error(`通常のファイルでない項: ${shown(path)}（mode ${mode}）`);
       return gitOut(root, ['cat-file', 'blob', `${commit}:${path}`]);
     },
     listFiles: (relDir) => {
       const path = treePath(prefix, relDir);
-      const mode = isOutside(path) ? undefined : tree.modeAt(path);
+      const mode = modeToRead(path);
       if (mode === undefined) return [];
       if (mode !== TREE_MODE) throw new Error(`ディレクトリでない項: ${shown(path)}（mode ${mode}）`);
       return [...tree.children(path)].filter(([, m]) => m !== TREE_MODE).map(([name]) => name);
@@ -169,7 +189,11 @@ function guard<T>(f: () => T, message: (reason: string) => string): T {
 // 基準の版を読めなければ BaseError を投げる
 export function readBase(root: string, start: string, ref: string): BaseVersion {
   const top = runGit(root, ['rev-parse', '--show-prefix']);
-  if (top.status !== 0) throw new BaseError(`基準の版を読めない: 根が git の作業ツリーの中に無い（根: ${root}）`);
+  if (top.status !== 0) {
+    // git の標準エラーの1行目を理由として添える（safe.directory の所有者の不一致や壊れたリポジトリを、管理下に無いことと見分ける）
+    const reason = top.stderr.split('\n')[0].trim();
+    throw new BaseError(`基準の版を読めない: 根が git の作業ツリーの中に無い（根: ${root}）${reason === '' ? '' : `: ${reason}`}`);
+  }
   // git の作業ツリーの根から見た根の位置。起点の相対は、これと字面の relative(根, 起点) から組む
   // （git が返す絶対パスはシンボリックリンクを解いているので、字面の根と混ぜない）
   const prefix = top.stdout.replace(/\n$/, '').replace(/\/+$/, '');

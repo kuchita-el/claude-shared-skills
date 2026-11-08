@@ -1540,7 +1540,7 @@ test('CLI: render --base は、git の版を基準の版として作業ツリー
   }
 });
 
-test('CLI: render --base は、根がリポジトリの下位ディレクトリにあり両版で同じ位置なら止まらずに描く', () => {
+test('CLI: render --base は、根がリポジトリの下位ディレクトリにあり両版で同じ位置なら止まらずに描く（--base は起点の後ろに置いてもよい）', () => {
   const repo = gitRepo();
   const area = join(repo, 'area');
   try {
@@ -1549,7 +1549,7 @@ test('CLI: render --base は、根がリポジトリの下位ディレクトリ�
     rmSync(join(area, 'docs'), { recursive: true });
     extract(DIFF_HEAD, area);
 
-    const result = renderBase(repo, ['--base', 'main', area]);
+    const result = renderBase(repo, [area, '--base', 'main']);
     assert.equal(result.status, 0, result.stderr);
     assert.equal(result.stdout, `${diffOut(area)}\n`);
     const html = readFileSync(diffOut(area), 'utf8');
@@ -1691,13 +1691,68 @@ test('CLI: render --base は、基準の版の読む位置の項が通常のフ�
   }
 });
 
-test('CLI: render --base は、根が git の作業ツリーの中に無いと終了コード 2 で止まる', () => {
+test('CLI: render --base は、基準の版の票の置き場がディレクトリでない（シンボリックリンク）と、黙って空にせず終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  try {
+    extract(PASS_ALL, repo);
+    mkdirSync(join(repo, 'reqs-real'));
+    writeFileSync(join(repo, 'reqs-real', 'a.md'), '# 要求票: どれか\n');
+    symlinkSync('../reqs-real', join(repo, 'docs', 'requirements'));
+    commitAll(repo);
+    const result = renderBase(repo, ['--base', 'main', repo]);
+    assertStopped(result, repo, `基準の版 main の正本を読めない（根: ${repo}）: `);
+    assert.ok(result.stderr.includes('docs/requirements'), '読めない項のパスを示す');
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、基準の版の多段の票の置き場の途中が木でない（シンボリックリンク）と、黙って空にせず終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  try {
+    // 票の置き場 notes/requirements の途中の notes だけがシンボリックリンク（表の置き場 docs/rdra とは途中を共有しない）
+    extract(PASS_ALL, repo);
+    mkdirSync(join(repo, 'notes-real', 'requirements'), { recursive: true });
+    writeFileSync(join(repo, 'notes-real', 'requirements', 'a.md'), '# 要求票: どれか\n');
+    symlinkSync('notes-real', join(repo, 'notes'));
+    writeFileSync(join(repo, '.living-spec.json'), '{"requirements":"notes/requirements"}\n');
+    commitAll(repo);
+    const result = renderBase(repo, ['--base', 'main', repo]);
+    assertStopped(result, repo, `基準の版 main の正本を読めない（根: ${repo}）: `);
+    assert.ok(result.stderr.includes('notes/requirements'), '読めない位置のパスを示す');
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、基準の版の置き場の名前が : で始まっても、pathspec の魔法にせず字面どおりに読む', () => {
+  const repo = gitRepo();
+  try {
+    extract(DIFF_HEAD, repo);
+    renameSync(join(repo, 'docs', 'requirements'), join(repo, ':req'));
+    writeFileSync(join(repo, '.living-spec.json'), '{"requirements":":req"}\n');
+    commitAll(repo);
+    // 作業ツリーは基準の版と同じ中身なので、票を読めていれば印は付かない
+    const result = renderBase(repo, ['--base', 'main', repo]);
+    assert.equal(result.status, 0, result.stderr);
+    const html = readFileSync(diffOut(repo), 'utf8');
+    assert.equal(markAt(html, 'ファイル名の行', ':req/監査.md'), '', '作業ツリーの票が描かれ、印を持たない');
+    assert.deepEqual(marksOf(html), []);
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
+test('CLI: render --base は、根が git の作業ツリーの中に無いと終了コード 2 で止まり、git の標準エラーの1行目を理由に添える', () => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'living-spec-base-')));
   try {
     extract(PASS_ALL, dir);
     // 一時ディレクトリの祖先のリポジトリを拾わない
     const env = { ...gitEnv, GIT_CEILING_DIRECTORIES: dirname(dir) };
-    assertStopped(renderBase(dir, ['--base', 'main', dir], env), dir, `基準の版を読めない: 根が git の作業ツリーの中に無い（根: ${dir}）`);
+    const phrase = `基準の版を読めない: 根が git の作業ツリーの中に無い（根: ${dir}）`;
+    const result = renderBase(dir, ['--base', 'main', dir], env);
+    assertStopped(result, dir, phrase);
+    assert.match(result.stderr, new RegExp(`^${phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}: \\S[^\\n]*\\n$`), '理由を1行で添える');
   } finally {
     rmSync(dir, { recursive: true });
   }
@@ -1715,10 +1770,16 @@ test('CLI: render --base は、git を起動できないと終了コード 2 で
   }
 });
 
-test('CLI: render の --base の値が無い・- で始まる・2回ある、知らない -- の引数は、使い方を出して終了コード 2', () => {
+test('CLI: render の --base の値が無い・空・- で始まる・2回ある、知らない -- の引数は、使い方を出して終了コード 2', () => {
   const root = copySample(passExample);
   try {
-    for (const args of [['--base'], ['--base', '-x', root], ['--base', 'main', '--base', 'main', root], ['--base', 'main', '--x', root]]) {
+    for (const args of [
+      ['--base'],
+      ['--base', '', root],
+      ['--base', '-x', root],
+      ['--base', 'main', '--base', 'main', root],
+      ['--base', 'main', '--x', root],
+    ]) {
       const result = renderBase(root, args);
       assert.equal(result.status, 2, `${args.join(' ')}: ${result.stderr}`);
       assert.equal(result.stdout, '');
