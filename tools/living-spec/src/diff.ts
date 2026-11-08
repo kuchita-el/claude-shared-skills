@@ -9,6 +9,7 @@ import { loadTables } from './check.ts';
 import { parseExample } from './example.ts';
 import type { ExampleScenario } from './example.ts';
 import { parseReferences, parseRequirement } from './requirement.ts';
+import { HYPOTHESIS, TABLES } from './schema.ts';
 import type { Sources } from './sources.ts';
 import { list, str } from './view.ts';
 import type { DiffStatus } from './view.ts';
@@ -43,20 +44,18 @@ const KINDS: readonly ElementKind[] = [
   '例',
 ];
 
-// 名前1つを同一性にする表の id → 種類。アーキテクチャ特性は縦串に載らないので比べない
-const NAMED_TABLES: readonly [string, ElementKind][] = [
-  ['use-case', 'UC'],
-  ['actor', 'アクター'],
-  ['external-system', '外部システム'],
-  ['information', '情報'],
-  ['condition', '条件'],
-  ['variation', 'バリエーション'],
-];
+function isKind(kind: string): kind is ElementKind {
+  return (KINDS as readonly string[]).includes(kind);
+}
+
+// 名前1つを同一性にする表と、その種類（表の定義の kind）。状態の表は遷移と状態の要素として別に集める。
+// 種類が差分の種類に無い表（アーキテクチャ特性。縦串に載らない）は比べない
+const NAMED_TABLES: readonly { id: string; kind: ElementKind }[] = TABLES.flatMap((def) =>
+  def.id !== 'state' && isKind(def.kind) ? [{ id: def.id, kind: def.kind }] : [],
+);
 
 // 遷移の同一性に使う状態の表のキー。比べる中身から外す
 const TRANSITION_IDENTITY = ['状態モデル', '状態', '遷移UC', '遷移先状態'];
-
-const HYPOTHESIS = '仮説';
 
 // ルールの外（機能の直下）のシナリオを、例の同一性で表すルール名
 export const OUTSIDE_RULE = 'なし';
@@ -65,7 +64,8 @@ export interface ElementDiff {
   kind: ElementKind;
   // 同一性のキー（elementKey）
   key: string;
-  // 表示名。状態は <状態モデル>/<状態>、遷移は <状態モデル>/<遷移元>→<遷移先>（<遷移UC>）、要求文は文、例はシナリオ名、他は表の名前
+  // 表示名。状態は <状態モデル>/<状態>、遷移は <状態モデル>/<遷移元>→<遷移先>（<遷移UC>）、要求票は表題の UC 名、要求文は文、
+  // 例はシナリオ名、UC・アクター・外部システム・情報・条件・バリエーションは表の名前
   name: string;
   status: DiffStatus;
   // 変わった欄の名前（定義の順）。区分が changed のときだけ空でない
@@ -156,7 +156,7 @@ function collect(sources: Sources): Map<string, Element> {
       rowFields(r, TRANSITION_IDENTITY),
     );
   }
-  for (const [id, kind] of NAMED_TABLES) {
+  for (const { id, kind } of NAMED_TABLES) {
     for (const r of rows[id]) {
       const identity = [r.def.nameKey];
       add(kind, [r.name], r.name, fieldOrderOf(r, identity), rowFields(r, identity));

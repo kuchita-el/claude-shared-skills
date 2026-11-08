@@ -23,9 +23,10 @@ function sample(name: string): Sources {
 const base = sample('diff-base.txtar');
 const head = sample('diff-head.txtar');
 
-// 差分を（種類・表示名・区分・変わった欄）の行の並びにする。並べ替えて比べるので、出力の順は見ない
+// 差分を（種類・表示名・区分・変わった欄）の行の並びにする。並べ替えて比べるので、出力の順は見ない。
+// 変わった欄は配列のまま JSON にする（欄名 状態モデル・状態の説明 が「・」を含むので、連結すると欄の切れ目が分からない）
 function rows(diff: SpecDiff): string[] {
-  return diff.elements.map((e) => `${e.kind} | ${e.name} | ${e.status} | ${e.changed.join('・')}`).sort();
+  return diff.elements.map((e) => `${e.kind} | ${e.name} | ${e.status} | ${JSON.stringify(e.changed)}`).sort();
 }
 
 interface Expected {
@@ -36,7 +37,7 @@ interface Expected {
 }
 
 function expectedRows(list: Expected[]): string[] {
-  return list.map((e) => `${e.kind} | ${e.name} | ${e.status} | ${(e.changed ?? []).join('・')}`).sort();
+  return list.map((e) => `${e.kind} | ${e.name} | ${e.status} | ${JSON.stringify(e.changed ?? [])}`).sort();
 }
 
 const SUBMIT = '申請を提出する';
@@ -98,15 +99,43 @@ test('見本の差分が、期待の全件と完全一致する（漏れも余�
 
 test('見本の同じ表示名の例（S2 と S3 の「提出すると提出済みになる」）を、同一性のキーで区別できる', () => {
   const find = diffIndex(diffSources(base, head));
-  assert.equal(find('例', [SUBMIT, S2, '提出すると提出済みになる'])?.status, 'removed');
-  assert.equal(find('例', [SUBMIT, S3, '提出すると提出済みになる'])?.status, 'added');
-  assert.equal(find('例', [SUBMIT, S2, '提出すると提出済みになる'])?.key, elementKey('例', [SUBMIT, S2, '提出すると提出済みになる']));
+  const removed = find('例', [SUBMIT, S2, '提出すると提出済みになる']);
+  const added = find('例', [SUBMIT, S3, '提出すると提出済みになる']);
+  assert.equal(removed?.status, 'removed');
+  assert.equal(added?.status, 'added');
+  // 表示名は同じなので、区別しているのは同一性のキー（ルール名）である
+  assert.equal(removed?.name, '提出すると提出済みになる');
+  assert.equal(added?.name, '提出すると提出済みになる');
 });
 
 test('見本の差分は、種類の並び（状態・遷移・UC・…・例）の順に出る', () => {
   const order = ['状態', '遷移', 'UC', 'アクター', '外部システム', '情報', '条件', 'バリエーション', '要求票', '要求文', '例'];
   const kinds = diffSources(base, head).elements.map((e) => order.indexOf(e.kind));
   assert.deepEqual(kinds, [...kinds].sort((a, b) => a - b));
+});
+
+test('見本の差分の同じ種類の中は、作業ツリーでの出現順に並び、外された要素はその後ろに基準の版での出現順で並ぶ', () => {
+  const diff = diffSources(base, head);
+  const order = (kind: string) => diff.elements.filter((e) => e.kind === kind).map((e) => `${e.name}（${e.status}）`);
+  // 作業ツリーのアクターの表は 上長（変わっていない）・従業員・監査役 の順で、外された 経理 が後ろに付く
+  assert.deepEqual(order('アクター'), ['従業員（changed）', '監査役（added）', '経理（removed）']);
+  assert.deepEqual(order('情報'), [
+    '申請（changed）',
+    '承認の記録（added）',
+    '監査記録（added）',
+    '承認記録（removed）',
+    '旧台帳（removed）',
+  ]);
+  // 例はファイル名の順（create・submit・監査 ／ 基準の版は create・submit・差し戻し）、その中はルールとシナリオの順
+  assert.deepEqual(order('例'), [
+    '種類の無い申請は出せない（changed）',
+    '金額の無い申請は出せない（added）',
+    '提出すると提出済みになる（added）',
+    '承認済みの申請を監査する（added）',
+    '期限切れの申請は出せない（removed）',
+    '提出すると提出済みになる（removed）',
+    '差し戻すと差し戻しになる（removed）',
+  ]);
 });
 
 test('同じ中身の2版は差分が空', () => {
@@ -133,7 +162,7 @@ function transition(uc: string, description: string, hypothesis = false): string
 // 仮説キーを空の並びで足しただけでも、仮説の有無が変わるので「変わった（仮説）」になる
 test('仮説キーを空の並びで足した UC は「変わった（仮説）」', () => {
   const diff = diffOf({ [USE_CASE]: '- UC: U\n  説明: x\n' }, { [USE_CASE]: '- UC: U\n  説明: x\n  仮説: []\n' });
-  assert.deepEqual(rows(diff), ['UC | U | changed | 仮説']);
+  assert.deepEqual(rows(diff), ['UC | U | changed | ["仮説"]']);
 });
 
 // 例の手順の並びは並び順ではなく例の中身なので、文が同じでも並びの入れ替えは「変わった（手順）」になる（J5）
@@ -143,13 +172,13 @@ test('例の手順の並びの入れ替えは「変わった（手順）」', ()
     { [FEATURE]: feature('      前提 甲である\n      かつ 乙である\n      もし 丙する\n      ならば 丁になる\n') },
     { [FEATURE]: feature('      前提 乙である\n      かつ 甲である\n      もし 丙する\n      ならば 丁になる\n') },
   );
-  assert.deepEqual(rows(diff), ['例 | S | changed | 手順']);
+  assert.deepEqual(rows(diff), ['例 | S | changed | ["手順"]']);
 });
 
 // シナリオアウトラインの例の表の行の順は並び順なので、行の入れ替えだけでは印が付かない
 test('アウトラインの例の表の行の入れ替えは印にならない', () => {
-  const feature = (rows: string) =>
-    `# language: ja\n機能: U\n\n  ルール: R\n\n    シナリオアウトライン: S\n      前提 件数が<件数>件である\n      ならば <結果>になる\n\n      例:\n        | 件数 | 結果 |\n${rows}`;
+  const feature = (tableRows: string) =>
+    `# language: ja\n機能: U\n\n  ルール: R\n\n    シナリオアウトライン: S\n      前提 件数が<件数>件である\n      ならば <結果>になる\n\n      例:\n        | 件数 | 結果 |\n${tableRows}`;
   const diff = diffOf(
     { [FEATURE]: feature('        | 1 | 少ない |\n        | 9 | 多い |\n') },
     { [FEATURE]: feature('        | 9 | 多い |\n        | 1 | 少ない |\n') },
@@ -217,7 +246,7 @@ test('アクターの社内外だけを変えると「変わった（社内外�
     { [ACTOR]: '- アクター: 監査役\n  役割: 監査する\n  社内外: 社内\n' },
     { [ACTOR]: '- アクター: 監査役\n  役割: 監査する\n  社内外: 社外\n' },
   );
-  assert.deepEqual(rows(diff), ['アクター | 監査役 | changed | 社内外']);
+  assert.deepEqual(rows(diff), ['アクター | 監査役 | changed | ["社内外"]']);
 });
 
 // 例の同一性はルール名を含むので、同名の例が別のルールにあっても、手順を変えた側の1件だけが「変わった」になる（J3）
@@ -249,4 +278,46 @@ test('同じ文の要求文が別の UC の票に1行ずつあり、片方の理
     diff.elements.filter((e) => e.kind === '要求票').map((e) => [e.key, e.status, e.changed]),
     [[elementKey('要求票', ['U2']), 'changed', ['要求文']]],
   );
+});
+
+const REQUIREMENT = 'docs/requirements/u.md';
+
+function sheetOf(reason: string, rdra: string): string {
+  return `# 要求票: U\n\n## 理由\n\n${reason}\n\n## 仕様\n\n1. システムは記録を残す\n   - RDRA: ${rdra}\n   - 理由: なし\n`;
+}
+
+// 要求票の理由の節は票の比べる中身なので、節だけを変えた票は「変わった（理由）」になり、要求文の行は変わらないので差分に出ない
+test('要求票の理由の節だけを変えると、要求票だけが「変わった（理由）」になる', () => {
+  const diff = diffOf(
+    { [REQUIREMENT]: sheetOf('後から確かめるため', 'アクター「従業員」') },
+    { [REQUIREMENT]: sheetOf('監査で確かめるため', 'アクター「従業員」') },
+  );
+  assert.deepEqual(rows(diff), ['要求票 | U | changed | ["理由"]']);
+});
+
+// 要求文の RDRA 欄は行の比べる中身で、欄の参照は票の「要求文」の欄の組にも入るので、行は「変わった（RDRA）」、票は「変わった（要求文）」になる
+test('要求文の RDRA 欄に参照を1つ足すと、行が「変わった（RDRA）」・票が「変わった（要求文）」になる', () => {
+  const diff = diffOf(
+    { [REQUIREMENT]: sheetOf('後から確かめるため', 'アクター「従業員」') },
+    { [REQUIREMENT]: sheetOf('後から確かめるため', 'アクター「従業員」、情報「申請」') },
+  );
+  assert.deepEqual(rows(diff), ['要求文 | システムは記録を残す | changed | ["RDRA"]', '要求票 | U | changed | ["要求文"]']);
+});
+
+// 表の定義に無いキー（検査の unknown-key）も比べる中身に入る（J7）。状態の表の記録を含み、欄名はキー名で、定義のキーの後ろに並ぶ
+test('表の記録に定義に無いキーを足すと、その要素が「変わった（<キー名>）」になる', () => {
+  const diff = diffOf(
+    {
+      [ACTOR]: '- アクター: 監査役\n  役割: 監査する\n  社内外: 社内\n',
+      [STATE]: transition('X', '説明一'),
+    },
+    {
+      [ACTOR]: '- アクター: 監査役\n  役割: 監査し報告する\n  社内外: 社内\n  画面: 一覧\n',
+      [STATE]: `${transition('X', '説明一')}  備考: 未確認\n`,
+    },
+  );
+  assert.deepEqual(rows(diff), [
+    'アクター | 監査役 | changed | ["役割","画面"]',
+    '遷移 | M/A→B（X） | changed | ["備考"]',
+  ]);
 });

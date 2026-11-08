@@ -78,7 +78,8 @@ export interface TableDef {
   requires: Record<string, string>;
 }
 
-const HYPOTHESIS = '仮説';
+// どの表も持てる任意のキー。キーがあれば仮説、無ければ事実
+export const HYPOTHESIS = '仮説';
 
 export const TABLES: TableDef[] = [
   {
