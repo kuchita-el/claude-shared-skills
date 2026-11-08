@@ -321,3 +321,19 @@ test('表の記録に定義に無いキーを足すと、その要素が「変�
     '遷移 | M/A→B（X） | changed | ["備考"]',
   ]);
 });
+
+// 表の値の比べ方の負例。文字列は前後の空白を除いて比べ、無い・空・null を同じとみなす。並びの型のキーも、無い・空・null は
+// 同じ空の集合である（無いと空の並びを区別するのは仮説だけ）
+test('表の値の前後の空白だけの違いと、無い・空・null の違いは印にならない', () => {
+  const actor = (extra: string) => `- アクター: 監査役\n  役割: 監査する\n${extra}`;
+  assert.deepEqual(rows(diffOf({ [ACTOR]: actor('  社内外: 社内\n') }, { [ACTOR]: actor('  社内外: "  社内 "\n') })), [], '前後の空白');
+
+  const pairs = (variants: string[]) => variants.flatMap((a) => variants.filter((b) => b !== a).map((b) => [a, b] as const));
+  for (const [a, b] of pairs(['', "  社内外: ''\n", '  社内外: null\n'])) {
+    assert.deepEqual(rows(diffOf({ [ACTOR]: actor(a) }, { [ACTOR]: actor(b) })), [], `文字列のキー: ${JSON.stringify(a)} → ${JSON.stringify(b)}`);
+  }
+  const uc = (extra: string) => `- UC: U\n  説明: x\n${extra}`;
+  for (const [a, b] of pairs(['', '  外部システム: []\n', '  外部システム: null\n'])) {
+    assert.deepEqual(rows(diffOf({ [USE_CASE]: uc(a) }, { [USE_CASE]: uc(b) })), [], `並びのキー: ${JSON.stringify(a)} → ${JSON.stringify(b)}`);
+  }
+});

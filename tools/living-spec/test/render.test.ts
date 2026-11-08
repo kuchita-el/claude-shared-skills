@@ -1599,6 +1599,26 @@ test('CLI: render --base は、版が無いと終了コード 2 で止まる', (
   }
 });
 
+test('CLI: render --base は、注釈付きタグをそれが指すコミットとして読み、tree を指す参照は版が見つからないとして終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  try {
+    extract(PASS_ALL, repo);
+    commitAll(repo);
+    const commit = git(repo, 'rev-parse', 'main').trim();
+    git(repo, 'tag', '-a', 'v1', '-m', 'v1');
+    const tagged = renderBase(repo, ['--base', 'v1', repo]);
+    assert.equal(tagged.status, 0, tagged.stderr);
+    const html = readFileSync(diffOut(repo), 'utf8');
+    assert.ok(html.includes(`<p>基準の版: v1（${commit.slice(0, 12)}）</p>`), 'タグのオブジェクトではなく、タグが指すコミットを出す');
+    assert.deepEqual(marksOf(html), [], '同じ中身なので印が付かない');
+    rmSync(diffOut(repo));
+    // tree はコミットに解けないので、版として受けない
+    assertStopped(renderBase(repo, ['--base', 'main^{tree}', repo]), repo, `基準の版が見つからない: main^{tree}（根: ${repo}）`);
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
 test('CLI: render --base は、基準の版に正本の根が無い（目印をコミットする前の版）と終了コード 2 で止まる', () => {
   const repo = gitRepo();
   try {
@@ -1746,6 +1766,24 @@ test('CLI: render --base は、基準の版の票の置き場が git の作業�
   }
 });
 
+test('CLI: render --base は、基準の版の例の置き場が submodule の参照なら、無いとして空にせず終了コード 2 で止まる', () => {
+  const repo = gitRepo();
+  try {
+    // 見本は例の置き場を持たない。その位置に submodule の参照（mode 160000）だけを索引へ置いてコミットする（ネットワークを使わない）
+    extract(PASS_ALL, repo);
+    git(repo, 'add', '-A');
+    git(repo, 'update-index', '--add', '--cacheinfo', `160000,${'0'.repeat(39)}1,docs/examples`);
+    git(repo, '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'base');
+    assertStopped(
+      renderBase(repo, ['--base', 'main', repo]),
+      repo,
+      `基準の版 main の正本を読めない（根: ${repo}）: ディレクトリでない項: docs/examples（mode 160000）`,
+    );
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+});
+
 test('CLI: render --base は、基準の版の置き場の名前が : で始まっても、pathspec の魔法にせず字面どおりに読む', () => {
   const repo = gitRepo();
   try {
@@ -1779,13 +1817,20 @@ test('CLI: render --base は、根が git の作業ツリーの中に無いと�
   }
 });
 
-test('CLI: render --base は、git を起動できないと終了コード 2 で止まる', () => {
+test('CLI: git を起動できないと、render --base は終了コード 2 で止まり、check と --base なしの render は git なしで通る', () => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'living-spec-base-')));
   const noGit = join(dir, 'bin');
   try {
     extract(PASS_ALL, dir);
     mkdirSync(noGit);
-    assertStopped(renderBase(dir, ['--base', 'main', dir], { ...gitEnv, PATH: noGit }), dir, '基準の版を読めない: git を実行できない（ENOENT）');
+    const env = { ...gitEnv, PATH: noGit };
+    // git が要るのは --base を付けたときだけ
+    const checked = spawnSync(process.execPath, [main, 'check', dir], { cwd: dir, env, encoding: 'utf8' });
+    assert.equal(checked.status, 0, checked.stderr);
+    const rendered = renderBase(dir, [dir], env);
+    assert.equal(rendered.status, 0, rendered.stderr);
+    assert.equal(rendered.stdout, `${join(dir, '.cache', 'living-spec', 'index.html')}\n`);
+    assertStopped(renderBase(dir, ['--base', 'main', dir], env), dir, '基準の版を読めない: git を実行できない（ENOENT）');
   } finally {
     rmSync(dir, { recursive: true });
   }
