@@ -56,8 +56,12 @@ else
           # 新側の開始行だけを読む。見出しの文脈部にある + を拾わないよう、
           # 旧側（-a,b）を飛ばして最初の + で止める。件数の省略形（+c）も扱う。
           sub(/^@@ [^+]*\+/, "", h)
-          sub(/[ ,].*/, "", h)
-          next_line=h + 0
+          sub(/ .*/, "", h)
+          n=split(h, range, ",")
+          next_line=range[1] + 0
+          # 削除だけのハンク（+c,0）は、新側の c 行と c+1 行を隣り合わせる。
+          # その境目をまたぐ文を検査できるよう、境目の印（j の後に c）を残す。
+          if (n == 2 && range[2] == "0") printf "j%d\t%s\n", next_line, path
           next
         }
         /^\+/ {
@@ -86,9 +90,11 @@ while IFS=$'\t' read -r path; do
       all=0
       while ((getline target < target_file) > 0) {
         if (target == "*") all=1
+        else if (target ~ /^j/) joined[substr(target, 2)]=1
         else wanted[target]=1
       }
       close(target_file)
+      join_pending=0
       sentence=""
       sentence_start=1
       sentence_target=all
@@ -103,6 +109,7 @@ while IFS=$'\t' read -r path; do
       }
       sentence=""
       sentence_target=all
+      join_pending=0
     }
     # Markdown の構造を見分ける処理はここに集める。行の種類を返し、フェンスの内外を状態に持つ。
     #   fence: 開き・閉じのフェンスの行。code: フェンスの内側の行（閉じが無ければ文書の終わりまで）
@@ -147,13 +154,19 @@ while IFS=$'\t' read -r path; do
       # 見出しと項目の始まりは前の文を区切る。見出しはそれ自体で1つの単位として閉じる。
       if (kind == "heading" || kind == "item") finish()
       if (sentence == "") sentence_start=NR
-      if (marked(NR)) sentence_target=1
+      line_marked=marked(NR)
+      if (line_marked) sentence_target=1
+      # 印は文字の単位で立てる。変えた行の文字か、削除でつながった境目の後ろの文字を
+      # 1字でも含む文を検査する。行の途中の終端の後から始まる文も、ここで印を持つ。
       for (i=1; i<=length($0); i++) {
         ch=substr($0, i, 1)
         sentence=sentence ch
+        if (line_marked || join_pending) sentence_target=1
         if (ch ~ /[。！？!?]/) finish()
       }
       if (kind == "heading" || (kind == "blank" && sentence != "")) finish()
+      # 削除で次の行と隣り合った行の終わりで文が続いていれば、次の行の文字でその文に印を立てる。
+      if ((NR in joined) && sentence != "") join_pending=1
     }
     END { finish(); exit bad }
   ' "$path"

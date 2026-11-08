@@ -340,3 +340,66 @@ lint_tmp() {
   [ "$status" -eq 1 ]
   [[ "$output" == *":2:一文長: 102字"* ]]
 }
+
+# 差分の方式が、変更によって生じた文を行の中の位置によらず検査することの試験（#938）。
+# 変更によって生じた文とは、変えた行の文字を含む文と、行の削除で前後がつながった文である。
+# make_diff_repo は残りの引数を1行ずつ書いた doc.md をコミットする。run_doc_diff はその差分へ --diff を掛ける。
+make_diff_repo() {
+  repo="$BATS_TEST_TMPDIR/$1"
+  mkdir -p "$repo"
+  git -C "$repo" init -q
+  git -C "$repo" config user.email test@example.invalid
+  git -C "$repo" config user.name test
+  printf '%s\n' "${@:2}" > "$repo/doc.md"
+  git -C "$repo" add doc.md && git -C "$repo" -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -qm base
+}
+run_doc_diff() {
+  run bash -c 'cd "$1" && bash "$2" --diff HEAD -- doc.md' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh"
+}
+
+@test "差分の方式は、変えた行の2文目の長文を報告する" {
+  make_diff_repo mid-line '変更前。'
+  printf '短い文。%s。\n' "$(rep う 120)" > "$repo/doc.md"
+  run_doc_diff
+  [ "$status" -eq 1 ]
+  [ "$output" = 'doc.md:1:一文長: 121字（上限100）' ]
+}
+
+@test "差分の方式は、変えた行の途中から始まり変えていない次の行へ続く長文を報告する" {
+  make_diff_repo mid-line-cont '前の文。' "$(rep え 60)。"
+  sed -i "1s/.*/前の文。$(rep お 60)/" "$repo/doc.md"
+  run_doc_diff
+  [ "$status" -eq 1 ]
+  [ "$output" = 'doc.md:1:一文長: 121字（上限100）' ]
+}
+
+@test "差分の方式は、行の削除で前後がつながった長文を報告する" {
+  make_diff_repo joined "$(rep あ 60)" '' "$(rep い 60)。"
+  sed -i '2d' "$repo/doc.md"
+  run_doc_diff
+  [ "$status" -eq 1 ]
+  [ "$output" = 'doc.md:1:一文長: 121字（上限100）' ]
+}
+
+@test "差分の方式は、変えていない行の途中から始まる既存の長文を報告しない" {
+  make_diff_repo unchanged-mid-line "短い文。$(rep う 120)。" '変更前。'
+  sed -i 's/変更前。/変更後。/' "$repo/doc.md"
+  run_doc_diff
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "差分の方式は、前後を文としてつながない行の削除では既存の長文を報告しない" {
+  # 削除した行の直前で文が終端しているので、削除で文はつながらない。後ろの長文は既存のまま。
+  make_diff_repo deleted-no-join '前の文。' '消す文。' "$(rep い 120)。"
+  sed -i '2d' "$repo/doc.md"
+  run_doc_diff
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  # 段落の間の空行を消しても、前の段落が句点で閉じていれば後ろの既存の長文は報告しない。
+  make_diff_repo deleted-blank-no-join '前の文。' '' "$(rep い 120)。"
+  sed -i '2d' "$repo/doc.md"
+  run_doc_diff
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
