@@ -238,3 +238,48 @@ test('CLI: diff --base は、目印の無い場所では作業ツリーの側で
     rmSync(dir, { recursive: true });
   }
 });
+
+// ---- AC4: 要求票の2行目だけを書き換えた版・UC の足し外しと条件の説明の書き換えだけの版（test/difflist/） ----
+
+// 基準の版をコミットしてから作業ツリーを作業ツリーの版へ替え、diff --base main の標準出力と終了コードを返す
+function diffOfSample(name: string) {
+  const repo = gitRepo();
+  try {
+    extract(join(here, 'difflist', `${name}-base.txtar`), repo);
+    commitAll(repo);
+    rmSync(join(repo, 'docs'), { recursive: true });
+    extract(join(here, 'difflist', `${name}-head.txtar`), repo);
+    return runDiff(repo, ['--base', 'main', repo]);
+  } finally {
+    rmSync(repo, { recursive: true });
+  }
+}
+
+const lines = (rows: string[]): string => rows.map((l) => `${l}\n`).join('');
+
+test('C5: 要求票の2行目だけを書き換えると、要求票が変わった・要求文が足された・外された、が票の順に出る', () => {
+  const ucs = ['申請を作成する', '申請を提出する', '申請を承認する'];
+  const added = [
+    '作成した申請の持ち主と日時を記録する',
+    '提出の日時と提出者を記録する',
+    '承認の日時と承認者を記録する',
+  ];
+  const removed = ['作成した申請の持ち主を記録する', '提出の日時を記録する', '承認の日時を記録する'];
+  const subject = ['従業員が申請を作成する', '従業員が申請を提出する', '上長が申請を承認する'];
+  const result = diffOfSample('requirement-lines');
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    result.stdout,
+    lines([
+      ...ucs.map((u) => `要求票\t変わった\t${u}`),
+      ...ucs.map((u, i) => `要求文\t足された\t${u}\t${subject[i]}とき、システムは${added[i]}`),
+      ...ucs.map((u, i) => `要求文\t外された\t${u}\t${subject[i]}とき、システムは${removed[i]}`),
+    ]),
+  );
+});
+
+test('C6: UC の足し外しと条件の説明の書き換えは、UC と条件の行だけが出る', () => {
+  const result = diffOfSample('uc-condition');
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, lines(['UC\t足された\t申請を複製する', 'UC\t外された\t申請を取り下げる', '条件\t変わった\t金額の条件']));
+});
