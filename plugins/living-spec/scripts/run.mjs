@@ -1,5 +1,5 @@
 // living-spec の検査器を探して呼ぶ中継。依存を持たない。検査器そのものはプラグインに含めず、利用者が GitHub Release の添付物を取って入れる。
-// 使い方: node run.mjs check [--doc-missing] [起点] | node run.mjs render [起点] | node run.mjs hook
+// 使い方: node run.mjs check [--doc-missing] [起点] | node run.mjs render [--base <版>] [起点] | node run.mjs hook
 // 検査器を探す順:
 //   1. 環境変数 LIVING_SPEC_BIN（取った living-spec-<SHA>.mjs のパス）
 //   2. 解決の起点から解決できるパッケージ @kuchita-el/living-spec（開発者がリポジトリへ npm i -D で入れたもの）の bin
