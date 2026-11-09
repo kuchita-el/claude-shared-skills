@@ -4,16 +4,20 @@
 
 ## 出典
 
-- 名前と版: markdown-it 15.0.3
-- 取得元: npm の tarball `markdown-it-15.0.3.tgz` の中の `package/dist/browser/markdown-it.esm.min.mjs`
-- 取得の完全性の値（`npm view markdown-it@15.0.3 dist.integrity`）: `sha512-+Az7Ojz3iRGu8KYMvJ6xVhvrxP3eE+vEtJX75Ow88XBpcQNV/0lGX5ZynIIBftREo4DC2jsveAMDaeltmm8QvQ==`
-- 同梱したファイルの sha256: `d5432491790141da046b1197353705db03264f40b5727f3b4b591f5aba193e30`
+| 項目 | 値 |
+| --- | --- |
+| 名前と版 | markdown-it 15.0.3 |
+| 取得元 | npm の tarball `markdown-it-15.0.3.tgz` |
+| tarball の中のパス | `package/dist/browser/markdown-it.esm.min.mjs` |
+| 取得の完全性の値 | `sha512-+Az7Ojz3iRGu8KYMvJ6xVhvrxP3eE+vEtJX75Ow88XBpcQNV/0lGX5ZynIIBftREo4DC2jsveAMDaeltmm8QvQ==` |
+| 完全性の値を引いた命令 | `npm view markdown-it@15.0.3 dist.integrity` |
+| 同梱したファイルの sha256 | `d5432491790141da046b1197353705db03264f40b5727f3b4b591f5aba193e30` |
 
-同梱したファイルは、上の tarball の中のファイルとバイト単位で一致する。更新するときは、版を上げた tarball から同じパスのファイルを写し直し、この文書の版・完全性の値・sha256・部品の一覧を合わせて更新する。
+同梱したファイルは、上の tarball の中のファイルとバイト単位で一致する。更新するときは、版を上げた tarball から同じパスのファイルを写し直し、この文書の版・完全性の値・sha256・部品の一覧を合わせて更新する。部品の一覧は、ソースマップの `node_modules/` の出所と、単一ファイルの `//#region \0` の印の両方から導き直す（自分の region を持たない部品がある）。
 
 ## 束ねられている部品
 
-このファイルは、markdown-it 本体に加えて次の部品を束ねている。版は、markdown-it 15.0.3 の依存の範囲に当たる npm の版である。
+このファイルが束ねている部品は、markdown-it 本体を含めて次の8つである。mdurl から punycode.js までの版は、markdown-it 15.0.3 の依存の範囲に当たる npm の版である。
 
 | 部品 | 版 | 許諾 |
 | --- | --- | --- |
