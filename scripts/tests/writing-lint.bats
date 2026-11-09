@@ -8,13 +8,13 @@ setup() {
 }
 
 @test "一文長違反はexit 1で場所と規則を報告する" {
-  run bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --file "$REPO_ROOT/scripts/fixtures/writing/lint/invalid/long-line.md"
+  run node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" --file "$REPO_ROOT/scripts/fixtures/writing/lint/invalid/long-line.md"
   [ "$status" -eq 1 ]
   [[ "$output" == *":1:一文長:"* ]]
 }
 
 @test "上限以内の文書は通過する" {
-  run bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --file "$REPO_ROOT/scripts/fixtures/writing/lint/valid/grounded-terms.md"
+  run node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" --file "$REPO_ROOT/scripts/fixtures/writing/lint/valid/grounded-terms.md"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
@@ -30,9 +30,9 @@ make_repo() {
 commit_repo() {
   git -C "$repo" add -A && git -C "$repo" -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -qm base
 }
-# $repo を作業ディレクトリにして lint-ja.sh を走らせる。引数はそのまま lint-ja.sh へ渡す。
+# $repo を作業ディレクトリにして lint-ja.mjs を走らせる。引数はそのまま lint-ja.mjs へ渡す。
 lint_in_repo() {
-  run bash -c 'cd "$1" && shift && bash "$@"' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" "$@"
+  run bash -c 'cd "$1" && shift && node "$@"' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" "$@"
 }
 
 @test "diffモードは指定したパスの変更だけを検査し、指定しないパスの変更を検査しない" {
@@ -49,7 +49,7 @@ lint_in_repo() {
 }
 
 @test "fileとdiffの同時指定や不正引数を拒否する" {
-  run bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --file foo --diff HEAD -- foo
+  run node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" --file foo --diff HEAD -- foo
   [ "$status" -eq 2 ]
 }
 
@@ -71,7 +71,7 @@ lint_in_repo() {
   mkdir -p "$BATS_TEST_TMPDIR/project/.claude/writing"
   printf '%s\n' '# profile' '| 種別 | 節構成 | 読み手 | 一文長の上限 |' '|---|---|---|---|' '| 汎用 | 定めない | 一般読者 | 50 |' > "$BATS_TEST_TMPDIR/project/.claude/writing/type-profiles.md"
   printf '%s\n' 'あいうえおあいうえおあいうえおあいうえおあいうえおあいうえおあいうえおあいうえおあいうえおあいうえおあいうえお。' > "$BATS_TEST_TMPDIR/profile.md"
-  run env CLAUDE_PROJECT_DIR="$BATS_TEST_TMPDIR/project" bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --file "$BATS_TEST_TMPDIR/profile.md"
+  run env CLAUDE_PROJECT_DIR="$BATS_TEST_TMPDIR/project" node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" --file "$BATS_TEST_TMPDIR/profile.md"
   [ "$status" -eq 1 ]
   [[ "$output" == *"上限50"* ]]
 }
@@ -86,15 +86,15 @@ lint_in_repo() {
   existing="$(printf 'あ%.0s' {1..120})。"
   printf '%s\n%s\n' "$existing" '変更前。' > "$repo/doc.md"
   git -C "$repo" add doc.md && git -C "$repo" -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -qm base
-  run bash -c 'cd "$1" && bash "$2" --file doc.md' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh"
+  run bash -c 'cd "$1" && node "$2" --file doc.md' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs"
   [ "$status" -eq 1 ]
   [[ "$output" == *'doc.md:1:一文長: 121字'* ]]
   sed -i 's/変更前。/変更後。/' "$repo/doc.md"
-  run bash -c 'cd "$1" && bash "$2" --diff HEAD -- doc.md' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh"
+  run bash -c 'cd "$1" && node "$2" --diff HEAD -- doc.md' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
   printf '%s\n%s。\n' "$existing" "$(printf 'う%.0s' {1..120})" > "$repo/doc.md"
-  run bash -c 'cd "$1" && bash "$2" --diff HEAD -- doc.md' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh"
+  run bash -c 'cd "$1" && node "$2" --diff HEAD -- doc.md' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs"
   [ "$status" -eq 1 ]
   [[ "$output" == *'doc.md:2:一文長: 121字'* ]]
   [[ "$output" != *'doc.md:1:'* ]]
@@ -109,7 +109,7 @@ lint_in_repo() {
   touch "$repo/.keep"
   git -C "$repo" add .keep && git -C "$repo" -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -qm base
   printf '%s。\n' "$(printf 'あ%.0s' {1..120})" > "$repo/new.md"
-  run bash -c 'cd "$1" && bash "$2" --diff HEAD -- new.md' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh"
+  run bash -c 'cd "$1" && node "$2" --diff HEAD -- new.md' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs"
   [ "$status" -eq 1 ]
 }
 
@@ -131,7 +131,7 @@ make_hunk_context_repo() {
 }
 
 run_lint_diff() {
-  run bash -c 'cd "$1" && bash "$2" --diff HEAD -- a.md' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh"
+  run bash -c 'cd "$1" && node "$2" --diff HEAD -- a.md' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs"
 }
 
 @test "diffモードは見出しの文脈に+があっても変更行だけを検査する" {
@@ -170,10 +170,10 @@ run_lint_diff() {
   first=$(printf 'あ%.0s' {1..60})
   second=$(printf 'い%.0s' {1..60})
   printf '%s。%s。\n' "$first" "$second" > "$BATS_TEST_TMPDIR/two-sentences.md"
-  run bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --file "$BATS_TEST_TMPDIR/two-sentences.md"
+  run node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" --file "$BATS_TEST_TMPDIR/two-sentences.md"
   [ "$status" -eq 0 ]
   printf '%s\n%s。\n' "$(printf 'あ%.0s' {1..80})" "$(printf 'い%.0s' {1..40})" > "$BATS_TEST_TMPDIR/wrapped-sentence.md"
-  run bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --file "$BATS_TEST_TMPDIR/wrapped-sentence.md"
+  run node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" --file "$BATS_TEST_TMPDIR/wrapped-sentence.md"
   [ "$status" -eq 1 ]
 }
 
@@ -182,11 +182,11 @@ run_lint_diff() {
 rep() { local s='' k; for ((k = 0; k < $2; k++)); do s+=$1; done; printf '%s' "$s"; }
 lint_tmp() {
   printf '%s\n' "${@:2}" > "$BATS_TEST_TMPDIR/$1"
-  run bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --file "$BATS_TEST_TMPDIR/$1"
+  run node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" --file "$BATS_TEST_TMPDIR/$1"
 }
 
 @test "表だけの文書は一文長を報告しない" {
-  run bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --file "$REPO_ROOT/scripts/fixtures/writing/lint/valid/table-only.md"
+  run node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" --file "$REPO_ROOT/scripts/fixtures/writing/lint/valid/table-only.md"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
@@ -210,13 +210,13 @@ lint_tmp() {
 }
 
 @test "表の行の中のフェンス記号でコードブロックを始めない" {
-  lint_tmp fence-in-table.md '| 記号 | ``` |' "$(rep あ 101)。"
+  lint_tmp fence-in-table.md '| 記号 | ``` |' '|---|---|' '' "$(rep あ 101)。"
   [ "$status" -eq 1 ]
-  [[ "$output" == *":2:一文長: 102字"* ]]
+  [[ "$output" == *":4:一文長: 102字"* ]]
 }
 
 @test "句点の無い箇条書きの項目をつながない" {
-  run bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --file "$REPO_ROOT/scripts/fixtures/writing/lint/valid/unpunctuated-list.md"
+  run node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" --file "$REPO_ROOT/scripts/fixtures/writing/lint/valid/unpunctuated-list.md"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
@@ -256,7 +256,7 @@ lint_tmp() {
 }
 
 @test "コードブロックの中身を地の文として数えない" {
-  run bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --file "$REPO_ROOT/scripts/fixtures/writing/lint/valid/code-block.md"
+  run node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" --file "$REPO_ROOT/scripts/fixtures/writing/lint/valid/code-block.md"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
@@ -300,7 +300,7 @@ lint_tmp() {
   cp "$REPO_ROOT/scripts/fixtures/writing/lint/valid/code-block.md" "$repo/doc.md"
   git -C "$repo" add doc.md && git -C "$repo" -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -qm base
   sed -i 's/入口の試験/入口の試験と注記/' "$repo/doc.md"
-  run bash -c 'cd "$1" && bash "$2" --diff HEAD -- doc.md' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh"
+  run bash -c 'cd "$1" && node "$2" --diff HEAD -- doc.md' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
@@ -347,19 +347,19 @@ lint_tmp() {
   [ -z "$output" ]
 }
 
-@test "字下げした表の行も、字下げの深さによらず表として扱う" {
-  lint_tmp indented-table.md "$(rep あ 60)" '    | 列 | 値 |' "$(rep い 60)。"
+@test "箇条書きの中で字下げした表も表として数えない" {
+  lint_tmp indented-table.md '- 項目' '' "    | $(rep あ 60) | $(rep い 60) |" '    |---|---|'
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
 
 @test "改行がCRLFの文書でも閉じのフェンスと空行を認める" {
   printf '```\r\necho\r\n```\r\n\r\n%s。\r\n' "$(rep あ 101)" > "$BATS_TEST_TMPDIR/crlf-fence.md"
-  run bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --file "$BATS_TEST_TMPDIR/crlf-fence.md"
+  run node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" --file "$BATS_TEST_TMPDIR/crlf-fence.md"
   [ "$status" -eq 1 ]
   [[ "$output" == *":5:一文長: 102字"* ]]
   printf '%s\r\n\r\n%s。\r\n' "$(rep あ 60)" "$(rep い 60)" > "$BATS_TEST_TMPDIR/crlf-blank.md"
-  run bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --file "$BATS_TEST_TMPDIR/crlf-blank.md"
+  run node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" --file "$BATS_TEST_TMPDIR/crlf-blank.md"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
@@ -383,7 +383,7 @@ make_diff_repo() {
   git -C "$repo" add doc.md && git -C "$repo" -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -qm base
 }
 run_doc_diff() {
-  run bash -c 'cd "$1" && bash "$2" --diff HEAD -- doc.md' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh"
+  run bash -c 'cd "$1" && node "$2" --diff HEAD -- doc.md' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs"
 }
 
 @test "差分の方式は、変えた行の2文目の長文を報告する" {
@@ -444,13 +444,13 @@ run_doc_diff() {
 
 # 文書種別ごとの一文長の上限（--type）の試験。
 # write_profile は残りの引数を行として、プロジェクト固有のプロファイルを表の見出しの後に書く。
-# lint_project は、そのプロファイルを持つプロジェクトの下で lint-ja.sh を走らせる。
+# lint_project は、そのプロファイルを持つプロジェクトの下で lint-ja.mjs を走らせる。
 write_profile() {
   mkdir -p "$BATS_TEST_TMPDIR/project/.claude/writing"
   printf '%s\n' '# profile' '| 種別 | 節構成 | 読み手 | 一文長の上限 |' '|---|---|---|---|' "$@" > "$BATS_TEST_TMPDIR/project/.claude/writing/type-profiles.md"
 }
 lint_project() {
-  run env CLAUDE_PROJECT_DIR="$BATS_TEST_TMPDIR/project" bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" "$@"
+  run env CLAUDE_PROJECT_DIR="$BATS_TEST_TMPDIR/project" node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" "$@"
 }
 
 @test "--typeで指定した種別の行の上限を、プロジェクト固有のプロファイルから採る" {
@@ -470,7 +470,7 @@ lint_project() {
   write_profile '| 汎用 | 定めない | 一般読者 | 70 |' '| 報告書 | 定めない | 一般読者 | 70字 |'
   printf 'short.\n' > "$BATS_TEST_TMPDIR/short.md"
   for type in 汎用 報告書; do
-    run env LC_ALL=C CLAUDE_PROJECT_DIR="$BATS_TEST_TMPDIR/project" bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --type "$type" --file "$BATS_TEST_TMPDIR/short.md"
+    run env LC_ALL=C CLAUDE_PROJECT_DIR="$BATS_TEST_TMPDIR/project" node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" --type "$type" --file "$BATS_TEST_TMPDIR/short.md"
     [ "$status" -eq 0 ]
     [ -z "$output" ]
   done
@@ -496,18 +496,18 @@ lint_project() {
   [[ "$output" == *":1:一文長: 101字（上限100）"* ]]
 }
 
-@test "同梱の既定の上限は、lint-ja.shと同じプラグインのdocument-type-profiles.mdの汎用の行から読む" {
+@test "同梱の既定の上限は、lint-ja.mjsと同じプラグインのdocument-type-profiles.mdの汎用の行から読む" {
   plugin="$BATS_TEST_TMPDIR/plugin"
   mkdir -p "$plugin/scripts" "$plugin/references"
-  cp "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" "$plugin/scripts/"
+  cp -R "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" "$REPO_ROOT/plugins/writing/scripts/vendor" "$plugin/scripts/"
   sed 's/| 100字 |$/| 80字 |/' "$REPO_ROOT/plugins/writing/references/document-type-profiles.md" > "$plugin/references/document-type-profiles.md"
   grep -F '| 80字 |' "$plugin/references/document-type-profiles.md"
   printf '%s。\n' "$(rep あ 80)" > "$BATS_TEST_TMPDIR/eighty-one.md"
-  run env -u CLAUDE_PROJECT_DIR bash "$plugin/scripts/lint-ja.sh" --type 議事録 --file "$BATS_TEST_TMPDIR/eighty-one.md"
+  run env -u CLAUDE_PROJECT_DIR node "$plugin/scripts/lint-ja.mjs" --type 議事録 --file "$BATS_TEST_TMPDIR/eighty-one.md"
   [ "$status" -eq 1 ]
   [[ "$output" == *":1:一文長: 81字（上限80）"* ]]
   rm "$plugin/references/document-type-profiles.md"
-  run env -u CLAUDE_PROJECT_DIR bash "$plugin/scripts/lint-ja.sh" --file "$BATS_TEST_TMPDIR/eighty-one.md"
+  run env -u CLAUDE_PROJECT_DIR node "$plugin/scripts/lint-ja.mjs" --file "$BATS_TEST_TMPDIR/eighty-one.md"
   [ "$status" -eq 0 ]
 }
 
@@ -525,18 +525,18 @@ lint_project() {
   touch "$repo/.keep"
   commit_repo
   printf '%s。\n' "$(rep あ 70)" > "$repo/new.md"
-  run bash -c 'cd "$1" && CLAUDE_PROJECT_DIR="$2" bash "$3" --type 報告書 --diff HEAD -- new.md' _ "$repo" "$BATS_TEST_TMPDIR/project" "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh"
+  run bash -c 'cd "$1" && CLAUDE_PROJECT_DIR="$2" node "$3" --type 報告書 --diff HEAD -- new.md' _ "$repo" "$BATS_TEST_TMPDIR/project" "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs"
   [ "$status" -eq 1 ]
   [[ "$output" == *"new.md:1:一文長: 71字（上限70）"* ]]
 }
 
 @test "--typeの値が無い・空・重複のときは引数の誤りとして拒否する" {
   printf '%s\n' '短い。' > "$BATS_TEST_TMPDIR/short.md"
-  run bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --file "$BATS_TEST_TMPDIR/short.md" --type
+  run node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" --file "$BATS_TEST_TMPDIR/short.md" --type
   [ "$status" -eq 2 ]
-  run bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --type '' --file "$BATS_TEST_TMPDIR/short.md"
+  run node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" --type '' --file "$BATS_TEST_TMPDIR/short.md"
   [ "$status" -eq 2 ]
-  run bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --type 汎用 --type 報告書 --file "$BATS_TEST_TMPDIR/short.md"
+  run node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" --type 汎用 --type 報告書 --file "$BATS_TEST_TMPDIR/short.md"
   [ "$status" -eq 2 ]
 }
 
@@ -565,7 +565,7 @@ lint_project() {
 
 @test "拡張子が.markdownのファイルはMarkdownとして検査する" {
   printf '%s。\n' "$(rep あ 101)" > "$BATS_TEST_TMPDIR/long.markdown"
-  run bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --file "$BATS_TEST_TMPDIR/long.markdown"
+  run node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" --file "$BATS_TEST_TMPDIR/long.markdown"
   [ "$status" -eq 1 ]
   [[ "$output" == *":1:一文長: 102字"* ]]
 }
@@ -684,18 +684,18 @@ lint_project() {
 @test "プロジェクト固有のプロファイルが無いときは、同梱の汎用の上限を採り、検査できない扱いにしない" {
   mkdir -p "$BATS_TEST_TMPDIR/empty-project"
   printf '%s。\n' "$(rep あ 99)" > "$BATS_TEST_TMPDIR/hundred.md"
-  run env CLAUDE_PROJECT_DIR="$BATS_TEST_TMPDIR/empty-project" bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --type 報告書 --file "$BATS_TEST_TMPDIR/hundred.md"
+  run env CLAUDE_PROJECT_DIR="$BATS_TEST_TMPDIR/empty-project" node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" --type 報告書 --file "$BATS_TEST_TMPDIR/hundred.md"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
   printf '%s。\n' "$(rep あ 100)" > "$BATS_TEST_TMPDIR/hundred-one.md"
-  run env CLAUDE_PROJECT_DIR="$BATS_TEST_TMPDIR/empty-project" bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --type 報告書 --file "$BATS_TEST_TMPDIR/hundred-one.md"
+  run env CLAUDE_PROJECT_DIR="$BATS_TEST_TMPDIR/empty-project" node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" --type 報告書 --file "$BATS_TEST_TMPDIR/hundred-one.md"
   [ "$status" -eq 1 ]
   [[ "$output" == *":1:一文長: 101字（上限100）"* ]]
 }
 
 @test "拡張子の大文字小文字を問わずMarkdownとして検査する" {
   printf '%s。\n' "$(rep あ 101)" > "$BATS_TEST_TMPDIR/UP.MD"
-  run bash "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" --file "$BATS_TEST_TMPDIR/UP.MD"
+  run node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" --file "$BATS_TEST_TMPDIR/UP.MD"
   [ "$status" -eq 1 ]
   [[ "$output" == *"UP.MD:1:一文長: 102字"* ]]
 }
@@ -713,28 +713,89 @@ lint_project() {
 @test "プロジェクト固有のプロファイルも同梱の既定も読めないときは、上限100を採る" {
   plugin="$BATS_TEST_TMPDIR/bare-plugin"
   mkdir -p "$plugin/scripts"
-  cp "$REPO_ROOT/plugins/writing/scripts/lint-ja.sh" "$plugin/scripts/"
+  cp -R "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" "$REPO_ROOT/plugins/writing/scripts/vendor" "$plugin/scripts/"
   printf '%s。\n' "$(rep あ 99)" > "$BATS_TEST_TMPDIR/bare-100.md"
-  run env -u CLAUDE_PROJECT_DIR bash "$plugin/scripts/lint-ja.sh" --file "$BATS_TEST_TMPDIR/bare-100.md"
+  run env -u CLAUDE_PROJECT_DIR node "$plugin/scripts/lint-ja.mjs" --file "$BATS_TEST_TMPDIR/bare-100.md"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
   printf '%s。\n' "$(rep あ 100)" > "$BATS_TEST_TMPDIR/bare-101.md"
-  run env -u CLAUDE_PROJECT_DIR bash "$plugin/scripts/lint-ja.sh" --file "$BATS_TEST_TMPDIR/bare-101.md"
+  run env -u CLAUDE_PROJECT_DIR node "$plugin/scripts/lint-ja.mjs" --file "$BATS_TEST_TMPDIR/bare-101.md"
   [ "$status" -eq 1 ]
   [[ "$output" == *":1:一文長: 101字（上限100）"* ]]
 }
 
 @test "引数の誤りを終了コード2で拒む" {
   printf '短い文。\n' > "$BATS_TEST_TMPDIR/args.md"
-  local lint="$REPO_ROOT/plugins/writing/scripts/lint-ja.sh"
-  run bash "$lint" --bogus --file "$BATS_TEST_TMPDIR/args.md"
+  local lint="$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs"
+  run node "$lint" --bogus --file "$BATS_TEST_TMPDIR/args.md"
   [ "$status" -eq 2 ]
-  run bash "$lint" --file "$BATS_TEST_TMPDIR/args.md" --
+  run node "$lint" --file "$BATS_TEST_TMPDIR/args.md" --
   [ "$status" -eq 2 ]
-  run bash "$lint" --diff HEAD
+  run node "$lint" --diff HEAD
   [ "$status" -eq 2 ]
-  run bash "$lint" --diff HEAD --
+  run node "$lint" --diff HEAD --
   [ "$status" -eq 2 ]
-  run bash "$lint"
+  run node "$lint"
   [ "$status" -eq 2 ]
+}
+
+# 構造を CommonMark と GFM の表の定義で読み、字をロケールによらずコードポイントで数えることの試験（#959）。
+
+@test "ロケールによらず同じ結果を返す" {
+  f="$BATS_TEST_TMPDIR/locale.md"
+  printf '%s\n' "$(rep あ 99)。" "$(rep い 100)！" "$(rep "$(printf 'か\xe3\x82\x99')" 50)？" '' \
+    '| 列 | 値 |' '|---|---|' "| $(rep う 120) | 値 |" '' '```' "$(rep え 120)" '```' > "$f"
+  expected="$f:2:一文長: 101字（上限100）"$'\n'"$f:3:一文長: 101字（上限100）"
+  for locale in C C.UTF-8; do
+    run env LC_ALL="$locale" node "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" --file "$f"
+    [ "$status" -eq 1 ]
+    [ "$output" = "$expected" ]
+  done
+}
+
+@test "front-matter を地の文としてつながない" {
+  lint_tmp front-matter.md '---' "title: $(rep x 120)" "description: $(rep y 120)" '---' "$(rep あ 60)。"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  lint_tmp front-matter-short.md '---' 'title: x' '---' "$(rep あ 101)。"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *":4:一文長: 102字"* ]]
+}
+
+@test "閉じの無い --- は front-matter と見ず、後ろの長文を報告する" {
+  lint_tmp unclosed-front-matter.md '---' '' "$(rep あ 120)。"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *":3:一文長: 121字"* ]]
+}
+
+@test "区切りの行の無い | 始まりの行は表と見ず、地の文として数える" {
+  lint_tmp pipe-without-delimiter.md "| $(rep あ 60)" "$(rep い 50)。"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *":1:一文長: 113字"* ]]
+}
+
+@test "1行の中で始まる文は、その文の始まりの行で報告する" {
+  lint_tmp mid-line-start.md "$(rep あ 60)" "$(rep い 60)。$(rep う 120)。"
+  [ "$status" -eq 1 ]
+  f="$BATS_TEST_TMPDIR/mid-line-start.md"
+  [ "$output" = "$f:1:一文長: 121字（上限100）"$'\n'"$f:2:一文長: 121字（上限100）" ]
+}
+
+@test "差分の方式は、++ で始まる追加行の後ろの変えた長文を報告する" {
+  make_diff_repo plus-plus-line '前。' '後。'
+  printf '%s\n' '前。' '++ 足した行。' "$(rep あ 120)。" '後。' > "$repo/doc.md"
+  run_doc_diff
+  [ "$status" -eq 1 ]
+  [ "$output" = 'doc.md:3:一文長: 121字（上限100）' ]
+}
+
+@test "同梱の解析器を読み込めないとき、終了コード2と理由を返す" {
+  # 解析器（vendor/）を写さない偽のプラグインで起動する。未捕捉の例外の終了コード 1 を返さないことを押さえる。
+  plugin="$BATS_TEST_TMPDIR/no-parser-plugin"
+  mkdir -p "$plugin/scripts"
+  cp "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" "$plugin/scripts/"
+  printf '短い文。\n' > "$BATS_TEST_TMPDIR/no-parser.md"
+  run node "$plugin/scripts/lint-ja.mjs" --file "$BATS_TEST_TMPDIR/no-parser.md"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"markdown-it"* ]]
 }
