@@ -17,7 +17,7 @@ Release を作る仕組みは `.github/workflows/living-spec-release.yml` であ
 - `tools/living-spec/pnpm-lock.yaml`
 - `tools/living-spec/pnpm-workspace.yaml`
 
-ワークフローは `workflow_dispatch` でだけ起動する。届ける版を人が選んだときだけ Release が増え、Release の一覧がそのまま版の候補になるためである。
+ワークフローは `workflow_dispatch` でだけ起動する。保守者が届けると決めたときだけ Release が増え、Release の一覧がそのまま版の候補になるためである。
 
 main への push ごとに Release を作る形は採らない。検査器が変わらないコミットでも Release が増え、利用者が版を選ぶ手がかりにならないためである。
 
@@ -25,17 +25,13 @@ main への push ごとに Release を作る形は採らない。検査器が変
 
 ## (3) どのコミットで切るか
 
-main の祖先のコミットに限る。
+起動した時点の main の先頭で切る。保守者はコミットを選ばない。ワークフローは入力を取らず、起動したコミット（`github.sha`）をビルド・試験し、Release にする。起動を main の定義に限るので、このコミットは main の先頭になる（(5)）。
 
-既定の選び方は次のとおりである。先に `git fetch origin` で `origin/main` を最新にしておく。
+main の先頭に限る理由は、Release の作成の制約にある。対象のコミットが既定のブランチと比べて `.github/workflows/` の下を足すか変えていると、作成にはワークフローを変える権限が要る。ワークフローのトークンには、この権限を付けられない。制約の正本は、GitHub REST API の文書の「Create a release」の注記である。所在は <https://docs.github.com/rest/releases/releases#create-a-release> である。main の先頭で切れば、起動の時点で対象と既定のブランチが食い違わない。
 
-```bash
-git log -1 --format=%H origin/main -- tools/living-spec/src tools/living-spec/package.json tools/living-spec/pnpm-lock.yaml tools/living-spec/pnpm-workspace.yaml
-```
+代償は2つある。main の先頭より古いコミットでは切れない。Release の名前が、ビルドの入力を変えていないコミットの SHA になることがある。
 
-この命令は、ビルドの入力を最後に変えた main のコミットを返す。
-
-公開を取り消した SHA は再び使わない。その SHA の名前は再利用できないためである（ADR-202611040012-01）。既定の選び方が取り消した SHA を返すことがある。取り消しの原因がビルドの入力の外にあったときである。そのときは `git rev-parse origin/main` が返す SHA で切る。この SHA も取り消した SHA と同じなら、取り消した SHA が main の先頭にある。そのときは、main に新しいコミットが入るのを待ち、そのコミットで切る。
+公開を取り消した SHA は再び使わない。その SHA の名前は再利用できないためである（ADR-202611040012-01）。取り消した SHA が main の先頭にあるうちは起動しない。main に新しいコミットが入るのを待ってから起動する。
 
 ## (4) 誰が切るか
 
@@ -63,7 +59,7 @@ AI が保守者に代わって起動する場合は、保守者の明示の承�
 
    これはリポジトリの設定の変更である。AI が行う場合は、保守者の明示の承認を得る。初回の Release より前に有効にしておく理由は、ADR-202611040012-01 の Consequences（変更不可が掛かる範囲）にある。
 
-2. 同名の下書きの Release が残っていないことを確かめる。ワークフローの中の Release の有無の確認は、読み取りの権限で行うため、下書きが見えない。過去の失敗した実行が残した下書きは、その確認をすり抜ける。保守者の認証で次の命令を実行すれば、下書きもタグ名で引ける。gh の `release view` は、公開した Release に加えて、そのタグ名を予定する下書きも探すためである（gh 2.97.0 のソースの `pkg/cmd/release/shared/fetch.go` の `FetchRelease` で確かめた）。
+2. 同名の下書きの Release が残っていないことを確かめる。確かめる SHA は、起動する main の先頭である。`git fetch origin` の後に `git rev-parse origin/main` で取る。ワークフローの中の Release の有無の確認は、読み取りの権限で行うため、下書きが見えない。過去の失敗した実行が残した下書きは、その確認をすり抜ける。保守者の認証で次の命令を実行すれば、下書きもタグ名で引ける。gh の `release view` は、公開した Release に加えて、そのタグ名を予定する下書きも探すためである。この振る舞いは、gh 2.97.0 のソースの `pkg/cmd/release/shared/fetch.go` の `FetchRelease` で確かめた。
 
    ```bash
    gh release view living-spec-<40桁SHA> --repo kuchita-el/claude-shared-skills --json isDraft --jq .isDraft
@@ -76,18 +72,18 @@ AI が保守者に代わって起動する場合は、保守者の明示の承�
 ワークフローは、定義が既定のブランチ（main）にあるときだけ `workflow_dispatch` で起動できる。起動するときは `--ref` を付けない（UI では「Use workflow from」を main のままにする）。`--ref` で選んだブランチやタグにある版の定義が走るためである。
 
 ```bash
-gh workflow run living-spec-release.yml --repo kuchita-el/claude-shared-skills -f sha=<40桁SHA>
+gh workflow run living-spec-release.yml --repo kuchita-el/claude-shared-skills
 ```
 
 main 以外の ref から起動した実行は、ワークフローが止める（何をどう確かめるかは (6)）。この照合は、誤って main 以外の定義で起動したときに止めるためのものである。照合を外した定義をブランチに置いて起動すれば、照合は働かない。それを止めるのは、リポジトリへの書き込み権限を誰に渡すかである（(4)）。
 
-起動した実行を `gh run watch` で見届ける。実行の題名は `living-spec release <40桁SHA>` である。実行の ID は、題名で絞って次の命令で取る。一覧は新しい順に並ぶため、最初の1件が最新の実行である。
+起動した実行を `gh run watch` で見届ける。実行の題名は `living-spec release <40桁SHA>` で、SHA は起動した時点の main の先頭である。実行の ID は、題名で絞って次の命令で取る。一覧は新しい順に並ぶため、最初の1件が最新の実行である。
 
 ```bash
 gh run list --workflow living-spec-release.yml --repo kuchita-el/claude-shared-skills --json databaseId,displayTitle,createdAt --jq 'map(select(.displayTitle == "living-spec release <40桁SHA>")) | first | {databaseId, createdAt}'
 ```
 
-起動の直後は、実行が一覧にまだ載っていないことがある。`databaseId` が `null` なら、少し待って引き直す。同じ SHA で起動し直したときは、前の実行を拾うことがある。`createdAt` が起動の後の時刻であることを確かめる。
+起動の直後は、実行が一覧にまだ載っていないことがある。`databaseId` が `null` なら、少し待って引き直す。待っても `null` なら、確認の後に main が動いたことを疑う。`git fetch origin` の後の `git rev-parse origin/main` の SHA で引き直し、その SHA で下書きの確認も行う。同じ SHA で起動し直したときは、前の実行を拾うことがある。`createdAt` が起動の後の時刻であることを確かめる。
 
 ```bash
 gh run watch <実行の ID> --repo kuchita-el/claude-shared-skills --exit-status
@@ -121,7 +117,7 @@ gh run watch <実行の ID> --repo kuchita-el/claude-shared-skills --exit-status
 
 1. release job が実行する命令の中身。複合命令・パイプ・拡張の導入で、第三者のコードを走らせないこと
 2. 試験した生成物と、受け渡す・添付する生成物が同じであること。置き場、途中の上書き、写す元がビルドの出力であることを見る
-3. 入力の判定が、改行や特殊文字を含む値を通さないこと。判定の step が、ワークフローの入力に結び付くこと
+3. run の中で使う SHA の出所。SHA は env の SHA・TAG・ASSET から読み、run の中で別の出所から取らないこと
 4. build job の中の step の順序。入口と描画の試験の step が存在し、ビルドの後・受け渡しの前にあること。試験の step の命令が、失敗を握りつぶさないこと（`|| true` 等）
 5. smoke の中身。matrix の版と、終了コードと使い方の出力の確認
 6. タグの照合
@@ -141,11 +137,17 @@ gh run watch <実行の ID> --repo kuchita-el/claude-shared-skills --exit-status
 
 ### build job か smoke job で止まったとき
 
-release job は走らず、Release もタグも作られない。実行の記録で止まった step と理由を読み、原因を直す。main 以外の ref から起動したとして止まったなら、(5) に従い `--ref` を付けずに起動し直す。入力の形か SHA の選び方が誤っていたなら、(3) に従って正しい SHA で起動し直す。
+release job は走らず、Release もタグも作られない。実行の記録で止まった step と理由を読み、原因を直す。main 以外の ref から起動したとして止まったなら、(5) に従い `--ref` を付けずに起動し直す。
 
 同じ SHA の Release が既にあるとして止まったなら、その SHA では切り直さない。既にある Release を使う。
 
 Node 22.0.0 でだけ起動の確認が落ちたら、`plugins/living-spec/README.md` が書く前提（Node 22 以上）の下限を改めるかを判断する。前提の下限は利用者の要求に関わるため、保守者が判断する。
+
+### Release の作成が権限の不足で断られたとき
+
+release job の Release の作成が `403 Resource not accessible by integration` で止まることがある（経路によっては 404）。実行中に、ワークフローのファイルを変えるコミットが main に入ったときに起きる。対象のコミットが、既定のブランチの先頭と比べて `.github/workflows/` の下で食い違い、(3) の制約に当たったためである。同じ実行を再実行しても通らない。
+
+この失敗では、Release は公開されない。(5) の下書きの確認と、同名のタグの確認（`git ls-remote --tags origin refs/tags/living-spec-<40桁SHA>`）を行う。残っていれば、次の「下書きが残ったとき」と「タグの照合で止まったとき」に従う。そのうえで起動し直す。起動し直した実行は、新しい main の先頭で切る。
 
 ### 下書きが残ったとき
 
@@ -179,7 +181,7 @@ git ls-remote --tags origin refs/tags/living-spec-<40桁SHA>
 gh release delete living-spec-<40桁SHA> --repo kuchita-el/claude-shared-skills --cleanup-tag --yes
 ```
 
-取り消した SHA では起動し直さない。その名前は再利用できないためである（ADR-202611040012-01）。(3) に従い、新しい SHA で切り直す。
+取り消した SHA では起動し直さない。その名前は再利用できないためである（ADR-202611040012-01）。(3) に従い、main に新しいコミットが入ってから切り直す。
 
 ## (10) この文書に書かないもの
 
