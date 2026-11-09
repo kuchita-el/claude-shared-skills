@@ -1,8 +1,13 @@
 #!/usr/bin/env bats
 # living-spec の Release のワークフロー（.github/workflows/living-spec-release.yml）の構造の
-# 不変条件を固定する。固定するのは次の6つだけである。
+# 不変条件を固定する。固定するのは次の8つだけである。
 #
 #   契機        起動は workflow_dispatch だけ
+#   入力        workflow_dispatch は入力を取らず、どの行も inputs を参照しない
+#   SHA の出所  SHA を担う値（run-name・concurrency の group・env の SHA / TAG / ASSET・step の
+#               with: の ref）の式は ${{ github.sha }} だけで、各値が ${{ github.sha }} を含む。
+#               run-name は `living-spec release ${{ github.sha }}` に一致し、build の SHA・ASSET、
+#               smoke の ASSET、release の SHA・TAG・ASSET は欠けない
 #   定義の出所  build job の最初の step が、GITHUB_REF を refs/heads/main と照合して止める
 #   権限        書き込み権限は release job だけ（最上位に書き込みが無く、全 job が自分の
 #               permissions: を持ち、書き込みを含む job の集合が {release} に一致する）
@@ -32,9 +37,12 @@ setup() {
 }
 
 # ワークフローを読み、事実を1行ずつ出す。run-tests-runner.bats の workflow_step_facts と同じ
-# 考え方だが、あちらは test.yml の step 専用なので共通化しない。出す事実は次の4種である。
+# 考え方だが、あちらは test.yml の step 専用なので共通化しない。出す事実は次の7種である。
 #
 #   trigger <名前>       on: のブロックの中の2桁のキーごと。値がインラインなら trigger ?inline
+#   input-decl <行番号>  on: のブロックの中の4桁以上の行と、値をインラインに持つ2桁のキー
+#   input-ref <行番号>   行末の注記を除いた行が inputs. か inputs[ を含む
+#   slot <job か -> <名前> <値>  SHA を担う値。名前は run-name・concurrency.group・env.<キー>・with.ref
 #   top-perm present=<0|1> write=<0|1>
 #   job <id> perm= write= if= coe= steps= step-if= step-coe= ref-guard= needs=<並べ替えてカンマでつなぐ。無ければ ->
 #   unreadable <行番号> <表記>  字下げ8桁以下の行で、キーと値の結び付きを辿れない表記
@@ -47,6 +55,8 @@ setup() {
 # 最初のものが job の何番目の step かである。無ければ 0 である。2行は字面の完全一致で見るため、
 # 同じ効果の書き換え（引用符を外す・GITHUB_REF_NAME で照合する等）でも赤になる。照合の書き方を
 # 変えるときは、ここの2行も合わせて直す。
+# slot の env.<キー> は、job の env:（6桁の子）と step の env:（10桁の子）のキー SHA・TAG・ASSET を
+# 見る。with.ref は step の with: の10桁の子の ref である。値は行末の注記と前後の引用符を除く。
 release_workflow_facts() {
   awk '
     function strip_comment(s) { sub(/[ \t]+#.*$/, "", s); return s }
@@ -83,7 +93,14 @@ release_workflow_facts() {
     function step_key(k) {
       if (k == "if") sif[job] = 1
       if (k == "continue-on-error") scoe[job] = 1
+      k8 = k
     }
+    function slot(j, name, l,   v) {
+      v = trim(strip_comment(valof(l)))
+      gsub(/^["\047]|["\047]$/, "", v)
+      printf "slot %s %s %s\n", j, name, v
+    }
+    function sha_key(k) { return k == "SHA" || k == "TAG" || k == "ASSET" }
     # 字下げ8桁以下の行が、キーと値の結び付きを辿れない表記かを返す。10桁以上（run: | の
     # ブロックの中身、with:・env: の子）には掛けない。
     function unreadable_form(l,   s, v, item) {
@@ -111,14 +128,22 @@ release_workflow_facts() {
     /^[ \t]*#/ { next }
     /^[ \t]*$/ { next }
     { u = unreadable_form($0); if (u != "") printf "unreadable %d %s\n", NR, u }
+    strip_comment($0) ~ /(^|[^A-Za-z0-9_])inputs[.[]/ { printf "input-ref %d\n", NR }
 
     /^[^ \t]/ {
       top = keyof($0); job = ""; k4 = ""
       if (top == "on" && trim(strip_comment(valof($0))) != "") print "trigger ?inline"
       if (top == "permissions") { tp_present = 1; if (has_write(valof($0))) tp_write = 1 }
+      if (top == "run-name") slot("-", "run-name", $0)
       next
     }
-    top == "on" && /^  [^ \t]/ { print "trigger " keyof($0); next }
+    top == "on" && /^  [^ \t]/ {
+      print "trigger " keyof($0)
+      if (trim(strip_comment(valof($0))) != "") printf "input-decl %d\n", NR
+      next
+    }
+    top == "on" && /^    / { printf "input-decl %d\n", NR; next }
+    top == "concurrency" && /^  group:/ { slot("-", "concurrency.group", $0); next }
     top == "permissions" { if (has_write($0)) tp_write = 1; next }
     top != "jobs" { next }
 
@@ -138,15 +163,21 @@ release_workflow_facts() {
       next
     }
     /^      [^ \t]/ {
+      if (k4 == "env" && sha_key(keyof($0))) slot(job, "env." keyof($0), $0)
       if (k4 == "permissions") { if (has_write($0)) jwrite[job] = 1 }
       else if (k4 == "needs" && /^      - /) add_need(substr($0, 9))
       else if (k4 == "steps" && /^      - /) {
         jsteps[job]++
+        k8 = ""
         if ($0 ~ /^      - [A-Za-z0-9_-]+:/) step_key(keyof($0))
       }
       next
     }
     /^        [A-Za-z0-9_-]+:/ { step_key(keyof($0)) }
+    k4 == "steps" && /^          [A-Za-z0-9_-]+:/ {
+      if (k8 == "env" && sha_key(keyof($0))) slot(job, "env." keyof($0), $0)
+      if (k8 == "with" && keyof($0) == "ref") slot(job, "with.ref", $0)
+    }
     k4 == "steps" && $0 == "          if [[ \"$GITHUB_REF\" != \"refs/heads/main\" ]]; then" { rg_if[job, jsteps[job]] = 1 }
     k4 == "steps" && $0 == "            exit 1" { rg_exit[job, jsteps[job]] = 1 }
 
@@ -164,7 +195,8 @@ release_workflow_facts() {
 }
 
 # 事実から違反を1行ずつ `違反 <違反の名前>: <理由>` の形で出し、違反があれば非0で終わる。
-# 違反の名前は 契機・定義の出所・権限・待ち合わせ・job の条件・step の条件・読み取り の7つである。
+# 違反の名前は 契機・入力・SHA の出所・定義の出所・権限・待ち合わせ・job の条件・step の条件・
+# 読み取り の9つである。
 # 事実の読み出しが失敗しても事実が0件になるだけで、読み取り の違反として赤へ倒れる。
 check_release_workflow() {
   release_workflow_facts "$1" | awk '
@@ -173,6 +205,17 @@ check_release_workflow() {
       ntrig++
       if ($2 == "?inline") inline = 1
       else trig_list = trig_list (trig_list == "" ? "" : ",") $2
+      next
+    }
+    $1 == "input-decl" { input_decl[++ndecl] = $2; next }
+    $1 == "input-ref" { input_ref[++nref] = $2; next }
+    $1 == "slot" {
+      v = $0
+      sub(/^slot [^ ]+ [^ ]+ ?/, "", v)
+      slots[++nslot] = ($2 == "-" ? "" : "job " $2 " の ") $3
+      slot_val[nslot] = v
+      have_slot[$2, $3] = 1
+      if ($3 == "run-name") run_name = v
       next
     }
     $1 == "unreadable" {
@@ -206,6 +249,25 @@ check_release_workflow() {
       # 契機
       if (!inline && ntrig > 0 && trig_list != "workflow_dispatch")
         violate("契機", "on: の直下のキーが {workflow_dispatch} でない（読めたキー: " trig_list "）")
+
+      # 入力
+      for (i = 1; i <= ndecl; i++) violate("入力", input_decl[i] " 行目で、on: の下に入力の宣言かインラインの値がある")
+      for (i = 1; i <= nref; i++) violate("入力", input_ref[i] " 行目が inputs を参照する")
+
+      # SHA の出所
+      for (i = 1; i <= nslot; i++) {
+        rest = slot_val[i]
+        gsub(/\$\{\{ github\.sha \}\}/, "", rest)
+        if (rest ~ /\$\{\{/) violate("SHA の出所", slots[i] " の値が ${{ github.sha }} の外の式を含む（値: " slot_val[i] "）")
+        if (index(slot_val[i], "${{ github.sha }}") == 0) violate("SHA の出所", slots[i] " の値が ${{ github.sha }} を含まない（値: " slot_val[i] "）")
+      }
+      if (!(("-", "run-name") in have_slot)) violate("SHA の出所", "最上位の run-name: が無い")
+      else if (run_name != "living-spec release ${{ github.sha }}") violate("SHA の出所", "run-name が `living-spec release ${{ github.sha }}` でない（値: " run_name "）")
+      split("build:env.SHA build:env.ASSET smoke:env.ASSET release:env.SHA release:env.TAG release:env.ASSET", req, " ")
+      for (r = 1; r <= 6; r++) {
+        split(req[r], jk, ":")
+        if ((jk[1] in has_job) && !((jk[1], jk[2]) in have_slot)) violate("SHA の出所", "job " jk[1] " の " jk[2] " が無い")
+      }
 
       # 定義の出所
       if ("build" in has_job && f["build", "ref-guard"] + 0 != 1)
@@ -287,7 +349,7 @@ expect_excluded() {
   [ "$status" -eq 0 ]
 }
 
-@test "実物のワークフローは6つの不変条件を満たし、何も出さない" {
+@test "実物のワークフローは8つの不変条件を満たし、何も出さない" {
   run check_release_workflow "$WORKFLOW"
   echo "$output"
   [ "$status" -eq 0 ]
@@ -311,6 +373,116 @@ expect_excluded() {
   expect_excluded
 }
 
+# --- 入力 ---
+
+@test "入力 検出: workflow_dispatch: の下に入力 sha の宣言を戻す" {
+  mutate '
+    { print }
+    /^  workflow_dispatch:$/ {
+      print "    inputs:"
+      print "      sha:"
+      print "        required: true"
+      print "        type: string"
+    }
+  '
+  expect_detected 入力 "入力の宣言"
+}
+
+@test "入力 検出: workflow_dispatch: の値をインラインの入力の宣言にする（行の数を保つ）" {
+  mutate '/^  workflow_dispatch:$/ { print "  workflow_dispatch: {inputs: {sha: {required: true}}}"; next } { print }'
+  expect_detected 入力 "インラインの値"
+}
+
+@test "入力 検出: run: の中で inputs を参照する（SHA を担う値を変えない）" {
+  mutate '{ print } job == "build" && /^          mkdir -p / { print "          echo \"${{ inputs.sha }}\"" }'
+  expect_detected 入力 "inputs を参照する"
+}
+
+@test "入力 検出: release の env の SHA を github.event.inputs.sha にする" {
+  mutate 'job == "release" && /^      SHA: / { print "      SHA: ${{ github.event.inputs.sha }}"; next } { print }'
+  expect_detected 入力 "inputs を参照する"
+}
+
+@test "入力 除外: 注記の行と行末の注記の inputs は数えない" {
+  mutate '
+    job == "build" && /^      SHA: / { sub(/$/, "  # inputs.sha ではない") }
+    { print }
+    /^  workflow_dispatch:$/ { print "    # inputs は取らない。inputs.sha は廃止した" }
+  '
+  expect_excluded
+}
+
+# --- SHA の出所 ---
+
+@test "SHA の出所 検出: run-name の式を github.ref にする" {
+  mutate '/^run-name: / { print "run-name: living-spec release ${{ github.ref }}"; next } { print }'
+  expect_detected "SHA の出所" "run-name"
+}
+
+@test "SHA の出所 検出: run-name の題名の形を変える（github.sha は保つ）" {
+  mutate '/^run-name: / { print "run-name: release ${{ github.sha }}"; next } { print }'
+  expect_detected "SHA の出所" "run-name が"
+}
+
+@test "SHA の出所 検出: run-name: を消す" {
+  mutate '/^run-name: / { next } { print }'
+  expect_detected "SHA の出所" "run-name: が無い"
+}
+
+@test "SHA の出所 検出: concurrency の group の式を github.run_id にする" {
+  mutate '/^  group: / { print "  group: living-spec-release-${{ github.run_id }}"; next } { print }'
+  expect_detected "SHA の出所" "concurrency.group"
+}
+
+@test "SHA の出所 検出: release の env の TAG の式を github.event.after にする（行の数を保つ）" {
+  mutate 'job == "release" && /^      TAG: / { print "      TAG: living-spec-${{ github.event.after }}"; next } { print }'
+  expect_detected "SHA の出所" "job release の env.TAG"
+}
+
+@test "SHA の出所 検出: smoke の env の ASSET を式の無い固定の SHA にする" {
+  mutate 'job == "smoke" && /^      ASSET: / { print "      ASSET: living-spec-259e6b6fa83a6a7cd5e8f3a7b9f2d0e1c4b5a6d7.mjs"; next } { print }'
+  expect_detected "SHA の出所" "を含まない"
+}
+
+@test "SHA の出所 検出: build の env の ASSET に github.sha と並べて別の式を足す" {
+  mutate 'job == "build" && /^      ASSET: / { print "      ASSET: living-spec-${{ github.sha }}-${{ github.run_id }}.mjs"; next } { print }'
+  expect_detected "SHA の出所" "外の式"
+}
+
+@test "SHA の出所 検出: build の取り出しの ref を github.ref にする" {
+  mutate 'job == "build" && /^          ref: / { print "          ref: ${{ github.ref }}"; next } { print }'
+  expect_detected "SHA の出所" "with.ref"
+}
+
+@test "SHA の出所 検出: build の取り出しの ref を式の無い main にする" {
+  mutate 'job == "build" && /^          ref: / { print "          ref: main"; next } { print }'
+  expect_detected "SHA の出所" "with.ref"
+}
+
+@test "SHA の出所 検出: build の step の env に SHA を github.event.after で足す" {
+  mutate '
+    { print }
+    job == "build" && /^      - name: 同じ SHA の Release が無いことを確かめる$/ { want = 1 }
+    want && /^        env:$/ { print "          SHA: ${{ github.event.after }}"; want = 0 }
+  '
+  expect_detected "SHA の出所" "job build の env.SHA"
+}
+
+@test "SHA の出所 検出: release の env の SHA を消す" {
+  mutate 'job == "release" && /^      SHA: / { next } { print }'
+  expect_detected "SHA の出所" "job release の env.SHA が無い"
+}
+
+@test "SHA の出所 除外: build の取り出しの ref: を消す（既定が github.sha である）" {
+  mutate 'job == "build" && /^          ref: / { next } { print }'
+  expect_excluded
+}
+
+@test "SHA の出所 除外: run-name の値を引用符で囲み、行末に注記を添える" {
+  mutate '/^run-name: / { print "run-name: \"living-spec release ${{ github.sha }}\"  # 起動した main の先頭"; next } { print }'
+  expect_excluded
+}
+
 # --- 定義の出所 ---
 
 @test "定義の出所 検出: build の ref の照合の step を消す" {
@@ -331,19 +503,19 @@ expect_excluded() {
 @test "定義の出所 検出: ref の照合の step から exit 1 を true に替える（行の数を保つ）" {
   mutate '
     job == "build" && /^      - name: 起動した定義が main のものであることを確かめる$/ { in_guard = 1 }
-    job == "build" && /^      - name: 入力の形を確かめる$/ { in_guard = 0 }
+    job == "build" && /^      - name: 起動したコミットを取り出す$/ { in_guard = 0 }
     in_guard && /^            exit 1$/ { print "            true"; next }
     { print }
   '
   expect_detected 定義の出所
 }
 
-@test "定義の出所 検出: ref の照合の step を入力の形の確認の後へ動かす（step の数を保つ）" {
+@test "定義の出所 検出: ref の照合の step を取り出しの step の後へ動かす（step の数を保つ）" {
   mutate '
     job == "build" && /^      - name: 起動した定義が main のものであることを確かめる$/ { hold = 1 }
-    hold && /^      - name: 入力の形を確かめる$/ { hold = 0; after = 1 }
+    hold && /^      - name: 起動したコミットを取り出す$/ { hold = 0; after = 1 }
     hold { buf[++nb] = $0; next }
-    after && /^      - name: 指定のコミットを取り出す$/ { for (i = 1; i <= nb; i++) print buf[i]; print ""; after = 0 }
+    after && /^      # 同じ SHA の Release があれば/ { for (i = 1; i <= nb; i++) print buf[i]; after = 0 }
     { print }
   '
   expect_detected 定義の出所 "両方を持つ step の位置: 2"
@@ -352,7 +524,7 @@ expect_excluded() {
 @test "定義の出所 検出: ref の照合の step を build から release の先頭へ移す" {
   mutate '
     job == "build" && /^      - name: 起動した定義が main のものであることを確かめる$/ { hold = 1 }
-    hold && /^      - name: 入力の形を確かめる$/ { hold = 0 }
+    hold && /^      - name: 起動したコミットを取り出す$/ { hold = 0 }
     hold { buf[++nb] = $0; next }
     { print }
     job == "release" && /^    steps:$/ { for (i = 1; i <= nb; i++) print buf[i] }
@@ -368,7 +540,7 @@ expect_excluded() {
 @test "定義の出所 除外: release の先頭にも同じ照合の step を足す" {
   mutate '
     job == "build" && /^      - name: 起動した定義が main のものであることを確かめる$/ { hold = 1 }
-    hold && /^      - name: 入力の形を確かめる$/ { hold = 0 }
+    hold && /^      - name: 起動したコミットを取り出す$/ { hold = 0 }
     hold { buf[++nb] = $0 }
     { print }
     job == "release" && /^    steps:$/ { for (i = 1; i <= nb; i++) print buf[i] }
