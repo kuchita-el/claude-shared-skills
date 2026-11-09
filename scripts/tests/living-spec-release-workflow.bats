@@ -57,6 +57,8 @@ setup() {
 # 変えるときは、ここの2行も合わせて直す。
 # slot の env.<キー> は、job の env:（6桁の子）と step の env:（10桁の子）のキー SHA・TAG・ASSET を
 # 見る。with.ref は step の with: の10桁の子の ref である。値は行末の注記と前後の引用符を除く。
+# 式は `${{ github.sha }}` の字面の完全一致で見るため、同じ意味の書き換え（空白を変える・env を
+# 経由して渡す等）でも赤になる。SHA の渡し方を変えるときは、slot の照合も合わせて直す。
 release_workflow_facts() {
   awk '
     function strip_comment(s) { sub(/[ \t]+#.*$/, "", s); return s }
