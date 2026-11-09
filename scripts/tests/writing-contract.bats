@@ -11,7 +11,7 @@
   [[ "$output" == *"name: write-doc"* ]]
   [[ "$output" == *"文書を起草・検査・独立レビューする"* ]]
   [[ "$output" == *"文書作成または改稿時"* ]]
-  for tool in Read Write Edit 'Bash(bash *scripts/lint-ja.sh*)' Agent; do
+  for tool in Read Write Edit 'Bash(node *scripts/lint-ja.mjs*)' Agent; do
     [[ "$output" == *"$tool"* ]]
   done
 }
@@ -224,6 +224,6 @@
 
 @test "write-docの機械検査は受け取ったdocumentTypeを--typeでlintへ渡す" {
   skill="$BATS_TEST_DIRNAME/../../plugins/writing/skills/write-doc/SKILL.md"
-  run grep -E 'lint-ja\.sh --type <documentType> --diff <base> -- <changed-paths>' "$skill"
+  run grep -E 'lint-ja\.mjs" --type <documentType> --diff <base> -- <changed-paths>' "$skill"
   [ "$status" -eq 0 ]
 }
