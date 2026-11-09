@@ -341,7 +341,7 @@ lint_tmp() {
   [ -z "$output" ]
 }
 
-@test "字下げしたフェンスも、字下げの深さによらずコードブロックとして扱う" {
+@test "箇条書きの中で字下げしたフェンスもコードブロックとして扱う" {
   lint_tmp indented-fence.md '- 項目' '    ```' "    $(rep あ 120)。" '    ```'
   [ "$status" -eq 0 ]
   [ -z "$output" ]
@@ -840,4 +840,61 @@ lint_project() {
   [ "$status" -eq 2 ]
   [[ "$output" == *"usage:"* ]]
   [[ "$output" != *"markdown-it"* ]]
+}
+
+# 変えた行が空行（空白だけの行を含む）のとき、その行には字が無いので、どの文にも印を立てない。
+# 差分の方式が検査するのは、変えた行の字を含む文と、削除でつながった文だけである。
+
+@test "差分の方式は、空行を足しても、後ろの触れていない長文を報告しない" {
+  make_diff_repo blank-before-untouched '前。' '' "$(rep あ 120)。"
+  printf '%s\n' '前。' '' '新しい段落。' '' "$(rep あ 120)。" > "$repo/doc.md"
+  run_doc_diff
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "差分の方式は、空行を足して段落を割っても、割った前の文を報告しない" {
+  make_diff_repo blank-splits-sentence "$(rep あ 120)" "$(rep い 10)。"
+  printf '%s\n' "$(rep あ 120)" '' "$(rep い 10)。" > "$repo/doc.md"
+  run_doc_diff
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+# 文として数えない行（コードブロック・表）の直前で文を区切ることの試験。
+# GFM では、表の直後に空行を置かずに続く行は表の行になる。表の後ろの散文は、空行を挟んだ形で押さえる。
+
+@test "フェンスで囲んだコードブロックの前後の散文を1文につながない" {
+  lint_tmp around-fence.md "$(rep あ 60)" '```' 'x' '```' "$(rep い 60)。"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "空行を挟んだ表の後ろの散文を、表の前の散文とつながない" {
+  lint_tmp blank-after-table.md "$(rep あ 60)" '| 列 | 値 |' '|---|---|' '| 一 | 二 |' '' "$(rep い 60)。"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "差分の方式は、環境変数 GIT_DIFF_OPTS に左右されず変えた長文を報告する" {
+  # GIT_DIFF_OPTS はコマンド行の --unified より優先され、ハンクに文脈の行が入る。その形を先に押さえる。
+  make_diff_repo diff-opts '一。' '二。' '三。' '四。' '五。'
+  printf '%s\n' '一。' '二。' '三。' "$(rep あ 120)。" '五。' > "$repo/doc.md"
+  export GIT_DIFF_OPTS=--unified=3
+  git -C "$repo" diff --unified=0 doc.md | grep -F '@@ -1,5 +1,5 @@'
+  run_doc_diff
+  [ "$status" -eq 1 ]
+  [ "$output" = 'doc.md:4:一文長: 121字（上限100）' ]
+}
+
+@test "差分の方式は、.gitattributes で -diff を付けた文書も検査する" {
+  # -diff を付けると、git diff はハンクを出さずバイナリの差として示す。その形を先に押さえる。
+  make_diff_repo no-diff-attr '前。' '後。'
+  printf '%s\n' '*.md -diff' > "$repo/.gitattributes"
+  commit_repo
+  printf '%s\n' '前。' "$(rep あ 120)。" > "$repo/doc.md"
+  git -C "$repo" diff doc.md | grep -F 'Binary files'
+  run_doc_diff
+  [ "$status" -eq 1 ]
+  [ "$output" = 'doc.md:2:一文長: 121字（上限100）' ]
 }

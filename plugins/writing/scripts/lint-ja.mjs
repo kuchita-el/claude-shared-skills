@@ -114,6 +114,8 @@ function parseTables(text, md) {
 
 /**
  * 上限を超え、印のある字を1つでも含む文を、報告の順に返す。
+ * 印のある字は、全ての行を対象にするときは全ての字、差分のときは変えた行の字と、削除でつながった境目の後ろの字である。
+ * 変えた行が空行（空白だけの行を含む）のときは、印のある字が無いので、その行はどの文も検査の対象にしない。
  * @param {string[]} lines 行末の \r を落とした行（0始まり）
  * @param {LineStructure} structure
  * @param {Marks} marks
@@ -147,8 +149,8 @@ function longSentences(lines, { kinds, itemStarts }, marks, limit) {
     // 見出しと項目の始まりは前の文を区切る。見出しはそれ自体で1つの単位として閉じる。
     if (kind === 'heading' || itemStarts.has(i)) finish();
     const lineMarked = marks.all || marks.changed.has(lineNo);
-    if (lineMarked) target = true;
     // 印は字の単位で立てる。変えた行の字か、削除でつながった境目の後ろの字を1字でも含む文を検査する。
+    // 変えた行が空行（空白だけの行を含む）なら字が無いので、どの文にも印を立てない。
     // 文の始まりの行は、文の最初の字を足すときに決める。行の途中で始まる文も、その行で報告する。
     for (const ch of line) {
       if (length === 0) start = lineNo;
@@ -166,11 +168,14 @@ function longSentences(lines, { kinds, itemStarts }, marks, limit) {
 
 /**
  * git を起動する。起動できなければ例外を投げる。git の終了コードの判定は呼ぶ側が持つ。
+ * 環境変数 GIT_DIFF_OPTS は、コマンド行の --unified より優先される。差分の形を固定するため、git へ渡す環境から外す。
  * @param {string[]} args
  * @returns {import('node:child_process').SpawnSyncReturns<string>} status・stdout・stderr を持つ結果
  */
 function git(args) {
-  const result = spawnSync('git', args, { encoding: 'utf8', maxBuffer: Infinity });
+  const env = { ...process.env };
+  delete env.GIT_DIFF_OPTS;
+  const result = spawnSync('git', args, { encoding: 'utf8', maxBuffer: Infinity, env });
   if (result.error) throw result.error;
   return result;
 }
@@ -186,12 +191,14 @@ function git(args) {
 function diffMarks(base, path) {
   // 新しく書いた文書はまだ git の差分に現れないので、ファイル全体を差分とみなす。
   if (git(['ls-files', '--error-unmatch', '--', path]).status !== 0) return everyLine();
-  // 利用者の設定（外部の差分の道具・テキスト変換・近いハンクをまとめる文脈の行）で差分の形が変わらないようにする。
+  // 利用者の設定と環境で差分の形が変わらないようにする。対象は、外部の差分の道具・テキスト変換・近いハンクをまとめる文脈の行、
+  // 環境変数 GIT_DIFF_OPTS（git() が外す）、.gitattributes の -diff（--text でハンクを出させる）である。
   // 文脈の行を出さない形に固定するので、ハンクの中に文脈の行（空白で始まる行）は現れず、追加行だけが新側の行を進める。
   const diff = git([
     'diff',
     '--no-ext-diff',
     '--no-textconv',
+    '--text',
     '--inter-hunk-context=0',
     '--unified=0',
     '--no-color',
