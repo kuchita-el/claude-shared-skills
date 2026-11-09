@@ -768,10 +768,30 @@ lint_project() {
   [[ "$output" == *":3:一文長: 121字"* ]]
 }
 
+# front-matter と見なければ、2行目は閉じの --- を下線とする見出しの行になり、127字で報告される。
+@test "後ろに空白とタブのある --- も front-matter を閉じる" {
+  lint_tmp front-matter-trailing.md '---' "title: $(rep x 120)" "--- $(printf '\t')" "$(rep あ 60)。"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "字下げした --- では front-matter を閉じない" {
+  lint_tmp front-matter-indented.md '---' "title: $(rep x 120)" '  ---' "$(rep あ 60)。"
+  [ "$status" -eq 1 ]
+  [ "$output" = "$BATS_TEST_TMPDIR/front-matter-indented.md:2:一文長: 127字（上限100）" ]
+}
+
 @test "区切りの行の無い | 始まりの行は表と見ず、地の文として数える" {
   lint_tmp pipe-without-delimiter.md "| $(rep あ 60)" "$(rep い 50)。"
   [ "$status" -eq 1 ]
   [[ "$output" == *":1:一文長: 113字"* ]]
+}
+
+@test "行の中の単独の CR で、後ろの行の種類をずらさない" {
+  # CR を改行と読むと、フェンスの範囲が1行ずつ後ろへずれ、5行目の長文がコードブロックの中に入って見逃される。
+  lint_tmp lone-cr.md "$(printf '前\r後。')" '```' 'code' '```' "$(rep あ 120)。"
+  [ "$status" -eq 1 ]
+  [ "$output" = "$BATS_TEST_TMPDIR/lone-cr.md:5:一文長: 121字（上限100）" ]
 }
 
 @test "1行の中で始まる文は、その文の始まりの行で報告する" {
@@ -789,6 +809,17 @@ lint_project() {
   [ "$output" = 'doc.md:3:一文長: 121字（上限100）' ]
 }
 
+@test "差分の方式は、利用者の diff.interHunkContext の設定によらず変えた行を読む" {
+  # 設定があると、近い2つの変更が文脈の行を挟んだ1つのハンクにまとまる。その形を先に押さえる。
+  make_diff_repo inter-hunk '一。' '二。' '三。' '四。' '五。'
+  git -C "$repo" config diff.interHunkContext 3
+  printf '%s\n' '一。' '二を変えた。' '三。' "$(rep あ 120)。" '五。' > "$repo/doc.md"
+  git -C "$repo" diff --unified=0 doc.md | grep -F '@@ -2,3 +2,3 @@'
+  run_doc_diff
+  [ "$status" -eq 1 ]
+  [ "$output" = 'doc.md:4:一文長: 121字（上限100）' ]
+}
+
 @test "同梱の解析器を読み込めないとき、終了コード2と理由を返す" {
   # 解析器（vendor/）を写さない偽のプラグインで起動する。未捕捉の例外の終了コード 1 を返さないことを押さえる。
   plugin="$BATS_TEST_TMPDIR/no-parser-plugin"
@@ -798,4 +829,15 @@ lint_project() {
   run node "$plugin/scripts/lint-ja.mjs" --file "$BATS_TEST_TMPDIR/no-parser.md"
   [ "$status" -eq 2 ]
   [[ "$output" == *"markdown-it"* ]]
+}
+
+@test "引数の誤りは、同梱の解析器を読み込む前に使い方を返す" {
+  # 解析器（vendor/）を写さない偽のプラグインでも、引数の誤りには読み込みの失敗でなく使い方を返す。
+  plugin="$BATS_TEST_TMPDIR/args-before-parser-plugin"
+  mkdir -p "$plugin/scripts"
+  cp "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs" "$plugin/scripts/"
+  run node "$plugin/scripts/lint-ja.mjs" --bogus
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"usage:"* ]]
+  [[ "$output" != *"markdown-it"* ]]
 }
