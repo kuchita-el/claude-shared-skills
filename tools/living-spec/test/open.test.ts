@@ -191,3 +191,45 @@ test('diff: 未決の項目を外すと、その要素は「変わった（未�
     '遷移 経費申請の状態/作成中→提出済（経費申請を提出する） changed 未決',
   ]);
 });
+
+// 表の未決の節（render）。表の形の違反があれば、印が0件でも節を残し、欠けうることを示す
+function openSection(files: Record<string, string>): string {
+  const html = renderHtml(buildView('/unused', sourcesFromFiles(files)), new Date());
+  const start = html.indexOf('<section id="open">');
+  return start < 0 ? '' : html.slice(start, html.indexOf('</section>', start));
+}
+
+test('render: 表の形の違反があり印が0件でも、未決の一覧の節を残し、欠けうることを示す', () => {
+  // 印は名前の無いレコードにだけあり、一覧には入らない
+  const files = {
+    ...unmarked,
+    'docs/rdra/variation.yaml': '- 値: 交通費、宿泊費\n  未決:\n    - 説明: 費目の分け方が決まっていない\n',
+  };
+  const section = openSection(files);
+  assert.ok(section !== '', '違反があるのに節が消えた');
+  assert.match(section, /表の形の違反 1 件のため、この一覧は欠けうる/);
+  assert.doesNotMatch(section, /<span class="open">/);
+});
+
+test('render: 表の形の違反があり印もあるとき、読めた印を並べ、欠けうることを示す', () => {
+  const files = { ...marked, 'docs/rdra/external-system.yaml': '- 外部システム: [壊れた\n' };
+  const section = openSection(files);
+  assert.match(section, /表の形の違反 1 件のため、この一覧は欠けうる/);
+  assert.equal(section.match(/<tr><td>/g)?.length, 6);
+  // 違反の無い入力には注記を出さない
+  assert.doesNotMatch(openSection(marked), /欠けうる/);
+});
+
+test('未決の値が別名（*a）でも、所在は項目の行を指す', () => {
+  const files = {
+    'docs/rdra/condition.yaml':
+      '- 条件: 提出可能\n  条件の説明: 経費が1件以上ある\n  未決: &shared\n    - 条件の説明: 金額が0円の経費を数えるかが決まっていない\n' +
+      '- 条件: 承認可能\n  条件の説明: 提出済である\n  未決: *shared\n',
+  };
+  const { entries, blocking } = collectOpenSources(sourcesFromFiles(files));
+  assert.deepEqual(blocking, []);
+  assert.deepEqual(
+    entries.map((e) => `${e.target} ${e.line}`),
+    ['条件:提出可能 4', '条件:承認可能 4'],
+  );
+});

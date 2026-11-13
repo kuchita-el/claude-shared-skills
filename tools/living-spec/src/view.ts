@@ -159,6 +159,8 @@ export interface View {
   unreadableExamples: { file: string; message: string }[];
   // 表の全ての未決の印の一覧（check --open と同じ並び）。縦串に現れない要素の未決もここに載る
   open: OpenEntry[];
+  // 表の形の違反（invalid-shape）の件数。1件以上なら、読めない表・レコード・項目の未決が open から欠けうる
+  openBlocking: number;
   // 表にある名前すべて（状態を含む）。要求文の中の名前に印を付けるとき、長い名前の一部へ誤って付けないために使う
   tableNames: string[];
   // 比べた基準の版（描き分けの材料だけが持つ）。commit は版が指すコミット
@@ -391,6 +393,7 @@ export function buildView(root: string, sources: Sources = readSources(root)): V
     };
   });
 
+  const openList = collectOpenSources(sources);
   return {
     root,
     stateModels,
@@ -400,7 +403,8 @@ export function buildView(root: string, sources: Sources = readSources(root)): V
       .map((q) => ({ file: q.file, ucName: q.req.ucName })),
     strayExamples: features.filter((f) => !ucNames.has(f.name)).map((f) => ({ file: f.file, name: f.name })),
     unreadableExamples,
-    open: collectOpenSources(sources).entries,
+    open: openList.entries,
+    openBlocking: openList.blocking.length,
     tableNames: [
       ...new Set([...Object.values(rows).flatMap((rs) => rs.map((r) => r.name)), ...stateModels.flatMap((m) => m.states)]),
     ],

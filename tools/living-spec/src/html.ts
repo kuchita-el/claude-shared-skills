@@ -420,17 +420,27 @@ function strayBlock(view: View): string {
 }
 
 // 表の全ての未決の印の一覧。縦串に現れない要素（どの UC からも指されない条件・バリエーション・アーキテクチャ特性など）の未決もここで読める。
-// 並びと所在は check --open と同じ。印が1つも無ければ節を出さない
+// 並びと所在は check --open と同じ。印が1つも無く、表の形の違反も無ければ節を出さない。
+// 表の形の違反があれば、読めない表・レコード・項目の未決が欠けうるので、印が0件でも節を残して欠けうることを示す
+// （節が消えると「未決なし」と読まれるため。check --open が一覧を出さないのと同じ危険）
 function openBlock(view: View): string {
-  if (view.open.length === 0) return '';
+  if (view.open.length === 0 && view.openBlocking === 0) return '';
+  const warn =
+    view.openBlocking > 0
+      ? `\n<p class="missing">表の形の違反 ${view.openBlocking} 件のため、この一覧は欠けうる（違反は check で確かめる）。</p>`
+      : '';
   const rows = view.open.map(
     (e) =>
       `<tr><td>${escapeHtml(e.target)}</td><td>${escapeHtml(e.key)}</td><td><span class="open">未決: ${escapeHtml(e.content)}</span></td><td class="file">${escapeHtml(`${e.file}:${e.line}`)}</td></tr>`,
   );
-  return `<section id="open"><h2>未決の一覧</h2>
+  const table =
+    rows.length === 0
+      ? '<p class="note">読めた表に未決の印は無い。</p>'
+      : `<table><thead><tr><th>要素</th><th>欄</th><th>未決の内容</th><th>所在</th></tr></thead>
+<tbody>${rows.join('\n')}</tbody></table>`;
+  return `<section id="open"><h2>未決の一覧</h2>${warn}
 <p class="note">表の『未決』キーの項目。決まったら項目を外す。</p>
-<table><thead><tr><th>要素</th><th>欄</th><th>未決の内容</th><th>所在</th></tr></thead>
-<tbody>${rows.join('\n')}</tbody></table>
+${table}
 </section>`;
 }
 

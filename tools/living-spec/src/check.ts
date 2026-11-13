@@ -1,6 +1,6 @@
 // RDRA の表・要求票・例の機械検査。
 import { basename } from 'node:path';
-import { LineCounter, isMap as isYamlMap, isScalar, isSeq, parseDocument } from 'yaml';
+import { LineCounter, isAlias, isMap as isYamlMap, isScalar, isSeq, parseDocument } from 'yaml';
 import type { Node as YamlNode } from 'yaml';
 import { OPEN, TABLES, tableById } from './schema.ts';
 import { readSources } from './sources.ts';
@@ -216,9 +216,11 @@ function loadTable(text: string | undefined, def: TableDef, out: Violation[]): R
       if (key === def.nameKey) continue;
       if (type === 'open') {
         const recordNode = recordNodes[i];
-        const valueNode = isYamlMap(recordNode)
+        const found = isYamlMap(recordNode)
           ? (recordNode.items.find((p) => isScalar(p.key) && p.key.value === key)?.value as YamlNode | undefined)
           : undefined;
+        // 値が別名（*a）なら、指す先の節から項目の行を引く
+        const valueNode = isAlias(found) ? (found.resolve(doc) as YamlNode | undefined) : found;
         const read = readOpen(value, def, valueNode, lineOf, lineOf(recordNode, 1));
         open = read.marks;
         for (const detail of read.errors) out.push({ rule: 'invalid-shape', file: def.file, target, detail });
