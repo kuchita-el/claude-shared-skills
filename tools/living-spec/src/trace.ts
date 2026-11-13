@@ -4,7 +4,7 @@
 import type { Violation } from './check.ts';
 import { parseExample } from './example.ts';
 import type { ExampleFeature, ExampleScenario } from './example.ts';
-import { parseReferences, parseRequirement } from './requirement.ts';
+import { exampleNotRequired, parseReferences, parseRequirement } from './requirement.ts';
 import type { Reference, Requirement } from './requirement.ts';
 import {
   EXAMPLE_LIMIT,
@@ -284,11 +284,9 @@ export function checkTrace(sources: Sources, ctx: TraceContext): TraceResult {
   }
   // 読めない feature ファイルがあると、どの UC の機能か分からず票の行に対応するルールの有無を判定できない。example-missing は行わない
   // （構文の誤りは example-syntax が拾う）
-  // RDRA 欄がアーキテクチャ特性だけの行は例を持たない（合否は特性の『検証方法』が持つ）ので判定しない。
-  // 欄の要素が1つでも読めない（requirement-reference に当たる）行と、欄が『なし』の行は判定する
+  // 例を求めない行（RDRA 欄がアーキテクチャ特性だけの行）は判定しない。読めるかは requirement-reference と同じ見方で決める
   const characteristicOnly = (refs: Reference[]) =>
-    refs.length > 0 &&
-    refs.every((r) => referenceProblem(r, ctx) === null && r.kind === tableById('architecture-characteristic').kind);
+    exampleNotRequired(refs.map((r) => ({ kind: r.kind, known: referenceProblem(r, ctx) === null })));
   if (!unreadable) {
     for (const { file, req, refs } of reqFiles) {
       if (req.ucName === null) continue;

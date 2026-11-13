@@ -3,6 +3,7 @@
 // 基準の版との描き分けの材料（diffview.ts の buildDiffView）では、区分のある要素の出現位置に印を1つ付ける。
 // 印・図の class と linkStyle・見出しの行・凡例・描き分けの CSS は、区分か基準の版があるときだけ出し、
 // 区分の無い材料（基準の版なし）からは描き分けを足す前と同じ文字列を作る。
+import { exampleNotRequired } from './requirement.ts';
 import type {
   DiffStatus,
   Marked,
@@ -181,6 +182,14 @@ function presence(n: number, unit: string): string {
   return n === 0 ? '<span class="missing">無い</span>' : `あり（${n} ${unit}）`;
 }
 
+// 残る要求票の残る行が1つ以上あり、どれも例を求めない行か。そうした UC は例のファイルが無くても検査の example-missing に
+// 当たらないので、例の欠けとして示さない
+function onlyExampleFreeLines(uc: UseCaseView): boolean {
+  const counted = liveIn(uc);
+  const lines = uc.requirements.filter(counted).flatMap((r) => r.lines.filter(counted));
+  return lines.length > 0 && lines.every((l) => exampleNotRequired(l.references));
+}
+
 function useCaseIndex(view: View): string {
   const rows = view.useCases.map((uc) => {
     // 描き分けの材料では、残る UC の行は基準の版から加えた票・行・例を数えず（作業ツリーの数）、外された UC の行は基準の版で
@@ -196,7 +205,7 @@ function useCaseIndex(view: View): string {
       lines.reduce((n, l) => n + l.scenarios.filter(counted).length, 0) +
       uc.unlinkedRules.reduce((n, r) => n + r.scenarios.filter(counted).length, 0) +
       uc.looseScenarios.filter(counted).length;
-    return `<tr><td><a href="#${uc.anchor}">${escapeHtml(uc.name)}</a>${diffMark(uc)}</td><td>${uc.actors.filter(counted).map(nameHtml).join('、')}</td><td>${hypothesisBadge(uc.hypothesis)}</td><td>${requirements.length === 0 ? presence(0, '') : presence(lines.length, '行')}</td><td>${uc.exampleFiles.length === 0 ? presence(0, '') : presence(scenarios, 'シナリオ')}</td></tr>`;
+    return `<tr><td><a href="#${uc.anchor}">${escapeHtml(uc.name)}</a>${diffMark(uc)}</td><td>${uc.actors.filter(counted).map(nameHtml).join('、')}</td><td>${hypothesisBadge(uc.hypothesis)}</td><td>${requirements.length === 0 ? presence(0, '') : presence(lines.length, '行')}</td><td>${uc.exampleFiles.length === 0 ? (onlyExampleFreeLines(uc) ? '無い（求めない）' : presence(0, '')) : presence(scenarios, 'シナリオ')}</td></tr>`;
   });
   return `<table><thead><tr><th>UC</th><th>アクター</th><th>仮説</th><th>要求票</th><th>例</th></tr></thead>
 <tbody>${rows.join('\n')}</tbody></table>`;
@@ -277,9 +286,10 @@ function requirementBlock(uc: UseCaseView, view: View): string {
               : `<span class="unknown" title="表に無い、または読めない参照">${escapeHtml(marked(ref.raw, false))}</span>`,
           )
           .join('、');
-        // 例の欠けの注記は、残る行では作業ツリーにある例だけで決め、基準の版から加えた例はその後ろに印付きで並べる
+        // 例の欠けの注記は、残る行では作業ツリーにある例だけで決め、基準の版から加えた例はその後ろに印付きで並べる。
+        // 例を求めない行（検査の example-missing と同じ判定）には出さない
         const note =
-          !l.scenarios.some(liveIn(uc, r, l)) && uc.exampleFiles.length > 0
+          !l.scenarios.some(liveIn(uc, r, l)) && uc.exampleFiles.length > 0 && !exampleNotRequired(l.references)
             ? '<p class="missing">この行に結び付く例が無い</p>'
             : '';
         const examples = note + (l.scenarios.length > 0 ? scenarioList(l.scenarios) : '');
@@ -304,7 +314,7 @@ ${examples}</li>`;
 function exampleBlock(uc: UseCaseView): string {
   const parts: string[] = [];
   if (uc.exampleFiles.length === 0) {
-    parts.push('<p class="missing">例が無い</p>');
+    parts.push(onlyExampleFreeLines(uc) ? '<p>例が無い（例を求めない行だけの UC）</p>' : '<p class="missing">例が無い</p>');
   } else {
     parts.push(`<p class="file">${uc.exampleFiles.map(escapeHtml).join('、')}</p>`);
   }
