@@ -12,9 +12,9 @@ living-spec の検査器と描画（コマンド `living-spec`、パッケージ
 
 ```bash
 pnpm --dir tools/living-spec install --frozen-lockfile
-pnpm --dir tools/living-spec test     # 規則ごとの見本（examples/）の照合・入口・描画・基準の版との差分
+pnpm --dir tools/living-spec test     # 規則ごとの見本（examples/）の照合・入口・描画・基準の版との差分・中継を通したフック
 pnpm --dir tools/living-spec build    # dist/living-spec.mjs（依存を同梱した1ファイル。追跡しない）を作る
-RDRA_ENTRY="$PWD/tools/living-spec/dist/living-spec.mjs" node --test tools/living-spec/test/cli.test.ts tools/living-spec/test/render.test.ts tools/living-spec/test/difflist.test.ts  # ビルドした物で入口の試験を走らせる
+RDRA_ENTRY="$PWD/tools/living-spec/dist/living-spec.mjs" node --test tools/living-spec/test/cli.test.ts tools/living-spec/test/render.test.ts tools/living-spec/test/difflist.test.ts tools/living-spec/test/relay.test.ts  # ビルドした物で入口の試験を走らせる
 ```
 
 `dist/` は追跡しない。開発中の検査器を手元のリポジトリで使う経路は2つある。

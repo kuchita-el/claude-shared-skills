@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 # living-spec の Release のワークフロー（.github/workflows/living-spec-release.yml）の構造の
-# 不変条件を固定する。固定するのは次の8つだけである。
+# 不変条件を固定する。固定するのは次の9つだけである。
 #
 #   契機        起動は workflow_dispatch だけ
 #   入力        workflow_dispatch は入力を取らず、どの行も inputs を参照しない
@@ -14,6 +14,8 @@
 #   待ち合わせ  release job は build と smoke を待つ
 #   job の条件  どの job にも job のキーとしての if:・continue-on-error: が無い
 #   step の条件 どの step にも step のキーとしての if:・continue-on-error: が無い
+#   生成物の試験 build の「入口と描画の試験を生成物に掛ける」step の run: が、RDRA_ENTRY を読む
+#               tools/living-spec/test/*.test.ts を全て挙げる（check_entry_tests が見る）
 #
 # 文字列がファイルのどこかに在ることではなく、job とキーの結び付きを見る。write の語は
 # release job の外へ移しても、注記に書いても、ファイルのどこかには在り続ける。if: の語は
@@ -309,6 +311,39 @@ check_release_workflow() {
   '
 }
 
+# 生成物の試験: 入口（RDRA_ENTRY）を読む試験は、手元のビルドだけでなく添付する生成物にも
+# 掛ける。中継の印のように、ビルドした1ファイルの形で成り立つかが決まる振る舞いがあるため。
+# 要る集合は tools/living-spec/test/*.test.ts のうち RDRA_ENTRY を含むもので、step の run: の
+# 行が各パスを空白区切りの1語として挙げるかを見る。集合が空・step や run: を読めないときは
+# 合格を返さない。
+check_entry_tests() {
+  local workflow="$1" run_line f rel nv=0
+  local -a required=()
+  for f in "$REPO_ROOT"/tools/living-spec/test/*.test.ts; do
+    grep -q 'RDRA_ENTRY' "$f" && required+=("tools/living-spec/test/${f##*/}")
+  done
+  if [ "${#required[@]}" -eq 0 ]; then
+    echo "違反 読み取り: RDRA_ENTRY を読む試験が1件も見つからない"
+    return 1
+  fi
+  run_line="$(awk '
+    /^      - name: 入口と描画の試験を生成物に掛ける$/ { inside = 1; next }
+    inside && /^      - / { exit }
+    inside && /^        run: / { sub(/^        run: /, ""); print; exit }
+  ' "$workflow")"
+  if [ -z "$run_line" ]; then
+    echo "違反 読み取り: 入口と描画の試験の step の1行の run: を読めない"
+    return 1
+  fi
+  for rel in "${required[@]}"; do
+    if [[ " $run_line " != *" $rel "* ]]; then
+      echo "違反 生成物の試験: $rel を生成物に掛けていない"
+      nv=$((nv + 1))
+    fi
+  done
+  [ "$nv" -eq 0 ]
+}
+
 # 実物を写して変異を当てる。変異の awk には、最上位のキー（top）と job 名（job）を読む規則を
 # 前置きする。写しが元と同じなら、変異が当たらないまま緑になるので、ここで止める。
 mutate() {
@@ -351,8 +386,12 @@ expect_excluded() {
   [ "$status" -eq 0 ]
 }
 
-@test "実物のワークフローは8つの不変条件を満たし、何も出さない" {
+@test "実物のワークフローは9つの不変条件を満たし、何も出さない" {
   run check_release_workflow "$WORKFLOW"
+  echo "$output"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  run check_entry_tests "$WORKFLOW"
   echo "$output"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
@@ -848,4 +887,29 @@ expect_excluded() {
 @test "読み取り 検出: build の入口・描画の試験の step に : で始まる行を足す" {
   mutate '{ print } job == "build" && /^      - name: 入口と描画の試験を生成物に掛ける$/ { print "        : false" }'
   expect_detected 読み取り "明示キーの値（:）"
+}
+
+# --- 生成物の試験 ---
+
+@test "生成物の試験 検出: run: から relay.test.ts を外す" {
+  mutate 'job == "build" && /^        run: node --test / { sub(/ tools\/living-spec\/test\/relay\.test\.ts/, "") } { print }'
+  run check_entry_tests "$MUTANT"
+  echo "$output"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"違反 生成物の試験: tools/living-spec/test/relay.test.ts を生成物に掛けていない"* ]]
+}
+
+@test "生成物の試験 検出: relay.test.ts を別の名前の接頭辞にする（部分一致で通さない）" {
+  mutate 'job == "build" && /^        run: node --test / { sub(/relay\.test\.ts/, "relay.test.ts.bak") } { print }'
+  run check_entry_tests "$MUTANT"
+  echo "$output"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"relay.test.ts を生成物に掛けていない"* ]]
+}
+
+@test "生成物の試験 除外: run: の試験の並びを入れ替える" {
+  mutate 'job == "build" && /^        run: node --test / { $0 = "        run: node --test tools/living-spec/test/relay.test.ts tools/living-spec/test/difflist.test.ts tools/living-spec/test/render.test.ts tools/living-spec/test/cli.test.ts" } { print }'
+  run check_entry_tests "$MUTANT"
+  echo "$output"
+  [ "$status" -eq 0 ]
 }

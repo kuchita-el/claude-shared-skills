@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { COMPAT } from '../src/compat.ts';
 import { materialize } from './fixture.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -133,8 +134,15 @@ test('--doc-missing: 要求票の無い UC を出して終了コード 1。全�
   assert.equal(full.status, 0, full.stdout + full.stderr);
 });
 
+test('compat: 互換の世代を1行で出して終了コード 0', () => {
+  const result = run(['compat'], tmpdir());
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, `${COMPAT}\n`);
+  assert.equal(result.stderr, '');
+});
+
 test('引数の誤り: 使い方を出して終了コード 2', () => {
-  for (const args of [[], ['nope'], ['check', '--code-missing', passExample], ['check', 'a', 'b'], ['hook', 'x']]) {
+  for (const args of [[], ['nope'], ['check', '--code-missing', passExample], ['check', 'a', 'b'], ['hook', 'x'], ['compat', 'x']]) {
     const result = run(args, tmpdir());
     assert.equal(result.status, 2, args.join(' '));
     assert.match(result.stderr, /使い方/);
