@@ -169,13 +169,16 @@ function longSentences(lines, { kinds, itemStarts }, marks, limit) {
 /**
  * git を起動する。起動できなければ例外を投げる。git の終了コードの判定は呼ぶ側が持つ。
  * 環境変数 GIT_DIFF_OPTS は、コマンド行の --unified より優先される。差分の形を固定するため、git へ渡す環境から外す。
+ * パスはワイルドカードとして読まず、名前の一致するファイルだけを指す（--literal-pathspecs）。
+ * --literal-pathspecs と併用できない大域の pathspec の設定（環境変数 GIT_GLOB_PATHSPECS・GIT_ICASE_PATHSPECS）も外す。
  * @param {string[]} args
  * @returns {import('node:child_process').SpawnSyncReturns<string>} status・stdout・stderr を持つ結果
  */
 function git(args) {
   const env = { ...process.env };
   delete env.GIT_DIFF_OPTS;
-  const result = spawnSync('git', args, { encoding: 'utf8', maxBuffer: Infinity, env });
+  for (const name of ['GIT_GLOB_PATHSPECS', 'GIT_ICASE_PATHSPECS']) delete env[name];
+  const result = spawnSync('git', ['--literal-pathspecs', ...args], { encoding: 'utf8', maxBuffer: Infinity, env });
   if (result.error) throw result.error;
   return result;
 }
@@ -183,21 +186,26 @@ function git(args) {
 /**
  * 基点からの差分で、パスの印を作る。
  * 未追跡のパスは全ての行を対象とする印（all が true）を返す。追跡済みのパスで、変えた行も境目も無ければ null を返す。
- * git を起動できないとき、git diff が失敗したとき、ハンク見出しを読めないときは例外を投げる。
+ * git を起動できないとき、git ls-files・git diff が失敗したとき、ハンク見出しを読めないときは例外を投げる。
  * @param {string} base
  * @param {string} path
  * @returns {Marks | null}
  */
 function diffMarks(base, path) {
   // 新しく書いた文書はまだ git の差分に現れないので、ファイル全体を差分とみなす。
-  if (git(['ls-files', '--error-unmatch', '--', path]).status !== 0) return everyLine();
+  // --error-unmatch は、追跡していないパスで終了コード 1 を返す。それ以外の失敗を未追跡と読み違えない。
+  const listed = git(['ls-files', '--error-unmatch', '--', path]);
+  if (listed.status === 1) return everyLine();
+  if (listed.status !== 0) throw new Error(`git ls-files が終了コード ${listed.status} で失敗した: ${listed.stderr.trim()}`);
   // 利用者の設定と環境で差分の形が変わらないようにする。対象は、外部の差分の道具・テキスト変換・近いハンクをまとめる文脈の行、
+  // 作業ディレクトリの外のパスを差分から外す diff.relative、
   // 環境変数 GIT_DIFF_OPTS（git() が外す）、.gitattributes の -diff（--text でハンクを出させる）である。
   // 文脈の行を出さない形に固定するので、ハンクの中に文脈の行（空白で始まる行）は現れず、追加行だけが新側の行を進める。
   const diff = git([
     'diff',
     '--no-ext-diff',
     '--no-textconv',
+    '--no-relative',
     '--text',
     '--inter-hunk-context=0',
     '--unified=0',

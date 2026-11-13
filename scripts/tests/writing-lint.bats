@@ -892,3 +892,131 @@ lint_project() {
   [ "$status" -eq 1 ]
   [ "$output" = 'doc.md:2:一文長: 121字（上限100）' ]
 }
+
+# 差分を取る git の呼び出しの防ぎ（--no-ext-diff・--no-textconv・--no-color・git diff の失敗の判定）の試験。
+# どれも、防ぎを外すと git diff がハンクを出さないか読めない形で差分を返し、違反を見逃して終了コード 0 になる。
+
+@test "差分の方式は、利用者の diff.external の設定によらず変えた長文を報告する" {
+  # 外部の差分の道具を設定すると、git diff はその道具の出力を返す。/bin/true なら何も返さない。その形を先に押さえる。
+  make_diff_repo ext-diff '短い。'
+  git -C "$repo" config diff.external /bin/true
+  printf '%s。\n' "$(rep あ 120)" > "$repo/doc.md"
+  [ -z "$(git -C "$repo" diff --unified=0 doc.md)" ]
+  run_doc_diff
+  [ "$status" -eq 1 ]
+  [ "$output" = 'doc.md:1:一文長: 121字（上限100）' ]
+}
+
+@test "差分の方式は、.gitattributes のテキスト変換の設定によらず変えた長文を報告する" {
+  # 何も出さないテキスト変換を当てると、新旧が同じ空の中身になり、git diff はハンクを出さない。その形を先に押さえる。
+  make_diff_repo textconv '短い。'
+  printf '%s\n' '*.md diff=empty' > "$repo/.gitattributes"
+  commit_repo
+  git -C "$repo" config diff.empty.textconv 'sh -c true'
+  printf '%s。\n' "$(rep あ 120)" > "$repo/doc.md"
+  [ -z "$(git -C "$repo" diff --unified=0 doc.md)" ]
+  run_doc_diff
+  [ "$status" -eq 1 ]
+  [ "$output" = 'doc.md:1:一文長: 121字（上限100）' ]
+}
+
+@test "差分の方式は、利用者の color.diff の設定によらず変えた長文を報告する" {
+  # color.diff=always では、パイプへの出力にも色の制御列が入り、ハンク見出しと追加行の頭が @@ と + でなくなる。その形を先に押さえる。
+  make_diff_repo color-diff '短い。'
+  git -C "$repo" config color.diff always
+  printf '%s。\n' "$(rep あ 120)" > "$repo/doc.md"
+  git -C "$repo" diff --unified=0 doc.md | grep -F $'\e['
+  run_doc_diff
+  [ "$status" -eq 1 ]
+  [ "$output" = 'doc.md:1:一文長: 121字（上限100）' ]
+}
+
+@test "差分の方式は、git diff が失敗したとき、終了コード2と理由を返す" {
+  # 基点の版の doc.md の中身（blob）を消し、git diff だけを失敗させる。基点の commit と索引は残るので、手前の検査は通る。
+  make_diff_repo diff-fails '短い。'
+  blob=$(git -C "$repo" rev-parse HEAD:doc.md)
+  rm -f "$repo/.git/objects/${blob:0:2}/${blob:2}"
+  printf '%s。\n' "$(rep あ 120)" > "$repo/doc.md"
+  run_doc_diff
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"git diff が終了コード"* ]]
+}
+
+@test "front-matter の値の中のフェンスの形の行で、後ろの本文をコードブロックと読まない" {
+  # front-matter を解析器へそのまま渡すと、値の中の ``` の行がフェンスを開き、後ろの本文がコードブロックの中に入って見逃される。
+  lint_tmp front-matter-fence.md '---' 'example: |' '  ```' '---' "$(rep あ 120)。"
+  [ "$status" -eq 1 ]
+  [ "$output" = "$BATS_TEST_TMPDIR/front-matter-fence.md:5:一文長: 121字（上限100）" ]
+}
+
+@test "計数(a): BMP の外の字もコードポイント単位で1字と数える" {
+  # UTF-16 の符号単位で数えると、BMP の外の字（サロゲートペア）を2字と数え、上限以内の文を報告する。
+  lint_tmp astral.md "$(rep 𠮷 99)。"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  lint_tmp astral-long.md "$(rep 𠮷 100)。"
+  [ "$status" -eq 1 ]
+  [ "$output" = "$BATS_TEST_TMPDIR/astral-long.md:1:一文長: 101字（上限100）" ]
+}
+
+@test "差分の方式は、変えていない追跡済みのパスを検査しない" {
+  # 既存の長文を持つ追跡済みのパスは、変えていなければ差分が無く、検査の対象にならない。
+  make_diff_repo untouched-tracked "$(rep あ 120)。"
+  run_doc_diff
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "差分の方式は、利用者の diff.relative の設定によらず作業ディレクトリの外のパスを読む" {
+  # diff.relative=true では、作業ディレクトリの外のパスの差分を git diff が出さない。その形を先に押さえる。
+  make_diff_repo diff-relative '短い。'
+  mkdir -p "$repo/sub"
+  git -C "$repo" config diff.relative true
+  printf '%s。\n' "$(rep あ 120)" > "$repo/doc.md"
+  [ -z "$(cd "$repo/sub" && git diff --unified=0 -- ../doc.md)" ]
+  run bash -c 'cd "$1/sub" && node "$2" --diff HEAD -- ../doc.md' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs"
+  [ "$status" -eq 1 ]
+  [ "$output" = '../doc.md:1:一文長: 121字（上限100）' ]
+}
+
+@test "差分の方式は、パスをワイルドカードとして読まず、名前の一致するファイルだけを検査する" {
+  # a[1].md を pathspec として読むと、追跡済みの a1.md に当たり、未追跡の a[1].md を新規の文書と見ない。
+  make_repo literal-pathspec
+  printf '%s\n' '短い。' > "$repo/a1.md"
+  commit_repo
+  printf '%s。\n' "$(rep あ 120)" > "$repo/a[1].md"
+  lint_in_repo --diff HEAD -- 'a[1].md'
+  [ "$status" -eq 1 ]
+  [ "$output" = 'a[1].md:1:一文長: 121字（上限100）' ]
+}
+
+@test "差分の方式は、環境変数 GIT_ICASE_PATHSPECS に左右されず、大文字小文字の異なるファイルを同じパスと読まない" {
+  # 大文字小文字を問わず照合すると、未追跡の doc.md が追跡済みの DOC.md に当たり、新規の文書と見ない。
+  make_repo icase-pathspec
+  printf '%s\n' '短い。' > "$repo/DOC.md"
+  commit_repo
+  printf '%s。\n' "$(rep あ 120)" > "$repo/doc.md"
+  export GIT_ICASE_PATHSPECS=1
+  lint_in_repo --diff HEAD -- doc.md
+  [ "$status" -eq 1 ]
+  [ "$output" = 'doc.md:1:一文長: 121字（上限100）' ]
+}
+
+@test "差分の方式は、環境変数 GIT_GLOB_PATHSPECS・GIT_ICASE_PATHSPECS があっても、変えていない追跡済みのパスを検査しない" {
+  # これらはパスをそのまま読む設定と併用できず、外さなければ git が失敗する。失敗を未追跡と読み違えると、ファイル全体を検査する。
+  make_diff_repo pathspec-env "$(rep あ 120)。"
+  for v in GIT_GLOB_PATHSPECS GIT_ICASE_PATHSPECS; do
+    run env "$v=1" bash -c 'cd "$1" && node "$2" --diff HEAD -- doc.md' _ "$repo" "$REPO_ROOT/plugins/writing/scripts/lint-ja.mjs"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+  done
+}
+
+@test "差分の方式は、git ls-files が失敗したとき、未追跡と見ず終了コード2と理由を返す" {
+  # 索引を壊し、git ls-files だけを失敗させる。基点の commit は残るので、手前の検査は通る。
+  make_diff_repo ls-files-fails "$(rep あ 120)。"
+  printf 'broken' > "$repo/.git/index"
+  run_doc_diff
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"git ls-files が終了コード"* ]]
+}
