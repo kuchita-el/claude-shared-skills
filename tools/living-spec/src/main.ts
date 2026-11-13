@@ -3,6 +3,7 @@
 //   living-spec render [--base <版>] [起点]    設計の可視化（状態遷移図と UC ごとの縦串）を1つの HTML へ描き、書き出した場所を出す。--base は git の版を基準の版として足された・変わった・外された要素を描き分け、output の語幹に -diff を付けた別のファイルへ書く（output には触れない）
 //   living-spec diff --base <版> [起点]        基準の版から変わった要素を、1行1要素のタブ区切りで標準出力へ出す。標準出力は一覧の行だけ（スキルが焦点として読むため。根の行も出さず、何も書かない）。終了コードは差分の有無によらず 0、2 は render --base と同じ場合と --base が無いとき。--base は必須で、既定の版は持たない（黙って選ばれた版と比べた「差分なし」を、利用者が意図した版と比べた結果と取り違えさせないため）。行の形の正本は plugins/living-spec/references/format.md の「基準の版から変わった要素の一覧（`diff`）」
 //   living-spec hook                           Claude Code の PostToolUse フック（標準入力の JSON を読む）
+//   living-spec compat                         互換の世代（compat.ts の COMPAT）を標準出力へ1行で出し、終了コード 0。中継が、検査器がプラグインの前提より古いかを判定するために呼ぶ
 // 根は起点（check・render・diff は引数か作業ディレクトリ、hook は編集したファイル）から上へ辿って最も近い目印で決まる。
 // 根・置き場・範囲の規則の正本は plugins/living-spec/references/format.md の「置き場の設定」。CLI とフックは同じ関数でそれを適用する。
 // check は1行目に「根: <絶対パス>」を出し、違反があれば終了コード 1、無ければ 0。引数で渡した起点が範囲外なら、扱いを示す注記を標準エラーへ出す。
@@ -11,6 +12,8 @@
 //   終了コード 2 で止める: 違反・検査器が動かない・設定を読めない（範囲によらない）・根に属さない置き場・根が決まった後の探索を続けられない。
 //   止めるときは標準エラーが AI へ返る。設定の誤りと読み取りの失敗の文面は CLI と同じ。描画の失敗では編集を止めない。
 //   何もせず終了コード 0: 正本が見つからない・根が決まる前の探索を続けられない・hook が false・範囲外の編集・表の置き場が無い。
+//   範囲内の編集で検査したときは、合否によらず描き直す（writeView）。中継は、前提より古い検査器のフックが検査したかを、この書き込みで知る。
+//   検査したのに描き直さない形へ変えると、その版が古くなったときに、中継が古いことを示さず通す
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { type BaseVersion, BaseError, readBase } from './base.ts';
@@ -27,11 +30,12 @@ import {
   formatNoRoot,
   statIfExists,
 } from './root.ts';
+import { COMPAT } from './compat.ts';
 import { classifyTarget, formatScopeNote } from './scope.ts';
 import { readSources } from './sources.ts';
 import { CONFIG_FILE, LAYOUT, configureLayout } from './schema.ts';
 
-const USAGE = '使い方: living-spec check [--doc-missing] [起点] | living-spec render [--base <版>] [起点] | living-spec diff --base <版> [起点] | living-spec hook';
+const USAGE = '使い方: living-spec check [--doc-missing] [起点] | living-spec render [--base <版>] [起点] | living-spec diff --base <版> [起点] | living-spec hook | living-spec compat';
 
 function usage(): never {
   console.error(USAGE);
@@ -239,5 +243,9 @@ const [command, ...args] = process.argv.slice(2);
 if (command === 'check') runCheck(args);
 if (command === 'render') runRender(args);
 if (command === 'hook' && args.length === 0) runHook();
+if (command === 'compat' && args.length === 0) {
+  console.log(String(COMPAT));
+  process.exit(0);
+}
 if (command === 'diff') runDiff(args);
 else usage();

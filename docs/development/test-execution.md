@@ -8,8 +8,8 @@
 
 | スイート | 実体 | 内容 |
 |---|---|---|
-| `bats` | `scripts/tests/*.bats` | adr プラグイン同梱の検査器のテスト・writing プラグイン同梱の検査器のテスト・living-spec プラグインの中継（`scripts/run.mjs`）が検査器を見つけられないときの振る舞い・living-spec の Release のワークフローの構造（起動契機・書き込み権限・待ち合わせ・job と step の条件）・配布物と配布元の一方向性の検査・`run-codex-local.sh` の開発用ホームでの起動・runner 自身の fail-closed 検査（`scripts/tests/*.bats` の網羅列挙ではない） |
-| `living-spec` | `pnpm --dir tools/living-spec test`（依存が入っていなければ先に `pnpm --dir tools/living-spec install --frozen-lockfile`） | living-spec の検査器の試験（規則の分岐・読み込みから出力までの見本・入口・描画・基準の版との差分） |
+| `bats` | `scripts/tests/*.bats` | adr プラグイン同梱の検査器のテスト・writing プラグイン同梱の検査器のテスト・living-spec プラグインの中継（`scripts/run.mjs`）が検査器を見つけられないとき・検査器がプラグインの前提より古いときの振る舞い・living-spec の Release のワークフローの構造（起動契機・書き込み権限・待ち合わせ・job と step の条件）・配布物と配布元の一方向性の検査・`run-codex-local.sh` の開発用ホームでの起動・runner 自身の fail-closed 検査（`scripts/tests/*.bats` の網羅列挙ではない） |
+| `living-spec` | `pnpm --dir tools/living-spec test`（依存が入っていなければ先に `pnpm --dir tools/living-spec install --frozen-lockfile`） | living-spec の検査器の試験（規則の分岐・読み込みから出力までの見本・入口・描画・基準の版との差分・前提より古い検査器のフックを中継が扱うときの範囲の判定） |
 | `validate-plugin-manifests` | `scripts/validate-plugin-manifests.sh .` | marketplace、manifest、README、skill集合の双方向一致 |
 | `validate-plugin-portability` | `scripts/validate-plugin-portability.sh .` | matrix、permission ledger、参照境界 |
 | `claude-plugin-validate` | `claude plugin validate .` | marketplace定義と、そこから解決できたClaude側plugin manifestのスキーマ検証（非strict） |
