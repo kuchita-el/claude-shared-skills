@@ -22,8 +22,8 @@
   },
   {
     "permission": "run-ja-lint",
-    "requiredOperation": "lint-ja.shを対象pathへ実行する",
-    "witness": "Bash(bash *scripts/lint-ja.sh*)",
+    "requiredOperation": "lint-ja.mjsを対象pathへ実行する",
+    "witness": "Bash(node *scripts/lint-ja.mjs*)",
     "narrowerAlternative": "--fileまたは--diffと対象pathを明示する",
     "verdict": "necessary"
   },

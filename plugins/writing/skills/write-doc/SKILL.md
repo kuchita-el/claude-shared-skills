@@ -5,7 +5,7 @@ allowed-tools:
   - Read
   - Write
   - Edit
-  - Bash(bash *scripts/lint-ja.sh*)
+  - Bash(node *scripts/lint-ja.mjs*)
   - Agent
 ---
 
@@ -54,7 +54,7 @@ doc-writerにはprofileと共通規約のpathを渡す。素材にない事実�
 起草後、次の形でlintを実行する。
 
 ```text
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/lint-ja.sh --type <documentType> --diff <base> -- <changed-paths>
+node "${CLAUDE_PLUGIN_ROOT}/scripts/lint-ja.mjs" --type <documentType> --diff <base> -- <changed-paths>
 ```
 
 既存箇所を明示的に確認するときだけ`--type <documentType> --file <path>`を使う。lintの一文長違反は未解決として扱う。
