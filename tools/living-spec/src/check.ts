@@ -200,6 +200,7 @@ function traceContext(rows: Record<string, Row[]>): TraceContext {
     names: traceNames,
     statesOf: stateNamesOf,
     transitions,
+    verifiable: new Set(rows['architecture-characteristic'].filter((r) => one(r, '検証方法') !== '').map((r) => r.name)),
   };
 }
 

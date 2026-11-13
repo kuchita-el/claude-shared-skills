@@ -58,6 +58,9 @@ const listFiles = (rdra: string) => ({
       検証方法: 1万件の経費申請を置いた負荷試験で、一覧表示の95パーセンタイルが2秒以内であることを測る
     - アーキテクチャ特性: 可用性
       検証方法: 業務時間中の停止時間を月ごとに測る
+    - アーキテクチャ特性: 保守性
+    - アーキテクチャ特性: 移植性
+      検証方法: "  "
   `,
   'docs/rdra/use-case.yaml': t`
     - UC: 経費申請の一覧を見る
@@ -113,6 +116,24 @@ export const cases: Case[] = [
   {
     name: 'fail-characteristic-with-other-element',
     files: listFiles('アーキテクチャ特性「応答性」、情報「経費申請」'),
+    expected: missingLine2,
+  },
+  // 『検証方法』の無い特性だけを挙げる行は、合否の正本が無いので落ちる
+  {
+    name: 'fail-characteristic-without-verification',
+    files: listFiles('アーキテクチャ特性「保守性」'),
+    expected: missingLine2,
+  },
+  // 『検証方法』が空白だけの特性も、検証方法が無いものとして落ちる
+  {
+    name: 'fail-characteristic-with-blank-verification',
+    files: listFiles('アーキテクチャ特性「移植性」'),
+    expected: missingLine2,
+  },
+  // 『検証方法』のある特性と無い特性を併せて挙げる行は落ちる
+  {
+    name: 'fail-characteristics-one-without-verification',
+    files: listFiles('アーキテクチャ特性「応答性」、アーキテクチャ特性「保守性」'),
     expected: missingLine2,
   },
   // RDRA 欄が『なし』の行は落ちる

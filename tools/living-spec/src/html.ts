@@ -3,7 +3,6 @@
 // 基準の版との描き分けの材料（diffview.ts の buildDiffView）では、区分のある要素の出現位置に印を1つ付ける。
 // 印・図の class と linkStyle・見出しの行・凡例・描き分けの CSS は、区分か基準の版があるときだけ出し、
 // 区分の無い材料（基準の版なし）からは描き分けを足す前と同じ文字列を作る。
-import { exampleNotRequired } from './requirement.ts';
 import type {
   DiffStatus,
   Marked,
@@ -187,7 +186,7 @@ function presence(n: number, unit: string): string {
 function onlyExampleFreeLines(uc: UseCaseView): boolean {
   const counted = liveIn(uc);
   const lines = uc.requirements.filter(counted).flatMap((r) => r.lines.filter(counted));
-  return lines.length > 0 && lines.every((l) => exampleNotRequired(l.references));
+  return lines.length > 0 && lines.every((l) => l.exampleNotRequired);
 }
 
 function useCaseIndex(view: View): string {
@@ -289,7 +288,7 @@ function requirementBlock(uc: UseCaseView, view: View): string {
         // 例の欠けの注記は、残る行では作業ツリーにある例だけで決め、基準の版から加えた例はその後ろに印付きで並べる。
         // 例を求めない行（検査の example-missing と同じ判定）には出さない
         const note =
-          !l.scenarios.some(liveIn(uc, r, l)) && uc.exampleFiles.length > 0 && !exampleNotRequired(l.references)
+          !l.scenarios.some(liveIn(uc, r, l)) && uc.exampleFiles.length > 0 && !l.exampleNotRequired
             ? '<p class="missing">この行に結び付く例が無い</p>'
             : '';
         const examples = note + (l.scenarios.length > 0 ? scenarioList(l.scenarios) : '');

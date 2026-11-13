@@ -6,7 +6,7 @@ import { readSources } from './sources.ts';
 import type { Sources } from './sources.ts';
 import { parseExample } from './example.ts';
 import type { ExampleScenario } from './example.ts';
-import { parseReferences, parseRequirement } from './requirement.ts';
+import { exampleNotRequired, parseReferences, parseRequirement } from './requirement.ts';
 import { REQUIREMENT_STATE_SEP } from './schema.ts';
 
 type Rows = ReturnType<typeof loadTables>;
@@ -103,6 +103,8 @@ export interface RequirementLineView extends Marked {
   references: ReferenceView[];
   // 要求文と同じ名前のルールのシナリオ（照合の規則「ルール名 ＝ 要求文」）
   scenarios: ScenarioView[];
+  // 例を求めない行か（検査の example-missing と同じ判定。requirement.ts の exampleNotRequired）
+  exampleNotRequired: boolean;
 }
 
 export interface RequirementView extends Marked {
@@ -270,6 +272,9 @@ export function buildView(root: string, sources: Sources = readSources(root)): V
     return namesOfKind.get(kind)?.has(name) ?? false;
   };
 
+  // 『検証方法』が空でない特性の名前（例を求めない行の判定に使う）
+  const verifiable = new Set(rows['architecture-characteristic'].filter((r) => str(r, '検証方法') !== '').map((r) => r.name));
+
   const requirements = sources.requirements.map(({ file, text }) => ({
     file,
     req: parseRequirement(text),
@@ -347,6 +352,10 @@ export function buildView(root: string, sources: Sources = readSources(root)): V
             definition: definitionOf(ref.kind, ref.name),
           })),
           scenarios: rules.filter((rule) => rule.name === l.text).flatMap((rule) => rule.scenarios),
+          exampleNotRequired: exampleNotRequired(
+            parseReferences(l.rdra).map((ref) => ({ ...ref, known: referenceKnown(ref.kind, ref.name) })),
+            verifiable,
+          ),
         })),
       })),
       exampleFiles: ownFeatures.map((f) => f.file),
