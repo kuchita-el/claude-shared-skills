@@ -11,11 +11,12 @@ setup() {
   WORK="$(mktemp -d)"
   # 中継が前提とする互換の世代。検査器の側の値との照合は下の件が持つ
   REQUIRED="$(sed -n 's/^const REQUIRED_COMPAT = \([0-9][0-9]*\);$/\1/p' "$RUN")"
-  # 偽の検査器: compat には FAKE_COMPAT を答え（未設定なら世代を持たない版のように使い方を出して終了コード 2）、
+  # 偽の検査器: FAKE_BROKEN なら起動の時点で例外を投げる。compat には FAKE_COMPAT を答え（未設定なら世代を持たない版のように使い方を出して終了コード 2）、
   # それ以外は引数と標準入力を出し、FAKE_STATUS（既定 1）で終わる
   FAKE="$WORK/fake-checker.mjs"
   cat > "$FAKE" <<'JS'
 import { readFileSync } from 'node:fs';
+if (process.env.FAKE_BROKEN) throw new SyntaxError('壊れた検査器');
 if (process.argv[2] === 'compat') {
   if (process.env.FAKE_COMPAT === undefined) {
     console.error('使い方: living-spec check [--doc-missing] [根] | living-spec render [根] | living-spec hook');
@@ -36,7 +37,10 @@ JS
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 if (process.argv[2] === 'compat') {
-  if (process.env.FAKE_COMPAT === undefined) process.exit(2);
+  if (process.env.FAKE_COMPAT === undefined) {
+    console.error('使い方: living-spec check [--doc-missing] [根] | living-spec render [根] | living-spec hook');
+    process.exit(2);
+  }
   console.log(process.env.FAKE_COMPAT);
   process.exit(0);
 }
@@ -60,7 +64,7 @@ if (process.env.FAKE_VIOLATION) {
 process.exit(0);
 JS
   export FAKE_COMPAT="$REQUIRED" FAKE_OUT="$WORK"
-  unset LIVING_SPEC_BIN FAKE_STATUS FAKE_VIOLATION FAKE_CONFIG_ERROR FAKE_RENDER_FAIL
+  unset LIVING_SPEC_BIN FAKE_STATUS FAKE_VIOLATION FAKE_CONFIG_ERROR FAKE_RENDER_FAIL FAKE_BROKEN
 }
 
 teardown() {
@@ -255,4 +259,12 @@ hook_input() {
       fi
     done
   done
+}
+
+@test "compat に使い方を出さずに失敗する検査器は古いと判定せず、検査器の本来の失敗を見せる" {
+  cd "$WORK"
+  FAKE_BROKEN=1 LIVING_SPEC_BIN="$FAKE" run --separate-stderr node "$RUN" check
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"壊れた検査器"* ]]
+  [[ ! "$stderr" =~ 前提より古い ]]
 }

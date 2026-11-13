@@ -243,9 +243,9 @@ const [command, ...args] = process.argv.slice(2);
 if (command === 'check') runCheck(args);
 if (command === 'render') runRender(args);
 if (command === 'hook' && args.length === 0) runHook();
+// compat は runDiff と同じく process.exit を呼ばない。書き終えていない標準出力を捨てると、中継が世代を読めず古いと誤る
 if (command === 'compat' && args.length === 0) {
-  console.log(String(COMPAT));
-  process.exit(0);
-}
-if (command === 'diff') runDiff(args);
+  process.stdout.write(`${COMPAT}\n`);
+  process.exitCode = 0;
+} else if (command === 'diff') runDiff(args);
 else usage();

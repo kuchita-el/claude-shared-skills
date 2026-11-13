@@ -23,7 +23,7 @@ const stale = /^living-spec の検査器が、このプラグインの前提よ�
 function staleChecker(dir: string, answer: 'older' | 'none'): string {
   const path = join(dir, `stale-${answer}.mjs`);
   const compat =
-    answer === 'older' ? `console.log('${COMPAT - 1}'); process.exit(0);` : `console.error('使い方'); process.exit(2);`;
+    answer === 'older' ? `console.log('${COMPAT - 1}'); process.exit(0);` : `console.error('使い方: living-spec check [--doc-missing] [根] | living-spec render [根] | living-spec hook'); process.exit(2);`;
   writeFileSync(path, `if (process.argv[2] === 'compat') { ${compat} }\nawait import(${JSON.stringify(pathToFileURL(main).href)});\n`);
   return path;
 }

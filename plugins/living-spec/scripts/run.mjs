@@ -9,7 +9,7 @@
 // 見つからなければ、hook は何もせず終了コード 0（検査器を入れていないリポジトリの編集を止めない）。
 // それ以外は導入の手順を標準エラーへ出して終了コード 2。
 // 見つかった検査器がプラグインの前提より古いか（下の REQUIRED_COMPAT）を、呼ぶ前に `compat` で問う。
-// 世代を答えない検査器（compat を持たない版）も古いものとして扱う。古ければ:
+// 世代を持たない版の検査器も古いものとして扱う（checkerCompat）。古ければ:
 //   hook 以外: 検査器の出力より前に staleNotice の1行を標準エラーへ出し、検査器を呼んだうえで、その終了コードによらず終了コード 2。
 //     古い検査器は新しい必須の検査を見ないので、違反が0件でも合格とみなさない。
 //   hook: 検査器のフックが検査したとき（範囲内の編集。印は hookProbe）か、検査器が 0 以外で終わったときだけ、staleNotice の1行を出して終了コード 2。
@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 const PACKAGE = '@kuchita-el/living-spec';
 
 // プラグインの手順・書式が前提とする検査器の互換の世代。検査器が `compat` で答える値がこれより小さければ古い。
-// 検査器の側の世代と同じ値に保ち、検査器の互換を壊す変更と同じ変更で上げる（版番号ではない。版はコミット SHA が担う）
+// 検査器の側の世代と同じ値に保つ。版番号ではない（版はコミット SHA が担う）
 const REQUIRED_COMPAT = 1;
 
 const INSTALL = `living-spec の検査器が見つからない。次の2段で入れる:
@@ -38,12 +38,18 @@ function staleNotice(actual) {
   return `living-spec の検査器が、このプラグインの前提より古い（検査器の互換の世代: ${actual ?? 'なし'}、前提: ${REQUIRED_COMPAT}）。古い規則による結果なので合格とみなさない。plugins/living-spec/README.md（このプラグインでは ${README}）の「検査器の導入」の節に従い、検査器を最新の Release へ上げる`;
 }
 
-// 検査器の互換の世代。答えない（終了コードが 0 でない・出力が非負の整数の1行でない）なら null
+// 検査器の互換の世代。世代を持たない版（compat を知らず、使い方を出して終了コード 2）と、答えが非負の整数の1行でない検査器は null。
+// compat を起動できない・使い方を出さずに失敗した検査器は undefined。古いとは判定せず、そのまま呼んで本来の失敗を見せる
+// （取り損ねたファイル等を「古い」と誤って示し、最新の Release を入れた利用者に更新を迫らないため）
 function checkerCompat(checker) {
-  const r = spawnSync(process.execPath, [checker, 'compat'], { stdio: ['ignore', 'pipe', 'ignore'], encoding: 'utf8' });
-  if (r.error || r.status !== 0) return null;
-  const m = /^(\d+)\n?$/.exec(r.stdout);
-  return m ? Number(m[1]) : null;
+  const r = spawnSync(process.execPath, [checker, 'compat'], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });
+  if (r.error || r.signal) return undefined;
+  if (r.status === 0) {
+    const m = /^(\d+)\n?$/.exec(r.stdout);
+    return m ? Number(m[1]) : null;
+  }
+  if (r.status === 2 && r.stderr.includes('使い方: living-spec')) return null;
+  return undefined;
 }
 
 // 古い検査器のフックへ先に読み込ませるモジュールの URL。フックが検査した印を次の3つとする。
@@ -105,7 +111,7 @@ if (checker === null) {
   process.exit(2);
 }
 const compat = checkerCompat(checker);
-const stale = compat === null || compat < REQUIRED_COMPAT;
+const stale = compat === null || (compat !== undefined && compat < REQUIRED_COMPAT);
 const nodeArgs = stale && isHook ? ['--import', hookProbe(staleNotice(compat))] : [];
 if (stale && !isHook) process.stderr.write(`${staleNotice(compat)}\n`);
 const result = spawnSync(process.execPath, [...nodeArgs, checker, ...args], { stdio: 'inherit' });
