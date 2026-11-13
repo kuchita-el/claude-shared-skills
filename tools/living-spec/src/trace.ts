@@ -284,12 +284,18 @@ export function checkTrace(sources: Sources, ctx: TraceContext): TraceResult {
   }
   // 読めない feature ファイルがあると、どの UC の機能か分からず票の行に対応するルールの有無を判定できない。example-missing は行わない
   // （構文の誤りは example-syntax が拾う）
+  // RDRA 欄がアーキテクチャ特性だけの行は例を持たない（合否は特性の『検証方法』が持つ）ので判定しない。
+  // 欄の要素が1つでも読めない（requirement-reference に当たる）行と、欄が『なし』の行は判定する
+  const characteristicOnly = (refs: Reference[]) =>
+    refs.length > 0 &&
+    refs.every((r) => referenceProblem(r, ctx) === null && r.kind === tableById('architecture-characteristic').kind);
   if (!unreadable) {
-    for (const { file, req } of reqFiles) {
+    for (const { file, req, refs } of reqFiles) {
       if (req.ucName === null) continue;
       const rules = rulesOfUc.get(req.ucName);
-      for (const l of req.lines) {
+      for (const [i, l] of req.lines.entries()) {
         if (rules?.has(l.text)) continue;
+        if (characteristicOnly(refs[i].refs)) continue;
         missing.push({
           rule: 'example-missing',
           file,

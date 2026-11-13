@@ -52,3 +52,20 @@ for (const f of ruleFiles) {
     });
   }
 }
+
+// example-missing の除外は、requirement-reference で読める要素だけで決める。欄の特性が表に無い行は、
+// requirement-reference と並んで example-missing も出る（1つの規則だけを期待する件の形に載らないため、ここで見る）
+test('example-missing: 表に無い特性だけを挙げる行は除外せず判定する', async () => {
+  const { cases } = (await import(join(casesDir, 'example-missing.ts'))) as { cases: Case[] };
+  const base = cases.find((c) => c.name === 'pass-characteristic-only-line');
+  assert.ok(base !== undefined, '元にする件が無い');
+  const file = 'docs/requirements/list.md';
+  const files = { ...base.files, [file]: base.files[file].replace('アーキテクチャ特性「応答性」', 'アーキテクチャ特性「表に無い特性」') };
+  assert.notEqual(files[file], base.files[file], '置き換えが効いていない');
+  const sources = sourcesFromFiles(files);
+  const actual = [...checkSources(sources), ...checkDocMissingSources(sources)];
+  assert.deepEqual(
+    [...new Set(actual.map(keyOf))].sort(),
+    [`example-missing | ${file} | 仕様:2`, `requirement-reference | ${file} | 仕様:2`].sort(),
+  );
+});

@@ -84,6 +84,91 @@ export const cases: Case[] = [
     },
     expected: un('docs/rdra/information.yaml', '情報:経費'),
   },
+  // 『仮説』キーを持つレコードは、どの UC からも参照されなくても判定しない（4種とも）。キーの値が空でも仮説として扱う
+  {
+    name: 'pass-hypothesis-records',
+    files: {
+      'docs/rdra/actor.yaml': t`
+        - アクター: 監査人
+          仮説:
+            - H1
+      `,
+      'docs/rdra/condition.yaml': t`
+        - 条件: 監査できる
+          仮説: []
+      `,
+      'docs/rdra/external-system.yaml': t`
+        - 外部システム: 監査システム
+          仮説:
+            - H1
+      `,
+      'docs/rdra/information.yaml': t`
+        - 情報: 監査記録
+          仮説:
+            - H1
+      `,
+    },
+    expected: [],
+  },
+  // 上の件のレコードから『仮説』キーを外すと、4種とも落ちる
+  {
+    name: 'fail-hypothesis-key-removed',
+    files: {
+      'docs/rdra/actor.yaml': t`
+        - アクター: 監査人
+      `,
+      'docs/rdra/condition.yaml': t`
+        - 条件: 監査できる
+      `,
+      'docs/rdra/external-system.yaml': t`
+        - 外部システム: 監査システム
+      `,
+      'docs/rdra/information.yaml': t`
+        - 情報: 監査記録
+      `,
+    },
+    expected: [
+      ...un('docs/rdra/actor.yaml', 'アクター:監査人'),
+      ...un('docs/rdra/condition.yaml', '条件:監査できる'),
+      ...un('docs/rdra/external-system.yaml', '外部システム:監査システム'),
+      ...un('docs/rdra/information.yaml', '情報:監査記録'),
+    ],
+  },
+  // 仮説のレコードを外すのはそのレコードだけで、同じ表の事実のレコードの未接続は従来どおり落ちる
+  {
+    name: 'fail-fact-beside-hypothesis',
+    files: {
+      'docs/rdra/information.yaml': t`
+        - 情報: 監査記録
+          仮説:
+            - H1
+        - 情報: 孤立した情報
+      `,
+    },
+    expected: un('docs/rdra/information.yaml', '情報:孤立した情報'),
+  },
+  // 仮説の UC からだけ参照される事実のレコードは、参照されているとして通る（仮説の UC からの参照も参照に数える）
+  {
+    name: 'pass-fact-referenced-only-by-hypothesis-uc',
+    files: {
+      'docs/rdra/actor.yaml': t`
+        - アクター: 従業員
+      `,
+      'docs/rdra/information.yaml': t`
+        - 情報: 経費申請
+      `,
+      'docs/rdra/use-case.yaml': t`
+        - UC: 経費申請を一括で取り込む
+          仮説:
+            - H2
+          アクター:
+            - 従業員
+          情報:
+            - 経費申請
+      `,
+    },
+    expected: [],
+  },
   // どの UC にも参照されない情報は落ちる
   {
     name: 'fail-information',
