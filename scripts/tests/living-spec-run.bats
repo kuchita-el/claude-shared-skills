@@ -28,7 +28,8 @@ const input = process.argv[2] === 'hook' ? readFileSync(0, 'utf8') : '';
 console.log(`args=${process.argv.slice(2).join(' ')} stdin=${input}`);
 process.exit(Number(process.env.FAKE_STATUS ?? 1));
 JS
-  # 偽の検査器のフック: 編集したファイルが docs/rdra の下なら検査したものとして描き直しのファイルを書き、
+  # 偽の検査器のフック: FAKE_CONFIG_ERROR があれば範囲によらず設定の誤りで終了コード 2。
+  # 編集したファイルが docs/rdra の下なら検査したものとして描き直しのファイルを書き（FAKE_RENDER_FAIL なら書かずに描き直しの失敗を出す）、
   # FAKE_VIOLATION があれば違反を標準エラーへ出して終了コード 2、無ければ 0。下に無ければ何もせず 0
   FAKE_HOOK="$WORK/fake-hook.mjs"
   cat > "$FAKE_HOOK" <<'JS'
@@ -40,7 +41,15 @@ if (process.argv[2] === 'compat') {
   process.exit(0);
 }
 const file = JSON.parse(readFileSync(0, 'utf8')).tool_input.file_path;
+if (process.env.FAKE_CONFIG_ERROR) {
+  process.stderr.write('.living-spec.json を読めない: 知らないキー x\n');
+  process.exit(2);
+}
 if (!file.includes('/docs/rdra/')) process.exit(0);
+if (process.env.FAKE_RENDER_FAIL) {
+  process.stderr.write('living-spec フック: 設計の可視化を描けない（x）\n');
+  process.exit(0);
+}
 const out = `${process.env.FAKE_OUT}/view/index.html`;
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, 'view');
@@ -51,7 +60,7 @@ if (process.env.FAKE_VIOLATION) {
 process.exit(0);
 JS
   export FAKE_COMPAT="$REQUIRED" FAKE_OUT="$WORK"
-  unset LIVING_SPEC_BIN FAKE_STATUS FAKE_VIOLATION
+  unset LIVING_SPEC_BIN FAKE_STATUS FAKE_VIOLATION FAKE_CONFIG_ERROR FAKE_RENDER_FAIL
 }
 
 teardown() {
@@ -127,7 +136,7 @@ teardown() {
 }
 
 # 前提より古い旨の1行。README の導入の節を名指す
-STALE_LINE='^living-spec の検査器が、このプラグインの前提より古い.*plugins/living-spec/README\.md の「検査器の導入」'
+STALE_LINE='^living-spec の検査器が、このプラグインの前提より古い.*plugins/living-spec/README\.md.*の「検査器の導入」'
 
 # 前提より古い検査器（世代が前提より小さい・世代を答えない・答えが整数でない）を名前で選ぶ
 use_stale() {
@@ -197,6 +206,26 @@ hook_input() {
     [ "$status" -eq 0 ] || { echo "$kind: status=$status"; return 1; }
     [ -z "$output" ]
     [ ! -e "$WORK/view" ]
+  done
+}
+
+@test "前提より古い検査器のフックは、書き込みの前に描き直しに失敗したときと、検査器が止めたときも古い旨の1行と終了コード 2" {
+  local kind
+  for kind in older none; do
+    use_stale "$kind"
+    hook_input "$WORK/docs/rdra/uc.yaml" > "$WORK/in.json"
+    FAKE_RENDER_FAIL=1 LIVING_SPEC_BIN="$FAKE_HOOK" CLAUDE_PROJECT_DIR="$WORK" \
+      run --separate-stderr bash -c "node '$RUN' hook < '$WORK/in.json'"
+    [ "$status" -eq 2 ] || { echo "$kind render: status=$status"; return 1; }
+    [[ "${stderr_lines[0]}" =~ $STALE_LINE ]]
+    [ "${stderr_lines[1]}" = "living-spec フック: 設計の可視化を描けない（x）" ]
+    # 設定の誤りは範囲によらず検査器が止める。古い検査器が知らないキーで止めることがあるので、古い旨も出す
+    hook_input "$WORK/src/app.ts" > "$WORK/in.json"
+    FAKE_CONFIG_ERROR=1 LIVING_SPEC_BIN="$FAKE_HOOK" CLAUDE_PROJECT_DIR="$WORK" \
+      run --separate-stderr bash -c "node '$RUN' hook < '$WORK/in.json'"
+    [ "$status" -eq 2 ] || { echo "$kind config: status=$status"; return 1; }
+    [ "${stderr_lines[0]}" = ".living-spec.json を読めない: 知らないキー x" ]
+    [[ "${stderr_lines[1]}" =~ $STALE_LINE ]]
   done
 }
 

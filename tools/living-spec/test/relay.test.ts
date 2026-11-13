@@ -1,5 +1,5 @@
 // 中継（plugins/living-spec/scripts/run.mjs）が、前提より古い検査器のフックを、その検査器自身の範囲の判定のまま扱うことを、本物の入口で確かめる。
-// 中継は、古い検査器のフックが検査したかを描き直しのファイルの書き込みで知る。ここでは入口を包んで世代だけを古く答えさせ、
+// 中継は、古い検査器のフックが検査したかを、描き直しのファイルの書き込み・描き直しの失敗の文面・0 以外の終了で知る。ここでは入口を包んで世代だけを古く答えさせ、
 // 範囲内の編集（違反なし・あり）で前提より古い旨の1行と終了コード 2 になり、検査しない編集では出力も終了コードも入口のままであることを見る。
 // 中継の引数・標準入力の受け渡しと、check・render の扱いは scripts/tests/living-spec-run.bats が偽の検査器で確かめる。
 import assert from 'node:assert/strict';
@@ -17,7 +17,7 @@ const main = resolve(process.env.RDRA_ENTRY ?? join(here, '..', 'src', 'main.ts'
 const relay = join(here, '..', '..', '..', 'plugins', 'living-spec', 'scripts', 'run.mjs');
 const passExample = materialize(join(here, '..', 'examples', 'unknown-key', 'pass-all-allowed-keys.txtar'));
 const failExample = materialize(join(here, '..', 'examples', 'undefined-reference', 'fail-uc-actor.txtar'));
-const stale = /^living-spec の検査器が、このプラグインの前提より古い.*plugins\/living-spec\/README\.md の「検査器の導入」/m;
+const stale = /^living-spec の検査器が、このプラグインの前提より古い.*plugins\/living-spec\/README\.md.*の「検査器の導入」/m;
 
 // 入口を包み、compat にだけ古い世代を答える検査器を作る。none は世代を答えない版のように使い方を出して終わる
 function staleChecker(dir: string, answer: 'older' | 'none'): string {
@@ -95,6 +95,23 @@ for (const answer of ['older', 'none'] as const) {
     }
   });
 }
+
+test('中継のフック: 前提より古い入口が設定の誤りで止めたときは、範囲外の編集でも古い旨の1行を添える', () => {
+  const work = scratch();
+  const root = tree(passExample);
+  try {
+    writeFileSync(join(root, '.living-spec.json'), '{"unknown": 1}');
+    const file = join(root, 'src/app.ts');
+    const before = hook(undefined, file, root);
+    const after = hook(staleChecker(work, 'none'), file, root);
+    assert.equal(before.status, 2, before.stderr);
+    assert.equal(after.status, 2, after.stderr);
+    assert.ok(after.stderr.startsWith(before.stderr), '入口の出力はそのまま');
+    assert.match(after.stderr.slice(before.stderr.length), stale);
+  } finally {
+    for (const d of [work, root]) rmSync(d, { recursive: true });
+  }
+});
 
 test('中継のフック: 前提を満たす入口では、範囲内の編集の出力も終了コードも入口のまま', () => {
   const fail = tree(failExample);

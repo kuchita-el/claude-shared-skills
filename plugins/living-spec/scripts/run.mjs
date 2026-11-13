@@ -12,12 +12,13 @@
 // 世代を答えない検査器（compat を持たない版）も古いものとして扱う。古ければ:
 //   hook 以外: 検査器の出力より前に staleNotice の1行を標準エラーへ出し、検査器を呼んだうえで、その終了コードによらず終了コード 2。
 //     古い検査器は新しい必須の検査を見ないので、違反が0件でも合格とみなさない。
-//   hook: 検査器のフックが検査したとき（範囲内の編集。検査した印は描き直しのファイルの書き込み）だけ、staleNotice の1行を出して終了コード 2。
-//     検査しないとき（範囲外の編集・表の置き場が無い・hook が false 等）は、出力も終了コードも検査器のまま。範囲の判定は検査器が持ち、中継は写さない。
+//   hook: 検査器のフックが検査したとき（範囲内の編集。印は hookProbe）か、検査器が 0 以外で終わったときだけ、staleNotice の1行を出して終了コード 2。
+//     検査せず 0 で終わるとき（範囲外の編集・表の置き場が無い・hook が false 等）は、出力も終了コードも検査器のまま。範囲の判定は検査器が持ち、中継は写さない。
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const PACKAGE = '@kuchita-el/living-spec';
 
@@ -30,8 +31,11 @@ const INSTALL = `living-spec の検査器が見つからない。次の2段で�
      curl -fsSL --create-dirs -o ~/.local/share/living-spec/living-spec-<SHA>.mjs https://github.com/kuchita-el/claude-shared-skills/releases/download/living-spec-<SHA>/living-spec-<SHA>.mjs
   2. エージェント（Claude Code・Codex 等）を起動するシェルで、環境変数 LIVING_SPEC_BIN に取ったファイルのパスを入れる`;
 
+// 利用者が開く導入の節。配布元での置き場と、入れたプラグインでの実際の置き場を並べる
+const README = join(dirname(fileURLToPath(import.meta.url)), '..', 'README.md');
+
 function staleNotice(actual) {
-  return `living-spec の検査器が、このプラグインの前提より古い（検査器の互換の世代: ${actual ?? 'なし'}、前提: ${REQUIRED_COMPAT}）。古い規則による結果なので合格とみなさない。plugins/living-spec/README.md の「検査器の導入」の節に従い、検査器を最新の Release へ上げる`;
+  return `living-spec の検査器が、このプラグインの前提より古い（検査器の互換の世代: ${actual ?? 'なし'}、前提: ${REQUIRED_COMPAT}）。古い規則による結果なので合格とみなさない。plugins/living-spec/README.md（このプラグインでは ${README}）の「検査器の導入」の節に従い、検査器を最新の Release へ上げる`;
 }
 
 // 検査器の互換の世代。答えない（終了コードが 0 でない・出力が非負の整数の1行でない）なら null
@@ -42,24 +46,36 @@ function checkerCompat(checker) {
   return m ? Number(m[1]) : null;
 }
 
-// 古い検査器のフックへ先に読み込ませるモジュールの URL。描き直しのファイルの書き込み（mkdirSync・writeFileSync）を、フックが検査した印とする。
-// 最初の書き込みで notice を標準エラーへ出し、終わるときの終了コードを 2 にする
+// 古い検査器のフックへ先に読み込ませるモジュールの URL。フックが検査した印を次の3つとする。
+//   描き直しのファイルの書き込み（mkdirSync・writeFileSync）。範囲内の編集で検査したフックは、合否によらず描き直す
+//   描き直しの失敗の文面（RENDER_FAILED）。描き直しは書き込みの前に失敗しうる
+//   0 以外の終了コード。古い検査器が止めた理由（知らない設定のキー等）は、古いこと自体でありうる
+// 印を見た時点で notice を標準エラーへ出し、終わるときの終了コードを 2 にする。印が無ければ出力も終了コードも検査器のまま
+const RENDER_FAILED = '設計の可視化を描けない';
 function hookProbe(notice) {
   const code = `import fs from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
+const notice = ${JSON.stringify(`${notice}\n`)};
+const write = process.stderr.write.bind(process.stderr);
 let seen = false;
 const mark = () => {
   if (seen) return;
   seen = true;
-  process.stderr.write(${JSON.stringify(`${notice}
-`)});
-  process.on('exit', () => { process.exitCode = 2; });
+  write(notice);
 };
 for (const name of ['mkdirSync', 'writeFileSync']) {
   const original = fs[name];
   fs[name] = (...a) => { mark(); return original(...a); };
 }
 syncBuiltinESMExports();
+process.stderr.write = (chunk, ...rest) => {
+  if (String(chunk).includes(${JSON.stringify(RENDER_FAILED)})) mark();
+  return write(chunk, ...rest);
+};
+process.on('exit', (code) => {
+  if (code !== 0) mark();
+  if (seen) process.exitCode = 2;
+});
 `;
   return `data:text/javascript,${encodeURIComponent(code)}`;
 }
