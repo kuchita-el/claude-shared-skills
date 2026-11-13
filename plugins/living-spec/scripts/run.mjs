@@ -24,7 +24,7 @@ const PACKAGE = '@kuchita-el/living-spec';
 
 // プラグインの手順・書式が前提とする検査器の互換の世代。検査器が `compat` で答える値がこれより小さければ古い。
 // 検査器の側の世代と同じ値に保つ。版番号ではない（版はコミット SHA が担う）
-const REQUIRED_COMPAT = 2;
+const REQUIRED_COMPAT = 3;
 
 const INSTALL = `living-spec の検査器が見つからない。次の2段で入れる:
   1. 使う版のコミット SHA（40桁）を https://github.com/kuchita-el/claude-shared-skills/releases から選び、添付物を取る:

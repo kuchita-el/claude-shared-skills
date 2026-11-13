@@ -2020,3 +2020,43 @@ test('描き分けの HTML: 結び付かない例の枠は、作業ツリーに�
   assert.equal(unlinkedFrame(slice), 'unlinked', slice);
   assert.equal(markAt(slice, '例の項', '下書きが残る'), REMOVED);
 });
+
+// 例を求めない行（書式の「例」）は、検査の example-missing と同じ判定で、例の欠けとして示さない。
+// 正例は特性だけの行、負例は同じ行の特性を情報に替えた行（または特性と情報の併記）で、対にして見る
+const LIST_UC = '経費申請の一覧を見る';
+const missingExamples = (name: string) => join(here, '..', 'examples', 'example-missing', `${name}.txtar`);
+
+test('例を求めない行には「この行に結び付く例が無い」を出さず、例を求める行には出す', () => {
+  for (const [name, expected] of [
+    ['pass-characteristic-only-line', false],
+    ['fail-characteristic-with-other-element', true],
+    ['fail-characteristic-without-verification', true],
+  ] as const) {
+    const view = buildView(materialize(missingExamples(name)));
+    const slice = sliceOf(renderHtml(view, new Date()), useCase(view, LIST_UC));
+    assert.equal(slice.includes('この行に結び付く例が無い'), expected, name);
+  }
+});
+
+test('例のファイルが無い UC は、行がどれも例を求めない行なら例の欠けとして示さず、そうでなければ示す', () => {
+  const files = (rdra: string): Record<string, string> => ({
+    'docs/rdra/architecture-characteristic.yaml':
+      '- アーキテクチャ特性: 応答性\n  検証方法: 一覧表示の95パーセンタイルを測る\n- アーキテクチャ特性: 保守性\n  検証方法: "  "\n',
+    'docs/rdra/information.yaml': '- 情報: 経費申請\n',
+    'docs/rdra/use-case.yaml': `- UC: ${LIST_UC}\n  情報:\n    - 経費申請\n`,
+    'docs/requirements/list.md': `# 要求票: ${LIST_UC}\n\n## 理由\n\nなし\n\n## 仕様\n\n1. システムは常に経費申請の一覧を2秒以内に表示する\n   - RDRA: ${rdra}\n   - 理由: なし\n`,
+  });
+  for (const [rdra, expected] of [
+    ['アーキテクチャ特性「応答性」', false],
+    ['情報「経費申請」', true],
+    ['アーキテクチャ特性「保守性」', true],
+  ] as const) {
+    const view = buildView(sample, sourcesFromFiles(files(rdra)));
+    const html = renderHtml(view, new Date());
+    const slice = sliceOf(html, useCase(view, LIST_UC));
+    assert.equal(slice.includes('<p class="missing">例が無い</p>'), expected, `縦串: ${rdra}`);
+    const row = html.split('\n').find((l) => l.includes('<tr>') && l.includes(`>${LIST_UC}</a>`));
+    assert.ok(row !== undefined, 'UC の一覧の行がある');
+    assert.equal(row.includes('<td><span class="missing">無い</span></td></tr>'), expected, `一覧: ${rdra}`);
+  }
+});

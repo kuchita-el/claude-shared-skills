@@ -199,6 +199,7 @@ function traceContext(rows: Record<string, Row[]>): TraceContext {
     names: traceNames,
     statesOf: stateNamesOf,
     transitions,
+    verifiable: new Set(rows['architecture-characteristic'].filter((r) => one(r, '検証方法') !== '').map((r) => r.name)),
   };
 }
 
@@ -276,7 +277,8 @@ export function checkSources(sources: Sources): Violation[] {
     }
   }
 
-  // 未接続: どの UC からも参照されていないアクター・外部システム・情報・条件
+  // 未接続: どの UC からも参照されていないアクター・外部システム・情報・条件。
+  // 『仮説』キーを持つレコード（値が空でも持つ扱い）は検証前の状態なので判定しない。仮説の UC からの参照も参照に数える
   const connectSpecs: [string, string][] = [
     ['actor', 'アクター'],
     ['external-system', '外部システム'],
@@ -288,6 +290,7 @@ export function checkSources(sources: Sources): Violation[] {
     for (const uc of rows['use-case']) for (const v of values(uc, ucKey)) referenced.add(v);
     const def = tableById(id);
     for (const row of rows[id]) {
+      if (Object.hasOwn(row.data, '仮説')) continue;
       if (!referenced.has(row.name)) {
         out.push({
           rule: 'unconnected',

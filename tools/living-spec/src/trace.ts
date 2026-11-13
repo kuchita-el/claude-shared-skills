@@ -4,7 +4,7 @@
 import type { Violation } from './check.ts';
 import { parseExample } from './example.ts';
 import type { ExampleFeature, ExampleScenario } from './example.ts';
-import { parseReferences, parseRequirement } from './requirement.ts';
+import { exampleNotRequired, parseReferences, parseRequirement } from './requirement.ts';
 import type { Reference, Requirement } from './requirement.ts';
 import {
   LAYOUT,
@@ -23,6 +23,8 @@ export interface TraceContext {
   statesOf: Map<string, Set<string>>;
   // 遷移UC・遷移先状態がともに空でない状態の表のレコード。target は状態の表の作法の文字列
   transitions: { model: string; uc: string; next: string; target: string }[];
+  // 『検証方法』が空でない（前後の空白を除いて）アーキテクチャ特性の名前
+  verifiable: Set<string>;
 }
 
 export interface TraceResult {
@@ -283,12 +285,19 @@ export function checkTrace(sources: Sources, ctx: TraceContext): TraceResult {
   }
   // 読めない feature ファイルがあると、どの UC の機能か分からず票の行に対応するルールの有無を判定できない。example-missing は行わない
   // （構文の誤りは example-syntax が拾う）
+  // 例を求めない行（RDRA 欄がアーキテクチャ特性だけの行）は判定しない。読めるかは requirement-reference と同じ見方で決める
+  const characteristicOnly = (refs: Reference[]) =>
+    exampleNotRequired(
+      refs.map((r) => ({ kind: r.kind, name: r.name, known: referenceProblem(r, ctx) === null })),
+      ctx.verifiable,
+    );
   if (!unreadable) {
-    for (const { file, req } of reqFiles) {
+    for (const { file, req, refs } of reqFiles) {
       if (req.ucName === null) continue;
       const rules = rulesOfUc.get(req.ucName);
-      for (const l of req.lines) {
+      for (const [i, l] of req.lines.entries()) {
         if (rules?.has(l.text)) continue;
+        if (characteristicOnly(refs[i].refs)) continue;
         missing.push({
           rule: 'example-missing',
           file,

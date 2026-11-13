@@ -9,6 +9,7 @@ import {
   REQUIREMENT_REASON_HEADING,
   REQUIREMENT_SPEC_HEADING,
   REQUIREMENT_TITLE_LABEL,
+  tableById,
 } from './schema.ts';
 
 export interface RequirementLine {
@@ -158,4 +159,15 @@ export function parseReferences(rdra: string | null): Reference[] {
     if (m === null || m[2].trim() === '') return { raw, kind: null, name: null };
     return { raw, kind: m[1].trim(), name: m[2].trim() };
   });
+}
+
+// 例を求めない行か（書式の「例」）。RDRA 欄の要素が1つ以上あり、どれも読めて表にあり（known）、種類がどれもアーキテクチャ特性で、
+// どの特性も『検証方法』が空でない（verifiable に名前がある）行。欄が『なし』の行・特性と他の要素を併記する行・読めない要素を
+// 含む行・『検証方法』の空な特性を挙げる行は、例を求める。検査（example-missing）と可視化が共有する
+export function exampleNotRequired(
+  refs: readonly { kind: string | null; name: string | null; known: boolean }[],
+  verifiable: ReadonlySet<string>,
+): boolean {
+  const kind = tableById('architecture-characteristic').kind;
+  return refs.length > 0 && refs.every((r) => r.known && r.kind === kind && r.name !== null && verifiable.has(r.name));
 }
