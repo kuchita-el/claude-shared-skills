@@ -324,14 +324,19 @@ scan_distribution_boundary() {
     cp -r "$PLUGIN_ROOT"/. "$unreadable_dup"/
     printf '%s\n' '詳細は scripts/tests/ を参照' >"$unreadable_dup/secret.md"
 
-    # (a) 実際の権限で読めないファイル。root はパーミッションによらず読めるため、
-    #     root では成り立たない。root のときは黙って緑にせず、skipped として明示する。
-    #     root でない環境で読めてしまうときは、前提の崩れとして失敗にする（fail-closed）。
+    # (a) 実際の権限で読めないファイル。chmod 000 が効くかは uid ではなく、読めたかの観測で
+    #     分ける。root、パーミッションを無視するファイルシステム（WSL の drvfs 等）、
+    #     CAP_DAC_OVERRIDE を持つコンテナでは読めてしまい、この項目は成り立たない。
+    #     その場合も黙って緑にせず、skipped として明示する。読み取り失敗の扱いそのものは
+    #     (b) が環境によらず検査する。ただし RUN_TESTS_REQUIRE_ALL_SUITES=1（CI が立てる）の
+    #     ときは失敗にし、実際の権限での検査が CI で一度も走らないまま緑になる経路を塞ぐ。
     chmod 000 "$unreadable_dup/secret.md"
-    if [ "$(id -u)" -eq 0 ]; then
-        collect_skipped "読み取れないファイル（chmod 000）がある場合、前提不成立として exit 2 で終わる" "root はパーミッションによらず読めるため、実際の権限では検査できない。読み取り失敗の扱いは (b) が検査する"
-    elif cat "$unreadable_dup/secret.md" >/dev/null 2>&1; then
-        collect_fail "前提: chmod 000 のファイルが読み取り不能になる" "root でないのに読み取れてしまうため、この項目は読み取り失敗の扱いを検査できない"
+    if cat "$unreadable_dup/secret.md" >/dev/null 2>&1; then
+        if [ "${RUN_TESTS_REQUIRE_ALL_SUITES:-0}" = "1" ]; then
+            collect_fail "前提: chmod 000 のファイルが読み取り不能になる" "読み取れてしまうため、実際の権限での読み取り失敗を検査できない（RUN_TESTS_REQUIRE_ALL_SUITES=1 では skipped を許さない）"
+        else
+            collect_skipped "読み取れないファイル（chmod 000）がある場合、前提不成立として exit 2 で終わる" "この環境では chmod 000 のファイルを読めるため（root 等）、実際の権限では検査できない。読み取り失敗の扱いは (b) が検査する"
+        fi
     else
         collect_ok "前提: chmod 000 のファイルが読み取り不能になる"
         run scan_distribution_boundary "$unreadable_dup"
