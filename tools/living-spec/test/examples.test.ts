@@ -29,7 +29,6 @@ const RULES = [
   'example-feature',
   'example-rule-mismatch',
   'example-missing',
-  'example-limit',
   'example-duplicate',
   'example-syntax',
 ];

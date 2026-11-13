@@ -7,7 +7,6 @@ import type { ExampleFeature, ExampleScenario } from './example.ts';
 import { exampleNotRequired, parseReferences, parseRequirement } from './requirement.ts';
 import type { Reference, Requirement } from './requirement.ts';
 import {
-  EXAMPLE_LIMIT,
   LAYOUT,
   REQUIREMENT_KINDS,
   REQUIREMENT_STATE_SEP,
@@ -312,19 +311,8 @@ export function checkTrace(sources: Sources, ctx: TraceContext): TraceResult {
     }
   }
 
-  // 例の件数と重複
+  // 例の重複
   for (const { file, feature } of features) {
-    for (const r of feature.rules) {
-      const count = r.scenarios.reduce((n, s) => n + s.expansions.length, 0);
-      if (count > EXAMPLE_LIMIT) {
-        out.push({
-          rule: 'example-limit',
-          file,
-          target: `ルール:${r.name}`,
-          detail: `例が ${count} 件で上限 ${EXAMPLE_LIMIT} 件を超える（要求文を分けるか、例を絞る。判定は書式の「例」の節）`,
-        });
-      }
-    }
     // 同じ機能の中を、文書の並びで見る。同じ並びが2つ目以降に現れたものを報告する
     const all: ExampleScenario[] = [...feature.looseScenarios, ...feature.rules.flatMap((r) => r.scenarios)].sort(
       (a, b) => a.line - b.line,

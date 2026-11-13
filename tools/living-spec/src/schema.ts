@@ -260,5 +260,3 @@ export const REQUIREMENT_REASON_FIELD = '理由';
 export const REQUIREMENT_NO_REFERENCE = 'なし';
 // 状態の参照は「状態「<状態モデル>/<状態>」」の形
 export const REQUIREMENT_STATE_SEP = '/';
-// 例は1ルールあたり3件まで
-export const EXAMPLE_LIMIT = 3;
