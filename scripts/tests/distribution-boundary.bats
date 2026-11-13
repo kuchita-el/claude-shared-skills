@@ -323,15 +323,35 @@ scan_distribution_boundary() {
     mkdir -p "$unreadable_dup"
     cp -r "$PLUGIN_ROOT"/. "$unreadable_dup"/
     printf '%s\n' '詳細は scripts/tests/ を参照' >"$unreadable_dup/secret.md"
+
+    # (a) 実際の権限で読めないファイル。root はパーミッションによらず読めるため、
+    #     root では成り立たない。root のときは黙って緑にせず、skipped として明示する。
+    #     root でない環境で読めてしまうときは、前提の崩れとして失敗にする（fail-closed）。
     chmod 000 "$unreadable_dup/secret.md"
-    if cat "$unreadable_dup/secret.md" >/dev/null 2>&1; then
-        collect_fail "前提: chmod 000 のファイルが読み取り不能になる" "読み取れてしまうため、この項目は読み取り失敗の扱いを検査できない（root 実行の可能性）"
+    if [ "$(id -u)" -eq 0 ]; then
+        collect_skipped "読み取れないファイル（chmod 000）がある場合、前提不成立として exit 2 で終わる" "root はパーミッションによらず読めるため、実際の権限では検査できない。読み取り失敗の扱いは (b) が検査する"
+    elif cat "$unreadable_dup/secret.md" >/dev/null 2>&1; then
+        collect_fail "前提: chmod 000 のファイルが読み取り不能になる" "root でないのに読み取れてしまうため、この項目は読み取り失敗の扱いを検査できない"
     else
         collect_ok "前提: chmod 000 のファイルが読み取り不能になる"
         run scan_distribution_boundary "$unreadable_dup"
         collect_rc 2 "読み取れないファイルがある場合、前提不成立として exit 2 で終わる"
     fi
     chmod 644 "$unreadable_dup/secret.md"
+
+    # (b) grep が読み取り失敗（終了コード 2）を返す状況を、grep を差し替えて作る。
+    #     実行する利用者によらず成り立つので、root でも読み取り失敗の扱いを検査できる。
+    #     差し替えは secret.md への grep だけに効かせ、他のファイルは本物の grep で読む。
+    grep() {
+        if [ "${*: -1}" = "$unreadable_dup/secret.md" ]; then
+            printf 'grep: %s: Permission denied\n' "${*: -1}" >&2
+            return 2
+        fi
+        command grep "$@"
+    }
+    run scan_distribution_boundary "$unreadable_dup"
+    unset -f grep
+    collect_rc 2 "grep が読み取り失敗を返すファイルがある場合、前提不成立として exit 2 で終わる"
 
     collect_finish
 }
