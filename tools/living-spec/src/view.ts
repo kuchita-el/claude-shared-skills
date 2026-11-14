@@ -1,7 +1,7 @@
 // 設計の可視化の材料を組む。RDRA の表・要求票・例を読み、状態モデルごとの遷移と UC ごとの縦串にまとめる。
 // 検査はしない（違反は check.ts が拾う）。違反があっても組み、表に無い名前は known: false にして残す。
 // HTML の文字列は html.ts が作る。
-import { collectOpenSources, loadTables } from './check.ts';
+import { aggregateChildren, collectOpenSources, loadTables } from './check.ts';
 import type { OpenEntry } from './check.ts';
 import { readSources } from './sources.ts';
 import type { Sources } from './sources.ts';
@@ -124,6 +124,12 @@ export interface RequirementView extends Marked {
   lines: RequirementLineView[];
 }
 
+// 情報の集約の子（表の『集約の親』でその情報を親に挙げる情報）。children は子自身の子（孫）。名前だけを持ち、区分の印を持たない
+export interface AggregateChildView {
+  name: string;
+  children: AggregateChildView[];
+}
+
 export interface UseCaseView extends Marked {
   name: string;
   // ページ内リンクの先（uc-1 から）
@@ -135,7 +141,8 @@ export interface UseCaseView extends Marked {
   open: OpenView[];
   actors: (NamedView & { role: string; open: OpenView[] })[];
   externalSystems: (NamedView & { role: string; open: OpenView[] })[];
-  information: (NamedView & { description: string; attributes: string[]; open: OpenView[] })[];
+  // 情報の項の children は、その情報の集約の子。子を UC に書かなくても、親の項の下で読めるようにする
+  information: (NamedView & { description: string; attributes: string[]; open: OpenView[]; children: AggregateChildView[] })[];
   conditions: (NamedView & { description: string; variations: VariationView[]; open: OpenView[] })[];
   // この UC が遷移 UC になっている状態モデルの名前
   stateModels: string[];
@@ -239,6 +246,12 @@ export function buildView(root: string, sources: Sources = readSources(root)): V
   const ucNames = new Set(rows['use-case'].map((r) => r.name));
   const modelNames = new Set(rows['state'].map((r) => r.name));
   const stateModels = buildStateModels(rows, ucNames);
+  const childrenOf = aggregateChildren(rows);
+  // 集約の子の木。循環（検査の aggregate-cycle）は、辿っている道に現れた名前で止める
+  const childTree = (name: string, path: readonly string[]): AggregateChildView[] =>
+    (childrenOf.get(name) ?? [])
+      .filter((c) => !path.includes(c))
+      .map((c) => ({ name: c, children: childTree(c, [...path, c]) }));
 
   // 参照の欄の要素が表にあるか。状態は「<状態モデル>/<状態>」の状態が、その状態モデルの遷移元・遷移先に現れるか
   const namesOfKind = new Map<string, Set<string>>([
@@ -353,6 +366,7 @@ export function buildView(root: string, sources: Sources = readSources(root)): V
           description: row ? str(row, '説明') : '',
           attributes: row ? list(row, '属性') : [],
           open: openOf(row),
+          children: row ? childTree(name, [name]) : [],
         };
       }),
       conditions: list(r, '条件').map((name) => {

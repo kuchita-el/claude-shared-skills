@@ -20,6 +20,7 @@ const RULES = [
   'invalid-shape',
   'undefined-reference',
   'unconnected',
+  'aggregate-cycle',
   'duplicate-name',
   'requirement-uc',
   'requirement-structure',

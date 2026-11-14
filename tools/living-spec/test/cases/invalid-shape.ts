@@ -299,6 +299,49 @@ export const cases: Case[] = [
     },
     expected: bad(AC, 'アーキテクチャ特性:監査可能性'),
   },
+  // 集約の親は情報の名前1つの文字列で書く。並びで複数の親を書くと落ちる
+  {
+    name: 'fail-aggregate-parent-got-list',
+    files: {
+      'docs/rdra/information.yaml': t`
+        - 情報: 経費明細
+          集約の親:
+            - 経費申請
+            - 出張申請
+        - 情報: 経費申請
+        - 情報: 出張申請
+      `,
+      'docs/rdra/use-case.yaml': t`
+        - UC: 申請を作成する
+          情報:
+            - 経費申請
+            - 出張申請
+            - 経費明細
+      `,
+    },
+    expected: bad('docs/rdra/information.yaml', '情報:経費明細'),
+  },
+  // 「、」で複数の親を書くと落ちる（名前1つとして引かず、undefined-reference も出さない）
+  {
+    name: 'fail-aggregate-parent-comma-separated',
+    files: {
+      'docs/rdra/information.yaml': t`
+        - 情報: 経費明細
+          集約の親: 経費申請、出張申請
+        - 情報: 経費申請
+        - 情報: 出張申請
+      `,
+      'docs/rdra/use-case.yaml': t`
+        - UC: 申請を作成する
+          情報:
+            - 経費申請
+            - 出張申請
+            - 経費明細
+      `,
+    },
+    expected: bad('docs/rdra/information.yaml', '情報:経費明細'),
+    counts: { '情報:経費明細': 1 },
+  },
   // 文字列のキー（説明）が数値だと落ちる
   {
     name: 'fail-string-key-got-number',

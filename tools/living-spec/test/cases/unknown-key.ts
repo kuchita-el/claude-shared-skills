@@ -43,6 +43,10 @@ export const cases: Case[] = [
           説明: 申請の単位
           仮説:
             - P01-2
+        - 情報: 経費明細
+          集約の親: 経費申請
+          仮説:
+            - P01-2
       `,
       'docs/rdra/state.yaml': t`
         - 状態モデル: 経費申請の状態
@@ -105,6 +109,24 @@ export const cases: Case[] = [
       `,
     },
     expected: [{ rule: 'unknown-key', file: 'docs/rdra/variation.yaml', target: 'バリエーション:費目' }],
+  },
+  // 集約の親は情報の表だけのキー。条件に書くと落ちる
+  {
+    name: 'fail-aggregate-parent-on-condition',
+    files: {
+      'docs/rdra/condition.yaml': t`
+        - 条件: 明細の提出可能
+          集約の親: 提出可能
+        - 条件: 提出可能
+      `,
+      'docs/rdra/use-case.yaml': t`
+        - UC: 経費申請を提出する
+          条件:
+            - 明細の提出可能
+            - 提出可能
+      `,
+    },
+    expected: [{ rule: 'unknown-key', file: 'docs/rdra/condition.yaml', target: '条件:明細の提出可能' }],
   },
   // 状態の行に許されないキーがあると落ちる
   {
