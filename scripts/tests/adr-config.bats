@@ -8,7 +8,9 @@
 #   - 設定の誤り（知らないキー・重複・空の値・語の群の一部だけ・6値の重複・形の崩れた行）は、
 #     ADR を検査せずに原因を示して exit 2 で止まる
 #   - 設定の置き場は、ADR ディレクトリ（省略時はカレントディレクトリ）から決めた git の
-#     トップレベルの `.claude/adr/config` であり、無ければ同梱の既定値を使う
+#     トップレベルの `.claude/adr/config` であり、無ければ同梱の既定値を使う。環境変数
+#     ADR_CONFIG_ROOT が空でなければ、探索をせずその値をトップレベルとみなす（ゲートとテストが
+#     git の外で検査するための内部の経路）
 #   - 設定ファイルをシェルとして読み込まない
 # 設定ファイルが無い場合に挙動が変わらないことは、既存の lint と index のテスト全件が担う。
 #
@@ -34,6 +36,8 @@ EN_VALID="$CONFIG_FIXTURES/en/valid"
 JA_VALID="$FIXTURES_DIR/lint-adr/valid/01-mixed-validity"
 CONFIG_ERROR_MESSAGE="adr プラグインの設定に誤りがあります"
 CORPORA=()
+# 呼び出し側の環境に残った値で、置き場の解決が変わらないようにする（面⑩だけが明示して渡す）。
+unset ADR_CONFIG_ROOT
 PRECONDITION_PATHS=("$GEN_INDEX" "$CONFIG_LIB" "$CONFIG_DEFAULT" "$GATE" "$EN_CONFIG" "$EN_VALID" "$JA_VALID")
 
 setup_file() {
@@ -237,16 +241,21 @@ make_repo() {
     collect_finish
 }
 
+# 設定と ADR 群はステージしてからゲートを起動する。ゲートが作業ツリーとステージした内容の
+# どちらを検査する形であっても、検査の経路を通すためである（何もステージしていないと、
+# ステージした内容を検査するゲートは何もせずに通り、この面が空振りする）。
 @test "面⑦: commit ゲートは commit を実行するリポジトリの設定で検査する" {
     collect_init
 
     local input
     make_repo gate-en "$EN_CONFIG" "$EN_VALID"
+    git -C "$REPO" add -A
     input="$(printf '{"tool_input":{"command":"git commit -m x"},"cwd":"%s"}' "$REPO")"
     run bash -c 'cd "$1" && printf "%s" "$2" | bash "$3"' _ "$REPO" "$input" "$GATE"
     collect_rc 0 "英語の設定のリポジトリで、英語の ADR 群は commit を通す"
 
     make_repo gate-error "$CONFIG_FIXTURES/errors/partial-words/config" "$EN_VALID"
+    git -C "$REPO" add -A
     input="$(printf '{"tool_input":{"command":"git commit -m x"},"cwd":"%s"}' "$REPO")"
     run bash -c 'cd "$1" && printf "%s" "$2" | bash "$3"' _ "$REPO" "$input" "$GATE"
     collect_rc 2 "設定に誤りがあるリポジトリでは commit を止める"
@@ -278,10 +287,80 @@ make_repo() {
     collect_finish
 }
 
+# 改行コードが CRLF の設定・行末の空白・字下げしたコメント・空白だけの行を、英語の設定から
+# その場で組み立てる（CR と行末の空白を追跡下のファイルへ置かないため）。値に CR や空白が
+# 残ると、英語の ADR が全件語彙の違反になり、利用者は原因が設定にあると気づけない。
+@test "面⑨: CRLF・行末の空白・字下げしたコメントを持つ設定を読める" {
+    collect_init
+
+    make_repo crlf-whitespace "" "$EN_VALID"
+    mkdir -p "$REPO/.claude/adr"
+    {
+        printf '   # 字下げしたコメント: コロンを含む\n'
+        printf '   \n'
+        printf '\t\n'
+        sed -e '/^[a-z]/s/$/  \t /' "$EN_CONFIG"
+    } | sed -e 's/$/\r/' >"$REPO/.claude/adr/config"
+
+    run_sut "$REPO/docs/adr"
+    collect_rc 0 "CRLF・行末の空白・字下げしたコメントを持つ英語の設定で、valid の ADR 群は exit 0"
+    collect_equals "$output" "" "CRLF・行末の空白を持つ設定でも違反を出さない"
+
+    run bash "$GEN_INDEX" "$REPO/docs/adr" </dev/null
+    collect_rc 0 "CRLF・行末の空白を持つ設定で gen-adr-index.sh は exit 0"
+    collect_equals "${lines[1]:-}" "# Active ADR Index" "値に CR と行末の空白を残さない"
+
+    collect_finish
+}
+
+# ADR_CONFIG_ROOT は、git の外へ取り出したツリーを検査するための内部の経路である。
+@test "面⑩: ADR_CONFIG_ROOT が設定を探すトップレベルを明示する" {
+    collect_init
+
+    # git の外の ADR 群を、別の場所のトップレベルの設定で検査する
+    local root="$BATS_TEST_TMPDIR/root-en" plain="$BATS_TEST_TMPDIR/plain-en"
+    mkdir -p "$root/.claude/adr" "$plain"
+    cp "$EN_CONFIG" "$root/.claude/adr/config"
+    cp -R "$EN_VALID" "$plain/adr"
+    run env ADR_CONFIG_ROOT="$root" bash "$SUT" "$plain/adr" </dev/null
+    collect_rc 0 "ADR_CONFIG_ROOT の設定で、git の外の英語の ADR 群を検査できる"
+    run env ADR_CONFIG_ROOT="$root" bash "$GEN_INDEX" "$plain/adr" </dev/null
+    collect_equals "${lines[1]:-}" "# Active ADR Index" "gen-adr-index.sh も ADR_CONFIG_ROOT の設定を使う"
+
+    # git による探索より優先する。英語の設定を持つリポジトリでも、設定の無いトップレベルを
+    # 明示すれば既定値で検査する
+    make_repo root-overrides-git "$EN_CONFIG" "$EN_VALID"
+    local empty_root="$BATS_TEST_TMPDIR/root-empty"
+    mkdir -p "$empty_root"
+    run env ADR_CONFIG_ROOT="$empty_root" bash "$SUT" "$REPO/docs/adr" </dev/null
+    collect_rc 1 "設定の無いトップレベルを明示すると、既定値で検査する（git による探索をしない）"
+    collect_contains "$output" '（提案中 / 承認済み / 却下 のいずれかが必要）' "明示したトップレベルに設定が無ければ既定値の語彙を使う"
+
+    # 空の値は未設定と同じに扱う（git による探索へ戻る）
+    run env ADR_CONFIG_ROOT= bash "$SUT" "$REPO/docs/adr" </dev/null
+    collect_rc 0 "ADR_CONFIG_ROOT が空なら、git のトップレベルの設定を使う"
+
+    # 指し先が無ければ、既定値へ落とさず原因を示して止める
+    run env ADR_CONFIG_ROOT="$BATS_TEST_TMPDIR/__missing__" bash "$SUT" "$REPO/docs/adr" </dev/null
+    collect_rc 2 "存在しないディレクトリを指す ADR_CONFIG_ROOT は exit 2"
+    collect_contains "$output" "設定を探すトップレベルとして指定されたディレクトリがありません" "存在しない指し先を原因として示す"
+    collect_not_contains "$output" "違反" "存在しない指し先を ADR の違反として報告しない"
+
+    # 明示したトップレベルの設定にも、誤りの検査が掛かる
+    local bad_root="$BATS_TEST_TMPDIR/root-bad"
+    mkdir -p "$bad_root/.claude/adr"
+    cp "$CONFIG_FIXTURES/errors/partial-words/config" "$bad_root/.claude/adr/config"
+    run env ADR_CONFIG_ROOT="$bad_root" bash "$SUT" "$plain/adr" </dev/null
+    collect_rc 2 "ADR_CONFIG_ROOT の設定の誤りも exit 2"
+    collect_contains "$output" "語の群の一部だけが書かれています" "ADR_CONFIG_ROOT の設定の誤りの原因を示す"
+
+    collect_finish
+}
+
 # 同梱の既定値が、設定ファイルの無いリポジトリでいまの値と一致することは既存のテスト全件が
 # 担う。ここでは既定値のファイル自体が語の群を揃えて持ち、読み込み部がそれを受け付けることを
 # 確かめる（既定値のファイルの破損を、既存テストの大量の失敗ではなく1件の失敗として示す）。
-@test "面⑨: 同梱の既定値が語の群を揃えて持つ" {
+@test "面⑪: 同梱の既定値が語の群を揃えて持つ" {
     collect_init
 
     run bash -c 'source "$1"; adr_config_load "" && printf "%s|%s|%s\n" "$ADR_STATUS_APPROVED" "$ADR_XREF_HEADING" "$ADR_INDEX_TITLE"' \

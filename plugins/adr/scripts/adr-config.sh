@@ -14,6 +14,15 @@
 # があればそれを読む。無ければ同梱の既定値を使う。git のトップレベルを決められなければ、
 # 既定値だけを使う。起点は呼び出し側が渡す（検査・生成の対象の ADR ディレクトリ）。
 #
+# 環境変数 ADR_CONFIG_ROOT が空でなければ、git による探索をせず、その値のディレクトリを
+# トップレベルとみなす（`$ADR_CONFIG_ROOT/.claude/adr/config` があれば読み、無ければ既定値）。
+# 値が存在しないディレクトリを指すときは、設定の誤りとして止める。誤りの検査は同じく掛かる。
+# これは、commit ゲートが git の外（一時ディレクトリ）へ取り出したツリーを検査するときと、
+# テストのための内部の経路である。利用者が設定を渡す主たる手段は、リポジトリに置く
+# `.claude/adr/config` のままである。設定の中身は常にリポジトリのファイルから読み、この変数は
+# そのファイルの在処を示すだけなので、「設定を環境変数だけで渡す」案（利用者がフックの環境を
+# 整える必要があり、リポジトリと一緒に配れない）とは別物である。
+#
 # 語の群（ADR_CONFIG_WORD_KEYS）は揃えて置くことを求める。導入先の設定に語の群のキーが
 # 1つでもあれば、全キーを要求する。キーごとに既定値へ戻すと、一部の語だけを書き換えた
 # リポジトリが2つの言語の混ざったまま検査を通るためである。
@@ -23,8 +32,8 @@
 # 戻り、英語で書いた ADR が全件、語彙の違反として報告される。利用者は原因が設定にあると
 # 気づけない。誤りは1件目で打ち切らず、全件を出してから戻る。
 #
-# 前提: bash 4.2 以上（読み込み側が版を確かめてから読み込む）。この部分自身は連想配列を
-# 使わない。lint と違って版の確認を持たない gen-adr-index.sh からも読み込むためである。
+# 前提: lint-adr.sh は bash 4.2 以上を確かめてから読み込む。この部分自身は連想配列を
+# 使わない。版の確認を持たない gen-adr-index.sh からも読み込むためである。
 
 # 同梱の既定値のファイル。読み込み元のパスから解決する（cwd に依存しない）。
 ADR_CONFIG_DEFAULT_FILE="$(dirname "${BASH_SOURCE[0]}")/adr-config.default"
@@ -155,7 +164,15 @@ adr_config_load() {
     ADR_CONFIG_ERRORS=()
     ADR_CONFIG_SOURCE=""
 
-    if [ -n "$origin" ] && toplevel="$(git -C "$origin" rev-parse --show-toplevel 2>/dev/null)" &&
+    if [ -n "${ADR_CONFIG_ROOT:-}" ]; then
+        # トップレベルの明示（ヘッダの注記）。git による探索より優先する。指し先が無いときに
+        # 既定値へ黙って落とすと、導入先の設定を読まないまま検査が進むため、誤りとして止める。
+        if [ -d "$ADR_CONFIG_ROOT" ]; then
+            user_file="$ADR_CONFIG_ROOT/$ADR_CONFIG_USER_RELPATH"
+        else
+            ADR_CONFIG_ERRORS+=("ADR_CONFIG_ROOT=$ADR_CONFIG_ROOT: 設定を探すトップレベルとして指定されたディレクトリがありません")
+        fi
+    elif [ -n "$origin" ] && toplevel="$(git -C "$origin" rev-parse --show-toplevel 2>/dev/null)" &&
         [ -n "$toplevel" ]; then
         user_file="$toplevel/$ADR_CONFIG_USER_RELPATH"
     fi

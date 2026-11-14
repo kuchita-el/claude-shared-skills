@@ -202,8 +202,10 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/adr-config.sh"
 
 # 状態語彙（front-matter の値側）。値は設定から読み、load_config が埋める（読み込みだけを
-# 行った時点では空）。キーが英語・値が語彙なのは、キーが状態概念そのものではなく構造的な
-# フィールド名だからである（概念の正本は値側にあり、英語キーでは二重管理の drift を生まない）。
+# 行った時点では空）。値は導入先ごとに変わりうるため、各値の役割は設定のキー
+# （status-approved 等）で表し、値の正本は同梱の adr-config.default（導入先では
+# `.claude/adr/config`）とする。front-matter のキー名（status / validity / superseded-by）は
+# 構造的なフィールド名であり、言語によらず英語に固定する。
 # 承認軸の却下と有効性軸の上書き済み／廃止済みを別のキーに分けているのは、1つの欄へ2軸を
 # 混在させる案と英文4状態（Proposed / Accepted / Deprecated / Superseded）で表す案を却下した
 # 経緯による。いずれも承認の歴史事実と現在の効力を同じ値域へ同居させ、2軸が語彙レベルで衝突する。
