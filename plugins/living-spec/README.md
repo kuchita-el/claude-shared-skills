@@ -10,7 +10,7 @@
 - `skills/structure/SKILL.md`: 要求を表→要求票→例へ写し、機械検査と突き合わせを通して終えます。
 - `skills/crosscheck/SKILL.md`: 規則間の矛盾・条件の食い違い・状態遷移の抜けと、どの層にも基準の無い空白（決める人への問いとして）を報告します（直しません）。基準の版（git の版）を渡すと、そこから変わった要素だけを突き合わせます。
 - `skills/view/SKILL.md`: 可視化を描き、開き方を示します。基準の版（git の版）を指定すると、そこからの違いを描き分けます。
-- `agents/rule-crosschecker.md`: 表・票・例を初見で読み、矛盾を `id,severity,evidence,why,suggestion` で返します。
+- `agents/rule-crosschecker.md`: 表・票・例を初見で読み、矛盾を `id,severity,evidence,why,suggestion` で返します。どの層にも基準の無い空白は、決める人への問いとして返します。
 - `scripts/run.mjs`: 検査器を探して呼ぶ中継。引数は `check [--doc-missing|--open] [起点]`・`render [--base <版>] [起点]`・`diff --base <版> [起点]`・`hook` です。依存を持ちません。検査器そのものはプラグインに含めません（下の「検査器の導入」）。
 - `hooks/hooks.json`: 表・票・例の編集の後に全体検査と描き直しを走らせる PostToolUse フック。
 - `references/starting-point.md`: 検査器へ渡す起点・基準の版・根の手順。起点と根はスキル3本が、基準の版の渡し方は `view` と `crosscheck` が従います。
