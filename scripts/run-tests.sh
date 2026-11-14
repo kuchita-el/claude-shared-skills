@@ -91,6 +91,7 @@ MSG
 # 同じ方式）。テストファイルを増減させたときは本リストと実行ガイド §1 のスイート表を
 # 更新する（§7 の移行対応表は移行完了時点の凍結記録であり、追随の対象ではない）。
 EXPECTED_BATS=(
+    adr-commit-gate.bats
     adr-portability.bats
     eval-placement.bats
     gen-adr-index.bats
