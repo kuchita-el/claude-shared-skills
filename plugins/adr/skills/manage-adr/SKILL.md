@@ -1,6 +1,6 @@
 ---
 name: manage-adr
-description: ADR のライフサイクル操作（起票・承認・上書き・廃止・却下の5遷移）と多決定 ADR の分割（1→N の部分上書き）を実行し、front-matter（`status`/`validity`/`superseded-by`）と相互参照をスキーマに従い書き込む。既存 ADR の編集は core／非core／些末で変更種別を確定し、core は新規起票＋旧 ADR 上書き、非core／些末は直接編集へ導く。ADR 化要否も判定し、各操作後は lint-adr で自己検証する。ADR 化を迷う・新規に起こす・承認や上書きで状態を変える・分割する・既存 ADR を編集したいときに使用。
+description: ADR のライフサイクル操作（起票・承認・上書き・廃止・却下の5遷移）と多決定 ADR の分割、誤った退役の取り消しを実行し、front-matter（`status`/`validity`/`superseded-by`）と相互参照をスキーマに従い書き込む。既存 ADR の編集は core／非core／些末で変更種別を確定して操作へ導く。ADR 化要否と退役（格下げ）の要否も判定し、各操作後は lint-adr で自己検証する。ADR 化を迷う・起こす・状態を変える・分割する・編集する・退役を取り消す・ADR の規範を他の文書へ移す・ADR が名指すファイルを消すときに使用。
 allowed-tools:
   - Read
   - Grep
@@ -21,6 +21,7 @@ allowed-tools:
 - **成果物**: front-matter、本文、相互参照をスキーマに沿って必要十分に更新する。
 - **停止条件**: 遷移条件、参照整合、lintのいずれかが未決・不合格なら状態を進めない。
 - **変更境界**: 対象ADR以外を変更せず、別判断を黙って混ぜない。ただし遷移手順（`transitions.md`「共通: 退役に伴う inbound `Related:` の点検・付け替え」節）が付け替えを指示する相互参照相手（対象ADRを指す他の有効ADRの`Related:`行、非ADR文書）と、自己検証で再生成する`index.md`は、対象ADR以外の変更として許容する。
+- **変更境界（取り消し）**: `transitions.md`「取り消し（誤った退役の訂正）」節が編集を指示する後継ADRと`Related:`行も、対象ADR以外の変更として許容する。
 
 ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR の編集で、front-matter（`status`/`validity`/`superseded-by`）と `## 関連ADR` の相互参照を正しく書き込む。手順の実体は本スキルが持ち、手作業で組み立てずスキル経由で一貫した状態遷移を実行し、各操作の締めに drift-lint で自己検証する。
 
@@ -30,7 +31,7 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 
 ## 引数
 
-- 操作種別（`起票`／`承認`／`上書き`／`分割`／`廃止`／`却下`／`編集`）と対象 ADR の識別子・パス
+- 操作種別（`起票`／`承認`／`上書き`／`分割`／`廃止`／`却下`／`編集`／`取り消し`）と対象 ADR の識別子・パス
 - 省略時は会話コンテキストから意図を判定する。操作種別・対象が特定できなければ、その1点のみ質問する
 
 ## 対象操作
@@ -82,7 +83,11 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 
 既に記録された ADR を `validity: 廃止済み` へ移して index から外すかは、起票の判定とは別の基準で決める。実体は `${CLAUDE_SKILL_DIR}/references/adr-demotion.md` に在り、判定条件・判定形式（必要条件の連言）・安全側の向き（迷ったら残す）をここ以外で再定義しない。**`adr-scoping.md` の粒度判定基準を既存 ADR へ遡及適用して退役を決めない。** 退役と判定した場合は前掲5遷移の「廃止」へ進む（手順の実体は `${CLAUDE_SKILL_DIR}/references/transitions.md`「廃止（廃止済み）」節）。
 
-判定を誰がいつ起動するか（起動主体・起動タイミング・入力範囲）は同ファイルの対象外であり、本スキルも既定を与えない。
+判定を誰がいつ何へ回すか（起動主体・起動タイミング・入力範囲）は `${CLAUDE_SKILL_DIR}/references/adr-demotion.md`「判定の起動」に従う。定期の棚卸しとして ADR 群の全数へ回さない。
+
+### 誤った退役の取り消し（遷移ではない）
+
+誤って行った上書き・廃止は、`有効` への状態遷移を足さず、退役操作の記録の訂正として取り消す。判定基準（退役を決めた基準の再適用）・実行手順・記録要件は、`${CLAUDE_SKILL_DIR}/references/transitions.md`「取り消し（誤った退役の訂正）」節が持つ。分割は取り消しの対象外である。
 
 ## 手順の参照（各 references を直接参照）
 
@@ -90,9 +95,9 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 - `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` — ADR 化要否の必要条件・4項目の名称・同点処理・判定する入力の値域と定義・閾値とスコア境界・判定に添える申告・起票のタイミング
 - `${CLAUDE_SKILL_DIR}/references/adr-destination.md` — 判定結果の行き先（ADR 化する側／しない側の分岐）と命名規約の ADR 化基準
 - `${CLAUDE_SKILL_DIR}/references/adr-splitting.md` — 新規に起こす ADR へ何を束ねてよいかの制約
-- `${CLAUDE_SKILL_DIR}/references/adr-demotion.md` — 既存 ADR の格下げ（退役）判定の条件・判定形式・安全側の向き・格下げ固有の入力の採否
+- `${CLAUDE_SKILL_DIR}/references/adr-demotion.md` — 既存 ADR の格下げ（退役）判定の条件・判定形式・安全側の向き・格下げ固有の入力の採否・起動
 - `${CLAUDE_SKILL_DIR}/references/template.md` — 新規 ADR の雛形（front-matter＋見出し骨格。起票時にこの構成へ準拠する）と、`## 変更履歴` 節の配置規約（節を持たない ADR で新設するときに従う単一出典）
-- `${CLAUDE_SKILL_DIR}/references/transitions.md` — 5遷移と分割の実行手順・採番規則・双方向相互参照の書き込み・index の再生成
+- `${CLAUDE_SKILL_DIR}/references/transitions.md` — 5遷移と分割の実行手順・取り消し・採番規則・双方向相互参照の書き込み・index の再生成
 - `${CLAUDE_SKILL_DIR}/references/edit-decision.md` — core／非core／些末 の判定と問い設計・操作分岐。参照の深さの数え方も持つ
 - `${CLAUDE_SKILL_DIR}/references/adr-reference-principle.md` — ADR 本文へ参照を書く／直す際の判定（記録の参照原則。起票時にも適用する）
 - `${CLAUDE_SKILL_DIR}/references/cross-references.md` — `## 関連ADR` の関係語彙・`Related:` の書式規約・機械検査の範囲と是正手段（相互参照を書くときに従う）
@@ -105,7 +110,7 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 
 実 ADR ファイルは対象ディレクトリへ書き込み、**自己検証も同ディレクトリを直接対象として実行する**（対象ディレクトリの解決は前掲の「配置」節の規約に従う）。各遷移・編集操作の完了後、以下を実行する。
 
-1. **index 同期**（`validity` を変える操作＝承認・上書き・分割・廃止の後）: `bash ${CLAUDE_PLUGIN_ROOT}/scripts/gen-adr-index.sh <対象ディレクトリ>` の出力で `<対象ディレクトリ>/index.md` を再生成する（起票・却下は `validity` を変えないため index 再生成不要）。
+1. **index 同期**: `validity` を変える操作（承認・上書き・分割・廃止・取り消し）の後に行う。`bash ${CLAUDE_PLUGIN_ROOT}/scripts/gen-adr-index.sh <対象ディレクトリ>` の出力で `<対象ディレクトリ>/index.md` を再生成する。起票・却下は `validity` を変えないため index 再生成不要である。
 2. **lint 実行**: `bash ${CLAUDE_PLUGIN_ROOT}/scripts/lint-adr.sh <対象ディレクトリ>` を実行し exit 0 を確認する。**この exit 0 が合否基準**である。
 3. **フィードバックループ**（exit 0 以外）: lint-adr の出力を利用者へ提示し、報告された検査項目を `${CLAUDE_SKILL_DIR}/references/adr-model.md`「検査項目と正本の対応」で引き、指された正本文書の是正手段に従って ADR を直す。再度 lint-adr を実行し、**exit 0 になるまで反復する**。exit 0 を得られないまま操作を完了扱いにしない。
 

@@ -99,6 +99,7 @@ EXPECTED_BATS=(
     lint-adr-layers.bats
     lint-adr-stem.bats
     lint-adr-xref.bats
+    lint-adr-undo.bats
     manage-adr-surface.bats
     next-adr-id.bats
     plugin-manifests.bats
