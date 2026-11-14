@@ -75,9 +75,9 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 
 ### ADR 化要否の判定（起票の前段）
 
-ある決定を ADR にすべきか、いつ起票するか、命名規約を ADR の対象に含めるかは、却下代替の必要条件と粒度判定基準で判定する。まず当該決定が採らなかった選択肢とその却下理由を持つかを確認し、持たなければ点数を数えず ADR 化しない。持つ場合に粒度判定基準のチェックリストで採点し、判定境界では「書かない」を優先する。4項目の名称・同点処理に加え、各項目が判定する入力の値域と定義、閾値とスコア境界の数値、および判定結果に添える申告の規律（数えた対象の列挙・発見型短絡の申告・推定で補わないこと）は `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` が単独で持つ。判定結果の行き先は `${CLAUDE_SKILL_DIR}/references/adr-destination.md` が単独で持つ。いずれについてもこれらのファイルのみを参照し、スキル独自の基準を導入しない。
+ある決定を ADR にすべきか、いつ起票するか、命名規約を ADR の対象に含めるかは、却下代替の必要条件と粒度判定基準で判定する。まず当該決定が採らなかった選択肢とその却下理由を持つかを確認し、持たなければ点数を数えず ADR 化しない。持つ場合に粒度判定基準のチェックリストで採点し、判定境界では「書かない」を優先する。4項目の名称・同点処理、各項目が判定する入力の値域と定義、閾値とスコア境界の数値は `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` が単独で持つ。判定結果に添える申告の規律（数えた対象の列挙・発見型短絡の申告・推定で補わないこととその例外・採用理由を推定した旨の申告・起票の時点の照合範囲の申告）と起票の時点も、同ファイルが単独で持つ。判定結果の行き先は `${CLAUDE_SKILL_DIR}/references/adr-destination.md` が単独で持つ。いずれについてもこれらのファイルのみを参照し、スキル独自の基準を導入しない。
 
-要否の判定は起票操作の前段であり、ADR 化すると判断した場合のみ起票（5遷移）へ進む。ただしその行き先は新規 ADR とは限らず、既存 ADR への非core 改訂の側もある（分類の確定は粒度判定ではなく前掲の編集判定フローに従う）。ADR 化しないと判断した対象にも置き場所の一般則がある。いずれの振り分けも `${CLAUDE_SKILL_DIR}/references/adr-destination.md` に従う。
+要否の判定は起票操作の前段であり、ADR 化すると判断し、かつ起票の時点に達した場合のみ起票（5遷移）へ進む。ただしその行き先は新規 ADR とは限らず、既存 ADR への非core 改訂の側もある（分類の確定は粒度判定ではなく前掲の編集判定フローに従う）。ADR 化しないと判断した対象にも置き場所の一般則がある。いずれの振り分けも `${CLAUDE_SKILL_DIR}/references/adr-destination.md` に従う。
 
 ### 格下げ判定（既存 ADR を退役させるか）
 
@@ -98,7 +98,7 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 - `${CLAUDE_SKILL_DIR}/references/adr-demotion.md` — 既存 ADR の格下げ（退役）判定の条件・判定形式・安全側の向き・格下げ固有の入力の採否・起動
 - `${CLAUDE_SKILL_DIR}/references/template.md` — 新規 ADR の雛形（front-matter＋見出し骨格。起票時にこの構成へ準拠する）と、`## 変更履歴` 節の配置規約（節を持たない ADR で新設するときに従う単一出典）
 - `${CLAUDE_SKILL_DIR}/references/transitions.md` — 5遷移と分割の実行手順・取り消し・採番規則・双方向相互参照の書き込み・index の再生成
-- `${CLAUDE_SKILL_DIR}/references/edit-decision.md` — core／非core／些末 の判定と `AskUserQuestion` 問い設計・操作分岐
+- `${CLAUDE_SKILL_DIR}/references/edit-decision.md` — core／非core／些末 の判定と問い設計・操作分岐。参照の深さの数え方も持つ
 - `${CLAUDE_SKILL_DIR}/references/adr-reference-principle.md` — ADR 本文へ参照を書く／直す際の判定（記録の参照原則。起票時にも適用する）
 - `${CLAUDE_SKILL_DIR}/references/cross-references.md` — `## 関連ADR` の関係語彙・`Related:` の書式規約・機械検査の範囲と是正手段（相互参照を書くときに従う）
 

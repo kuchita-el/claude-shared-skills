@@ -140,7 +140,7 @@ bats は TAP 形式で報告する。runner は失敗したスイートの出力
 
 **受容した犠牲**: 手元のゲートが覆うのは Claude Code の Bash ツール経由の commit だけである（§2）。素の端末からの commit と `git -C` は、検出が push 時点の CI まで遅れる。
 
-**ADR 化しない**。`plugins/adr/skills/manage-adr/references/adr-scoping.md` の粒度判定で閾値に達しない（反転に要る修正は起動元2本と本書に限られ、規範の適用先は起動場所だけで、射程内の違反はツールが現に阻止する）。行き先は「ツールで自動強制される規範 → 実装・テスト資産・操作手順」である。規範の実体は `scripts/hooks/pre-commit-gate.sh`・`scripts/run-tests.sh`・`.github/workflows/test.yml` が持ち、採用理由と既知の限界は本節と §2 に置く。
+**ADR 化しない**。`plugins/adr/skills/manage-adr/references/adr-scoping.md` の粒度判定で閾値に達しない。反転に要る修正は起動元2本と本書に限られ、規範の適用先は起動場所だけで、射程内の違反はツールが現に阻止する。行き先は `adr-destination.md` の「ADR 化しない」の第1分岐であり、規範を担う保持先が値域(A)に在るため実装・テスト資産・操作手順に置く。規範の実体は `scripts/hooks/pre-commit-gate.sh`・`scripts/run-tests.sh`・`.github/workflows/test.yml` が持つ。採用理由と既知の限界は本節と §2 に置く。
 
 ### 問い2: 実行経路は配布物境界のどちら側に属するか
 
