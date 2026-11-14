@@ -14,8 +14,8 @@ ADR（アーキテクチャ決定記録）の運用機構を配布する Claude 
 
 ## ホスト差分
 
-両ホストの成果契約は、明示的に `lint-adr.sh`、`gen-adr-index.sh`、
-`next-adr-id.sh` を実行して結果を確認することです。Claude Codeでは追加で
+両ホストの成果契約は、同梱スクリプトを明示的に実行して結果を確認することです。
+対象は `lint-adr.sh`、`gen-adr-index.sh`、`next-adr-id.sh`、`verify-split-verbatim.sh` です。Claude Codeでは追加で
 PreToolUseのcommitゲートを利用できます。Codexには現時点で同等のplugin単位
 commit hookがないため、明示lintを必須とする `degraded` 互換です。
 

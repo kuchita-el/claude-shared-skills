@@ -4,8 +4,8 @@
 # 正例は fixture（scripts/fixtures/verify-split-verbatim/）の2形式（見出し形式・箇条形式）に置く。
 # 負例は正例をケースごとの一時ディレクトリへ複写し、1か所だけ変異を入れて作る。変異を
 # ケースの中に書くことで、どの1点を崩したときに何が赤くなるかを読めるようにする。
-# 検出の側（差分・空の切り出し・行数・網羅性）と免除の側（先頭番号・リード文・番号を持たない
-# 非決定文・見出し直後の空行・フェンスの内側の見出し）を対で置く。
+# 検出の側（差分・空の切り出し・決定番号の一意性・行数・網羅性・入力の誤り）と、免除の側（先頭番号・
+# リード文・番号を持たない非決定文・見出し直後の空行・フェンスの内側の見出し）を対で置く。
 #
 # 【配置について】テストと fixture を配布物外へ置く境界は docs/distribution-boundary.md が定める。
 #
@@ -98,6 +98,17 @@ mutate() {
     collect_finish
 }
 
+@test "差分: 箇条形式の遅延継続行（字下げしない続きの行）の違いを非0で報告する" {
+    local dir
+    dir="$(copy_corpus list)"
+    mutate "$dir/$L_SUCC" "字下げせずに続く二行目も項目の続きとして含む。" "字下げせずに続く二行目は項目の続きとして含まない。"
+    run_sut "$dir/$L_ORIGINAL" "$dir/map.txt"
+    collect_init
+    collect_rc 1 "遅延継続行の差分は exit 1"
+    collect_contains "$output" "+字下げせずに続く二行目は項目の続きとして含まない。" "遅延継続行を差分に出す"
+    collect_finish
+}
+
 @test "差分: #### 以下の見出しの節は決定本文に含めて照合する" {
     local dir
     dir="$(copy_corpus heading)"
@@ -174,6 +185,25 @@ mutate() {
     collect_finish
 }
 
+@test "一意性: 原 ADR・後継のいずれかで決定番号が重複すると非0にする" {
+    local dir
+    collect_init
+
+    # 原 ADR に同じ番号の決定が2つあると、後の決定が前の決定を覆い、前の決定が照合されない
+    dir="$(copy_corpus heading)"
+    mutate "$dir/$H_ORIGINAL" "### 6. 六つ目の決定（後継を立てない）" "### 1. 六つ目の決定（後継を立てない）"
+    run_sut "$dir/$H_ORIGINAL" "$dir/map.txt"
+    collect_rc 1 "原 ADR の番号の重複は exit 1"
+    collect_contains "$output" "原 ADR に決定 1 が2回以上あります（決定を一意に同定できない）" "原 ADR 側の重複を名指す"
+
+    dir="$(copy_corpus heading)"
+    mutate "$dir/$H_SUCC_A" "### 3. 五つ目の決定" "### 2. 五つ目の決定"
+    run_sut "$dir/$H_ORIGINAL" "$dir/map.txt"
+    collect_rc 1 "後継の番号の重複は exit 1"
+    collect_contains "$output" "NG: $H_SUCC_A: 後継に決定 2 が2回以上あります（決定を一意に同定できない）" "後継側の重複を名指す"
+    collect_finish
+}
+
 @test "行数: 後継の決定へ1行足すと、行数の不一致を報告して非0にする" {
     local dir
     dir="$(copy_corpus heading)"
@@ -247,5 +277,15 @@ mutate() {
     printf 'x ADR-203102011100-01-successor 1\n' >"$dir/bad-number.txt"
     run_sut "$dir/$L_ORIGINAL" "$dir/bad-number.txt"
     collect_rc 2 "数字でない原決定番号は exit 2"
+
+    printf '1 ADR-203102011100-01-successor x\n' >"$dir/bad-succ-number.txt"
+    run_sut "$dir/$L_ORIGINAL" "$dir/bad-succ-number.txt"
+    collect_rc 2 "数字でない後継決定番号は exit 2"
+    collect_contains "$output" "後継決定番号が数字ではありません" "後継決定番号の誤りを名指す"
+
+    printf '1 ADR-203102011000-01-original 1\n' >"$dir/bad-self.txt"
+    run_sut "$dir/$L_ORIGINAL" "$dir/bad-self.txt"
+    collect_rc 2 "後継の欄に原 ADR 自身を書いた行は exit 2"
+    collect_contains "$output" "後継 ADR に原 ADR 自身が書かれています" "原 ADR 自身の指定を名指す"
     collect_finish
 }
