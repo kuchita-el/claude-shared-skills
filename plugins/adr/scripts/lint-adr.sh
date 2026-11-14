@@ -142,7 +142,38 @@
 # exit code:
 #   0: 違反0件
 #   1: 違反検出
-#   2: ADR_DIR が存在しない
+#   2: 前提が満たされない（ADR_DIR が存在しない、または bash が 4.2 未満）
+
+# bash の版の前提。本スクリプトは連想配列を使う（`declare -A` は bash 4.0、関数内から
+# 大域へ宣言する `declare -gA` は bash 4.2 から）。macOS の既定の /bin/bash は 3.2 であり、
+# そのまま走らせると連想配列の宣言が失敗し、添字が算術式として評価されて、原因の読めない
+# 失敗か誤った判定になる。commit ゲートは lint の失敗を「通さない」側へ倒すため、利用者
+# からは原因不明のまま全 commit が止まって見える。そこで連想配列に触れる前に版を確かめ、
+# 原因と直し方を示して exit 2 で止める。
+# 版は BASH_VERSION から読む（bash 以外のシェルで走らせた場合は空になり、前提不成立へ倒れる）。
+# このブロックは bash 3.2 と POSIX sh でも解釈できる構文だけで書く。
+# 読み込みだけを行った場合は、読み込み側のシェルを終了させないよう return で戻る。
+adr_lint_bash_major="${BASH_VERSION%%.*}"
+adr_lint_bash_minor="${BASH_VERSION#*.}"
+adr_lint_bash_minor="${adr_lint_bash_minor%%.*}"
+adr_lint_bash_ok=0
+case "${adr_lint_bash_major}.${adr_lint_bash_minor}" in
+    *[!0-9.]* | .* | *.) ;;
+    *)
+        if [ "$adr_lint_bash_major" -gt 4 ] ||
+            { [ "$adr_lint_bash_major" -eq 4 ] && [ "$adr_lint_bash_minor" -ge 2 ]; }; then
+            adr_lint_bash_ok=1
+        fi
+        ;;
+esac
+if [ "$adr_lint_bash_ok" -ne 1 ]; then
+    echo "エラー: lint-adr.sh は bash 4.2 以上を必要とします（実行中の bash: ${BASH_VERSION:-bash ではないシェル}）。" >&2
+    echo "  連想配列（declare -A / declare -gA）を使うためです。macOS の既定の /bin/bash は 3.2 です。" >&2
+    echo "  4.2 以上の bash（例: Homebrew の bash）を導入し、PATH 上で先に見つかるようにしてから再実行してください。" >&2
+    return 2 2>/dev/null || exit 2
+fi
+unset adr_lint_bash_major adr_lint_bash_minor adr_lint_bash_ok
+
 set -euo pipefail
 
 # 状態語彙（front-matter の値側）。
