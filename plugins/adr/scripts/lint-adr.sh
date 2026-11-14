@@ -664,8 +664,8 @@ check_layer1_frontmatter_schema() {
             violations=$((violations + 1))
         fi
 
-        # 種別6・7: 構成子 提案中 / 却下 は validity・superseded-by のいずれも伴わない。
-        # 承認軸が終端（却下）または未承認（提案中）の ADR は有効性軸を持たない。
+        # 種別6・7: 構成子 status-proposed / status-rejected は validity・superseded-by のいずれも伴わない。
+        # 承認軸が終端（status-rejected）または未承認（status-proposed）の ADR は有効性軸を持たない。
         if [ "$fm_status" = "$ADR_STATUS_PROPOSED" ] || [ "$fm_status" = "$ADR_STATUS_REJECTED" ]; then
             if [ -n "$fm_validity" ]; then
                 printf '%s: status=%s だが validity が空ではありません（値 "%s"。%s・%s は validity を伴いません）\n' "$file" "$fm_status" "$fm_validity" "$ADR_STATUS_PROPOSED" "$ADR_STATUS_REJECTED"
@@ -677,9 +677,9 @@ check_layer1_frontmatter_schema() {
             fi
         fi
 
-        # 種別8: 構成子 有効 / 廃止済み は superseded-by を伴わない。
-        # 後継を指すなら上書き済みであるべきで、有効のままなら原 ADR と後継が
-        # 同時に index へ並ぶ。廃止済みは決定1 で「後継 ADR なしで ADR としての効力を
+        # 種別8: 構成子 validity-active / validity-abandoned は superseded-by を伴わない。
+        # 後継を指すなら validity-superseded であるべきで、validity-active のままなら原 ADR と後継が
+        # 同時に index へ並ぶ。validity-abandoned は決定1 で「後継 ADR なしで ADR としての効力を
         # 終えた」と定義される。
         if [ "$fm_validity" = "$ADR_VALIDITY_ACTIVE" ] || [ "$fm_validity" = "$ADR_VALIDITY_ABANDONED" ]; then
             if [ -n "$fm_sb" ]; then

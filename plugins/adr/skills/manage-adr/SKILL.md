@@ -29,10 +29,10 @@ ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR
 
 Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行する。Codexにはこのplugin単位hookがないため、ホストにかかわらず各操作後の明示lintを必須とする。
 
-状態は、役割を表す設定のキーで指す。各状態の定義と既定値は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「状態の2軸」に従う。
+状態は、役割を表す設定のキーで指す。各役割の定義と既定値は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「状態の2軸」に従う。
 
-- 承認軸: `status-proposed`（承認前）／`status-approved`（承認）／`status-rejected`（却下）
-- 有効性軸: `validity-active`（効力を持つ）／`validity-superseded`（後継へ置換）／`validity-abandoned`（後継なしで終了）
+- 承認軸: `status-proposed`／`status-approved`／`status-rejected`
+- 有効性軸: `validity-active`／`validity-superseded`／`validity-abandoned`
 
 手順と参照ファイルの `<キー>`（例: `status: <status-proposed>`、`## <xref-heading>`）は、後掲「書き込む値の取得」で得た値に置き換えて書く。値を例として示すときは、既定値であることを添える（例: 既定値 `提案中`）。既定値は導入先の設定で変わる。値の説明・トレーリングコメントを front-matter 内に書かない（lint パーサが行全体を値として取り込むため）。
 

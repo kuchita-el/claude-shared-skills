@@ -3,10 +3,13 @@
 This fixture records the ADR plugin's host-neutral result contract and the
 host-specific execution paths used to produce it.
 
-- **explicit ADR validation**: both hosts must be able to run the bundled
-  `lint-adr.sh`, `gen-adr-index.sh`, `next-adr-id.sh`, and
-  `verify-split-verbatim.sh` operations and
-  observe their exit status/output.
+- **explicit ADR validation**: both hosts run these bundled scripts and
+  check exit status/output:
+  - `lint-adr.sh`
+  - `gen-adr-index.sh`
+  - `next-adr-id.sh`
+  - `verify-split-verbatim.sh`
+  - `print-adr-config.sh`
 - **Claude Code hook**: Claude Code may enforce the same lint at
   `git commit` through the bundled PreToolUse hook.
 - **Codex: degraded**: Codex has no equivalent per-plugin commit hook in the
