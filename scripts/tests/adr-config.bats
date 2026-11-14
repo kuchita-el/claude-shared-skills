@@ -12,8 +12,9 @@
 #     ADR_CONFIG_ROOT が空でなければ、探索をせずその値をトップレベルとみなす（ゲートとテストが
 #     git の外で検査するための内部の経路）
 #   - 設定ファイルをシェルとして読み込まない
-#   - print-adr-config.sh は lint と同じ規則で解決した語の群を `キー: 値` で出し、設定の誤りと
-#     ADR ディレクトリの不在では値を出さずに exit 2 で止まる（manage-adr スキルが書き込む値の経路）
+#   - print-adr-config.sh は lint と同じ規則で決めた ADR ディレクトリ（adr-dir）と語の群を `キー: 値` で
+#     出し、設定の誤りと ADR ディレクトリの不在では値を出さずに exit 2 で止まる（manage-adr スキルが
+#     対象ディレクトリと書き込む値を得る経路）
 #   - README の「設定」節のキー一覧・adr-model.md「状態の2軸」の既定値の列・雛形の status の値と
 #     相互参照の節の見出しが、同梱の既定値のファイルと一致する
 # 設定ファイルが無い場合に挙動が変わらないことは、既存の lint と index のテスト全件が担う。
@@ -436,24 +437,31 @@ collect_same_lines() {
     collect_finish
 }
 
-# 設定ファイルと既定値のファイルから、語の群の行（コメントと空行を除く `キー: 値`）だけを出す。
+# 設定ファイルと既定値のファイルから、語の群の行（コメント・空行・adr-dir を除く `キー: 値`）だけを出す。
 config_word_lines() {
-    grep -E '^[a-z][a-z-]*:' "$1"
+    grep -E '^[a-z][a-z-]*:' "$1" | grep -v '^adr-dir:'
 }
 
-# manage-adr スキルが ADR へ書く値を得る経路。lint と同じ ADR ディレクトリから同じ設定を解決し、
-# 語の群の全キーを設定ファイルと同じ書き方で出すことを固定する。
-@test "面⑭: print-adr-config.sh は解決した語の群を \`キー: 値\` の行で出す" {
+# print-adr-config.sh の出力（$lines）が、1行目に解決元のコメント、2行目に adr-dir、3行目以降に
+# 語の群を持つことを確かめる。引数: 期待する adr-dir の値・期待する語の群の行・ラベルの接頭辞。
+collect_print_output() {
+    local adr_dir="$1" words="$2" label="$3"
+    collect_contains "${lines[0]:-}" "# 解決元: " "$label: 1行目は解決元を示すコメント行"
+    collect_equals "${lines[1]:-}" "adr-dir: $adr_dir" "$label: 2行目は解決した ADR ディレクトリ"
+    collect_equals "$(printf '%s\n' "${lines[@]:2}")" "$words" "$label: 3行目以降は語の群の全キー"
+}
+
+# manage-adr スキルが対象ディレクトリと ADR へ書く値を得る経路。lint・gen と同じ形で対象の
+# ADR ディレクトリを決め（引数 → 設定の adr-dir → 同梱の既定値）、そこから同じ設定を解決する。
+@test "面⑭: print-adr-config.sh は解決した ADR ディレクトリと語の群を \`キー: 値\` の行で出す" {
     collect_init
 
-    # 設定の無いリポジトリでは、同梱の既定値の語の群をそのまま出す
+    # 設定の無いリポジトリでは、同梱の既定値の語の群を出す
     make_repo print-default "" "$JA_VALID"
     run --separate-stderr bash "$PRINT_CONFIG" "$REPO/docs/adr" </dev/null
     collect_rc 0 "設定の無いリポジトリで print-adr-config.sh は exit 0"
-    collect_contains "${lines[0]:-}" "# 解決元: " "1行目は解決元を示すコメント行"
     collect_contains "${lines[0]:-}" "adr-config.default" "設定が無ければ解決元は同梱の既定値"
-    collect_equals "$(printf '%s\n' "${lines[@]:1}")" "$(config_word_lines "$CONFIG_DEFAULT")" \
-        "設定が無ければ、同梱の既定値の語の群を全キー出す"
+    collect_print_output "$REPO/docs/adr" "$(config_word_lines "$CONFIG_DEFAULT")" "設定が無い・引数あり"
 
     # 英語の設定のリポジトリでは、その設定の語の群を出す
     make_repo print-en "$EN_CONFIG" "$EN_VALID"
@@ -461,23 +469,42 @@ config_word_lines() {
     run --separate-stderr bash "$PRINT_CONFIG" "$REPO/docs/adr" </dev/null
     collect_rc 0 "英語の設定のリポジトリで print-adr-config.sh は exit 0"
     collect_equals "${lines[0]:-}" "# 解決元: $REPO/.claude/adr/config" "解決元は導入先の設定ファイル"
-    collect_equals "$(printf '%s\n' "${lines[@]:1}")" "$(config_word_lines "$EN_CONFIG")" \
-        "英語の設定の語の群を全キー出す"
+    collect_print_output "$REPO/docs/adr" "$(config_word_lines "$EN_CONFIG")" "英語の設定・引数あり"
 
-    # 出力は設定ファイルとしてそのまま読める（全キーが揃い、形が設定の書き方に従う）
-    local echoed="$output"
+    # 語の群の行は、設定ファイルとしてそのまま読める（全キーが揃い、形が設定の書き方に従う）
+    local echoed
+    echoed="$(printf '%s\n' "${lines[@]:2}")"
     make_repo print-roundtrip "" "$EN_VALID"
     mkdir -p "$REPO/.claude/adr"
     printf '%s\n' "$echoed" >"$REPO/.claude/adr/config"
     run --separate-stderr bash "$PRINT_CONFIG" "$REPO/docs/adr" </dev/null
-    collect_rc 0 "出力を設定ファイルとして置いても誤りにならない"
-    collect_equals "$(printf '%s\n' "${lines[@]:1}")" "$(config_word_lines "$EN_CONFIG")" \
-        "出力を設定ファイルとして置くと、同じ語の群へ解決する"
+    collect_rc 0 "出力の語の群の行を設定ファイルとして置いても誤りにならない"
+    collect_equals "$(printf '%s\n' "${lines[@]:2}")" "$(config_word_lines "$EN_CONFIG")" \
+        "出力の語の群の行を設定ファイルとして置くと、同じ語の群へ解決する"
 
-    # 引数を省くと、カレントディレクトリの docs/adr から決める（lint-adr.sh と同じ既定）
+    # 引数を省くと、git のトップレベルから既定の docs/adr を決める（カレントディレクトリに依らない）
     run --separate-stderr bash -c 'cd "$1" && bash "$2"' _ "$en_repo" "$PRINT_CONFIG" </dev/null
-    collect_rc 0 "引数を省くと docs/adr を対象にする"
-    collect_equals "${lines[0]:-}" "# 解決元: $en_repo/.claude/adr/config" "引数を省いても導入先の設定を解決する"
+    collect_rc 0 "引数を省くとトップレベルの docs/adr を対象にする"
+    collect_print_output "$en_repo/docs/adr" "$(config_word_lines "$EN_CONFIG")" "引数を省く・トップレベルから起動"
+    run --separate-stderr bash -c 'cd "$1/docs" && bash "$2"' _ "$en_repo" "$PRINT_CONFIG" </dev/null
+    collect_rc 0 "サブディレクトリから引数を省いても exit 0"
+    collect_print_output "$en_repo/docs/adr" "$(config_word_lines "$EN_CONFIG")" "引数を省く・サブディレクトリから起動"
+
+    # 引数を省くと、設定の adr-dir が指すディレクトリを対象にする
+    make_repo print-adr-dir "" "$EN_VALID"
+    mkdir -p "$REPO/.claude/adr" "$REPO/architecture"
+    mv "$REPO/docs/adr" "$REPO/architecture/decisions"
+    { cat "$EN_CONFIG"; printf 'adr-dir: architecture/decisions\n'; } >"$REPO/.claude/adr/config"
+    run --separate-stderr bash -c 'cd "$1" && bash "$2"' _ "$REPO" "$PRINT_CONFIG" </dev/null
+    collect_rc 0 "設定の adr-dir が指すディレクトリがあれば exit 0"
+    collect_print_output "$REPO/architecture/decisions" "$(config_word_lines "$EN_CONFIG")" "引数を省く・adr-dir あり"
+
+    # 設定の adr-dir が指すディレクトリが無ければ、どの値から決めたかを示して exit 2 で止まる
+    printf 'adr-dir: architecture/__missing__\n' >"$REPO/.claude/adr/config"
+    run --separate-stderr bash -c 'cd "$1" && bash "$2"' _ "$REPO" "$PRINT_CONFIG" </dev/null
+    collect_rc 2 "adr-dir が指すディレクトリが無ければ exit 2"
+    collect_equals "$output" "" "adr-dir が指すディレクトリが無ければ値を出さない"
+    collect_contains "$stderr" "引数を省いたため" "adr-dir から決めたことを原因に添える"
 
     # 設定の誤りは、値を出さずに原因を示して exit 2 で止まる（既定値へ落とさない）
     make_repo print-error "$CONFIG_FIXTURES/errors/partial-words/config" "$EN_VALID"
@@ -486,11 +513,20 @@ config_word_lines() {
     collect_equals "$output" "" "設定に誤りがあれば値を出さない"
     collect_contains "$stderr" "語の群の一部だけが書かれています" "設定の誤りの原因を標準エラーへ示す"
 
-    # ADR ディレクトリが無ければ、既定値へ落とさずに exit 2 で止まる
+    # 引数で渡した ADR ディレクトリが無ければ、既定値へ落とさずに exit 2 で止まる
     run --separate-stderr bash "$PRINT_CONFIG" "$en_repo/docs/__missing__" </dev/null
     collect_rc 2 "ADR ディレクトリが無ければ exit 2"
     collect_equals "$output" "" "ADR ディレクトリが無ければ値を出さない"
     collect_contains "$stderr" "ディレクトリが見つかりません" "ADR ディレクトリの不在を原因として示す"
+
+    # ADR_CONFIG_ROOT は git による探索より優先する（lint・gen と同じ）。英語の設定を持つリポジトリ
+    # でも、設定の無いトップレベルを明示すれば既定値の語を出す。この変数を無視すると英語の語が出る
+    local empty_root="$BATS_TEST_TMPDIR/print-root-empty"
+    mkdir -p "$empty_root"
+    run --separate-stderr env ADR_CONFIG_ROOT="$empty_root" bash "$PRINT_CONFIG" "$en_repo/docs/adr" </dev/null
+    collect_rc 0 "設定の無いトップレベルを ADR_CONFIG_ROOT で明示しても exit 0"
+    collect_print_output "$en_repo/docs/adr" "$(config_word_lines "$CONFIG_DEFAULT")" \
+        "ADR_CONFIG_ROOT が設定の無いトップレベルを指す"
 
     collect_finish
 }

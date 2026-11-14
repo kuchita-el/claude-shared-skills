@@ -34,22 +34,29 @@
 # 時 00-23・分 00-59）も検査し、空文字を「未設定」へ畳まず不正として扱う。
 #
 # 使い方:
-#   bash next-adr-id.sh [ADR_DIR]                        # 既定 ADR_DIR は docs/adr
+#   bash next-adr-id.sh [ADR_DIR]
 #   ADR_TIMESTAMP=203104091530 bash next-adr-id.sh docs/adr   # テストでの時刻固定
+#
+# ADR_DIR を省いたときの決め方は lint-adr.sh と同じである（設定の adr-dir。無ければ同梱の既定値）。
+# 設定の読み込みは同梱の adr-config.sh が持つ。語の群は使わないが、設定に誤りがあれば発番せずに
+# 止める（lint・index の生成器と同じく、誤った設定のまま進めない）。
 #
 # exit code:
 #   0: 発番成功（識別子を stdout へ出力）
 #   1: 同一時刻部の連番が上限 99 に達している、または ADR_TIMESTAMP の形式が不正
-#   2: ADR_DIR が存在しない
+#   2: ADR_DIR が存在しない、または設定に誤りがある
 set -euo pipefail
 
-ADR_DIR="${1:-docs/adr}"
-ADR_DIR="${ADR_DIR%/}"
+# shellcheck source=adr-config.sh
+source "$(dirname "${BASH_SOURCE[0]}")/adr-config.sh"
+adr_config_resolve_adr_dir "${1:-}" || exit 2
 
 if [ ! -d "$ADR_DIR" ]; then
-    echo "エラー: ディレクトリが見つかりません: $ADR_DIR" >&2
+    adr_config_report_missing_adr_dir
     exit 2
 fi
+
+adr_config_load "$ADR_DIR" || exit 2
 
 # `:-` ではなく `-` を使う。`:-` は空文字を「未設定」へ畳むため、ADR_TIMESTAMP="" が
 # 黙って現在時刻へ落ち、変数展開に失敗した呼び出しを検出できなくなる。
