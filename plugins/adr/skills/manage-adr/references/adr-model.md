@@ -1,40 +1,44 @@
 # ADR の状態モデルと識別子規約（adr-model.md）
 
-ADR の状態（承認軸・有効性軸）の値域と各値の定義、合法な front-matter を表す状態の型、ファイルの配置と採番方式を定める。本ファイルがこれらの規約の実体であり、状態語彙・採番規則をここ以外で独自に再定義しない。
+ADR の状態（承認軸・有効性軸）の役割と各役割の定義、合法な front-matter を表す状態の型、ファイルの配置と採番方式を定める。本ファイルがこれらの規約の実体であり、状態の役割・採番規則をここ以外で独自に再定義しない。各役割の値（front-matter に書く綴り）の正本は本ファイルの外にある（後掲「状態の2軸」）。
 
 ## 状態の2軸
 
-状態は**承認軸**と**有効性軸**に分離して管理する。1つの状態欄に混在させると、「承認された歴史事実」と「現在効力を持つか」という性質の異なる2つの情報が互いを上書きしてしまうためである。値は日本語のユビキタス言語で確定する。
+状態は**承認軸**と**有効性軸**に分離して管理する。1つの状態欄に混在させると、「承認された歴史事実」と「現在効力を持つか」という性質の異なる2つの情報が互いを上書きしてしまうためである。
+
+本ファイルは各軸の値を**役割**として定め、役割を設定のキーの名前で呼ぶ。役割に与える値は設定が決め、1つのリポジトリの中では1つの言語で揃える。値の正本は、プラグインに同梱した既定値のファイル（プラグインの `scripts/adr-config.default`）である。導入先は、git のトップレベルに `.claude/adr/config` を置いて値を置き換えられる。置き場・語の群を揃えて置く規則・誤りの扱いは、プラグインの README の「設定」節に従う。
+
+下の表の「既定値」の列は、既定値のファイルの値を読みやすさのために併記したものである。以降の節は、`status-approved` のように役割の名前で値を書く。front-matter に現れるのは、その役割に設定が与えた値である。
 
 ### 承認軸（`status`・不変の履歴事実）
 
-| 値 | 定義 |
-|---|---|
-| `提案中` | 起案され、承認者の判断を待っている状態 |
-| `承認済み` | 承認された履歴事実。以後不変 |
-| `却下` | 提案が承認に至らず終了。一度も運用されない終端 |
+| 役割 | 既定値 | 定義 |
+|---|---|---|
+| `status-proposed` | `提案中` | 起案され、承認者の判断を待っている状態 |
+| `status-approved` | `承認済み` | 承認された履歴事実。以後不変 |
+| `status-rejected` | `却下` | 提案が承認に至らず終了。一度も運用されない終端 |
 
 ### 有効性軸（`validity`・可変の現在の効力）
 
-| 値 | 定義 |
-|---|---|
-| `有効` | 現在運用中 |
-| `上書き済み` | 後継 ADR に置き換えられた（`superseded-by` に後継の full slug を保持） |
-| `廃止済み` | 後継 ADR なしで ADR としての効力を終えた。決定そのものを放棄した場合と、記録の正本が ADR 外の資産へ移った場合の両方を含む。いずれの場合も、この ADR を現在の効力の判断材料にしない |
+| 役割 | 既定値 | 定義 |
+|---|---|---|
+| `validity-active` | `有効` | 現在運用中 |
+| `validity-superseded` | `上書き済み` | 後継 ADR に置き換えられた（`superseded-by` に後継の full slug を保持） |
+| `validity-abandoned` | `廃止済み` | 後継 ADR なしで ADR としての効力を終えた。決定そのものを放棄した場合と、記録の正本が ADR 外の資産へ移った場合の両方を含む。いずれの場合も、この ADR を現在の効力の判断材料にしない |
 
 ### 軸の関係
 
-- `却下`（承認軸・一度も承認されなかった終端）と `上書き済み` / `廃止済み`（有効性軸・承認後に ADR としての効力を失った状態）は別語である。2軸が語彙レベルで衝突しないよう、両者を混同して扱わない
-- `提案中` をスキップして直接 `承認済み` に到達する経路は持たない。即承認のケースは「提案 → 承認」を連続実行として扱う
+- `status-rejected` と `validity-superseded` / `validity-abandoned` は別の役割である。前者は承認軸で、一度も承認されなかった終端を表す。後者は有効性軸で、承認後に ADR としての効力を失った状態を表す。2軸が語彙レベルで衝突しないよう、両者を混同して扱わない。6つの役割の値は互いに異なる（重複は設定の誤りになる）
+- `status-proposed` をスキップして直接 `status-approved` に到達する経路は持たない。即承認のケースは「提案 → 承認」を連続実行として扱う
 
 ## front-matter（状態の唯一の権威）
 
-状態系は各 ADR ファイル冒頭の front-matter に置く。キーは英語（構造的フィールド名）、値は上記の日本語ユビキタス言語とする。
+状態系は各 ADR ファイル冒頭の front-matter に置く。キーは英語の構造的フィールド名に固定し、導入先の言語によらない。値は、前掲の役割に設定が与えた値とする。
 
 ```yaml
 ---
-status: <提案中 | 承認済み | 却下>
-validity: <有効 | 上書き済み | 廃止済み | （空）>
+status: <status-proposed | status-approved | status-rejected の値>
+validity: <validity-active | validity-superseded | validity-abandoned の値 | （空）>
 superseded-by: <後継ADRの full slug | （空）>
 ---
 ```
@@ -45,29 +49,37 @@ superseded-by: <後継ADRの full slug | （空）>
 
 ## 状態の型
 
-front-matter は次の直和型のシリアライズ形式である。合法な状態はこの5構成子に尽き、各構成子が `status` / `validity` / `superseded-by` の組み合わせを一意に決める。遷移後の front-matter は必ずいずれかの構成子として構成できる形にする。
+front-matter は次の直和型のシリアライズ形式である。合法な状態はこの5構成子に尽き、各構成子が `status` / `validity` / `superseded-by` の組み合わせを一意に決める。遷移後の front-matter は必ずいずれかの構成子として構成できる形にする。構成子は、その構成子を他と分ける役割の名前で呼ぶ。
 
 ```
 ADRState =
-  | 提案中                               -- status=提案中,   validity=（空）,     superseded-by=（空）
-  | 却下                                 -- status=却下,     validity=（空）,     superseded-by=（空）
-  | 有効                                 -- status=承認済み, validity=有効,       superseded-by=（空）
-  | 上書き済み of NonEmptyList<FullSlug>  -- status=承認済み, validity=上書き済み, superseded-by=後継の full slug 列
-  | 廃止済み                             -- status=承認済み, validity=廃止済み,   superseded-by=（空）
+  | status-proposed                                -- status=status-proposed, validity=（空）,                superseded-by=（空）
+  | status-rejected                                -- status=status-rejected, validity=（空）,                superseded-by=（空）
+  | validity-active                                -- status=status-approved, validity=validity-active,     superseded-by=（空）
+  | validity-superseded of NonEmptyList<FullSlug>  -- status=status-approved, validity=validity-superseded, superseded-by=後継の full slug 列
+  | validity-abandoned                             -- status=status-approved, validity=validity-abandoned,  superseded-by=（空）
 ```
 
-各遷移は構成子への移動である。起票 → `提案中`、承認 → `有効`、上書き → `上書き済み`、廃止 → `廃止済み`、却下 → `却下`。分割（1→N の部分上書き）も原 ADR を `上書き済み` へ移す点で上書きと同じ構成子に着地する。
+各遷移は構成子への移動である。
 
-**誤った退役の取り消しは遷移ではない。** 誤って行った上書き・廃止を取り消す操作は、退役操作の記録の訂正である。上の遷移の列に加えず、`上書き済み` / `廃止済み` から `有効` への遷移も持たない。取り消した ADR は、退役が行われなかった場合の構成子 `有効` に置かれ、有効性軸の値域も変わらない。取り消しの判定基準と手順は `transitions.md`「取り消し（誤った退役の訂正）」が持つ。
+- 起票 → `status-proposed`
+- 承認 → `validity-active`
+- 上書き → `validity-superseded`
+- 廃止 → `validity-abandoned`
+- 却下 → `status-rejected`
+
+分割（1→N の部分上書き）も原 ADR を `validity-superseded` へ移す点で上書きと同じ構成子に着地する。
+
+**誤った退役の取り消しは遷移ではない。** 誤って行った上書き・廃止を取り消す操作は、退役操作の記録の訂正である。上の遷移の列に加えず、`validity-superseded` / `validity-abandoned` から `validity-active` への遷移も持たない。取り消した ADR は、退役が行われなかった場合の構成子 `validity-active` に置かれ、有効性軸の値域も変わらない。取り消しの判定基準と手順は `transitions.md`「取り消し（誤った退役の訂正）」が持つ。
 
 型が課す制約:
 
 - **制約1**: すべての構成子が `status` の値を伴う。`status` が空の状態はどの構成子としても構成できない
-- **制約2**: `status=承認済み` を伴うのは `有効` / `上書き済み` / `廃止済み` の3構成子だけであり、いずれも `validity` の値を伴う。上書き・廃止で `status` を変更しないのはこの制約による（承認は歴史事実であり不変）
-- **制約3**: `validity` を伴わないのは `提案中` / `却下` の2構成子だけである。承認前・却下の状態に現在の効力は定義されない
-- **制約4**: `superseded-by` を伴えるのは `上書き済み` だけである。他の4構成子は当該フィールドを持たず、値を伴う形では構成できない
-- **制約5**: `上書き済み` が保持する後継は**非空**リストである。後継を持たない `上書き済み` は構成できない
-- **制約6**: `status` / `validity` の値は各軸の値域に限る。値域の外の語はどの構成子にも当たらない
+- **制約2**: `status=status-approved` を伴うのは3構成子だけである。`validity-active` / `validity-superseded` / `validity-abandoned` がそれに当たる。いずれも `validity` の値を伴う。上書き・廃止で `status` を変更しないのはこの制約による（承認は歴史事実であり不変）
+- **制約3**: `validity` を伴わないのは `status-proposed` / `status-rejected` の2構成子だけである。承認前・却下の状態に現在の効力は定義されない
+- **制約4**: `superseded-by` を伴えるのは `validity-superseded` だけである。他の4構成子は当該フィールドを持たず、値を伴う形では構成できない
+- **制約5**: `validity-superseded` が保持する後継は**非空**リストである。後継を持たない `validity-superseded` は構成できない
+- **制約6**: `status` / `validity` の値は各軸の値域（3つの役割に設定が与えた値）に限る。値域の外の語はどの構成子にも当たらない
 
 ### 型の制約と機械検査の対応
 
@@ -76,13 +88,13 @@ ADRState =
 | 違反種別 | 排除する制約 |
 |---|---|
 | `status` 欠落（空） | 制約1 |
-| `status=承認済み` かつ `validity` 欠落（空） | 制約2 |
-| `validity=上書き済み` かつ `superseded-by` 欠落（空） | 制約5 |
+| `status=status-approved` かつ `validity` 欠落（空） | 制約2 |
+| `validity=validity-superseded` かつ `superseded-by` 欠落（空） | 制約5 |
 | `status` の値が語彙外 | 制約6 |
 | `validity` の値が語彙外（空は合法） | 制約6 |
-| `status=提案中` または `却下` かつ `validity` が非空 | 制約3 |
-| `status=提案中` または `却下` かつ `superseded-by` が非空 | 制約4 |
-| `validity=有効` または `廃止済み` かつ `superseded-by` が非空 | 制約4 |
+| `status=status-proposed` または `status-rejected` かつ `validity` が非空 | 制約3 |
+| `status=status-proposed` または `status-rejected` かつ `superseded-by` が非空 | 制約4 |
+| `validity=validity-active` または `validity-abandoned` かつ `superseded-by` が非空 | 制約4 |
 | front-matter 欠落（先頭行が `---` でない） | 制約1（front-matter を持たない ADR は `status` の値を伴わない） |
 
 **逆向きは成り立たない。** 型として構成できない状態のすべてをレイヤ1 が報告するわけではない。レイヤ1 が見るのは各欄が空か否かと値が値域内かであり、欄が非空で値域も踏むが制約を満たさない病的値は素通りする。既知の経路は制約5 で、`superseded-by` が区切り文字・空白のみで有効な参照先 stem を1件も含まない値（`superseded-by: ,` 等）は raw 文字列として非空であるためレイヤ1 の空判定を通過し、レイヤ3（相互参照双方向性）が報告する。この経路の是正手段は `transitions.md`「上書き（上書き済み・双方向相互参照）」が持つ。
@@ -91,7 +103,7 @@ ADRState =
 
 補足:
 
-- 後継は単一を既定とするが、1本の ADR が複数の後継へ分割される場合はリスト値（カンマ区切り）を取りうる。この 1→N のケースでは、`上書き済み` の原 ADR が全後継を列挙し、各後継が本文の関連 ADR 節に逆参照を持つ（双方向で照合される）
+- 後継は単一を既定とするが、1本の ADR が複数の後継へ分割される場合はリスト値（カンマ区切り）を取りうる。この 1→N のケースでは、`validity-superseded` の原 ADR が全後継を列挙し、各後継が本文の関連 ADR 節に逆参照を持つ（双方向で照合される）
 - 後継 ADR は full slug の参照のみで保持し、実体への直接参照は持たない（自己参照・循環参照の構造的不整合を防ぐ）
 
 ## 配置
@@ -197,4 +209,4 @@ ADRState =
 
 front-matter 欠落の ADR は、ファイル名形式の違反とは別に扱う。front-matter は持つが時刻部・連番部を持たない**旧ファイル名形式**（前掲「採番方式」）は、レイヤ5 が報告する。
 
-**是正手段**（front-matter 欠落）: 前掲「front-matter（状態の唯一の権威）」の形式で front-matter を付け、本文の `## Status` 節を除く。状態の値は、当該 ADR がどの遷移を終えたかに応じて「状態の型」の構成子から選ぶ。付けた後は index を再生成する（`validity: 有効` の ADR は index に載るため）。
+**是正手段**（front-matter 欠落）: 前掲「front-matter（状態の唯一の権威）」の形式で front-matter を付け、本文の `## Status` 節を除く。状態の値は、当該 ADR がどの遷移を終えたかに応じて「状態の型」の構成子から選ぶ。付けた後は index を再生成する（`validity` が `validity-active` の値の ADR は index に載るため）。
