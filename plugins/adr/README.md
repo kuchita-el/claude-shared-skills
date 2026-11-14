@@ -38,4 +38,59 @@ host adapterへ移行するトリガーとします。移行まではホスト�
 
 `lint-adr.sh` / `gen-adr-index.sh` / `next-adr-id.sh` は、対象の ADR ディレクトリを第1引数（`ADR_DIR`）で受け取る。対象は、前2者では検査対象、`next-adr-id.sh` では既存 ADR の列挙対象である。**既定は `docs/adr`** である。導入先が別配置（例 `architecture/decisions`）を使う場合は引数で上書きする。commit ゲートは、commit を実行するリポジトリの作業ツリーにある既定の `docs/adr` を対象に実行する。
 
-> ADR の言語に依存する語は、導入先の git のトップレベルに置く `.claude/adr/config` で定められる。対象は `status` と `validity` の値・相互参照の節の見出し・index の題名と注記である。書き方とキーは、同梱の既定値のファイル `scripts/adr-config.default` の冒頭にある。現時点で設定に従うのは `lint-adr.sh` と `gen-adr-index.sh`（と、それを起動する commit 前ゲート）だけである。manage-adr スキルは既定値の語（日本語）を書き込むため、語の群を書き換えたリポジトリでは、スキルが書いた front-matter を設定の語へ直す必要がある。環境変数 `ADR_CONFIG_ROOT` は、ゲートとテストが git の外で検査するための内部の経路であり、利用者が設定を渡す手段ではない。ADR ディレクトリを指定する手段は、現時点では `ADR_DIR` 引数だけである。
+ADR ディレクトリを指定する手段は、現時点では引数だけである。次節の設定ファイルには、ADR ディレクトリのキーはまだ無い。
+
+## 設定（`.claude/adr/config`）
+
+ADR に書く語のうち言語に依存するものは、導入先のリポジトリごとに設定ファイルで定められる。設定を置かないリポジトリでは、同梱の既定値のファイル `scripts/adr-config.default` の語（日本語）を使う。1つのリポジトリの中では、1つの言語で揃える。
+
+### 置き場
+
+- 導入先の git のトップレベルにある `.claude/adr/config` を読む。無ければ既定値を使う。
+- git のトップレベルは、スクリプトに渡した ADR ディレクトリ（引数を省いたときはカレントディレクトリ）から決める。commit 前ゲートは、検査する ADR ディレクトリから決める。
+- git のトップレベルを決められないときは、既定値だけを使う。
+- 環境変数 `ADR_CONFIG_ROOT` は、ゲートとテストが git の外で検査するための内部の経路である。利用者が設定を渡す手段ではない。
+
+### キー
+
+1行に `キー: 値` を1つ書くといった書き方は、既定値のファイルの冒頭にある。設定できるキーは次の9つである。`status` と `validity` の各値の意味は、manage-adr スキルの状態モデルが定める。状態モデルは `skills/manage-adr/references/adr-model.md` にある。
+
+| キー | 定める語 |
+|---|---|
+| `status-proposed` | `status` の値のうち、起票して承認を待つ状態 |
+| `status-approved` | `status` の値のうち、承認された状態 |
+| `status-rejected` | `status` の値のうち、承認されずに終えた状態 |
+| `validity-active` | `validity` の値のうち、いま効力を持つ状態 |
+| `validity-superseded` | `validity` の値のうち、後継の ADR に置き換えられた状態 |
+| `validity-abandoned` | `validity` の値のうち、後継を持たずに効力を終えた状態 |
+| `xref-heading` | 相互参照（`Supersedes:` / `Related:`）を置く節の見出し |
+| `index-title` | 生成する index の題名 |
+| `index-notice` | 生成する index の冒頭に置く、生成物であることを示す注記 |
+
+### 語の群を揃えて置く
+
+上の9つのキーは、語の群をなす。導入先の設定に1つでも書くなら、9つすべてを書く。1つも書かなければ、9つとも既定値を使う。一部だけを置くと、1つのリポジトリの中で2つの言語が混ざるためである。`status` の3値と `validity` の3値は、6つとも互いに異なる値にする。
+
+### 設定の誤り
+
+次の場合、`lint-adr.sh`・`gen-adr-index.sh`・commit 前ゲートは ADR を検査せず、原因を示して exit 2 で止まる。設定の誤りを、ADR の違反として報告しない。
+
+- 知らないキーがある（綴りの誤りを含む）
+- 同じキーが2回ある
+- 値が空である
+- 語の群の一部だけがある
+- `status` と `validity` の6つの値に重複がある
+- `キー: 値` の形でない行がある
+
+### 英語に固定する語
+
+次の語は、導入先の言語によらず英語に固定し、設定の対象にしない。lint のメッセージは日本語で出る。
+
+- 節名の `Context` / `Decision` / `Consequences`
+- 関係のラベル `Supersedes:` / `Superseded by:` / `Related:`
+- front-matter のキー名 `status` / `validity` / `superseded-by`
+
+### 設定に従う範囲
+
+- 設定に従うのは、`lint-adr.sh`・`gen-adr-index.sh` と、lint を起動する commit 前ゲートである。`next-adr-id.sh` と `verify-split-verbatim.sh` は、設定の語を扱わない。
+- manage-adr スキルは、現時点では設定を読まず、既定値の語を front-matter と `## 関連ADR` の見出しへ書き込む。語の群を設定で定めたリポジトリでは、スキルが書いた値と見出しを設定の語へ直してから lint を通す。
