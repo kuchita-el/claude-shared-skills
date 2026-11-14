@@ -233,3 +233,79 @@ test('未決の値が別名（*a）でも、所在は項目の行を指す', () 
     ['条件:提出可能 4', '条件:承認可能 4'],
   );
 });
+
+// 表ごとのキーと、未決の印を付けられる文で書く欄。references/format.md の「RDRA の表」の表と「未決の印」の列挙を写した固定値で、
+// schema.ts から導かない（導くと、schema の列挙の誤りを試験が同じ誤りで追認するため）
+const FORMAT_KEYS: Record<string, { file: string; nameKey: string; keys: string[]; text: string[] }> = {
+  actor: { file: 'docs/rdra/actor.yaml', nameKey: 'アクター', keys: ['役割', '社内外'], text: ['役割'] },
+  'external-system': { file: 'docs/rdra/external-system.yaml', nameKey: '外部システム', keys: ['役割'], text: ['役割'] },
+  information: {
+    file: 'docs/rdra/information.yaml',
+    nameKey: '情報',
+    keys: ['属性', '関連情報', '状態モデル', 'バリエーション', '説明'],
+    text: ['説明'],
+  },
+  state: {
+    file: 'docs/rdra/state.yaml',
+    nameKey: '状態モデル',
+    keys: ['状態', '遷移UC', '遷移先状態', '状態モデル・状態の説明'],
+    text: ['状態モデル・状態の説明'],
+  },
+  'use-case': { file: 'docs/rdra/use-case.yaml', nameKey: 'UC', keys: ['アクター', '外部システム', '情報', '条件', '説明'], text: ['説明'] },
+  condition: { file: 'docs/rdra/condition.yaml', nameKey: '条件', keys: ['条件の説明', 'バリエーション', '状態モデル'], text: ['条件の説明'] },
+  variation: { file: 'docs/rdra/variation.yaml', nameKey: 'バリエーション', keys: ['値', '説明'], text: ['説明'] },
+  'architecture-characteristic': {
+    file: 'docs/rdra/architecture-characteristic.yaml',
+    nameKey: 'アーキテクチャ特性',
+    keys: ['分類', '分類体系', '説明', '検証方法'],
+    text: ['説明'],
+  },
+};
+
+// 1件のレコードの1つの欄へ未決の印を付け、その印の書式誤り（付けられない欄）の違反の数を返す
+function openKeyErrors(file: string, nameKey: string, key: string): number {
+  const text = `- ${nameKey}: 試験の要素\n  未決:\n    - ${key}: 決まっていない\n`;
+  return checkSources(sourcesFromFiles({ [file]: text })).filter(
+    (v) => v.rule === 'invalid-shape' && v.detail.includes(`欄『${key}』は未決の印を付けられる欄でない`),
+  ).length;
+}
+
+test('未決の印の欄: 試験の固定の列挙は、表ごとのキーを全て覆う（覆わないキーは下の負例から漏れる）', () => {
+  for (const def of TABLES) {
+    const fixed = FORMAT_KEYS[def.id];
+    assert.ok(fixed !== undefined, `${def.id} の固定の列挙が無い`);
+    assert.equal(fixed.file, def.file);
+    assert.deepEqual([fixed.nameKey, ...fixed.keys, '仮説', OPEN].sort(), Object.keys(def.keys).sort(), def.id);
+  }
+  assert.deepEqual(Object.keys(FORMAT_KEYS).sort(), TABLES.map((d) => d.id).sort());
+});
+
+test('未決の印の欄: 全8表で、文で書く欄には付けられ、それ以外の全てのキー（名前キー・仮説・未決を含む）に付けると invalid-shape で落ちる', () => {
+  let negatives = 0;
+  for (const [id, { file, nameKey, keys, text }] of Object.entries(FORMAT_KEYS)) {
+    for (const key of [nameKey, ...keys, '仮説', OPEN]) {
+      const errors = openKeyErrors(file, nameKey, key);
+      if (text.includes(key)) {
+        assert.equal(errors, 0, `${id}: 文で書く欄『${key}』への印が落ちた`);
+      } else {
+        assert.equal(errors, 1, `${id}: 文で書く欄でない『${key}』への印が落ちない`);
+        negatives++;
+      }
+    }
+  }
+  assert.equal(negatives, 42);
+});
+
+test('render: 未決の内容の HTML の特殊文字は、縦串の印と未決の一覧の節の両方でエスケープして出す', () => {
+  const nasty = '<b>&"境目"</b>';
+  const files = {
+    ...unmarked,
+    'docs/rdra/condition.yaml': unmarked['docs/rdra/condition.yaml'] + `  未決:\n    - 条件の説明: '${nasty}'\n`,
+  };
+  const html = renderHtml(buildView('/unused', sourcesFromFiles(files)), new Date());
+  const escaped = '&lt;b&gt;&amp;&quot;境目&quot;&lt;/b&gt;';
+  assert.ok(html.includes(`<span class="open">未決（条件の説明）: ${escaped}</span>`), '縦串の印がエスケープされていない');
+  const section = html.slice(html.indexOf('<section id="open">'), html.indexOf('</section>', html.indexOf('<section id="open">')));
+  assert.ok(section.includes(`<span class="open">未決: ${escaped}</span>`), '未決の一覧の節がエスケープされていない');
+  assert.ok(!html.includes(nasty), '生の内容が出ている');
+});
