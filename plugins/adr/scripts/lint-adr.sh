@@ -7,9 +7,10 @@
 # （検査対象の性質が既出のいずれかに収まる限り本冒頭は追随不要。既出のどれにも
 # 当たらない性質を検査するレイヤを足す場合は本冒頭の列挙にも加える）。
 #
-# ADR_DIR 配下の ADR-*.md を走査し、front-matter を持つ ADR
-# （先頭行が `---`）のみを対象に以下を検証する。front-matter を
-# 持たない旧 `## Status` 形式は検査対象外としてスキップする（違反に数えない）。
+# ADR_DIR 配下の ADR-*.md 全件を検査対象とする。front-matter を持たない ADR
+# （先頭行が `---` でないもの。旧 `## Status` 形式を含む）は、レイヤ1 が違反として
+# 報告する。レイヤ1 の残りの種別とレイヤ3〜5 は front-matter を読んで判定するため、
+# front-matter を持つ ADR だけを対象にする。
 #
 # front-matter の抽出は yq/jq 等のパーサを使わず行走査で行う
 # （gen-adr-index.sh の抽出方式に整合）。値は前後空白を
@@ -34,6 +35,13 @@
 #   6. status=提案中 または 却下 かつ validity が非空
 #   7. status=提案中 または 却下 かつ superseded-by が非空
 #   8. validity=有効 または 廃止済み かつ superseded-by が非空
+#   9. front-matter 欠落（先頭行が `---` でない）
+#
+# 種別9 を持つのは、front-matter を持たない ADR が他のどのレイヤにも掛からないため。
+# 状態を読めないのでレイヤ1 の他の種別は判定できず、index には元から載らないので
+# レイヤ2 の再生成とも一致し、レイヤ3〜5 は front-matter を持つ ADR から出発する。
+# 違反に数えないと、一般的な ADR テンプレート（`## Status` 形式）で書いた ADR が、
+# スキーマ検証も index も commit ゲートも通らないまま、統治の外へ黙って置かれる。
 #
 # 種別4・5（語彙）を空判定と別に持つのは、値が非空でも語彙外なら
 # gen-adr-index.sh の `validity: 有効` 完全一致から外れて index から静かに
@@ -89,10 +97,11 @@
 #     Issue 番号参照（`#<番号>`）は検査しない。
 #   - 既知の限界（意図的）: (a) 1つの `Related:` 行に複数 ADR を列挙した場合は先頭 stem
 #     のみ検査する（判定単位＝先頭 stem。2件目以降は対象外）。
-#     (b) 参照先が旧形式（front-matter 無し）・validity 空（提案中/却下）の場合は退役でも
+#     (b) 参照先が front-matter 無し・validity 空（提案中/却下）の場合は退役でも
 #     dangling でもないとして違反にしない（fail-open。RELATED_RETIRED_VALIDITY＝上書き済み
-#     の完全一致のみを違反とみなすため、空値・旧形式はどの語彙とも一致しない）。
-#     旧形式ADRはレイヤ1でも検査対象外である点と整合する。
+#     の完全一致のみを違反とみなすため、空値はどの語彙とも一致しない）。
+#     front-matter 無しの参照先そのものはレイヤ1 が種別9 として報告するため、
+#     参照する側でも重ねて数えない。
 #     (c) 上書き済みのみを見るため、後継を持たずに退役した参照先を指す参照が陳腐化しても
 #     検出しない。陳腐化の点検は操作手順側（manage-adr の退役に伴う inbound 参照の点検）が
 #     担い、機械検査は負わない。
@@ -128,11 +137,9 @@
 #     H1 は識別子部のみの形（`# ADR-X-01: タイトル`）と slug を含む形
 #     （`# ADR-X-01-slug: タイトル`）の双方が ADR 群に実在するため、
 #     照合は識別子部に限る（slug の一致は要求しない）。
-#   - 検査対象集合はレイヤ1 と同一で、front-matter を持つ ADR のみを対象とする。
-#     front-matter を持たない旧 `## Status` 形式はファイル名も旧規約のままであり、
-#     ここで違反として数えるとレイヤ1 が同じ ADR をスキップする扱いと矛盾する。
-#     この対象集合の穴（front-matter 不在による全レイヤのすり抜け）は本レイヤでは
-#     塞がず、レイヤ横断の課題として別途扱う。
+#   - 検査対象は front-matter を持つ ADR のみとする。front-matter を持たない ADR は
+#     レイヤ1 が種別9 として報告する。直し方は front-matter を付けることであり、
+#     ファイル名や H1 の違反として重ねて数えると、同じ欠落を別々の違反として返すことになる。
 #
 # 全違反を列挙してから最後に非0 exitする（早期returnで打ち切らない）。
 #
@@ -455,12 +462,14 @@ collect_scan_targets() {
 #
 # 収集の成果物:
 #   FM_FILES              front-matter を持つ ADR をファイル名昇順で保持する添字配列
-#                         （レイヤ1・レイヤ5 の検査対象集合）
+#                         （レイヤ1 の種別1〜8・レイヤ5 の検査対象集合）
+#   NO_FM_FILES           front-matter を持たない ADR をファイル名昇順で保持する添字配列
+#                         （レイヤ1 の種別9 の検査対象集合）
 #   FM_STATUS_BY_STEM     stem -> front-matter status 値
 #   FM_VALIDITY_BY_STEM   stem -> front-matter validity 値
 #   FM_SB_BY_STEM         stem -> front-matter superseded-by 値
 # 写像のキーは front-matter を持つ ADR にのみ設定する（値は空でありうる）。持たない
-# 旧形式はキー未設定であり、参照時は "${MAP[$stem]:-}" で空扱いにする。
+# ADR はキー未設定であり、参照時は "${MAP[$stem]:-}" で空扱いにする。
 #
 # 連想配列は declare -gA で宣言する。関数の中で declare -A とすると関数ローカルになり、
 # 後続のレイヤから見えなくなる。この取り違えは実行時に「参照先が見つかりません」型の
@@ -474,13 +483,15 @@ collect_facts() {
     require_collected collect_facts "$SCAN_TARGETS_COLLECTED" collect_scan_targets || return 2
 
     FM_FILES=()
+    NO_FM_FILES=()
     declare -gA FM_STATUS_BY_STEM=()
     declare -gA FM_VALIDITY_BY_STEM=()
     declare -gA FM_SB_BY_STEM=()
 
     for file in ${SCAN_TARGETS[@]+"${SCAN_TARGETS[@]}"}; do
         if ! extract_frontmatter "$file"; then
-            # front-matter を持たない旧形式は検査対象外（スキップ）
+            # front-matter を持たない ADR は、状態を読めないためレイヤ1 の種別9 だけに渡す
+            NO_FM_FILES+=("$file")
             continue
         fi
 
@@ -508,11 +519,17 @@ collect_facts() {
 # ディレクトリのみを消費するため、要求しても常に真になる無内容な検査になる）。
 
 # レイヤ1: front-matter スキーマ検証。
-# 入力: FM_FILES / FM_STATUS_BY_STEM / FM_VALIDITY_BY_STEM / FM_SB_BY_STEM
+# 入力: NO_FM_FILES / FM_FILES / FM_STATUS_BY_STEM / FM_VALIDITY_BY_STEM / FM_SB_BY_STEM
 check_layer1_frontmatter_schema() {
     local file stem fm_status fm_validity fm_sb
 
     require_collected check_layer1_frontmatter_schema "$FACTS_COLLECTED" collect_facts || return 2
+
+    # 種別9: front-matter 欠落
+    for file in ${NO_FM_FILES[@]+"${NO_FM_FILES[@]}"}; do
+        printf '%s: front-matter がありません（先頭行が `---` ではありません。status / validity / superseded-by を持つ front-matter が必要）\n' "$file"
+        violations=$((violations + 1))
+    done
 
     for file in ${FM_FILES[@]+"${FM_FILES[@]}"}; do
         stem="$(basename "$file" .md)"

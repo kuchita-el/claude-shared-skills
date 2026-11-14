@@ -4,7 +4,7 @@
 # 仕様: レイヤ1〜4 はいずれもファイル本文（front-matter・本文節）と index を見るだけで、
 # ファイル名そのものを検査しない。この欠落により同一識別子の ADR が2本 main へ到達した
 # 実績がある。レイヤ5 はファイル名を第一級の検査対象に加える。
-# 検査対象集合はレイヤ1 と同一（front-matter を持つ ADR のみ。旧形式はスキップ）。
+# 検査対象は front-matter を持つ ADR のみ。front-matter を持たない ADR はレイヤ1 が報告する。
 #
 # 【レイヤ5 が最後の関門である理由】
 # レイヤ5 の識別子重複検査は、識別子の時刻部が分粒度であるために発番側（next-adr-id.sh）
@@ -117,7 +117,7 @@ load_stem_pattern() {
         "(AC7): ヘッダに識別子重複検査の違反条件が成文化されている"
     collect_contains "$header" "H1 整合違反" \
         "(AC7): ヘッダに H1 整合検査の違反条件が成文化されている"
-    collect_contains "$header" "検査対象集合はレイヤ1 と同一" \
+    collect_contains "$header" "検査対象は front-matter を持つ ADR のみとする" \
         "(AC7): ヘッダにレイヤ5の検査対象集合が成文化されている"
 
     collect_finish
@@ -262,18 +262,23 @@ load_stem_pattern() {
     collect_finish
 }
 
-# 制約（旧形式の扱い）: front-matter を持たない旧形式 ADR は、ファイル名が新形式に
-# 適合しなくてもレイヤ5 の検査対象外（レイヤ1 のスキップと同一の対象集合）。
-# 同居する新形式 ADR は正しく通過する。
+# 制約（front-matter を持たない ADR の扱い）: レイヤ1 が front-matter 欠落として報告し、
+# レイヤ5 はファイル名形式違反・H1 整合違反として重ねて数えない。直し方は front-matter を
+# 付けることであり、同じ欠落を別々の違反として返さないためである。ADR 群には、旧規約の
+# ファイル名を持つものと新しい規約のファイル名を持つものの両方を置く。
 @test "面⑦: 検査対象集合の制約" {
     collect_init
 
-    run_sut "$CORPUS_DIR/valid/07-legacy-filename-skipped"
-    collect_rc 0 "(制約/レイヤ5): front-matter 無しの旧形式ファイル名はスキップされ exit 0: exit 0"
+    run_sut "$CORPUS_DIR/invalid/36-frontmatter-missing"
+    collect_rc 1 "(制約): front-matter 無しの ADR はレイヤ1 の違反として exit 1"
+    collect_contains "$output" "ADR-20260621-legacy-no-frontmatter.md: front-matter がありません" \
+        '(制約): 旧規約のファイル名を持つ front-matter 無しの ADR がレイヤ1 で報告される'
+    collect_contains "$output" "ADR-202601070901-01-legacy-format-decision.md: front-matter がありません" \
+        '(制約): 新しい規約のファイル名を持つ front-matter 無しの ADR もレイヤ1 で報告される'
     collect_not_contains "$output" "ファイル名形式違反" \
-        '(制約/レイヤ5): front-matter 無しの旧形式ファイル名はスキップされ exit 0: "ファイル名形式違反" を含まない'
+        '(制約/レイヤ5): front-matter 無しの ADR を "ファイル名形式違反" として重ねて数えない'
     collect_not_contains "$output" "H1 整合違反" \
-        '(制約/レイヤ5): front-matter 無しの旧形式ファイル名はスキップされ exit 0: "H1 整合違反" を含まない'
+        '(制約/レイヤ5): front-matter 無しの ADR を "H1 整合違反" として重ねて数えない'
 
     collect_finish
 }

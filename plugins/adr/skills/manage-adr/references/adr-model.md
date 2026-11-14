@@ -81,6 +81,7 @@ ADRState =
 | `status=提案中` または `却下` かつ `validity` が非空 | 制約3 |
 | `status=提案中` または `却下` かつ `superseded-by` が非空 | 制約4 |
 | `validity=有効` または `廃止済み` かつ `superseded-by` が非空 | 制約4 |
+| front-matter 欠落（先頭行が `---` でない） | 制約1（front-matter を持たない ADR は `status` の値を伴わない） |
 
 **逆向きは成り立たない。** 型として構成できない状態のすべてをレイヤ1 が報告するわけではない。レイヤ1 が見るのは各欄が空か否かと値が値域内かであり、欄が非空で値域も踏むが制約を満たさない病的値は素通りする。既知の経路は制約5 で、`superseded-by` が区切り文字・空白のみで有効な参照先 stem を1件も含まない値（`superseded-by: ,` 等）は raw 文字列として非空であるためレイヤ1 の空判定を通過し、レイヤ3（相互参照双方向性）が報告する。この経路の是正手段は `transitions.md`「上書き（上書き済み・双方向相互参照）」が持つ。
 
@@ -188,4 +189,8 @@ ADRState =
 | レイヤ5 識別子重複 | `references/adr-model.md`「識別子の一意性」 |
 | レイヤ5 H1 整合 | `references/adr-model.md`「H1 見出しの形式と識別子部の整合」 |
 
-**検査対象集合**: レイヤ1 とレイヤ5 は front-matter を持つ ADR のみを対象とする。front-matter を持たない ADR はファイル名も旧規約のままであり、検査対象に含めない。この集合は、front-matter は持つが時刻部・連番部を持たない**旧ファイル名形式**（前掲「採番方式」）とは別であり、front-matter 導入前の世代を指す。
+**検査対象集合**: drift-lint の検査対象は、対象ディレクトリ配下の `ADR-*.md` 全件である。front-matter を持たない ADR（先頭行が `---` でないもの。本文の `## Status` 節で状態を書く形式を含む）は、レイヤ1 が front-matter 欠落として報告する。front-matter を持たない ADR は状態を読めず、index にも載らない。違反に数えないと、スキーマ検証も index も commit 前ゲートも通らないまま統治の外へ置かれるためである。レイヤ1 の残りの違反種別とレイヤ3〜5 は front-matter を読んで判定するため、front-matter を持つ ADR だけを対象にする。front-matter 欠落の ADR をファイル名や H1 の違反として重ねて報告しない。
+
+front-matter 欠落の ADR は、ファイル名形式の違反とは別に扱う。front-matter は持つが時刻部・連番部を持たない**旧ファイル名形式**（前掲「採番方式」）は、レイヤ5 が報告する。
+
+**是正手段**（front-matter 欠落）: 前掲「front-matter（状態の唯一の権威）」の形式で front-matter を付け、本文の `## Status` 節を除く。状態の値は、当該 ADR がどの遷移を終えたかに応じて「状態の型」の構成子から選ぶ。付けた後は index を再生成する（`validity: 有効` の ADR は index に載るため）。
