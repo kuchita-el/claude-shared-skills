@@ -7,7 +7,7 @@ ADR（アーキテクチャ決定記録）の運用機構を配布する Claude 
 - **drift-lint（`scripts/lint-adr.sh`）**: ADR 群（対象ディレクトリ配下の全 ADR と有効性 index の総体）が満たすべき機械検査可能な不変条件を検査する。front-matter スキーマ（状態語彙・有効性語彙・遷移整合）、有効性 index との整合、ADR 間参照（上書き関係の双方向性、`Related:` の参照先の生存性・実在性）、ファイル名と識別子の規約適合および識別子の一意性と H1 見出しとの整合が対象。
 - **有効性 index 生成（`scripts/gen-adr-index.sh`）**: `validity: 有効` の ADR を抽出して index を生成する。
 - **識別子の発番（`scripts/next-adr-id.sh`）**: 起票時刻（分粒度・ローカル時刻）と同一時刻部内の連番から、次に起票する ADR の識別子 `ADR-YYYYMMDDHHMM-NN` を発番する。連番の算出対象を同一時刻部のファイルに限るため、並行するブランチがそれぞれ発番しても識別子が衝突しない。
-- **commit 前ゲート（`hooks/`）**: `git commit` 時に PreToolUse フックとして drift-lint を実行する。違反があれば commit をブロックする（exit 2）。検査するのはコミット対象のツリー（git worktree で作業している場合はその worktree）である。コミット対象のリポジトリに ADR ディレクトリが存在しない場合は何もしない（no-op）。コミット対象のリポジトリを特定できない場合は、理由を示して commit をブロックする。
+- **commit 前ゲート（`hooks/`）**: `git commit` 時に PreToolUse フックとして drift-lint を実行する。違反があれば commit をブロックする（exit 2）。検査するのは、commit を実行するリポジトリ（git worktree で作業している場合はその worktree）の作業ツリーにある ADR ディレクトリである。ステージした内容ではなく作業ツリーを検査するため、未ステージの変更も判定に含まれる。コミット対象のリポジトリに ADR ディレクトリが存在しない場合は何もしない（no-op）。コミット対象のリポジトリを特定できない場合は、理由を示して commit をブロックする。
 - **manage-adr スキル（`skills/manage-adr/`）**: ADR の起票・承認・上書き・廃止・却下・編集・分割を対話的に行うライフサイクル操作スキル。
 
 ## ホスト差分
@@ -25,7 +25,7 @@ host adapterへ移行するトリガーとします。移行まではホスト�
 ## 動作要件
 
 - **bash 4.2 以上**: `lint-adr.sh` は連想配列を使う。macOS の既定の `/bin/bash` は 3.2 なので、4.2 以上の bash（例: Homebrew の bash）を導入し、PATH 上で先に見つかるようにする。版が足りない場合、`lint-adr.sh` は原因を示して exit 2 で止まる。commit 前ゲートは PATH 上の `bash` で lint を起動するため、この場合は commit がブロックされる。
-- **git**: commit 前ゲートは、コミット対象のツリーを git から解決する。
+- **git**: commit 前ゲートは、commit を実行するリポジトリを git から解決する。
 - **jq**（任意）: commit 前ゲートが PreToolUse の入力からコマンドと作業ディレクトリを読むのに使う。無い場合も、フック自身の作業ディレクトリから解決して動作する。
 
 ## 導入
@@ -34,6 +34,6 @@ host adapterへ移行するトリガーとします。移行まではホスト�
 
 ## ADR ディレクトリの指定（`ADR_DIR`）
 
-`lint-adr.sh` / `gen-adr-index.sh` / `next-adr-id.sh` は、対象の ADR ディレクトリを第1引数（`ADR_DIR`）で受け取る。対象は、前2者では検査対象、`next-adr-id.sh` では既存 ADR の列挙対象である。**既定は `docs/adr`** である。導入先が別配置（例 `architecture/decisions`）を使う場合は引数で上書きする。commit ゲートは、コミット対象のツリーの既定の `docs/adr` を対象に実行する。
+`lint-adr.sh` / `gen-adr-index.sh` / `next-adr-id.sh` は、対象の ADR ディレクトリを第1引数（`ADR_DIR`）で受け取る。対象は、前2者では検査対象、`next-adr-id.sh` では既存 ADR の列挙対象である。**既定は `docs/adr`** である。導入先が別配置（例 `architecture/decisions`）を使う場合は引数で上書きする。commit ゲートは、commit を実行するリポジトリの作業ツリーにある既定の `docs/adr` を対象に実行する。
 
 > 導入先固有設定を宣言ファイルで駆動する full config 方式の override は本プラグインのスコープ外（別途対応）。現時点の override 手段は `ADR_DIR` 引数のみ。

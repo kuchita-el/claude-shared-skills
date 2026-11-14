@@ -35,11 +35,12 @@ esac
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LINT_ADR="$SCRIPT_DIR/../scripts/lint-adr.sh"
 
-# 検査対象のツリーを解決する。検査するのは、そのツリーの docs/adr である。
+# 検査対象のリポジトリを解決する。検査するのは、そのリポジトリの作業ツリーの docs/adr である。
+# index（ステージした内容）は取り出さないため、未ステージの変更も判定に含まれる。
 #
 # CLAUDE_PROJECT_DIR を単独の解決手段にしてはならない。同変数は project root（既定のチェック
 # アウト）を指すため、git worktree で作業しているセッションから commit すると、走るのは
-# コミット対象ではない別のツリーに対する lint になる。project root の docs/adr が緑なら、
+# commit を実行するリポジトリではない別のツリーに対する lint になる。project root の docs/adr が緑なら、
 # worktree 側の ADR が壊れていても commit が通り、守っているつもりで守っていない状態になる。
 #
 # そこで「コミットが実際に走る git コンテキスト」から解決する。候補を上から順に試し、
@@ -47,7 +48,7 @@ LINT_ADR="$SCRIPT_DIR/../scripts/lint-adr.sh"
 #   1. PreToolUse の JSON が載せる cwd（ツール実行時の作業ディレクトリ）
 #   2. フックプロセス自身の cwd
 #   3. CLAUDE_PROJECT_DIR（上2つが解決できない環境向けのフォールバック）
-# docs/adr の有無で候補を選り分けない。コミット対象のツリーに docs/adr が無いなら、それは
+# docs/adr の有無で候補を選り分けない。commit を実行するリポジトリに docs/adr が無いなら、それは
 # 「そのリポジトリは ADR を使っていない」ことを意味し、別の候補の docs/adr を検査する理由に
 # ならない。
 #
