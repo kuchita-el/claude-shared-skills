@@ -201,6 +201,32 @@ test('描画: UC の縦串の情報の項に、集約の子と孫の名前を添
   assert.ok(!plain.includes('集約の子'), 'キーの無い正本に子が添えられた');
 });
 
+test('描画: 孫を子より前に、子を親より前に並べても、同じ子と孫を添える', () => {
+  const files = {
+    [INFO]: `- 情報: 領収書の画像\n  ${AGGREGATE_PARENT}: 経費明細\n- 情報: 経費明細\n  ${AGGREGATE_PARENT}: 経費申請\n- 情報: 経費申請\n`,
+    'docs/rdra/use-case.yaml': '- UC: 経費申請を作成する\n  情報:\n    - 経費申請\n',
+  };
+  const view = buildView('/根', sourcesFromFiles(files));
+  assert.deepEqual(view.useCases[0].information[0].children, [
+    { name: '経費明細', children: [{ name: '領収書の画像', children: [] }] },
+  ]);
+});
+
+test('描画: 集約の子と孫の名前の HTML の特殊文字はエスケープして出す', () => {
+  const child = '<b>&"明細"</b>';
+  const grand = "<i>'画像'</i>";
+  const files = {
+    [INFO]: `- 情報: 経費申請\n- 情報: '${child}'\n  ${AGGREGATE_PARENT}: 経費申請\n- 情報: "${grand}"\n  ${AGGREGATE_PARENT}: '${child}'\n`,
+    'docs/rdra/use-case.yaml': '- UC: 経費申請を作成する\n  情報:\n    - 経費申請\n',
+  };
+  const html = renderHtml(buildView('/根', sourcesFromFiles(files)), new Date());
+  assert.ok(
+    html.includes('<div class="note">集約の子: &lt;b&gt;&amp;&quot;明細&quot;&lt;/b&gt;（集約の子: &lt;i&gt;&#39;画像&#39;&lt;/i&gt;）</div>'),
+    '子と孫の名前がエスケープされていない',
+  );
+  assert.ok(!html.includes(child) && !html.includes(grand), '生の名前が出ている');
+});
+
 test('描画: 集約の循環があっても、辿っている道に現れた名前で止めて描く', () => {
   const files = {
     [INFO]: `- 情報: 経費申請\n  ${AGGREGATE_PARENT}: 経費明細\n- 情報: 経費明細\n  ${AGGREGATE_PARENT}: 経費申請\n`,

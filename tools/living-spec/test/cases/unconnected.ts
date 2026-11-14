@@ -198,6 +198,25 @@ export const cases: Case[] = [
     },
     expected: [],
   },
+  // 孫を子より前に、子を親より前に並べても通る（接続は表の並び順によらず、親を辿り切って決める）
+  {
+    name: 'pass-aggregate-child-before-parent',
+    files: {
+      'docs/rdra/information.yaml': t`
+        - 情報: 領収書の画像
+          集約の親: 経費明細
+        - 情報: 経費明細
+          集約の親: 経費申請
+        - 情報: 経費申請
+      `,
+      'docs/rdra/use-case.yaml': t`
+        - UC: 経費申請を作成する
+          情報:
+            - 経費申請
+      `,
+    },
+    expected: [],
+  },
   // 子を UC に併せて挙げても通る（親と子の両方を書いた形）
   {
     name: 'pass-aggregate-child-also-on-uc',
