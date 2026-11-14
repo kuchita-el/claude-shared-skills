@@ -20,24 +20,26 @@
 # 両者は同じ設定を読む。
 #
 # 使い方:
-#   bash gen-adr-index.sh [ADR_DIR]   # 既定 ADR_DIR は docs/adr/
+#   bash gen-adr-index.sh [ADR_DIR]
+#
+# ADR_DIR を省いたときの決め方は lint-adr.sh と同じである（設定の adr-dir。無ければ同梱の既定値）。
 #
 # exit code:
 #   0: 正常終了（有効 ADR が0件でも0）
 #   2: ADR_DIR が存在しない、または設定に誤りがある
 set -euo pipefail
 
-ADR_DIR="${1:-docs/adr}"
-ADR_DIR="${ADR_DIR%/}"
+# 設定の読み込み部。対象の ADR ディレクトリを決め（引数 → 設定の adr-dir → 同梱の既定値）、
+# ADR_DIR を起点に設定を解決する（誤りの原因は adr_config_load が出す）。
+# shellcheck source=adr-config.sh
+source "$(dirname "${BASH_SOURCE[0]}")/adr-config.sh"
+adr_config_resolve_adr_dir "${1:-}" || exit 2
 
 if [ ! -d "$ADR_DIR" ]; then
-    echo "エラー: ディレクトリが見つかりません: $ADR_DIR" >&2
+    adr_config_report_missing_adr_dir
     exit 2
 fi
 
-# 設定の読み込み部。ADR_DIR を起点に設定を解決する（誤りの原因は adr_config_load が出す）。
-# shellcheck source=adr-config.sh
-source "$(dirname "${BASH_SOURCE[0]}")/adr-config.sh"
 adr_config_load "$ADR_DIR" || exit 2
 
 # 前後の空白（スペース・タブ）をトリムする（lint-adr.sh の trim と同一実装）

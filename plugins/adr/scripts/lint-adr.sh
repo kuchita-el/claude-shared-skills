@@ -157,7 +157,11 @@
 # 全違反を列挙してから最後に非0 exitする（早期returnで打ち切らない）。
 #
 # 使い方:
-#   bash lint-adr.sh [ADR_DIR]   # 既定 ADR_DIR は docs/adr/
+#   bash lint-adr.sh [ADR_DIR]
+#
+# ADR_DIR を省くと、カレントディレクトリから決めた git のトップレベルの設定の adr-dir
+# （無ければ同梱の既定値 docs/adr）を、トップレベルからの相対パスとして読む。トップレベルを
+# 決められなければ、カレントディレクトリからの相対パスとして読む。ADR_DIR を渡せば、それが優先する。
 #
 # exit code:
 #   0: 違反0件
@@ -952,11 +956,11 @@ check_layer5_filename_and_identifier() {
 # 判定は「読み込み元のパス」と「起動されたスクリプトのパス」の一致で行う（直接実行なら
 # 両者は同一の文字列になり、読み込みでは $0 が読み込み側のシェルまたはスクリプトを指す）。
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
-    ADR_DIR="${1:-docs/adr}"
-    ADR_DIR="${ADR_DIR%/}"
+    # 対象の ADR ディレクトリを決める（引数 → 設定の adr-dir → 同梱の既定値）。
+    adr_config_resolve_adr_dir "${1:-}" || exit 2
 
     if [ ! -d "$ADR_DIR" ]; then
-        echo "エラー: ディレクトリが見つかりません: $ADR_DIR" >&2
+        adr_config_report_missing_adr_dir
         exit 2
     fi
 
