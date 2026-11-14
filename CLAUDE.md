@@ -30,7 +30,7 @@ bash scripts/run-tests.sh            # テストと検査器を一括実行す�
 - `.claude-plugin/marketplace.json` — 配布カタログ。リポジトリルートに維持する
 - `plugins/{plugin}/.claude-plugin/plugin.json` — プラグイン定義。版は持たずコミット SHA が担う（ADR-202609061416-01）
 - `plugins/{plugin}/skills/{skill}/SKILL.md` — スキル本体。テンプレート・判定基準等の補助ファイルは同階層の `references/` へ置く
-- `plugins/{plugin}/references/` — 複数スキルが共有する参照ファイル。`${CLAUDE_PLUGIN_ROOT}/references/` で参照する（ADR-202606040737-01）
+- `plugins/{plugin}/references/` — 複数スキルが共有する参照ファイル。`${CLAUDE_PLUGIN_ROOT}/references/` で参照する。配置の規約は `docs/development/coding-agent-plugin-design-principles.md` §6.6 が定める
 - `plugins/{plugin}/agents/{agent}.md` — サブエージェント定義。プラグインルートに集約し自動検出させる（ADR-202605250838-01）
 - `run-claude-local.sh` / `run-codex-local.sh` — ローカル起動ラッパー（引数を透過する）
 
