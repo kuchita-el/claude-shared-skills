@@ -8,13 +8,14 @@ ADR（アーキテクチャ決定記録）の運用機構を配布する Claude 
   - front-matter を持たない ADR（本文の `## Status` 節で状態を書く形式を含む）は違反として報告する。そうした ADR 群を持つリポジトリでは、導入前に各 ADR へ front-matter を付ける。
 - **有効性 index 生成（`scripts/gen-adr-index.sh`）**: `validity: 有効`（既定値での綴り）の ADR を抽出して index を生成する。
 - **識別子の発番（`scripts/next-adr-id.sh`）**: 起票時刻（分粒度・ローカル時刻）と同一時刻部内の連番から、次に起票する ADR の識別子 `ADR-YYYYMMDDHHMM-NN` を発番する。連番の算出対象を同一時刻部のファイルに限るため、並行するブランチがそれぞれ発番しても識別子が衝突しない。
+- **分割の逐語照合（`scripts/verify-split-verbatim.sh`）**: 多決定 ADR の分割の締めに、決定の対応表を入力に2点を照合する。原 ADR の各決定が、後継への逐語転記・退役・原 ADR に残すのいずれか1つに振り分けられていること（網羅性）。転記した決定の本文が後継と一致すること（逐語性）。
 - **commit 前ゲート（`hooks/`）**: `git commit` 時に PreToolUse フックとして drift-lint を実行する。違反があれば commit をブロックする（exit 2）。検査するのは、commit を実行するリポジトリ（git worktree で作業している場合はその worktree）の作業ツリーにある ADR ディレクトリである。ステージした内容ではなく作業ツリーを検査するため、未ステージの変更も判定に含まれる。コミット対象のリポジトリに ADR ディレクトリが存在しない場合は何もしない（no-op）。コミット対象のリポジトリを特定できない場合は、理由を示して commit をブロックする。
 - **manage-adr スキル（`skills/manage-adr/`）**: ADR の起票・承認・上書き・廃止・却下・編集・分割を対話的に行うライフサイクル操作スキル。
 
 ## ホスト差分
 
-両ホストの成果契約は、明示的に `lint-adr.sh`、`gen-adr-index.sh`、
-`next-adr-id.sh` を実行して結果を確認することです。Claude Codeでは追加で
+両ホストの成果契約は、同梱スクリプトを明示的に実行して結果を確認することです。
+対象は `lint-adr.sh`、`gen-adr-index.sh`、`next-adr-id.sh`、`verify-split-verbatim.sh` です。Claude Codeでは追加で
 PreToolUseのcommitゲートを利用できます。Codexには現時点で同等のplugin単位
 commit hookがないため、明示lintを必須とする `degraded` 互換です。
 

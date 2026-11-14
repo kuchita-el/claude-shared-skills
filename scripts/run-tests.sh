@@ -102,6 +102,7 @@ EXPECTED_BATS=(
     lint-adr-undo.bats
     manage-adr-surface.bats
     next-adr-id.bats
+    verify-split-verbatim.bats
     plugin-manifests.bats
     run-codex-local.bats
     run-plugin-eval.bats
