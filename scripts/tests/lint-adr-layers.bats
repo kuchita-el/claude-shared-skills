@@ -98,6 +98,47 @@ LAYER1_INVALID_CASE_MIN=12
     collect_finish
 }
 
+# front-matter 欠落の ADR に、どの検査が重なって発火するかを固定する（検査対象集合の規定）。
+#   - 改行コードが CRLF の ADR は欠落として報告し、メッセージは改行コードを名指しする
+#   - 本文に `Supersedes:` を持つ欠落 ADR からは、本文を起点とするレイヤ3 の逆方向も発火する
+#   - `Supersedes:` を持たない欠落 ADR からは、種別9 のほかに何も発火しない
+# ADR 群は valid/01 を一時ディレクトリへ写して組み立てる（共有 fixture を書き換えない）。
+@test "面①c: front-matter 欠落の ADR に重なる検査" {
+    collect_init
+
+    local dir crlf_file nofm_file
+    dir="$(mktemp -d "$BATS_TEST_TMPDIR/crlf.XXXXXX")"
+    cp "$CORPUS_DIR/valid/01-mixed-validity/"* "$dir/"
+    crlf_file="$dir/ADR-202601010901-01-sample-decision.md"
+    sed 's/$/\r/' "$crlf_file" >"$crlf_file.tmp" && mv "$crlf_file.tmp" "$crlf_file"
+    run_sut "$dir"
+    collect_rc 1 "CRLF の ADR は exit 1"
+    collect_contains "$output" "ADR-202601010901-01-sample-decision.md: front-matter を読めません（改行コードが CRLF です" \
+        "CRLF の ADR には改行コードを名指しするメッセージが出る"
+    collect_not_contains "$output" "ADR-202601010901-01-sample-decision.md: front-matter がありません" \
+        "CRLF の ADR に、front-matter が無いという誤ったメッセージを出さない"
+
+    dir="$(mktemp -d "$BATS_TEST_TMPDIR/nofm-supersedes.XXXXXX")"
+    cp "$CORPUS_DIR/valid/01-mixed-validity/"* "$dir/"
+    nofm_file="$dir/ADR-202603010901-01-nofm-supersedes.md"
+    printf '%s\n' "# ADR-202603010901-01: front-matter を持たず Supersedes を宣言する" "" \
+        "## 関連ADR" "" "- Supersedes: ADR-202601020901-01-second-decision" >"$nofm_file"
+    run_sut "$dir"
+    collect_rc 1 "Supersedes を持つ front-matter 欠落の ADR は exit 1"
+    collect_contains "$output" "ADR-202603010901-01-nofm-supersedes.md: front-matter がありません" \
+        "種別9 が報告される"
+    collect_contains "$output" "相互参照違反（逆方向" \
+        "本文を起点とするレイヤ3 の逆方向も発火する（規定どおり）"
+
+    run_sut "$CORPUS_DIR/invalid/36-frontmatter-missing"
+    collect_not_contains "$output" "相互参照違反" \
+        "Supersedes を持たない front-matter 欠落の ADR からは、レイヤ3 は発火しない"
+    collect_not_contains "$output" "参照違反" \
+        "Supersedes を持たない front-matter 欠落の ADR からは、レイヤ4 も発火しない"
+
+    collect_finish
+}
+
 # invalid の ADR 群は exit 1 ＋ 該当違反種別メッセージの部分一致になること
 @test "面②: レイヤ1 不正 front-matter fixture 群の検出" {
     collect_init

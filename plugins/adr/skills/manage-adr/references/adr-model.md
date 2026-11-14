@@ -189,7 +189,9 @@ ADRState =
 | レイヤ5 識別子重複 | `references/adr-model.md`「識別子の一意性」 |
 | レイヤ5 H1 整合 | `references/adr-model.md`「H1 見出しの形式と識別子部の整合」 |
 
-**検査対象集合**: drift-lint の検査対象は、対象ディレクトリ配下の `ADR-*.md` 全件である。front-matter を持たない ADR（先頭行が `---` でないもの。本文の `## Status` 節で状態を書く形式を含む）は、レイヤ1 が front-matter 欠落として報告する。front-matter を持たない ADR は状態を読めず、index にも載らない。違反に数えないと、スキーマ検証も index も commit 前ゲートも通らないまま統治の外へ置かれるためである。レイヤ1 の残りの違反種別とレイヤ3〜5 は front-matter を読んで判定するため、front-matter を持つ ADR だけを対象にする。front-matter 欠落の ADR をファイル名や H1 の違反として重ねて報告しない。
+**検査対象集合**: drift-lint の検査対象は、対象ディレクトリ配下の `ADR-*.md` 全件である。front-matter を持たない ADR（先頭行が `---` でないもの。本文の `## Status` 節で状態を書く形式を含む）は、レイヤ1 が front-matter 欠落として報告する。front-matter を持たない ADR は状態を読めず、index にも載らない。違反に数えないと、スキーマ検証も index も commit 前ゲートも通らないまま統治の外へ置かれるためである。レイヤ1 の残りの違反種別と、front-matter を起点とする検査（レイヤ3 の順方向・レイヤ5）は、front-matter を持つ ADR だけを対象にする。front-matter 欠落の ADR をファイル名や H1 の違反として重ねて報告しない。本文を起点とする検査（レイヤ3 の逆方向・レイヤ4）は全件を走査する。レイヤ4 は有効な ADR だけを起点にするため、front-matter 欠落の ADR からは発火しない。レイヤ3 の逆方向は、front-matter 欠落の ADR の本文にある `Supersedes:` からも発火する。参照先の front-matter が宣言元を指していないという、front-matter 欠落とは別の欠陥だからである。
+
+改行コードが CRLF の ADR は、先頭行が `---` と一致しないため、front-matter 欠落として報告する。このときは、改行コードを名指しするメッセージを出す。
 
 front-matter 欠落の ADR は、ファイル名形式の違反とは別に扱う。front-matter は持つが時刻部・連番部を持たない**旧ファイル名形式**（前掲「採番方式」）は、レイヤ5 が報告する。
 

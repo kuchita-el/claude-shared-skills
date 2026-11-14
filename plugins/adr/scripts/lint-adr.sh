@@ -9,8 +9,12 @@
 #
 # ADR_DIR 配下の ADR-*.md 全件を検査対象とする。front-matter を持たない ADR
 # （先頭行が `---` でないもの。旧 `## Status` 形式を含む）は、レイヤ1 が違反として
-# 報告する。レイヤ1 の残りの種別とレイヤ3〜5 は front-matter を読んで判定するため、
-# front-matter を持つ ADR だけを対象にする。
+# 報告する。レイヤ1 の残りの種別と、front-matter を起点とする検査（レイヤ3 の順方向・
+# レイヤ5）は、front-matter を持つ ADR だけを対象にする。本文を起点とする検査（レイヤ3 の
+# 逆方向・レイヤ4）は全件を走査する。レイヤ4 は有効な ADR だけを起点にするため、front-matter
+# を持たない ADR からは発火しない。レイヤ3 の逆方向は、front-matter を持たない ADR の本文に
+# ある `Supersedes:` からも発火する（参照先の front-matter が宣言元を指していないという、
+# front-matter 欠落とは別の欠陥を報告するため）。
 #
 # front-matter の抽出は yq/jq 等のパーサを使わず行走査で行う
 # （gen-adr-index.sh の抽出方式に整合）。値は前後空白を
@@ -39,7 +43,9 @@
 #
 # 種別9 を持つのは、front-matter を持たない ADR が他のどのレイヤにも掛からないため。
 # 状態を読めないのでレイヤ1 の他の種別は判定できず、index には元から載らないので
-# レイヤ2 の再生成とも一致し、レイヤ3〜5 は front-matter を持つ ADR から出発する。
+# レイヤ2 の再生成とも一致する。レイヤ3 の順方向・レイヤ4・レイヤ5 は front-matter を
+# 持つ ADR（レイヤ4 は有効な ADR）から出発し、本文を起点とするレイヤ3 の逆方向も、
+# `Supersedes:` を宣言しない限り発火しない。
 # 違反に数えないと、一般的な ADR テンプレート（`## Status` 形式）で書いた ADR が、
 # スキーマ検証も index も commit ゲートも通らないまま、統治の外へ黙って置かれる。
 #
@@ -526,8 +532,17 @@ check_layer1_frontmatter_schema() {
     require_collected check_layer1_frontmatter_schema "$FACTS_COLLECTED" collect_facts || return 2
 
     # 種別9: front-matter 欠落
+    # 先頭行が `---` に CR が付いた形（改行コードが CRLF）のときは、front-matter は書かれて
+    # いるのに読めない。利用者が原因を特定できるよう、改行コードを名指しする。
+    local first_line
     for file in ${NO_FM_FILES[@]+"${NO_FM_FILES[@]}"}; do
-        printf '%s: front-matter がありません（先頭行が `---` ではありません。status / validity / superseded-by を持つ front-matter が必要）\n' "$file"
+        first_line=""
+        IFS= read -r first_line <"$file" || true
+        if [ "$first_line" = $'---\r' ]; then
+            printf '%s: front-matter を読めません（改行コードが CRLF です。LF に揃えてください）\n' "$file"
+        else
+            printf '%s: front-matter がありません（先頭行が `---` ではありません。status / validity / superseded-by を持つ front-matter が必要）\n' "$file"
+        fi
         violations=$((violations + 1))
     done
 
@@ -712,7 +727,7 @@ check_layer4_related_references() {
 
     for src_file in ${SCAN_TARGETS[@]+"${SCAN_TARGETS[@]}"}; do
         src_stem="$(basename "$src_file" .md)"
-        # source は有効 ADR のみ（退役・提案中・却下・旧形式は検査対象外）
+        # source は有効 ADR のみ（退役・提案中・却下・front-matter 無しは検査対象外）
         if [ "${FM_VALIDITY_BY_STEM[$src_stem]:-}" != "有効" ]; then
             continue
         fi
@@ -744,7 +759,8 @@ check_layer5_filename_and_identifier() {
     require_collected check_layer5_filename_and_identifier "$FACTS_COLLECTED" collect_facts || return 2
 
     # レイヤ5: ファイル名形式・識別子重複・H1 整合
-    # 対象は front-matter を持つ ADR のみ（FM_FILES。レイヤ1 と同一の対象集合）
+    # 対象は front-matter を持つ ADR のみ（FM_FILES。レイヤ1 の種別1〜8 と同一の対象集合。
+    # 種別9 の対象 NO_FM_FILES は含めない。含めると front-matter 欠落を重ねて報告する）
 
     # 識別子部ごとの出現ファイルを集計する（重複検査の第1パス）
     declare -A ID_FILE_COUNT=()
