@@ -6,7 +6,7 @@ ADR（アーキテクチャ決定記録）の運用機構を配布する Claude 
 
 - **drift-lint（`scripts/lint-adr.sh`）**: ADR 群（対象ディレクトリ配下の全 ADR と有効性 index の総体）が満たすべき機械検査可能な不変条件を検査する。front-matter スキーマ（状態語彙・有効性語彙・遷移整合）、有効性 index との整合、ADR 間参照（上書き関係の双方向性、`Related:` の参照先の生存性・実在性）、ファイル名と識別子の規約適合および識別子の一意性と H1 見出しとの整合が対象。
   - front-matter を持たない ADR（本文の `## Status` 節で状態を書く形式を含む）は違反として報告する。そうした ADR 群を持つリポジトリでは、導入前に各 ADR へ front-matter を付ける。
-- **有効性 index 生成（`scripts/gen-adr-index.sh`）**: `validity: 有効` の ADR を抽出して index を生成する。
+- **有効性 index 生成（`scripts/gen-adr-index.sh`）**: `validity: 有効`（既定値での綴り）の ADR を抽出して index を生成する。
 - **識別子の発番（`scripts/next-adr-id.sh`）**: 起票時刻（分粒度・ローカル時刻）と同一時刻部内の連番から、次に起票する ADR の識別子 `ADR-YYYYMMDDHHMM-NN` を発番する。連番の算出対象を同一時刻部のファイルに限るため、並行するブランチがそれぞれ発番しても識別子が衝突しない。
 - **commit 前ゲート（`hooks/`）**: `git commit` 時に PreToolUse フックとして drift-lint を実行する。違反があれば commit をブロックする（exit 2）。検査するのは、commit を実行するリポジトリ（git worktree で作業している場合はその worktree）の作業ツリーにある ADR ディレクトリである。ステージした内容ではなく作業ツリーを検査するため、未ステージの変更も判定に含まれる。コミット対象のリポジトリに ADR ディレクトリが存在しない場合は何もしない（no-op）。コミット対象のリポジトリを特定できない場合は、理由を示して commit をブロックする。
 - **manage-adr スキル（`skills/manage-adr/`）**: ADR の起票・承認・上書き・廃止・却下・編集・分割を対話的に行うライフサイクル操作スキル。
@@ -37,4 +37,4 @@ host adapterへ移行するトリガーとします。移行まではホスト�
 
 `lint-adr.sh` / `gen-adr-index.sh` / `next-adr-id.sh` は、対象の ADR ディレクトリを第1引数（`ADR_DIR`）で受け取る。対象は、前2者では検査対象、`next-adr-id.sh` では既存 ADR の列挙対象である。**既定は `docs/adr`** である。導入先が別配置（例 `architecture/decisions`）を使う場合は引数で上書きする。commit ゲートは、commit を実行するリポジトリの作業ツリーにある既定の `docs/adr` を対象に実行する。
 
-> 導入先固有設定を宣言ファイルで駆動する full config 方式の override は本プラグインのスコープ外（別途対応）。現時点の override 手段は `ADR_DIR` 引数のみ。
+> ADR の言語に依存する語は、導入先の git のトップレベルに置く `.claude/adr/config` で定められる。対象は `status` と `validity` の値・相互参照の節の見出し・index の題名と注記である。書き方とキーは、同梱の既定値のファイル `scripts/adr-config.default` の冒頭にある。現時点で設定に従うのは `lint-adr.sh` と `gen-adr-index.sh`（と、それを起動する commit 前ゲート）だけである。manage-adr スキルは既定値の語（日本語）を書き込むため、語の群を書き換えたリポジトリでは、スキルが書いた front-matter を設定の語へ直す必要がある。環境変数 `ADR_CONFIG_ROOT` は、ゲートとテストが git の外で検査するための内部の経路であり、利用者が設定を渡す手段ではない。ADR ディレクトリを指定する手段は、現時点では `ADR_DIR` 引数だけである。

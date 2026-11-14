@@ -21,6 +21,13 @@
 # トリムして判定する（末尾空白等で完全一致が静かに崩れるのを防ぐ）。
 # キー省略と「キーあり値空」は同じ「空」として扱う。
 #
+# 言語に依存する語（status と validity の値・相互参照の節の見出し）は、設定から読む。
+# 設定の解決と誤りの扱いは同梱の adr-config.sh が持ち、キーと既定値は adr-config.default が
+# 持つ。値の正本はそのファイルであり、本ファイルのコメントに現れる値
+# （`提案中` / `承認済み` / `有効` / `## 関連ADR` 等）は、既定値での綴りである。導入先の設定が
+# 語の群を定めるときは、それぞれ対応するキーの値に読み替える。違反メッセージは、解決した値で
+# 組み立てる。設定に誤りがあれば、ADR を検査せずに exit 2 で止まる。
+#
 # レイヤ1（front-matter スキーマ検証）は front-matter が
 # スキーマ必須ルールを満たすことを検証する。合法な状態の集合の正本は
 # `../skills/manage-adr/references/adr-model.md`「状態の型」であり、
@@ -155,7 +162,7 @@
 # exit code:
 #   0: 違反0件
 #   1: 違反検出
-#   2: 前提が満たされない（ADR_DIR が存在しない、または bash が 4.2 未満）
+#   2: 前提が満たされない（ADR_DIR が存在しない、bash が 4.2 未満、または設定に誤りがある）
 
 # bash の版の前提。本スクリプトは連想配列を使う（`declare -A` は bash 4.0、関数内から
 # 大域へ宣言する `declare -gA` は bash 4.2 から）。macOS の既定の /bin/bash は 3.2 であり、
@@ -189,21 +196,46 @@ unset adr_lint_bash_major adr_lint_bash_minor adr_lint_bash_ok
 
 set -euo pipefail
 
-# 状態語彙（front-matter の値側）。
-# 正本の語彙が変わったときの追随点を1箇所に集約する。
-# キーが英語・値が日本語のユビキタス言語なのは、キーが状態概念そのものではなく構造的な
-# フィールド名だからである（概念の正本は値側にあり、英語キーでは二重管理の drift を生まない）。
-# 承認軸の `却下` と有効性軸の `上書き済み`／`廃止済み` を別語に分けているのは、1つの欄へ2軸を
+# 設定の読み込み部。版の確認より後で読み込む（連想配列を使う側の前提をここで満たしてから
+# 読み込むため）。読み込みは関数と定数の定義だけで、設定ファイルはまだ読まない。
+# shellcheck source=adr-config.sh
+source "$(dirname "${BASH_SOURCE[0]}")/adr-config.sh"
+
+# 状態語彙（front-matter の値側）。値は設定から読み、load_config が埋める（読み込みだけを
+# 行った時点では空）。値は導入先ごとに変わりうるため、各値の役割は設定のキー
+# （status-approved 等）で表し、値の正本は同梱の adr-config.default（導入先では
+# `.claude/adr/config`）とする。front-matter のキー名（status / validity / superseded-by）は
+# 構造的なフィールド名であり、言語によらず英語に固定する。
+# 承認軸の却下と有効性軸の上書き済み／廃止済みを別のキーに分けているのは、1つの欄へ2軸を
 # 混在させる案と英文4状態（Proposed / Accepted / Deprecated / Superseded）で表す案を却下した
 # 経緯による。いずれも承認の歴史事実と現在の効力を同じ値域へ同居させ、2軸が語彙レベルで衝突する。
-STATUS_VOCAB=("提案中" "承認済み" "却下")
-VALIDITY_VOCAB=("有効" "上書き済み" "廃止済み")
+STATUS_VOCAB=()
+VALIDITY_VOCAB=()
 # レイヤ4 の参照先退役違反が対象とする validity 値（VALIDITY_VOCAB の部分集合）。
 # 後継を持たない退役（廃止済み）を含めない理由はファイル冒頭のレイヤ4 仕様に述べる。
 # 退役語彙一般（上書き済み・廃止済み）を表す配列は置かない。どの語彙を違反とみなすかは
 # 退役の種別で是正手段が異なるためレイヤごとに決まり、共通配列には消費者が付かない。
 # 他レイヤが退役語彙を要するようになった時点で、そのレイヤの部分集合として定義する。
-RELATED_RETIRED_VALIDITY=("上書き済み")
+RELATED_RETIRED_VALIDITY=()
+
+# 設定を対象ディレクトリ $1 を起点に解決し、上の語彙を埋める。
+# 戻り値: 解決できれば 0、設定に誤りがあれば 2（原因は adr_config_load が標準エラーへ出す）
+load_config() {
+    adr_config_load "$1" || return 2
+    STATUS_VOCAB=("$ADR_STATUS_PROPOSED" "$ADR_STATUS_APPROVED" "$ADR_STATUS_REJECTED")
+    VALIDITY_VOCAB=("$ADR_VALIDITY_ACTIVE" "$ADR_VALIDITY_SUPERSEDED" "$ADR_VALIDITY_ABANDONED")
+    RELATED_RETIRED_VALIDITY=("$ADR_VALIDITY_SUPERSEDED")
+    return 0
+}
+
+# 語彙の配列を、メッセージに埋め込む「a / b / c」の形へ連結して出す。
+join_vocab() {
+    local out="" item
+    for item in "$@"; do
+        out="${out:+$out / }$item"
+    done
+    printf '%s' "$out"
+}
 
 # レイヤ5: ファイル名 stem が満たすべき形式（`ADR-<YYYYMMDDHHMM>-<NN>-<slug>`）。
 # 時刻部の暦妥当性の水準は next-adr-id.sh の ADR_TIMESTAMP 検査と同一に保つ
@@ -239,6 +271,21 @@ trim() {
     s="${s#"${s%%[![:space:]]*}"}"
     s="${s%"${s##*[![:space:]]}"}"
     printf '%s' "$s"
+}
+
+# 行 $1 が相互参照の節の見出し（`## ` に続けて設定の xref-heading で始まる行）かを判定する。
+# 見出しの文字列は前方一致で照合する（`## 関連ADR（補足）` も節の開始とみなす）。照合は
+# 正規表現ではなく文字列の比較で行う。設定の値に正規表現の記号が含まれても意味を変えない。
+# 戻り値: 見出しなら 0、そうでなければ 1
+is_xref_heading() {
+    local line="$1" rest
+    if [[ "$line" =~ ^##[[:space:]]+(.*)$ ]]; then
+        rest="${BASH_REMATCH[1]}"
+        if [[ "$rest" == "$ADR_XREF_HEADING"* ]]; then
+            return 0
+        fi
+    fi
+    return 1
 }
 
 # カンマ区切りの superseded-by 値を各要素トリム・空要素スキップで
@@ -314,7 +361,7 @@ body_has_supersedes() {
     local line in_section=0 candidate
 
     while IFS= read -r line || [ -n "$line" ]; do
-        if [[ "$line" =~ ^##[[:space:]]+関連ADR ]]; then
+        if is_xref_heading "$line"; then
             in_section=1
             continue
         fi
@@ -345,7 +392,7 @@ extract_body_supersedes() {
     BODY_SUPERSEDES_TARGETS=()
 
     while IFS= read -r line || [ -n "$line" ]; do
-        if [[ "$line" =~ ^##[[:space:]]+関連ADR ]]; then
+        if is_xref_heading "$line"; then
             in_section=1
             continue
         fi
@@ -372,7 +419,7 @@ extract_body_related() {
     BODY_RELATED_TARGETS=()
 
     while IFS= read -r line || [ -n "$line" ]; do
-        if [[ "$line" =~ ^##[[:space:]]+関連ADR ]]; then
+        if is_xref_heading "$line"; then
             in_section=1
             continue
         fi
@@ -468,6 +515,11 @@ require_collected() {
 
 # ADR_DIR 配下の `ADR-*.md` をファイル名昇順で収集し、グローバル配列 SCAN_TARGETS へ
 # 格納する（0件なら空配列）。検査は行わず違反を1件も出力しない。
+#
+# 収集の前に、対象ディレクトリを起点に設定を解決して語彙を埋める（load_config）。語彙を使う
+# 単位はすべて収集の印を要求するため、ここで解決すれば、読み込みだけを行ってレイヤを単独で
+# 起動する場合も、対象ディレクトリの設定の語彙で検査する。設定に誤りがあれば印を立てずに
+# 2 を返す（後続のレイヤは未収集として起動を拒む）。
 collect_scan_targets() {
     local dir="$1"
     local f
@@ -476,7 +528,10 @@ collect_scan_targets() {
     # 走査対象が入れ替わると、そこから導いた事実は古くなる。下流の印をここで倒し、
     # 収集し直さずにレイヤを起動した場合が未収集と同じ扱いになるようにする。
     FACTS_COLLECTED=0
+    SCAN_TARGETS_COLLECTED=0
     SCAN_TARGETS=()
+
+    load_config "$dir" || return 2
 
     shopt -s nullglob
     for f in "$dir"/ADR-*.md; do
@@ -589,35 +644,35 @@ check_layer1_frontmatter_schema() {
             printf '%s: status が空です（front-matter に status キーの値が必要）\n' "$file"
             violations=$((violations + 1))
         elif ! in_vocab "$fm_status" "${STATUS_VOCAB[@]}"; then
-            printf '%s: status の値 "%s" が語彙にありません（提案中 / 承認済み / 却下 のいずれかが必要）\n' "$file" "$fm_status"
+            printf '%s: status の値 "%s" が語彙にありません（%s のいずれかが必要）\n' "$file" "$fm_status" "$(join_vocab "${STATUS_VOCAB[@]}")"
             violations=$((violations + 1))
         fi
 
         # 種別5: validity の語彙（空は起票・却下で合法のため語彙検査の対象外）
         if [ -n "$fm_validity" ] && ! in_vocab "$fm_validity" "${VALIDITY_VOCAB[@]}"; then
-            printf '%s: validity の値 "%s" が語彙にありません（有効 / 上書き済み / 廃止済み のいずれか、または空が必要）\n' "$file" "$fm_validity"
+            printf '%s: validity の値 "%s" が語彙にありません（%s のいずれか、または空が必要）\n' "$file" "$fm_validity" "$(join_vocab "${VALIDITY_VOCAB[@]}")"
             violations=$((violations + 1))
         fi
 
-        if [ "$fm_status" = "承認済み" ] && [ -z "$fm_validity" ]; then
-            printf '%s: status=承認済み だが validity が空です（validity キーの値が必要）\n' "$file"
+        if [ "$fm_status" = "$ADR_STATUS_APPROVED" ] && [ -z "$fm_validity" ]; then
+            printf '%s: status=%s だが validity が空です（validity キーの値が必要）\n' "$file" "$ADR_STATUS_APPROVED"
             violations=$((violations + 1))
         fi
 
-        if [ "$fm_validity" = "上書き済み" ] && [ -z "$fm_sb" ]; then
-            printf '%s: validity=上書き済み だが superseded-by が空です（superseded-by キーの値が必要）\n' "$file"
+        if [ "$fm_validity" = "$ADR_VALIDITY_SUPERSEDED" ] && [ -z "$fm_sb" ]; then
+            printf '%s: validity=%s だが superseded-by が空です（superseded-by キーの値が必要）\n' "$file" "$ADR_VALIDITY_SUPERSEDED"
             violations=$((violations + 1))
         fi
 
         # 種別6・7: 構成子 提案中 / 却下 は validity・superseded-by のいずれも伴わない。
         # 承認軸が終端（却下）または未承認（提案中）の ADR は有効性軸を持たない。
-        if [ "$fm_status" = "提案中" ] || [ "$fm_status" = "却下" ]; then
+        if [ "$fm_status" = "$ADR_STATUS_PROPOSED" ] || [ "$fm_status" = "$ADR_STATUS_REJECTED" ]; then
             if [ -n "$fm_validity" ]; then
-                printf '%s: status=%s だが validity が空ではありません（値 "%s"。提案中・却下 は validity を伴いません）\n' "$file" "$fm_status" "$fm_validity"
+                printf '%s: status=%s だが validity が空ではありません（値 "%s"。%s・%s は validity を伴いません）\n' "$file" "$fm_status" "$fm_validity" "$ADR_STATUS_PROPOSED" "$ADR_STATUS_REJECTED"
                 violations=$((violations + 1))
             fi
             if [ -n "$fm_sb" ]; then
-                printf '%s: status=%s だが superseded-by が空ではありません（値 "%s"。提案中・却下 は superseded-by を伴いません）\n' "$file" "$fm_status" "$fm_sb"
+                printf '%s: status=%s だが superseded-by が空ではありません（値 "%s"。%s・%s は superseded-by を伴いません）\n' "$file" "$fm_status" "$fm_sb" "$ADR_STATUS_PROPOSED" "$ADR_STATUS_REJECTED"
                 violations=$((violations + 1))
             fi
         fi
@@ -626,9 +681,9 @@ check_layer1_frontmatter_schema() {
         # 後継を指すなら上書き済みであるべきで、有効のままなら原 ADR と後継が
         # 同時に index へ並ぶ。廃止済みは決定1 で「後継 ADR なしで ADR としての効力を
         # 終えた」と定義される。
-        if [ "$fm_validity" = "有効" ] || [ "$fm_validity" = "廃止済み" ]; then
+        if [ "$fm_validity" = "$ADR_VALIDITY_ACTIVE" ] || [ "$fm_validity" = "$ADR_VALIDITY_ABANDONED" ]; then
             if [ -n "$fm_sb" ]; then
-                printf '%s: validity=%s だが superseded-by が空ではありません（値 "%s"。superseded-by を伴えるのは 上書き済み だけです）\n' "$file" "$fm_validity" "$fm_sb"
+                printf '%s: validity=%s だが superseded-by が空ではありません（値 "%s"。superseded-by を伴えるのは %s だけです）\n' "$file" "$fm_validity" "$fm_sb" "$ADR_VALIDITY_SUPERSEDED"
                 violations=$((violations + 1))
             fi
         fi
@@ -696,7 +751,7 @@ check_layer3_forward() {
             fi
 
             if ! body_has_supersedes "$b_file" "$a_stem"; then
-                printf '%s: 相互参照違反（%s の本文 "## 関連ADR" に "Supersedes: %s" が見つかりません）\n' "$a_file" "$b_file" "$a_stem"
+                printf '%s: 相互参照違反（%s の本文 "## %s" に "Supersedes: %s" が見つかりません）\n' "$a_file" "$b_file" "$ADR_XREF_HEADING" "$a_stem"
                 violations=$((violations + 1))
             fi
         done
@@ -724,7 +779,7 @@ check_layer3_reverse() {
             t_file="$dir/$t_stem.md"
 
             if [ ! -f "$t_file" ]; then
-                printf '%s: 相互参照違反（逆方向: 本文 "## 関連ADR" の "Supersedes: %s" 宣言の参照先 %s が見つかりません）\n' "$c_file" "$t_stem" "$t_file"
+                printf '%s: 相互参照違反（逆方向: 本文 "## %s" の "Supersedes: %s" 宣言の参照先 %s が見つかりません）\n' "$c_file" "$ADR_XREF_HEADING" "$t_stem" "$t_file"
                 violations=$((violations + 1))
                 continue
             fi
@@ -740,7 +795,7 @@ check_layer3_reverse() {
                 fi
             done
             if [ "$member" -eq 0 ]; then
-                printf '%s: 相互参照違反（逆方向: %s の本文 "## 関連ADR" が "Supersedes: %s" を宣言していますが、%s の front-matter superseded-by がそれを指していません）\n' "$t_file" "$c_file" "$t_stem" "$t_file"
+                printf '%s: 相互参照違反（逆方向: %s の本文 "## %s" が "Supersedes: %s" を宣言していますが、%s の front-matter superseded-by がそれを指していません）\n' "$t_file" "$c_file" "$ADR_XREF_HEADING" "$t_stem" "$t_file"
                 violations=$((violations + 1))
             fi
         done
@@ -759,7 +814,7 @@ check_layer4_related_references() {
     for src_file in ${SCAN_TARGETS[@]+"${SCAN_TARGETS[@]}"}; do
         src_stem="$(basename "$src_file" .md)"
         # source は有効 ADR のみ（退役・提案中・却下・front-matter 無しは検査対象外）
-        if [ "${FM_VALIDITY_BY_STEM[$src_stem]:-}" != "有効" ]; then
+        if [ "${FM_VALIDITY_BY_STEM[$src_stem]:-}" != "$ADR_VALIDITY_ACTIVE" ]; then
             continue
         fi
 
@@ -768,10 +823,10 @@ check_layer4_related_references() {
         extract_body_related "$src_file"
         for t_stem in ${BODY_RELATED_TARGETS[@]+"${BODY_RELATED_TARGETS[@]}"}; do
             if [ ! -f "$dir/$t_stem.md" ]; then
-                printf '%s: dangling 参照違反（"## 関連ADR" の Related 参照先 %s が見つかりません）\n' "$src_file" "$t_stem"
+                printf '%s: dangling 参照違反（"## %s" の Related 参照先 %s が見つかりません）\n' "$src_file" "$ADR_XREF_HEADING" "$t_stem"
                 violations=$((violations + 1))
             elif in_vocab "${FM_VALIDITY_BY_STEM[$t_stem]:-}" "${RELATED_RETIRED_VALIDITY[@]}"; then
-                printf '%s: 参照先退役違反（"## 関連ADR" の Related 参照先 %s は validity=%s の退役ADRです）\n' "$src_file" "$t_stem" "${FM_VALIDITY_BY_STEM[$t_stem]:-}"
+                printf '%s: 参照先退役違反（"## %s" の Related 参照先 %s は validity=%s の退役ADRです）\n' "$src_file" "$ADR_XREF_HEADING" "$t_stem" "${FM_VALIDITY_BY_STEM[$t_stem]:-}"
                 violations=$((violations + 1))
             fi
         done
@@ -907,7 +962,9 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
 
     violations=0
 
-    collect_scan_targets "$ADR_DIR"
+    # 設定の解決は走査対象の収集が行う（collect_scan_targets の注記）。設定に誤りがあれば、
+    # ADR を1件も検査せずに exit 2 で止める。
+    collect_scan_targets "$ADR_DIR" || exit 2
     collect_facts
 
     check_layer1_frontmatter_schema
