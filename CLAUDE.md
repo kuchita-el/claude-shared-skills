@@ -9,6 +9,7 @@ Claude Code 向けの汎用スキルライブラリ。プロジェクト固有�
 本リポジトリの開発方式の背骨は `dev-workflow` の工程から Spec-as-Code 方式へ転換中である（ADR-202609110017-01。方式の設計は `docs/development/spec-as-code/design.md`）。
 
 - 統治機構の縮小作業と新方式プラグインの立ち上げは、`dev-workflow` の工程（Issue・プラン・レビュー契約）を通さず直接コミットで回す。縮小作業は Issue 化しない
+- 新規プラグイン `shared-memory` の立ち上げも、直接コミットで回す。`.claude-plugin/marketplace.json` へ登録する変更からは、レビュー契約を通す（ADR-202611140053-01）
 - 存続配布物（growth / domain-design / dependency-insight / adr / writing / living-spec）の機能変更はこの射程に含めず、従来どおりレビュー契約を通す。利用者へ配る資産の変更が無レビューで入ることを避ける
 - commit ゲート（`scripts/hooks/pre-commit-gate.sh`）は退行検知として最後まで残す。退行検知はレビュー契約の代替にならない
 - 転換期間は、新方式プラグインが本リポジトリ自身の開発を回せるようになった時点で終える
