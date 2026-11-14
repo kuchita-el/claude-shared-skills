@@ -51,6 +51,7 @@ LAYER1_INVALID_CASES=(
     '17-abandoned-with-superseded-by|validity=廃止済み だが superseded-by が空ではありません|AC1: 廃止済み かつ superseded-by 非空: exit 1|AC1: 廃止済み かつ superseded-by 非空: 違反メッセージ部分一致'
     '30-proposed-with-superseded-by|status=提案中 だが superseded-by が空ではありません|AC1: 提案中 かつ superseded-by 非空: exit 1|AC1: 提案中 かつ superseded-by 非空: 違反メッセージ部分一致'
     '31-rejected-with-superseded-by|status=却下 だが superseded-by が空ではありません|AC1: 却下 かつ superseded-by 非空: exit 1|AC1: 却下 かつ superseded-by 非空: 違反メッセージ部分一致'
+    '36-frontmatter-missing|ADR-20260621-legacy-no-frontmatter.md: front-matter がありません|AC1: front-matter 欠落: exit 1|AC1: front-matter 欠落: 違反メッセージがファイル名とともに出る'
 )
 
 # 表が空になった（あるいは大きく削られた）まま緑になる経路を塞ぐ下限。面②のループは
@@ -61,7 +62,7 @@ LAYER1_INVALID_CASES=(
 # 下限とループの双方が消費する形であり、それに合わせる）。
 # 下限は名目値（1件）ではなく現在の実数を置く。名目値にすると表が数件まで削られても
 # 緑のまま通り、下限が検査として働かない。
-LAYER1_INVALID_CASE_MIN=11
+LAYER1_INVALID_CASE_MIN=12
 
 @test "前提: 被テスト検査器と fixture の ADR 群が存在する" {
     assert_preconditions_met
@@ -70,11 +71,71 @@ LAYER1_INVALID_CASE_MIN=11
 # ---- レイヤ1 ----
 
 # valid の ADR 群は違反0件で exit 0 になること
-# （旧形式スキップ・却下/提案中/廃止済みが合法であることを含む）
+# （却下/提案中/廃止済みが合法であることを含む）
 @test "面①: レイヤ1 valid の ADR 群が exit 0" {
     collect_init
     run_sut "$CORPUS_DIR/valid/01-mixed-validity"
     collect_rc 0 "AC1: valid の ADR 群(01-mixed-validity) は exit 0"
+    collect_finish
+}
+
+# 検査対象集合と種別9（front-matter 欠落）のヘッダ成文化。検索対象は `set -euo pipefail`
+# までのヘッダブロックに限る（lint-adr-stem.bats 面① と同じ理由。違反メッセージや変数の
+# コメントにも同じ語が現れるため、全文検索ではヘッダの記述を消しても緑のまま残る）。
+@test "面①b: 検査対象集合と front-matter 欠落のヘッダ成文化" {
+    collect_init
+
+    local header
+    header=$(sed -n '1,/^set -euo pipefail/p' "$SUT" 2>/dev/null || true)
+
+    collect_contains "$header" "ADR-*.md 全件を検査対象とする" \
+        "ヘッダに検査対象集合（ADR-*.md 全件）が成文化されている"
+    collect_contains "$header" "9. front-matter 欠落（先頭行が \`---\` でない）" \
+        "ヘッダのレイヤ1違反種別に front-matter 欠落が列挙されている"
+    collect_not_contains "$header" "検査対象外としてスキップする" \
+        "ヘッダに front-matter を持たない ADR をスキップする旧規定が残っていない"
+
+    collect_finish
+}
+
+# front-matter 欠落の ADR に、どの検査が重なって発火するかを固定する（検査対象集合の規定）。
+#   - 改行コードが CRLF の ADR は欠落として報告し、メッセージは改行コードを名指しする
+#   - 本文に `Supersedes:` を持つ欠落 ADR からは、本文を起点とするレイヤ3 の逆方向も発火する
+#   - `Supersedes:` を持たない欠落 ADR からは、種別9 のほかに何も発火しない
+# ADR 群は valid/01 を一時ディレクトリへ写して組み立てる（共有 fixture を書き換えない）。
+@test "面①c: front-matter 欠落の ADR に重なる検査" {
+    collect_init
+
+    local dir crlf_file nofm_file
+    dir="$(mktemp -d "$BATS_TEST_TMPDIR/crlf.XXXXXX")"
+    cp "$CORPUS_DIR/valid/01-mixed-validity/"* "$dir/"
+    crlf_file="$dir/ADR-202601010901-01-sample-decision.md"
+    sed 's/$/\r/' "$crlf_file" >"$crlf_file.tmp" && mv "$crlf_file.tmp" "$crlf_file"
+    run_sut "$dir"
+    collect_rc 1 "CRLF の ADR は exit 1"
+    collect_contains "$output" "ADR-202601010901-01-sample-decision.md: front-matter を読めません（改行コードが CRLF です" \
+        "CRLF の ADR には改行コードを名指しするメッセージが出る"
+    collect_not_contains "$output" "ADR-202601010901-01-sample-decision.md: front-matter がありません" \
+        "CRLF の ADR に、front-matter が無いという誤ったメッセージを出さない"
+
+    dir="$(mktemp -d "$BATS_TEST_TMPDIR/nofm-supersedes.XXXXXX")"
+    cp "$CORPUS_DIR/valid/01-mixed-validity/"* "$dir/"
+    nofm_file="$dir/ADR-202603010901-01-nofm-supersedes.md"
+    printf '%s\n' "# ADR-202603010901-01: front-matter を持たず Supersedes を宣言する" "" \
+        "## 関連ADR" "" "- Supersedes: ADR-202601020901-01-second-decision" >"$nofm_file"
+    run_sut "$dir"
+    collect_rc 1 "Supersedes を持つ front-matter 欠落の ADR は exit 1"
+    collect_contains "$output" "ADR-202603010901-01-nofm-supersedes.md: front-matter がありません" \
+        "種別9 が報告される"
+    collect_contains "$output" "相互参照違反（逆方向" \
+        "本文を起点とするレイヤ3 の逆方向も発火する（規定どおり）"
+
+    run_sut "$CORPUS_DIR/invalid/36-frontmatter-missing"
+    collect_not_contains "$output" "相互参照違反" \
+        "Supersedes を持たない front-matter 欠落の ADR からは、レイヤ3 は発火しない"
+    collect_not_contains "$output" "参照違反" \
+        "Supersedes を持たない front-matter 欠落の ADR からは、レイヤ4 も発火しない"
+
     collect_finish
 }
 

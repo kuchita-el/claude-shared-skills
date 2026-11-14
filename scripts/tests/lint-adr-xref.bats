@@ -6,7 +6,7 @@
 # 行頭バレット有無・markdown リンク形式有無を問わず抽出し、参照先が上書き済み
 # なら参照先退役違反、非存在なら dangling 参照違反として報告する。
 # 後継を持たない退役（廃止済み）は差し替え先が存在せず建設的な是正が無いため対象外であり、
-# 参照先が旧形式・validity 空の場合と同じく違反にならない（fail-open）。
+# 参照先の validity が空の場合と同じく違反にならない（fail-open）。
 #
 # 【レイヤ4 の判定単位の正本はここにある】
 # `Related:` 以降で最初に現れる ADR stem を、行頭バレットの有無・markdown リンクの有無・
@@ -196,7 +196,7 @@ related_section_position() {
     collect_finish
 }
 
-# source の限定: 有効でない ADR（上書き済み・廃止済み・提案中・却下・旧形式）の `Related:` は
+# source の限定: 有効でない ADR（上書き済み・廃止済み・提案中・却下）の `Related:` は
 # 検査しない。各 source は実在しない stem を指しており、限定が外れると dangling 違反として現れる。
 # source を有効でない区分ごとに1本ずつ置くのは、限定を特定の区分へ狭める退行
 # （例: 上書き済みの source だけを読み飛ばす）も、残った区分の dangling 違反として捉えるためである。
@@ -207,10 +207,11 @@ related_section_position() {
 #
 # 加えて、値を持つ非有効区分（上書き済み・廃止済み）は validity を名指しで固定する。読み飛ばしを
 # 特定の区分へ狭める変異を捉えるには、その区分の source が fixture に残っている必要があるが、提案中・
-# 却下・旧形式は validity が空でこの読み飛ばしでは同一経路のため、値で区別されるのは上書き済みと
+# 却下は validity が空でこの読み飛ばしでは同一経路のため、値で区別されるのは上書き済みと
 # 廃止済みだけである。この2区分の source が非有効区分どうしの front-matter 漂流（例: 廃止済み →
 # 提案中）で黙って消えると、依然として非有効のまま rc=0 が保たれ、当該区分を狙う変異への検出力が
-# 失われる。空区分（提案中・却下・旧形式）は代表が3本あり、validity では互いに区別できないため固定しない。
+# 失われる。空区分（提案中・却下）は代表が2本あり、validity では互いに区別できないため固定しない。
+# front-matter を持たない ADR はレイヤ1 の違反になるため、valid の ADR 群には置かない。
 @test "面⑨: 有効でない source の Related は検査しない" {
     collect_init
 
@@ -220,8 +221,7 @@ related_section_position() {
         "ADR-202703010907-01-related-src-superseded|ADR-209903010101-01-nonexistent-from-superseded" \
         "ADR-202703030907-01-related-src-abolished|ADR-209903010101-01-nonexistent-from-abolished" \
         "ADR-202703040907-01-related-src-proposed|ADR-209903010101-01-nonexistent-from-proposed" \
-        "ADR-202703050907-01-related-src-rejected|ADR-209903010101-01-nonexistent-from-rejected" \
-        "ADR-20270306-legacy-related-src|ADR-209903010101-01-nonexistent-from-legacy"; do
+        "ADR-202703050907-01-related-src-rejected|ADR-209903010101-01-nonexistent-from-rejected"; do
         src="${pair%%|*}"
         target="${pair#*|}"
         collect_equals "$(related_section_position "$dir/$src.md" "Related: $target")" "inside" \
@@ -243,7 +243,7 @@ related_section_position() {
     collect_finish
 }
 
-# 参照先の fail-open: 参照先が旧形式・提案中・却下で validity が空なら、実在する限り違反にしない
+# 参照先の fail-open: 参照先が提案中・却下で validity が空なら、実在する限り違反にしない
 # （参照先退役違反は validity が上書き済みと完全一致する参照先だけを対象とする）。
 # 前提として確かめるのは次の3つである。いずれかが崩れると、本ケースは「空の参照先」を通さないまま
 # 緑で残る。source が有効であること（有効でない source の参照はそもそも検査されない）、
@@ -258,7 +258,6 @@ related_section_position() {
         "(参照先fail-open): sourceが有効である（有効でないとRelatedが検査されず本ケースが自明に成立する）"
 
     for target in \
-        ADR-20270312-legacy-related-empty-target \
         ADR-202703130907-01-related-empty-target-proposed \
         ADR-202703140907-01-related-empty-target-rejected; do
         collect_equals "$(related_section_position "$source_file" "Related: $target")" "inside" \
