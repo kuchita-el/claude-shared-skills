@@ -385,6 +385,10 @@ setup_file() {
         "AC5: 旧 Amended（部分改訂）手順節が manage-adr スキル面から除去されている"
     collect_not_contains "$surface" "## 保留した決定" \
         "AC5: 旧「保留した決定」節が manage-adr スキル面から除去されている"
+    # 命名規約に固有の振り分けを持たず、命名規約にも一般則（`adr-destination.md`「判定結果の
+    # 行き先」）を掛ける。固有の節を持てば、命名規約かどうかで判定経路が分かれる。
+    collect_not_contains "$surface" "## 命名規約の ADR 化基準" \
+        "AC5: 旧「命名規約の ADR 化基準」節が manage-adr スキル面から除去されている"
 
     collect_finish
 }
@@ -403,7 +407,7 @@ setup_file() {
 # 参照面に現存する節名参照の件数。参照を減らす変更でここが赤になるのは意図した摩擦であり、
 # 減らすことが正しいと判断した場合に限り本定数を下げる。参照を増やす変更では増えた実数へ
 # 上げる。据え置くと、増やした参照が抽出から丸ごと落ちても下限を割らず緑で通る。
-AC5_SECTION_REF_MIN=58
+AC5_SECTION_REF_MIN=64
 
 # 参照面の見出しを "<basename><TAB><見出しテキスト>" の行として出す。
 surface_heading_index() {

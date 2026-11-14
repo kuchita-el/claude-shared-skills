@@ -101,7 +101,7 @@ ADR 化要否の判定例は「入出力例」節に示す（ADR 化する例・
 ドキュメント内の箇条書きマーカーが `-` と `*` で混在していたので `-` に統一すべきだった。
 ```
 
-粒度判定: 当該 repo の ADR 運用ルールの粒度判定基準へ照らし、書式的な命名規約として ADR 化対象外と判定されたとする（判定基準は当該 repo が持つ）。
+粒度判定: 当該 repo の ADR 運用ルールの粒度判定基準へ照らし、合計が境界の点数に届かず ADR 化対象外と判定されたとする（判定基準は当該 repo が持つ）。
 
 → **ADR 化しない**。ADR ファイルに反映しない。learnings.md 行き等として再裁定するか、Linter / フォーマッタ規約として扱う（差し戻しの扱いは「裁定外仮説の非反映と確認」節）。
 
@@ -145,7 +145,7 @@ gh issue create \
 
 - [`intake-issue-spec.md`](../../../plugins/growth/references/intake-issue-spec.md) — 入力源（#412）。裁定結果の記録形式（career / 空間 / 備考テーブル）の出典であり、本規約の入力境界が参照する裁定結果テーブルを提供する。宛先 repo 列を持たない単一 repo 配線・集約トポロジの不変条件もここで確定
 - [`learning-promotion-spec.md`](../../../plugins/growth/references/learning-promotion-spec.md) — 姉妹規約（#383）。learnings.md 行きの変換4手順。本規約と合わせ #349 D1 の全キャリアを Phase 2 でカバーする
-- 当該 repo の ADR 運用ルール（文脈探索で解決） — ADR 差分の出口ゲート。粒度判定基準・上書き（Superseded）／廃止（Deprecated）／却下／編集機構・命名規約の ADR 化基準。見つからない場合は「ADR 運用ルールが見つからない場合」節のフォールバックに従う
+- 当該 repo の ADR 運用ルール（文脈探索で解決） — ADR 差分の出口ゲート。粒度判定基準・上書き（Superseded）／廃止（Deprecated）／却下／編集機構。見つからない場合は「ADR 運用ルールが見つからない場合」節のフォールバックに従う
 - [`promotion-issue-spec.md`](../../../plugins/growth/references/promotion-issue-spec.md) — 仮説 Issue（`growth:promote`）のテンプレート（#382。昇格先キャリアの判定＝Route は distill へ移設＝ADR-202606282107-01）
 - [`design.md`](design.md) — growth の設計判断の根拠（学習ループ・Distribute 段・学びの2系統・二段ゲート）
 - ADR-202606282107-01 — career 決定モデルの再設計（distill 仮説 ＋ 集約点裁定・決定表行2の一般化）。本規約の決定根拠
