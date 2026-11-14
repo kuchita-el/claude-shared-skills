@@ -11,6 +11,7 @@ allowed-tools:
   - Bash(bash *scripts/lint-adr.sh*)
   - Bash(bash *scripts/gen-adr-index.sh*)
   - Bash(bash *scripts/next-adr-id.sh*)
+  - Bash(bash *scripts/verify-split-verbatim.sh*)
 ---
 
 # ADRライフサイクル操作（Manage ADR）
@@ -49,7 +50,7 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 
 ### 分割（多決定 ADR の部分上書き。5遷移とは別軸の構造操作）
 
-複数の決定を束ねた ADR の一部だけが core 反転して残りが生存する場合（1→N の部分上書き）、または束ね ADR を予防的に分解する場合（衛生的分割）に使う。原 ADR 全体を `上書き済み` にすると生存決定を誤って退役させるため、生存決定を後継へ逐語 restate してから原 ADR を上書きする。
+複数の決定を束ねた ADR の一部だけが core 反転して残りが生存する場合（1→N の部分上書き）、または束ね ADR を予防的に分解する場合（衛生的分割）に使う。原 ADR 全体を `上書き済み` にすると生存決定を誤って退役させるため、生存決定を後継へ逐語 restate してから原 ADR を上書きする。後継を立てずに原 ADR へ残してよい生存決定の条件は、後掲の手順の実体が定める。
 
 呼び出しの適用条件は2トリガに分かれる。**既定は分割しない**——既存の多決定 ADR を遡及的に分割せず、下記いずれかのトリガが立ったときにのみ駆動する。
 
@@ -60,7 +61,9 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 
 分割は5遷移（front-matter 状態遷移）の一種ではない。決定のファイル間再配置という別軸の構造操作であり、本文編集の core／非core／些末分類でもなくリファクタリングに相当する。終端 front-matter は上書きと同型（原 ADR `validity: 上書き済み`・`superseded-by` に全後継を列挙）だが、後継が複数（1→N）で生存決定の救出を伴う点で上書き（1→1）と操作が異なる。
 
-手順の実体（起票・逐語 restate・開示・相互参照の各手順と締めの検査）は `${CLAUDE_SKILL_DIR}/references/transitions.md`「分割（多決定 ADR の部分上書き）」節を参照する。
+手順の実体は `${CLAUDE_SKILL_DIR}/references/transitions.md`「分割（多決定 ADR の部分上書き）」節を参照する。同節は、決定の振り分け・起票・逐語 restate・却下代替の持ち越し・開示・相互参照の各手順と、締めの検査を持つ。
+
+締めの検査のうち網羅性と逐語性は、同梱の照合スクリプトで確かめる。実行形は `bash ${CLAUDE_PLUGIN_ROOT}/scripts/verify-split-verbatim.sh <原 ADR> <対応表>` である。対応表の書き方と結果の読み方は同節に従う。
 
 ### 編集判定フロー（既存 ADR の変更）
 

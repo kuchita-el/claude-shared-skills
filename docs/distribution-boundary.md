@@ -35,7 +35,7 @@
 
 この配置は `adr-scoping-cases.sh` のテストで先行し（PR #616）、`lint-adr.sh` / `next-adr-id.sh` のテストと fixture も同じ配置へ揃えた。その後、テストは bash スクリプト（`scripts/test-*.sh`）から bats のケース（`scripts/tests/*.bats`）へ載せ替えた（#645）。配置の判断は変わらず、置き場所が `scripts/` 直下から `scripts/tests/` へ下がっただけである。
 
-なお、先行例として挙げた `adr-scoping-cases.sh` とそのテスト・fixture は、ADR 化要否の判定パイプラインの廃止（#783）により既にリポジトリから削除されている。上記は経緯としての引用であり、現存する資産を指してはいない。配置の判断そのものは、残る検査器（`lint-adr.sh` / `gen-adr-index.sh` / `next-adr-id.sh`）に対して現に効いている。
+なお、先行例として挙げた `adr-scoping-cases.sh` とそのテスト・fixture は、ADR 化要否の判定パイプラインの廃止（#783）により既にリポジトリから削除されている。上記は経緯としての引用であり、現存する資産を指してはいない。配置の判断そのものは、`plugins/adr/scripts/` に現存する検査器のすべてに対して現に効いている。
 
 ## 4. 受容した犠牲
 
