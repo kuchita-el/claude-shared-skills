@@ -51,6 +51,8 @@ host adapterへ移行するトリガーとします。移行まではホスト�
 - 単体のスクリプトは、第1引数（`ADR_DIR`）→ 設定の `adr-dir` → 既定の `docs/adr` の順に採る。
 - commit 前ゲートは引数を取らず、設定の `adr-dir` → 既定の `docs/adr` の順に採る。
   - index の検査ではステージした設定の `adr-dir` を、作業ツリーの検査では作業ツリーの設定の `adr-dir` を使う。
+  - `adr-dir` が指すディレクトリが無ければ、ゲートは何もせずに commit を通す。ADR をまだ置いていないリポジトリと区別できないためである。
+  - `adr-dir` の綴りを誤ると、ゲートは何も出さずに働かなくなる。設定を置いたら、引数を省いた `lint-adr.sh` で対象を確かめる（無ければ exit 2 で止まる）。
 
 `adr-dir` は、導入先の git のトップレベルに置く設定ファイル `.claude/adr/config` に書く。書き方は `adr-dir: architecture/decisions` のように1行である。
 

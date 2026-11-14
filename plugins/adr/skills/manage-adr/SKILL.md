@@ -105,7 +105,7 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 - `${CLAUDE_SKILL_DIR}/references/adr-reference-principle.md` — ADR 本文へ参照を書く／直す際の判定（記録の参照原則。起票時にも適用する）
 - `${CLAUDE_SKILL_DIR}/references/cross-references.md` — `## 関連ADR` の関係語彙・`Related:` の書式規約・機械検査の範囲と是正手段（相互参照を書くときに従う）
 
-以降の手順に現れる `<対象ディレクトリ>` の解決（既定と第1引数による上書き）は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「配置」節に従う。
+以降の手順に現れる `<対象ディレクトリ>` の解決（`adr-dir` を含む）は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「配置」節に従う。
 
 識別子の発番は `bash ${CLAUDE_PLUGIN_ROOT}/scripts/next-adr-id.sh <対象ディレクトリ>` を実行し、その出力を用いる。時刻部（分粒度・ローカル時刻）の取得と同一時刻部内の連番決定はスクリプトが担う。`date` 等の外部コマンドを直接実行せず、配置ディレクトリを列挙して番号を組み立てない。
 
@@ -121,7 +121,7 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 
 **commit 前ゲートとの二面構成**: 同梱の PreToolUse フックが `git commit` 時にも drift-lint を実行し、違反があれば exit 2 で commit をブロックする。本節の自己検証は、そのブロックを操作の直後に前倒しで潰す位置づけである。
 
-ただしゲートの射程は自己検証より狭い。フックは Bash ツール経由の `git commit` にのみ掛かり、端末や IDE から直接打つ commit は通らない。検査対象も既定の配置に固定されており、既定以外の配置を採る導入先ではゲートが働かない（前掲の「配置」節を参照）。いずれの場合も自己検証が唯一の検出機会になるため、ゲートに委ねず本節を実行する。
+ただしゲートの射程は自己検証より狭い。フックは Bash ツール経由の `git commit` にのみ掛かり、端末や IDE から直接打つ commit は通らない。検査対象は設定の `adr-dir`（無ければ既定の配置）であり、それが指すディレクトリが無ければゲートは何もしない（前掲の「配置」節を参照）。いずれの場合も自己検証が唯一の検出機会になるため、ゲートに委ねず本節を実行する。
 
 **フォールバック**: 操作前から対象ディレクトリが exit 1（baseline red）で、本操作と無関係な違反が exit 0 到達を妨げる場合に限り、変更/生成した ADR とその相互参照相手を一時ディレクトリへコピーし、そのディレクトリを対象に手順1〜3を実行してよい（コピーに含めるファイルの規則は `${CLAUDE_SKILL_DIR}/references/transitions.md` を参照）。
 
