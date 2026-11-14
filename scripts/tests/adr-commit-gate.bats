@@ -12,6 +12,9 @@
 #     変えうるときは、作業ツリーも併せて検査する。作業ツリーが index と同じなら、作業ツリーの
 #     検査を重ねない
 #   - index を取り出せないときは通さず、取り出した一時ディレクトリを残さない
+#   - 設定ファイル（.claude/adr/config）は、検査する側の版を読む（index の検査ではステージした版、
+#     作業ツリーの検査では作業ツリーの版）。一時ディレクトリを含む別のリポジトリの設定や、
+#     ゲートの環境に残った ADR_CONFIG_ROOT を読まない
 # 検出の側（worktree の違反で止まる）だけでなく、その逆（project root 側の違反では止まらない）
 # も対で置く。前者だけでは「両方のツリーを検査する」変異が赤にならない。検査する内容についても、
 # index の違反で止まる側と、作業ツリーだけの違反では止まらない側を対で置く。
@@ -36,9 +39,16 @@ INVALID_MESSAGE="status が空です"
 UNRESOLVED_MESSAGE="コミット対象のリポジトリを特定できません"
 STAGED_MESSAGE="ステージした内容（index）の docs/adr が drift-lint に違反しています"
 WORKTREE_MESSAGE="作業ツリーの docs/adr が drift-lint に違反しています"
+CONFIG_FIXTURES="$FIXTURES_DIR/adr-config"
+EN_CONFIG="$CONFIG_FIXTURES/en/config"
+EN_VALID="$CONFIG_FIXTURES/en/valid"
+EN_CONFIG_ERROR="$CONFIG_FIXTURES/errors/partial-words/config"
+# 既定値（日本語）の語で英語の ADR 群を検査したときに出る違反の一部
+EN_UNDER_DEFAULT_MESSAGE='"Accepted"'
+CONFIG_ERROR_MESSAGE="adr プラグインの設定に誤りがあります"
 BASH_VERSION_MESSAGE="bash 4.2 以上を必要とします"
 CORPORA=()
-PRECONDITION_PATHS=("$LINT_ADR" "$VALID_CORPUS" "$INVALID_CORPUS")
+PRECONDITION_PATHS=("$LINT_ADR" "$VALID_CORPUS" "$INVALID_CORPUS" "$EN_CONFIG" "$EN_VALID" "$EN_CONFIG_ERROR")
 
 setup_file() {
     common_setup_file
@@ -117,8 +127,20 @@ hook_input() {
     fi
 }
 
+# 引数1 のリポジトリの作業ツリーへ、引数2 の設定ファイルを置く（空なら設定ファイルを消す）。
+place_config() {
+    local dir="$1" config="${2-}"
+    rm -f "$dir/.claude/adr/config"
+    if [ -n "$config" ]; then
+        mkdir -p "$dir/.claude/adr"
+        cp "$config" "$dir/.claude/adr/config"
+    fi
+}
+
 # ゲートを起動する。引数: フックの cwd / stdin へ渡す入力 / CLAUDE_PROJECT_DIR（`-` なら未設定）/
 # TMPDIR（省略時はテストの一時ディレクトリの中に作る）
+# ADR_CONFIG_ROOT は外す。配列 GATE_EXTRA_ENV があれば、その代入を環境へ足す。
+# GATE_SUT があれば、同梱のゲートの代わりにそれを起動する。
 # git の探索は一時ディレクトリの内側で打ち切る。外側（テストを走らせているリポジトリ等）へ
 # 遡って解決すると、「特定できない」経路を検査できなくなる。
 run_gate() {
@@ -128,15 +150,16 @@ run_gate() {
         mkdir -p "$tmpdir"
     fi
     # env は `-u` を代入より前にしか受け付けない
-    local -a env_args=(-u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE)
+    local -a env_args=(-u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE -u ADR_CONFIG_ROOT)
     if [ "$project_dir" = "-" ]; then
         env_args+=(-u CLAUDE_PROJECT_DIR)
     else
         env_args+=("CLAUDE_PROJECT_DIR=$project_dir")
     fi
     env_args+=("GIT_CEILING_DIRECTORIES=$BATS_TEST_TMPDIR" "TMPDIR=$tmpdir")
+    env_args+=(${GATE_EXTRA_ENV[@]+"${GATE_EXTRA_ENV[@]}"})
     run env "${env_args[@]}" bash -c 'cd "$1" && printf "%s" "$2" | bash "$3"' \
-        _ "$hook_cwd" "$input" "$SUT"
+        _ "$hook_cwd" "$input" "${GATE_SUT:-$SUT}"
 }
 
 @test "前提: 被テスト検査器・ADR 群・必要なコマンドが揃っている" {
@@ -374,7 +397,7 @@ run_gate() {
         "$blob" "$path" "$blob" "$path" "$blob" "$path" | git -C "$repo" update-index --index-info
     run_gate "$repo" "$(hook_input "git commit -m x" "$repo")" "$repo"
     collect_rc 2 "index の docs/adr を取り出せなければ止める"
-    collect_contains "$output" "ステージした docs/adr を取り出せません" "止めた理由が示される"
+    collect_contains "$output" "ステージした docs/adr と設定ファイルを取り出せません" "止めた理由が示される"
 
     # 通した場合と止めた場合のどちらでも、一時ディレクトリを残さない
     tmpdir="$BATS_TEST_TMPDIR/cleanup-tmp"
@@ -387,6 +410,67 @@ run_gate() {
     run_gate "$repo" "$(hook_input "git commit -m x" "$repo")" "$repo" "$tmpdir"
     collect_rc 2 "違反する index は止める（後始末の確認の前提）"
     collect_equals "$(ls -A "$tmpdir")" "" "止めた後に一時ディレクトリが残らない"
+
+    # 設定ファイルの置き場を同梱の adr-config.sh から読めなければ、検査しないまま通さない
+    local copy="$BATS_TEST_TMPDIR/plugin-copy"
+    cp -R "$PLUGIN_ROOT" "$copy"
+    rm -f "$copy/scripts/adr-config.sh"
+    local GATE_SUT="$copy/hooks/adr-commit-gate"
+    repo="$(make_staged_repo no-config-lib "$VALID_CORPUS" "$VALID_CORPUS")"
+    run_gate "$repo" "$(hook_input "git commit -m x" "$repo")" "$repo"
+    collect_rc 2 "adr-config.sh が無ければ止める"
+    collect_contains "$output" "設定ファイルの置き場を adr-config.sh から読めません" "止めた理由が示される"
+
+    collect_finish
+}
+
+@test "面⑪: 設定ファイルは、検査する側（index・作業ツリー）の版を読む" {
+    collect_init
+
+    local repo other
+    # 英語の設定と英語の ADR 群をステージしたリポジトリ
+    repo="$(make_staged_repo en-staged "$EN_VALID" "$EN_VALID")"
+    place_config "$repo" "$EN_CONFIG"
+    git -C "$repo" add .claude
+    run_gate "$repo" "$(hook_input "git commit -m x" "$repo")" "$repo"
+    collect_rc 0 "英語の設定と英語の ADR 群をステージしていれば通す"
+    run_gate "$repo" "$(hook_input "git commit -a -m x" "$repo")" "$repo"
+    collect_rc 0 "作業ツリーも併せて検査するときも、英語の設定で通す"
+
+    # index の検査は、作業ツリーの設定ではなくステージした設定で判定する（両向き）
+    place_config "$repo" "$EN_CONFIG_ERROR"
+    run_gate "$repo" "$(hook_input "git commit -m x" "$repo")" "$repo"
+    collect_rc 0 "作業ツリーの設定が壊れていても、ステージした設定で判定して通す"
+    run_gate "$repo" "$(hook_input "git commit -a -m x" "$repo")" "$repo"
+    collect_rc 2 "作業ツリーも検査するときは、作業ツリーの設定の誤りで止まる"
+    collect_contains "$output" "$CONFIG_ERROR_MESSAGE" "作業ツリーの設定の誤りが報告される"
+
+    repo="$(make_staged_repo en-unstaged-config "$EN_VALID" "$EN_VALID")"
+    place_config "$repo" "$EN_CONFIG"
+    run_gate "$repo" "$(hook_input "git commit -m x" "$repo")" "$repo"
+    collect_rc 2 "設定をステージしていなければ、作業ツリーに英語の設定があっても既定値で判定して止める"
+    collect_contains "$output" "$STAGED_MESSAGE" "ステージした内容の違反であることが示される（既定値で判定）"
+    collect_contains "$output" "$EN_UNDER_DEFAULT_MESSAGE" "既定値の語彙の違反が報告される"
+
+    # TMPDIR が別の git リポジトリの中にあっても、そのリポジトリの設定を読まない
+    other="$(make_repo other-en "$EN_VALID")"
+    place_config "$other" "$EN_CONFIG"
+    mkdir -p "$other/tmp"
+    repo="$(make_staged_repo ja-tmpdir "$VALID_CORPUS" "$VALID_CORPUS")"
+    run_gate "$repo" "$(hook_input "git commit -m x" "$repo")" "$repo" "$other/tmp"
+    collect_rc 0 "TMPDIR を含む別のリポジトリの英語の設定を読まず、既定値で判定して通す"
+
+    # ゲートの環境に残った ADR_CONFIG_ROOT を、index の検査でも作業ツリーの検査でも使わない
+    local -a GATE_EXTRA_ENV=("ADR_CONFIG_ROOT=$other")
+    run_gate "$repo" "$(hook_input "git commit -m x" "$repo")" "$repo"
+    collect_rc 0 "環境の ADR_CONFIG_ROOT を index の検査で使わない"
+    replace_adr "$repo" "$VALID_CORPUS"
+    printf 'stale\n' >>"$repo/docs/adr/index.md"
+    git -C "$repo" add docs/adr
+    cp "$VALID_CORPUS/index.md" "$repo/docs/adr/index.md"
+    run_gate "$repo" "$(hook_input "git commit -a -m x" "$repo")" "$repo"
+    collect_rc 2 "index の違反で止まる（作業ツリーの検査を省かない前提）"
+    collect_not_contains "$output" "$WORKTREE_MESSAGE" "環境の ADR_CONFIG_ROOT を作業ツリーの検査で使わない"
 
     collect_finish
 }
