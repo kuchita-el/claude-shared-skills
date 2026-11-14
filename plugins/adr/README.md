@@ -37,4 +37,4 @@ host adapterへ移行するトリガーとします。移行まではホスト�
 
 `lint-adr.sh` / `gen-adr-index.sh` / `next-adr-id.sh` は、対象の ADR ディレクトリを第1引数（`ADR_DIR`）で受け取る。対象は、前2者では検査対象、`next-adr-id.sh` では既存 ADR の列挙対象である。**既定は `docs/adr`** である。導入先が別配置（例 `architecture/decisions`）を使う場合は引数で上書きする。commit ゲートは、commit を実行するリポジトリの作業ツリーにある既定の `docs/adr` を対象に実行する。
 
-> 導入先固有設定を宣言ファイルで駆動する full config 方式の override は本プラグインのスコープ外（別途対応）。現時点の override 手段は `ADR_DIR` 引数のみ。
+> ADR の言語に依存する語は、導入先の git のトップレベルに置く `.claude/adr/config` で定められる。対象は `status` と `validity` の値・相互参照の節の見出し・index の題名と注記である。書き方とキーは、同梱の既定値のファイル `scripts/adr-config.default` の冒頭にある。ADR ディレクトリを指定する手段は、現時点では `ADR_DIR` 引数だけである。
