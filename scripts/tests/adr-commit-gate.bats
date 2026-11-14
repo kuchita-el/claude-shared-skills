@@ -8,8 +8,9 @@
 #     検査しない
 #   - docs/adr が無いことによる no-op と、コミット対象を特定できないことを区別し、後者を
 #     通さない
-#   - ステージした内容（index）を検査する。コマンドがステージを変えうるときは、作業ツリーも
-#     併せて検査する。作業ツリーが index と同じなら、作業ツリーの検査を重ねない
+#   - ステージした内容（index）のブロブを、改行変換を通さずに検査する。コマンドがステージを
+#     変えうるときは、作業ツリーも併せて検査する。作業ツリーが index と同じなら、作業ツリーの
+#     検査を重ねない
 #   - index を取り出せないときは通さず、取り出した一時ディレクトリを残さない
 # 検出の側（worktree の違反で止まる）だけでなく、その逆（project root 側の違反では止まらない）
 # も対で置く。前者だけでは「両方のツリーを検査する」変異が赤にならない。検査する内容についても、
@@ -268,6 +269,24 @@ run_gate() {
         run_gate "$repo" "$(hook_input "$command" "$repo")" "$repo"
         collect_rc 0 "ステージした ADR が正しければ、未ステージの側が壊れていても通す（$command）"
     done
+
+    # 検査するのはブロブそのものであり、改行変換を通した後の内容ではない。
+    # core.autocrlf=true では、取り出しで LF が CRLF に変わると lint の改行の検査に掛かる
+    repo="$(make_staged_repo autocrlf "$VALID_CORPUS" "$VALID_CORPUS")"
+    git -C "$repo" config core.autocrlf true
+    run_gate "$repo" "$(hook_input "git commit -m x" "$repo")" "$repo"
+    collect_rc 0 "core.autocrlf=true でも、LF のブロブを変換せずに検査して通す"
+
+    # 逆に、CRLF のブロブは CRLF のまま検査して止める
+    local file
+    repo="$(make_staged_repo crlf-blob "$VALID_CORPUS" "$VALID_CORPUS")"
+    file="$(ls "$repo"/docs/adr/ADR-*.md | head -n 1)"
+    sed 's/$/\r/' "$file" >"$file.crlf" && mv "$file.crlf" "$file"
+    git -C "$repo" add docs/adr
+    cp -R "$VALID_CORPUS"/. "$repo/docs/adr/"
+    run_gate "$repo" "$(hook_input "git commit -m x" "$repo")" "$repo"
+    collect_rc 2 "CRLF のブロブは、作業ツリーの側が LF でも止める"
+    collect_contains "$output" "改行コードが CRLF です" "CRLF のブロブの違反が報告される"
 
     collect_finish
 }
