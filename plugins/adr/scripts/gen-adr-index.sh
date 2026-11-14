@@ -13,12 +13,18 @@
 # front-matter を唯一の権威としたうえで一覧をその導出ビューへ閉じ込めることで、
 # 「本文を読めば確実」（確実性）と「一覧で探せる」（検索性）を drift させずに両立させるためである。
 #
+# 言語に依存する語（有効を表す validity の値・index の題名・冒頭の注記）は、設定から読む。
+# 設定の解決と誤りの扱いは同梱の adr-config.sh が持ち、キーと既定値は adr-config.default が
+# 持つ。本ファイルのコメントに現れる値（`有効` 等）は、既定値での綴りである。設定の解決の
+# 起点は ADR_DIR であり、lint-adr.sh のレイヤ2 が同じ ADR_DIR で本スクリプトを起動するため、
+# 両者は同じ設定を読む。
+#
 # 使い方:
 #   bash gen-adr-index.sh [ADR_DIR]   # 既定 ADR_DIR は docs/adr/
 #
 # exit code:
 #   0: 正常終了（有効 ADR が0件でも0）
-#   2: ADR_DIR が存在しない
+#   2: ADR_DIR が存在しない、または設定に誤りがある
 set -euo pipefail
 
 ADR_DIR="${1:-docs/adr}"
@@ -28,6 +34,11 @@ if [ ! -d "$ADR_DIR" ]; then
     echo "エラー: ディレクトリが見つかりません: $ADR_DIR" >&2
     exit 2
 fi
+
+# 設定の読み込み部。ADR_DIR を起点に設定を解決する（誤りの原因は adr_config_load が出す）。
+# shellcheck source=adr-config.sh
+source "$(dirname "${BASH_SOURCE[0]}")/adr-config.sh"
+adr_config_load "$ADR_DIR" || exit 2
 
 # 前後の空白（スペース・タブ）をトリムする（lint-adr.sh の trim と同一実装）
 trim() {
@@ -103,13 +114,13 @@ if [ "${#files[@]}" -gt 0 ]; then
     done < <(printf '%s\n' "${files[@]}" | LC_ALL=C sort)
 fi
 
-echo '<!-- このファイルは gen-adr-index.sh による生成物。手動編集禁止。 -->'
-echo '# 有効 ADR インデックス'
+printf '<!-- %s -->\n' "$ADR_INDEX_NOTICE"
+printf '# %s\n' "$ADR_INDEX_TITLE"
 echo ''
 
 for file in "${sorted[@]}"; do
     validity="$(get_validity "$file")"
-    if [ "$validity" = "有効" ]; then
+    if [ "$validity" = "$ADR_VALIDITY_ACTIVE" ]; then
         stem="$(basename "$file" .md)"
         title="$(get_title "$file")"
         printf -- '- [%s](./%s.md): %s\n' "$stem" "$stem" "$title"

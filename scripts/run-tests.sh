@@ -92,14 +92,17 @@ MSG
 # 更新する（§7 の移行対応表は移行完了時点の凍結記録であり、追随の対象ではない）。
 EXPECTED_BATS=(
     adr-commit-gate.bats
+    adr-config.bats
     adr-portability.bats
     eval-placement.bats
     gen-adr-index.bats
     lint-adr-layers.bats
     lint-adr-stem.bats
     lint-adr-xref.bats
+    lint-adr-undo.bats
     manage-adr-surface.bats
     next-adr-id.bats
+    verify-split-verbatim.bats
     plugin-manifests.bats
     run-codex-local.bats
     run-plugin-eval.bats

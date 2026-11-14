@@ -8,7 +8,7 @@
 
 | スイート | 実体 | 内容 |
 |---|---|---|
-| `bats` | `scripts/tests/*.bats` | adr プラグイン同梱の検査器のテスト・adr プラグインの commit ゲートが検査対象のツリーと検査する内容（index・作業ツリー）を決める振る舞い・writing プラグイン同梱の検査器のテスト・living-spec プラグインの中継（`scripts/run.mjs`）が検査器を見つけられないとき・検査器がプラグインの前提より古いときの振る舞い・living-spec の Release のワークフローの構造（起動契機・書き込み権限・待ち合わせ・job と step の条件）・配布物と配布元の一方向性の検査・`run-codex-local.sh` の開発用ホームでの起動・runner 自身の fail-closed 検査（`scripts/tests/*.bats` の網羅列挙ではない） |
+| `bats` | `scripts/tests/*.bats` | adr プラグイン同梱の検査器のテスト（導入先の設定ファイルで語を定めたときの振る舞いを含む）・adr プラグインの commit ゲートが検査対象のツリーと検査する内容（index・作業ツリー）を決める振る舞い・writing プラグイン同梱の検査器のテスト・living-spec プラグインの中継（`scripts/run.mjs`）が検査器を見つけられないとき・検査器がプラグインの前提より古いときの振る舞い・living-spec の Release のワークフローの構造（起動契機・書き込み権限・待ち合わせ・job と step の条件）・配布物と配布元の一方向性の検査・`run-codex-local.sh` の開発用ホームでの起動・runner 自身の fail-closed 検査（`scripts/tests/*.bats` の網羅列挙ではない） |
 | `living-spec` | `pnpm --dir tools/living-spec test`（依存が入っていなければ先に `pnpm --dir tools/living-spec install --frozen-lockfile`） | living-spec の検査器の試験（規則の分岐・読み込みから出力までの見本・入口・描画・基準の版との差分・前提より古い検査器のフックを中継が扱うときの範囲の判定） |
 | `validate-plugin-manifests` | `scripts/validate-plugin-manifests.sh .` | marketplace、manifest、README、skill集合の双方向一致 |
 | `validate-plugin-portability` | `scripts/validate-plugin-portability.sh .` | matrix、permission ledger、参照境界 |
@@ -140,7 +140,7 @@ bats は TAP 形式で報告する。runner は失敗したスイートの出力
 
 **受容した犠牲**: 手元のゲートが覆うのは Claude Code の Bash ツール経由の commit だけである（§2）。素の端末からの commit と `git -C` は、検出が push 時点の CI まで遅れる。
 
-**ADR 化しない**。`plugins/adr/skills/manage-adr/references/adr-scoping.md` の粒度判定で閾値に達しない（反転に要る修正は起動元2本と本書に限られ、規範の適用先は起動場所だけで、射程内の違反はツールが現に阻止する）。行き先は「ツールで自動強制される規範 → 実装・テスト資産・操作手順」である。規範の実体は `scripts/hooks/pre-commit-gate.sh`・`scripts/run-tests.sh`・`.github/workflows/test.yml` が持ち、採用理由と既知の限界は本節と §2 に置く。
+**ADR 化しない**。`plugins/adr/skills/manage-adr/references/adr-scoping.md` の粒度判定で閾値に達しない。反転に要る修正は起動元2本と本書に限られ、規範の適用先は起動場所だけで、射程内の違反はツールが現に阻止する。行き先は `adr-destination.md` の「ADR 化しない」の第1分岐であり、規範を担う保持先が値域(A)に在るため実装・テスト資産・操作手順に置く。規範の実体は `scripts/hooks/pre-commit-gate.sh`・`scripts/run-tests.sh`・`.github/workflows/test.yml` が持つ。採用理由と既知の限界は本節と §2 に置く。
 
 ### 問い2: 実行経路は配布物境界のどちら側に属するか
 

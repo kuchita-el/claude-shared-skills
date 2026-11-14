@@ -1,0 +1,7 @@
+# 見出し形式の分割の対応表（逐語一致する正例）
+1 ADR-203101011100-01-successor-a 1
+2 ADR-203101011100-01-successor-a.md 2
+5 ADR-203101011100-01-successor-a 3
+3 ADR-203101011100-02-successor-b 1
+4 retire
+6 keep

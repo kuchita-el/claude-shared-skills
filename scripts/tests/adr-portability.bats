@@ -27,4 +27,9 @@ load 'helpers/common'
     run bash "$REPO_ROOT/plugins/adr/scripts/next-adr-id.sh" "$corpus"
     [ "$status" -eq 0 ]
     [[ "$output" == ADR-* ]]
+
+    split="$REPO_ROOT/scripts/fixtures/verify-split-verbatim/list"
+    run bash "$REPO_ROOT/plugins/adr/scripts/verify-split-verbatim.sh" "$split/ADR-203102011000-01-original.md" "$split/map.txt"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *'結果: 合格'* ]]
 }

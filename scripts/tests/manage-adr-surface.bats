@@ -10,7 +10,7 @@
 # レイヤ1 の合法な状態集合を条文と別に定義し直していないことを見る。いずれも守っているのは
 # 「正本が一意であること」であって drift-lint の検査分岐そのものではないため、
 # レイヤ単位の被覆の根拠には数えない。lint の検査内容を検査する bats は
-# `lint-adr-layers.bats` / `lint-adr-stem.bats` / `lint-adr-xref.bats` の3本である。
+# `lint-adr-layers.bats` / `lint-adr-stem.bats` / `lint-adr-xref.bats` / `lint-adr-undo.bats` の4本である。
 #
 # 新スキーマの編集機構に関する旧記述の除去を検査する。
 # 運用ルールの正本は docs/adr/README.md ではなく manage-adr スキル側にあるため、存在検査の
@@ -403,7 +403,7 @@ setup_file() {
 # 参照面に現存する節名参照の件数。参照を減らす変更でここが赤になるのは意図した摩擦であり、
 # 減らすことが正しいと判断した場合に限り本定数を下げる。参照を増やす変更では増えた実数へ
 # 上げる。据え置くと、増やした参照が抽出から丸ごと落ちても下限を割らず緑で通る。
-AC5_SECTION_REF_MIN=36
+AC5_SECTION_REF_MIN=58
 
 # 参照面の見出しを "<basename><TAB><見出しテキスト>" の行として出す。
 surface_heading_index() {
