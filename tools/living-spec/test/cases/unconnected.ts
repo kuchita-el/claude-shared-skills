@@ -235,6 +235,49 @@ export const cases: Case[] = [
     },
     expected: [],
   },
+  // 仮説の情報が間に入っても、その親が UC から参照されていれば、仮説の情報を通して孫は接続している
+  {
+    name: 'pass-aggregate-hypothesis-between',
+    files: {
+      'docs/rdra/information.yaml': t`
+        - 情報: 経費申請
+        - 情報: 経費明細
+          集約の親: 経費申請
+          仮説:
+            - H1
+        - 情報: 領収書の画像
+          集約の親: 経費明細
+      `,
+      'docs/rdra/use-case.yaml': t`
+        - UC: 経費申請を作成する
+          情報:
+            - 経費申請
+      `,
+    },
+    expected: [],
+  },
+  // 上の件から根の UC からの参照を外すと、仮説の情報は判定しないが、事実の根と孫は落ちる
+  {
+    name: 'fail-aggregate-hypothesis-between-unconnected',
+    files: {
+      'docs/rdra/information.yaml': t`
+        - 情報: 経費申請
+        - 情報: 経費明細
+          集約の親: 経費申請
+          仮説:
+            - H1
+        - 情報: 領収書の画像
+          集約の親: 経費明細
+        - 情報: 従業員
+      `,
+      'docs/rdra/use-case.yaml': t`
+        - UC: 従業員を登録する
+          情報:
+            - 従業員
+      `,
+    },
+    expected: [...un('docs/rdra/information.yaml', '情報:経費申請'), ...un('docs/rdra/information.yaml', '情報:領収書の画像')],
+  },
   // 空白だけの集約の親は書いていないものとみなし、独立した情報として UC からの参照を求める
   {
     name: 'fail-aggregate-parent-blank',

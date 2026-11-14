@@ -236,6 +236,11 @@ function loadTable(text: string | undefined, def: TableDef, out: Violation[]): R
         });
       }
     }
+    // 集約の親は1つ。「、」で複数の親を書いた値は書式の誤り（名前1つとして参照を引かない。aggregateParent・refSpecs）
+    const parentVal = item[AGGREGATE_PARENT];
+    if (def.id === 'information' && typeof parentVal === 'string' && parentVal.includes('、')) {
+      out.push({ rule: 'invalid-shape', file: def.file, target, detail: `キー『${AGGREGATE_PARENT}』に親を「、」で複数書いている（親は情報の名前1つ）` });
+    }
     // 条件のキーに値があるのに、要されるキーが無い・空白だけなら落とす。どちらかの値が文字列でないときは上の型の検査に任せる
     for (const [from, to] of Object.entries(def.requires)) {
       const fromVal = item[from];
@@ -249,10 +254,11 @@ function loadTable(text: string | undefined, def: TableDef, out: Violation[]): R
   return rows;
 }
 
-// 情報のレコードの集約の親の名前。キーが無い・空白だけ・文字列でないなら null（独立した情報。型の誤りは invalid-shape が拾う）
+// 情報のレコードの集約の親の名前。キーが無い・空白だけ・文字列でない・「、」で複数書いたなら null
+// （独立した情報として扱う。型の誤りと複数の親は invalid-shape が拾う）
 export function aggregateParent(row: Row): string | null {
   const v = row.data[AGGREGATE_PARENT];
-  return typeof v === 'string' && v.trim() !== '' ? v.trim() : null;
+  return typeof v === 'string' && v.trim() !== '' && !v.includes('、') ? v.trim() : null;
 }
 
 // 情報の名前 → それを集約の親に挙げる情報の名前（表の順）。描画が UC の情報の項に子を添えるために使う
@@ -268,6 +274,7 @@ export function aggregateChildren(rows: Record<string, Row[]>): Map<string, stri
 }
 
 // 接続している情報の名前。UC の『情報』から指される情報と、集約の親が表にあり接続している情報（孫も親を辿って同じく）。
+// 仮説の情報も、接続していれば子へ接続を伝える（仮説が外すのは、そのレコード自身の未接続の判定だけ）。
 // 関連情報からの参照は数えない（独立した情報どうしの参照にも使うため）。親を辿っても UC に着かない循環は接続しない
 function connectedInformation(rows: Record<string, Row[]>): Set<string> {
   const connected = new Set<string>();
@@ -411,7 +418,8 @@ export function checkSources(sources: Sources): Violation[] {
     { from: 'use-case', key: '情報', toKind: '情報', exists: has('information') },
     { from: 'use-case', key: '条件', toKind: '条件', exists: has('condition') },
     { from: 'information', key: '関連情報', toKind: '情報', exists: has('information') },
-    { from: 'information', key: AGGREGATE_PARENT, toKind: '情報', exists: has('information') },
+    // 「、」で複数書いた値は invalid-shape が拾うので、名前1つとして引かない
+    { from: 'information', key: AGGREGATE_PARENT, toKind: '情報', exists: (v) => v.includes('、') || names['information'].has(v) },
     { from: 'information', key: '状態モデル', toKind: '状態モデル', exists: (v) => models.has(v) },
     { from: 'information', key: 'バリエーション', toKind: 'バリエーション', exists: has('variation') },
     { from: 'state', key: '遷移UC', toKind: 'UC', exists: has('use-case') },
