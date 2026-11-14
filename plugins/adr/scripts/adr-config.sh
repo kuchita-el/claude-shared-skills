@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# adr プラグインの設定の読み込み部。lint-adr.sh と gen-adr-index.sh が読み込んで使う
-# （単体では実行しない。関数と定数を定義するだけで、読み込んだ時点では何も読まない）。
+# adr プラグインの設定の読み込み部。lint-adr.sh・gen-adr-index.sh・next-adr-id.sh と commit ゲートが
+# 読み込んで使う（単体では実行しない。関数と定数を定義するだけで、読み込んだ時点では何も読まない）。
 #
 # 設定は `キー: 値` を1行ずつ並べたファイルで定める。キーと書き方の説明は、同梱の
 # 既定値のファイル（adr-config.default）が持つ。
@@ -14,11 +14,20 @@
 # があればそれを読む。無ければ同梱の既定値を使う。git のトップレベルを決められなければ、
 # 既定値だけを使う。起点は呼び出し側が渡す（検査・生成の対象の ADR ディレクトリ）。
 #
+# ADR ディレクトリ（キー adr-dir）: 単体のスクリプトは、引数で ADR ディレクトリを受け取れば
+# それを使い、キーを読まない。引数を省いたときは、カレントディレクトリを起点に設定を解決し、
+# adr-dir の値（導入先の設定に無ければ同梱の既定値）を git のトップレベルからの相対パスとして
+# 読む。トップレベルを決められなければ、カレントディレクトリからの相対パスとして読む
+# （adr_config_resolve_adr_dir）。commit ゲートは引数を取らず、常にキーから決める。
+# adr-dir は語の群に属さず、語の群と独立に置いてよい。値が絶対パスであるか、`..` を含むときは
+# 設定の誤りとする。トップレベルの外を指すと、ゲートが git の index から ADR を取り出せないためである。
+#
 # 環境変数 ADR_CONFIG_ROOT が空でなければ、git による探索をせず、その値のディレクトリを
 # トップレベルとみなす（`$ADR_CONFIG_ROOT/.claude/adr/config` があれば読み、無ければ既定値）。
 # 値が存在しないディレクトリを指すときは、設定の誤りとして止める。誤りの検査は同じく掛かる。
 # これは、commit ゲートが git の外（一時ディレクトリ）へ取り出したツリーを検査するときと、
-# テストのための内部の経路である。利用者が設定を渡す主たる手段は、リポジトリに置く
+# テストのための内部の経路である。単体のスクリプトが引数を省いたときに、カレントディレクトリから
+# 決めたトップレベルを固定するのにも使う（adr_config_resolve_adr_dir）。利用者が設定を渡す主たる手段は、リポジトリに置く
 # `.claude/adr/config` のままである。設定の中身は常にリポジトリのファイルから読み、この変数は
 # そのファイルの在処を示すだけなので、「設定を環境変数だけで渡す」案（利用者がフックの環境を
 # 整える必要があり、リポジトリと一緒に配れない）とは別物である。
@@ -56,8 +65,11 @@ ADR_CONFIG_WORD_KEYS=(
 )
 ADR_CONFIG_STATE_KEY_COUNT=6
 
-# 設定に書いてよいキーの全体。いまは語の群だけである。
-ADR_CONFIG_KNOWN_KEYS=("${ADR_CONFIG_WORD_KEYS[@]}")
+# ADR ディレクトリのキー。語の群に属さない。
+ADR_CONFIG_DIR_KEY="adr-dir"
+
+# 設定に書いてよいキーの全体。語の群と ADR ディレクトリのキーである。
+ADR_CONFIG_KNOWN_KEYS=("${ADR_CONFIG_WORD_KEYS[@]}" "$ADR_CONFIG_DIR_KEY")
 
 # 解決した語。adr_config_load が成功したときだけ値が入る。
 ADR_STATUS_PROPOSED=""
@@ -72,6 +84,12 @@ ADR_INDEX_NOTICE=""
 
 # 解決に使った設定ファイル（導入先の設定を使ったときはそのパス、使わなかったときは既定値のパス）。
 ADR_CONFIG_SOURCE=""
+
+# 設定を探したトップレベル（ADR_CONFIG_ROOT か git のトップレベル。決められなければ空）。
+ADR_CONFIG_TOPLEVEL=""
+# adr-dir の値（トップレベルからの相対パス。末尾の / は落とす）と、その値を読んだ設定ファイル。
+ADR_CONFIG_ADR_DIR=""
+ADR_CONFIG_ADR_DIR_SOURCE=""
 
 # キー名から ADR_CONFIG_KNOWN_KEYS の添字を求め、_ADR_CONFIG_INDEX へ格納する。
 # 戻り値: 知っているキーなら 0、知らないキーなら 1
@@ -153,6 +171,34 @@ _adr_config_count_words() {
     done
 }
 
+# 直前の _adr_config_parse の結果のうち、adr-dir の値を検査し、末尾の / を落とした値を
+# _ADR_CONFIG_DIR_VALUE へ格納する（書かれていない・値が空のときは空）。誤りは
+# ADR_CONFIG_ERRORS へ積む。引数: $1 読んだ設定ファイル
+_adr_config_take_adr_dir() {
+    local file="$1" value line
+    _adr_config_key_index "$ADR_CONFIG_DIR_KEY"
+    value="${_ADR_CONFIG_VALUES[$_ADR_CONFIG_INDEX]}"
+    line="${_ADR_CONFIG_LINES[$_ADR_CONFIG_INDEX]}"
+    _ADR_CONFIG_DIR_VALUE=""
+    [ -n "$value" ] || return 0
+    case "$value" in
+        /*)
+            ADR_CONFIG_ERRORS+=("$file:$line: キー \"$ADR_CONFIG_DIR_KEY\" の値 \"$value\" が絶対パスです（git のトップレベルからの相対パスを書きます）")
+            return 0
+            ;;
+    esac
+    case "/$value/" in
+        */../*)
+            ADR_CONFIG_ERRORS+=("$file:$line: キー \"$ADR_CONFIG_DIR_KEY\" の値 \"$value\" が \"..\" を含みます（git のトップレベルの中を指す相対パスを書きます）")
+            return 0
+            ;;
+    esac
+    while [ "${value%/}" != "$value" ]; do
+        value="${value%/}"
+    done
+    _ADR_CONFIG_DIR_VALUE="$value"
+}
+
 # 起点のディレクトリ $1 から設定を解決し、語を ADR_STATUS_PROPOSED などの変数へ格納する。
 # $1 が空なら、git のトップレベルを探さず既定値だけを使う。
 # 戻り値: 解決できれば 0、設定に誤りがあれば 2（原因は標準エラーへ出す）
@@ -163,12 +209,16 @@ adr_config_load() {
 
     ADR_CONFIG_ERRORS=()
     ADR_CONFIG_SOURCE=""
+    ADR_CONFIG_TOPLEVEL=""
+    ADR_CONFIG_ADR_DIR=""
+    ADR_CONFIG_ADR_DIR_SOURCE=""
 
     if [ -n "${ADR_CONFIG_ROOT:-}" ]; then
         # トップレベルの明示（ヘッダの注記）。git による探索より優先する。指し先が無いときに
         # 既定値へ黙って落とすと、導入先の設定を読まないまま検査が進むため、誤りとして止める。
         if [ -d "$ADR_CONFIG_ROOT" ]; then
-            user_file="$ADR_CONFIG_ROOT/$ADR_CONFIG_USER_RELPATH"
+            toplevel="$ADR_CONFIG_ROOT"
+            user_file="$toplevel/$ADR_CONFIG_USER_RELPATH"
         else
             ADR_CONFIG_ERRORS+=("ADR_CONFIG_ROOT=$ADR_CONFIG_ROOT: 設定を探すトップレベルとして指定されたディレクトリがありません")
         fi
@@ -192,6 +242,12 @@ adr_config_load() {
             words+=("${_ADR_CONFIG_VALUES[$_ADR_CONFIG_INDEX]}")
         done
         ADR_CONFIG_SOURCE="$ADR_CONFIG_DEFAULT_FILE"
+        _adr_config_take_adr_dir "$ADR_CONFIG_DEFAULT_FILE"
+        if [ -z "$_ADR_CONFIG_DIR_VALUE" ]; then
+            ADR_CONFIG_ERRORS+=("$ADR_CONFIG_DEFAULT_FILE: 同梱の既定値に正しい $ADR_CONFIG_DIR_KEY がありません")
+        fi
+        ADR_CONFIG_ADR_DIR="$_ADR_CONFIG_DIR_VALUE"
+        ADR_CONFIG_ADR_DIR_SOURCE="$ADR_CONFIG_DEFAULT_FILE"
     fi
 
     if [ -n "$user_file" ] && [ -e "$user_file" ]; then
@@ -209,6 +265,12 @@ adr_config_load() {
                     words+=("${_ADR_CONFIG_VALUES[$_ADR_CONFIG_INDEX]}")
                 done
                 ADR_CONFIG_SOURCE="$user_file"
+            fi
+            # adr-dir は語の群と独立に置いてよい。書かれていれば既定値を置き換える
+            _adr_config_take_adr_dir "$user_file"
+            if [ -n "$_ADR_CONFIG_DIR_VALUE" ]; then
+                ADR_CONFIG_ADR_DIR="$_ADR_CONFIG_DIR_VALUE"
+                ADR_CONFIG_ADR_DIR_SOURCE="$user_file"
             fi
         fi
     fi
@@ -244,5 +306,41 @@ adr_config_load() {
     ADR_XREF_HEADING="${words[6]}"
     ADR_INDEX_TITLE="${words[7]}"
     ADR_INDEX_NOTICE="${words[8]}"
+    ADR_CONFIG_TOPLEVEL="$toplevel"
     return 0
+}
+
+# 単体のスクリプトが受け取った引数 $1（省いたときは空）から、対象の ADR ディレクトリを決めて
+# ADR_DIR へ格納する。優先順は「引数 → 設定の adr-dir → 同梱の既定値」である。
+#   - 引数があれば、それを使う（末尾の / を1つ落とす）。設定はまだ読まない
+#   - 引数が無ければ、カレントディレクトリを起点に設定を解決し、adr-dir の値をトップレベルからの
+#     相対パスとして読む。トップレベルを決められなければ、カレントディレクトリからの相対パスとする
+# 引数を省いたときは、決めたトップレベルを ADR_CONFIG_ROOT として環境へ置く。後で ADR ディレクトリを
+# 起点に設定を解決し直すとき（lint が起動する index の生成器を含む）に、別のトップレベル
+# （ADR ディレクトリが入れ子のリポジトリの中にある場合）の設定へずれないようにするためである。
+# 戻り値: 決められれば 0、設定に誤りがあれば 2（原因は adr_config_load が標準エラーへ出す）
+adr_config_resolve_adr_dir() {
+    ADR_DIR_FROM_CONFIG=0
+    if [ -n "$1" ]; then
+        ADR_DIR="${1%/}"
+        return 0
+    fi
+    adr_config_load "." || return 2
+    ADR_DIR="${ADR_CONFIG_TOPLEVEL:+$ADR_CONFIG_TOPLEVEL/}$ADR_CONFIG_ADR_DIR"
+    ADR_DIR_FROM_CONFIG=1
+    if [ -n "$ADR_CONFIG_TOPLEVEL" ]; then
+        ADR_CONFIG_ROOT="$ADR_CONFIG_TOPLEVEL"
+        export ADR_CONFIG_ROOT
+    fi
+    return 0
+}
+
+# adr_config_resolve_adr_dir で決めた ADR_DIR が無いことを、標準エラーへ出す。引数を省いて設定から
+# 決めたときは、どの設定ファイルのどの値から決めたかを添える。
+adr_config_report_missing_adr_dir() {
+    echo "エラー: ディレクトリが見つかりません: $ADR_DIR" >&2
+    if [ "${ADR_DIR_FROM_CONFIG:-0}" -eq 1 ]; then
+        echo "  引数を省いたため、$ADR_CONFIG_ADR_DIR_SOURCE の $ADR_CONFIG_DIR_KEY（値: $ADR_CONFIG_ADR_DIR）から決めました。" >&2
+        echo "  値は git のトップレベル（決められなければカレントディレクトリ）からの相対パスとして読みます。" >&2
+    fi
 }

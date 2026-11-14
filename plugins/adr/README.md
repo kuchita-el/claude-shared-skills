@@ -46,6 +46,19 @@ host adapterへ移行するトリガーとします。移行まではホスト�
 
 ## ADR ディレクトリの指定（`ADR_DIR`）
 
-`lint-adr.sh` / `gen-adr-index.sh` / `next-adr-id.sh` は、対象の ADR ディレクトリを第1引数（`ADR_DIR`）で受け取る。対象は、前2者では検査対象、`next-adr-id.sh` では既存 ADR の列挙対象である。**既定は `docs/adr`** である。導入先が別配置（例 `architecture/decisions`）を使う場合は引数で上書きする。commit ゲートは、commit を実行するリポジトリの既定の `docs/adr` を対象に実行する。
+対象の ADR ディレクトリは、`lint-adr.sh` / `gen-adr-index.sh` では検査対象、`next-adr-id.sh` では既存 ADR の列挙対象である。commit 前ゲートでは検査対象である。対象は次の順で決まる。
 
-> ADR の言語に依存する語は、導入先の git のトップレベルに置く `.claude/adr/config` で定められる。対象は `status` と `validity` の値・相互参照の節の見出し・index の題名と注記である。書き方とキーは、同梱の既定値のファイル `scripts/adr-config.default` の冒頭にある。現時点で設定に従うのは `lint-adr.sh` と `gen-adr-index.sh`（と、それを起動する commit 前ゲート）だけである。manage-adr スキルは既定値の語（日本語）を書き込むため、語の群を書き換えたリポジトリでは、スキルが書いた front-matter を設定の語へ直す必要がある。環境変数 `ADR_CONFIG_ROOT` は、ゲートとテストが git の外で検査するための内部の経路であり、利用者が設定を渡す手段ではない。ADR ディレクトリを指定する手段は、現時点では `ADR_DIR` 引数だけである。
+- 単体のスクリプトは、第1引数（`ADR_DIR`）→ 設定の `adr-dir` → 既定の `docs/adr` の順に採る。
+- commit 前ゲートは引数を取らず、設定の `adr-dir` → 既定の `docs/adr` の順に採る。
+  - index の検査ではステージした設定の `adr-dir` を、作業ツリーの検査では作業ツリーの設定の `adr-dir` を使う。
+
+`adr-dir` は、導入先の git のトップレベルに置く設定ファイル `.claude/adr/config` に書く。書き方は `adr-dir: architecture/decisions` のように1行である。
+
+- `adr-dir` の値と既定の `docs/adr` は、git のトップレベルからの相対パスとして読む。
+- 第1引数を省いたスクリプトは、カレントディレクトリから git のトップレベルを決める。決められないときは、カレントディレクトリからの相対パスとして読む。
+- 第1引数で渡したパスは、カレントディレクトリからのパスとして読む。
+- `adr-dir` は、下の注記の語の群と独立に置いてよい。`adr-dir` だけを書いた設定でも、語は既定値を使う。
+- 値が絶対パスであるか `..` を含むときは、設定の誤りとして exit 2 で止まる。トップレベルの外は指せない。
+- 既定値の `docs/adr` は、同梱の既定値のファイル `scripts/adr-config.default` の `adr-dir` が持つ。
+
+> ADR の言語に依存する語は、導入先の git のトップレベルに置く `.claude/adr/config` で定められる。対象は `status` と `validity` の値・相互参照の節の見出し・index の題名と注記である。書き方とキーは、同梱の既定値のファイル `scripts/adr-config.default` の冒頭にある。現時点で語の設定に従うのは `lint-adr.sh` と `gen-adr-index.sh`（と、それを起動する commit 前ゲート）だけである。manage-adr スキルは既定値の語（日本語）を書き込むため、語の群を書き換えたリポジトリでは、スキルが書いた front-matter を設定の語へ直す必要がある。環境変数 `ADR_CONFIG_ROOT` は、ゲートとテストが git の外で検査するための内部の経路であり、利用者が設定を渡す手段ではない。
