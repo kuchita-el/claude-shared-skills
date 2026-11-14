@@ -2,14 +2,18 @@
 # adr プラグインの commit ゲート（plugins/adr/hooks/adr-commit-gate）と、ゲートが起動する
 # drift-lint（plugins/adr/scripts/lint-adr.sh）の実行環境の前提のテスト。
 #
-# ゲートについて固定するのは、検査対象のツリーの解決である。
+# ゲートについて固定するのは、検査対象のツリーの解決と、検査する内容の選び方である。
 #   - コミットが実際に走る git コンテキスト（PreToolUse の JSON の cwd → フックの cwd →
 #     CLAUDE_PROJECT_DIR の順）から解決し、worktree からの commit で project root 側を
 #     検査しない
 #   - docs/adr が無いことによる no-op と、コミット対象を特定できないことを区別し、後者を
 #     通さない
+#   - ステージした内容（index）を検査する。コマンドがステージを変えうるときは、作業ツリーも
+#     併せて検査する。作業ツリーが index と同じなら、作業ツリーの検査を重ねない
+#   - index を取り出せないときは通さず、取り出した一時ディレクトリを残さない
 # 検出の側（worktree の違反で止まる）だけでなく、その逆（project root 側の違反では止まらない）
-# も対で置く。前者だけでは「両方のツリーを検査する」変異が赤にならない。
+# も対で置く。前者だけでは「両方のツリーを検査する」変異が赤にならない。検査する内容についても、
+# index の違反で止まる側と、作業ツリーだけの違反では止まらない側を対で置く。
 #
 # lint について固定するのは、bash 4.2 未満で原因を示して exit 2 で止まることである。
 # BASH_VERSINFO は書き換えられないため、BASH_VERSION を差し替えたシェルで lint を読み込み、
@@ -29,6 +33,8 @@ VALID_CORPUS="$FIXTURES_DIR/lint-adr/valid/02-xref-valid"
 INVALID_CORPUS="$FIXTURES_DIR/lint-adr/invalid/01-status-missing"
 INVALID_MESSAGE="status が空です"
 UNRESOLVED_MESSAGE="コミット対象のリポジトリを特定できません"
+STAGED_MESSAGE="ステージした内容（index）の docs/adr が drift-lint に違反しています"
+WORKTREE_MESSAGE="作業ツリーの docs/adr が drift-lint に違反しています"
 BASH_VERSION_MESSAGE="bash 4.2 以上を必要とします"
 CORPORA=()
 PRECONDITION_PATHS=("$LINT_ADR" "$VALID_CORPUS" "$INVALID_CORPUS")
@@ -61,14 +67,36 @@ make_repo() {
     printf '%s' "$dir"
 }
 
-# 引数1 のリポジトリから worktree を作り、その docs/adr を引数2 の ADR 群で置き換える
-# （作業ツリー上の変更のまま。ゲートは commit 前の作業ツリーを検査する）。
+# 引数1 のディレクトリの docs/adr を、引数2 の ADR 群で置き換える（空なら docs/adr を消す）。
+replace_adr() {
+    local dir="$1" corpus="${2-}"
+    rm -rf "$dir/docs/adr"
+    if [ -n "$corpus" ]; then
+        mkdir -p "$dir/docs"
+        cp -R "$corpus" "$dir/docs/adr"
+    fi
+}
+
+# 引数1 のリポジトリから worktree を作り、その docs/adr を引数2 の ADR 群で置き換えてステージする
+# （index と作業ツリーが一致する。ここで固定するのは検査対象のツリーの解決である）。
 make_worktree() {
     local main="$1" corpus="$2"
     local dir="$BATS_TEST_TMPDIR/wt-$(basename "$main")"
     git -C "$main" worktree add -q "$dir" -b "wt-$(basename "$main")"
-    rm -rf "$dir/docs/adr"
-    cp -R "$corpus" "$dir/docs/adr"
+    replace_adr "$dir" "$corpus"
+    git -C "$dir" add -A docs/adr
+    printf '%s' "$dir"
+}
+
+# 適合する ADR 群を commit したリポジトリを作り、index の docs/adr を引数2 の ADR 群、
+# 作業ツリーの docs/adr を引数3 の ADR 群にする（空なら、その側に docs/adr を置かない）。
+make_staged_repo() {
+    local name="$1" staged="${2-}" worktree="${3-}"
+    local dir
+    dir="$(make_repo "$name" "$VALID_CORPUS")"
+    replace_adr "$dir" "$staged"
+    git -C "$dir" add -A docs
+    replace_adr "$dir" "$worktree"
     printf '%s' "$dir"
 }
 
@@ -88,11 +116,16 @@ hook_input() {
     fi
 }
 
-# ゲートを起動する。引数: フックの cwd / stdin へ渡す入力 / CLAUDE_PROJECT_DIR（`-` なら未設定）
+# ゲートを起動する。引数: フックの cwd / stdin へ渡す入力 / CLAUDE_PROJECT_DIR（`-` なら未設定）/
+# TMPDIR（省略時はテストの一時ディレクトリの中に作る）
 # git の探索は一時ディレクトリの内側で打ち切る。外側（テストを走らせているリポジトリ等）へ
 # 遡って解決すると、「特定できない」経路を検査できなくなる。
 run_gate() {
-    local hook_cwd="$1" input="$2" project_dir="$3"
+    local hook_cwd="$1" input="$2" project_dir="$3" tmpdir="${4-}"
+    if [ -z "$tmpdir" ]; then
+        tmpdir="$BATS_TEST_TMPDIR/gate-tmp"
+        mkdir -p "$tmpdir"
+    fi
     # env は `-u` を代入より前にしか受け付けない
     local -a env_args=(-u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE)
     if [ "$project_dir" = "-" ]; then
@@ -100,7 +133,7 @@ run_gate() {
     else
         env_args+=("CLAUDE_PROJECT_DIR=$project_dir")
     fi
-    env_args+=("GIT_CEILING_DIRECTORIES=$BATS_TEST_TMPDIR")
+    env_args+=("GIT_CEILING_DIRECTORIES=$BATS_TEST_TMPDIR" "TMPDIR=$tmpdir")
     run env "${env_args[@]}" bash -c 'cd "$1" && printf "%s" "$2" | bash "$3"' \
         _ "$hook_cwd" "$input" "$SUT"
 }
@@ -215,6 +248,126 @@ run_gate() {
         collect_contains "$output" "rc=0" "版 \"$version\" では版の判定を通過する"
         collect_not_contains "$output" "$BASH_VERSION_MESSAGE" "版 \"$version\" では版の不足を報告しない"
     done
+
+    collect_finish
+}
+
+@test "面⑦: index をそのまま commit するコマンドでは、ステージした内容だけを検査する" {
+    collect_init
+
+    local repo command
+    repo="$(make_staged_repo staged-invalid "$INVALID_CORPUS" "$VALID_CORPUS")"
+    run_gate "$repo" "$(hook_input "git commit -m x" "$repo")" "$repo"
+    collect_rc 2 "ステージした ADR が壊れていれば、作業ツリーの側が正しくても止まる"
+    collect_contains "$output" "$STAGED_MESSAGE" "ステージした内容の違反であることが示される"
+    collect_contains "$output" "$INVALID_MESSAGE" "ステージした内容の違反が報告される"
+
+    repo="$(make_staged_repo staged-valid "$VALID_CORPUS" "$INVALID_CORPUS")"
+    for command in "git commit -m x" "git commit -m \"two words\" --amend --no-edit" \
+        "git commit -F msg.txt" "git commit -mx -s -q"; do
+        run_gate "$repo" "$(hook_input "$command" "$repo")" "$repo"
+        collect_rc 0 "ステージした ADR が正しければ、未ステージの側が壊れていても通す（$command）"
+    done
+
+    collect_finish
+}
+
+@test "面⑧: ステージを変えうるコマンドでは、作業ツリーも併せて検査する" {
+    collect_init
+
+    local repo command
+    repo="$(make_staged_repo staged-valid "$VALID_CORPUS" "$INVALID_CORPUS")"
+    for command in "git commit -a -m x" "git commit -am x" "git commit --all -m x" \
+        "git commit -i -m x docs/adr" "git commit -o -m x" "git commit -m x docs/adr" \
+        "git commit -m x -- docs/adr" "git add docs/adr && git commit -m x" \
+        "git add docs/adr; git commit -m x" 'git commit -m "$(printf x)"' \
+        'git commit -m "unterminated'; do
+        run_gate "$repo" "$(hook_input "$command" "$repo")" "$repo"
+        collect_rc 2 "作業ツリーの違反で止まる（$command）"
+        collect_contains "$output" "$WORKTREE_MESSAGE" "作業ツリーの違反であることが示される（$command）"
+    done
+
+    # 作業ツリーを併せて検査するときも、index の検査は外さない
+    repo="$(make_staged_repo staged-invalid "$INVALID_CORPUS" "$VALID_CORPUS")"
+    run_gate "$repo" "$(hook_input "git commit -a -m x" "$repo")" "$repo"
+    collect_rc 2 "ステージした ADR の違反で止まる（git commit -a）"
+    collect_contains "$output" "$STAGED_MESSAGE" "ステージした内容の違反であることが示される（git commit -a）"
+
+    # 作業ツリーが index と同じなら、作業ツリーの検査を重ねない（同じ違反を二度報告しない）
+    repo="$(make_staged_repo both-invalid "$INVALID_CORPUS" "$INVALID_CORPUS")"
+    run_gate "$repo" "$(hook_input "git commit -a -m x" "$repo")" "$repo"
+    collect_rc 2 "index と作業ツリーが同じ違反を持てば止まる"
+    collect_contains "$output" "$STAGED_MESSAGE" "ステージした内容の違反が報告される"
+    collect_not_contains "$output" "$WORKTREE_MESSAGE" "index と同じ作業ツリーは検査を重ねない"
+
+    # 未追跡のファイルが1つでもあれば、index と同じとは扱わない
+    repo="$(make_staged_repo extra-untracked "$VALID_CORPUS" "$VALID_CORPUS")"
+    cp "$INVALID_CORPUS"/ADR-*.md "$repo/docs/adr/"
+    run_gate "$repo" "$(hook_input "git commit -a -m x" "$repo")" "$repo"
+    collect_rc 2 "未追跡の ADR の違反で止まる"
+    collect_contains "$output" "$WORKTREE_MESSAGE" "作業ツリーの違反であることが示される（未追跡の ADR）"
+
+    # 追跡中のファイルの未ステージの変更があれば、index と同じとは扱わない
+    repo="$(make_staged_repo tracked-modified "$VALID_CORPUS" "$VALID_CORPUS")"
+    printf 'stale\n' >>"$repo/docs/adr/index.md"
+    run_gate "$repo" "$(hook_input "git commit -a -m x" "$repo")" "$repo"
+    collect_rc 2 "追跡中のファイルの未ステージの違反で止まる"
+    collect_contains "$output" "$WORKTREE_MESSAGE" "作業ツリーの違反であることが示される（追跡中のファイル）"
+
+    repo="$(make_staged_repo both-valid "$VALID_CORPUS" "$VALID_CORPUS")"
+    run_gate "$repo" "$(hook_input "git add docs/adr && git commit -a -m x" "$repo")" "$repo"
+    collect_rc 0 "index と作業ツリーがともに適合すれば通す"
+
+    collect_finish
+}
+
+@test "面⑨: index に docs/adr が無く、未追跡の ADR だけがあるとき" {
+    collect_init
+
+    local repo
+    repo="$(make_staged_repo untracked-only "" "$INVALID_CORPUS")"
+    run_gate "$repo" "$(hook_input "git commit -m x" "$repo")" "$repo"
+    collect_rc 0 "index をそのまま commit するなら、ADR は commit されないので通す"
+    collect_equals "$output" "" "no-op は何も出力しない"
+
+    run_gate "$repo" "$(hook_input "git add -A && git commit -m x" "$repo")" "$repo"
+    collect_rc 2 "ステージを変えうるなら、未追跡の ADR の違反で止まる"
+    collect_contains "$output" "$WORKTREE_MESSAGE" "作業ツリーの違反であることが示される"
+
+    collect_finish
+}
+
+@test "面⑩: index を取り出せなければ通さず、取り出した一時ディレクトリを残さない" {
+    collect_init
+
+    local repo tmpdir
+    repo="$(make_staged_repo staged-valid "$VALID_CORPUS" "$VALID_CORPUS")"
+    run_gate "$repo" "$(hook_input "git commit -m x" "$repo")" "$repo" "$BATS_TEST_TMPDIR/no-such-dir"
+    collect_rc 2 "一時ディレクトリを作れなければ止める"
+    collect_contains "$output" "一時ディレクトリを作れません" "止めた理由が示される"
+
+    # 未解決の衝突（index に stage 1〜3 の項目がある）は取り出せない
+    local path blob
+    path="$(git -C "$repo" ls-files -- docs/adr | head -n 1)"
+    blob="$(git -C "$repo" rev-parse ":$path")"
+    git -C "$repo" update-index --force-remove -- "$path"
+    printf '100644 %s 1\t%s\n100644 %s 2\t%s\n100644 %s 3\t%s\n' \
+        "$blob" "$path" "$blob" "$path" "$blob" "$path" | git -C "$repo" update-index --index-info
+    run_gate "$repo" "$(hook_input "git commit -m x" "$repo")" "$repo"
+    collect_rc 2 "index の docs/adr を取り出せなければ止める"
+    collect_contains "$output" "ステージした docs/adr を取り出せません" "止めた理由が示される"
+
+    # 通した場合と止めた場合のどちらでも、一時ディレクトリを残さない
+    tmpdir="$BATS_TEST_TMPDIR/cleanup-tmp"
+    mkdir -p "$tmpdir"
+    repo="$(make_staged_repo cleanup-valid "$VALID_CORPUS" "$VALID_CORPUS")"
+    run_gate "$repo" "$(hook_input "git commit -m x" "$repo")" "$repo" "$tmpdir"
+    collect_rc 0 "適合する index は通す（後始末の確認の前提）"
+    collect_equals "$(ls -A "$tmpdir")" "" "通した後に一時ディレクトリが残らない"
+    repo="$(make_staged_repo cleanup-invalid "$INVALID_CORPUS" "$VALID_CORPUS")"
+    run_gate "$repo" "$(hook_input "git commit -m x" "$repo")" "$repo" "$tmpdir"
+    collect_rc 2 "違反する index は止める（後始末の確認の前提）"
+    collect_equals "$(ls -A "$tmpdir")" "" "止めた後に一時ディレクトリが残らない"
 
     collect_finish
 }
