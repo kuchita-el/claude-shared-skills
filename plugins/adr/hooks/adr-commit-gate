@@ -7,7 +7,7 @@
 # 入力: PreToolUse の JSON を stdin で受ける（tool_input.command に Bash コマンド文字列）。
 #
 # exit code:
-#   0: git commit でない、またはコミット対象のリポジトリが ADR 未使用（docs/adr 不在）、または lint 適合（commit を通す）
+#   0: git commit でない、または commit されうる内容に docs/adr が無い、または lint 適合（commit を通す）
 #   2: lint 違反、コミット対象のリポジトリを特定できない、または前提が壊れている（commit をブロックする）
 #
 # exit 2 のとき Claude へ渡るのは stderr のみのため、lint の出力は >&2 へ振り替える。
@@ -34,9 +34,9 @@ esac
 # 実配置（--plugin-dir / marketplace / cache のいずれでも）に追随する。
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LINT_ADR="$SCRIPT_DIR/../scripts/lint-adr.sh"
+ADR_CONFIG_LIB="$SCRIPT_DIR/../scripts/adr-config.sh"
 
-# 検査対象のリポジトリを解決する。検査するのは、そのリポジトリの作業ツリーの docs/adr である。
-# index（ステージした内容）は取り出さないため、未ステージの変更も判定に含まれる。
+# 検査対象のリポジトリを解決する。検査する内容（index か作業ツリーか）は、下の「検査する内容」が定める。
 #
 # CLAUDE_PROJECT_DIR を単独の解決手段にしてはならない。同変数は project root（既定のチェック
 # アウト）を指すため、git worktree で作業しているセッションから commit すると、走るのは
@@ -76,12 +76,87 @@ if [ -z "$PROJECT_DIR" ]; then
     exit 2
 fi
 
-ADR_DIR="$PROJECT_DIR/docs/adr"
+ADR_REL="docs/adr"
 
-# コミット対象のリポジトリが ADR を使っていない（docs/adr 不在）場合は no-op で通す。
+# 検査する内容。判定を commit される内容と一致させるため、ステージした内容（index）を検査する。
+# 作業ツリーだけを検査すると、壊れた ADR をステージしたまま作業ツリーの側だけを直したときに、
+# 壊れた版が commit される。
+#
+# ただし、フックが走るのは commit コマンドの実行前である。`git add … && git commit` や
+# `git commit -a`、パスを指定した commit では、ステージがコマンドの中で変わり、実行前の index は
+# commit される内容ではない。そこで、コマンドが index をそのまま commit すると確実に言える
+# とき（commit_uses_index_only）だけ index を単独で検査し、それ以外は作業ツリーも併せて検査する。
+# どちらかに違反があれば止める。commit される内容をコマンド文字列から再現することはできない
+# ため、判別できない側を「止めうる側」に倒す。その代わり、ステージを変えたコマンドでは、
+# commit される内容が正しくても、index か作業ツリーの一方に違反が残っていれば止まる。
+#
+# 引数のコマンド文字列が、オプションだけを伴う単独の `git commit` であり、ステージを変える
+# 指定（-a / -i / -o / -p / パス等）を含まないときに 0 を返す。判別に使うのは許可した
+# オプションの一覧であり、一覧に無い語が1つでもあれば 1 を返す（併せて検査する側へ倒す）。
+# 記号の検査は引用符の中も区別しない。`$(...)` やヒアドキュメントでメッセージを組み立てる形も
+# 1 を返す。置換の中身は任意のコマンドでありうるため、index を変えないと言い切れない。
+commit_uses_index_only() {
+    local cmd="$1" tokens tok
+    local -a words=()
+
+    # 連結・置換・リダイレクト・エスケープ・改行を含むなら、他のコマンドが index を変えうる
+    case "$cmd" in
+        *[\;\&\|\<\>\(\)\$\`\\]* | *$'\n'* | *$'\r'*) return 1 ;;
+    esac
+    # 引用符を解いて語へ分ける。xargs はコマンドを実行せずに引用符だけを解く。
+    # 引用符の対応が崩れていれば失敗する
+    tokens=$(printf '%s' "$cmd" | xargs printf '%s\n' 2>/dev/null) || return 1
+    while IFS= read -r tok; do
+        words+=("$tok")
+    done <<<"$tokens"
+
+    [ "${#words[@]}" -ge 2 ] && [ "${words[0]}" = "git" ] && [ "${words[1]}" = "commit" ] || return 1
+    set -- "${words[@]:2}"
+    while [ $# -gt 0 ]; do
+        tok="$1"
+        shift
+        case "$tok" in
+            # 値を次の語に取るオプション
+            -m | -F | -c | -C | -t | --message | --file | --author | --date | --template | \
+                --cleanup | --reuse-message | --reedit-message | --fixup | --squash | --trailer)
+                [ $# -gt 0 ] || return 1
+                shift
+                ;;
+            # 値を同じ語に続けて書く形
+            --message=* | --file=* | --author=* | --date=* | --template=* | --cleanup=* | \
+                --reuse-message=* | --reedit-message=* | --fixup=* | --squash=* | --trailer=* | \
+                --gpg-sign=* | -m?* | -F?* | -c?* | -C?* | -t?* | -S*) ;;
+            # 値を取らないオプション
+            -s | --signoff | --no-signoff | -q | --quiet | -v | --verbose | --amend | --no-edit | \
+                -e | --edit | --allow-empty | --allow-empty-message | -n | --no-verify | --verify | \
+                --reset-author | --no-post-rewrite | --gpg-sign | --no-gpg-sign | --status | --no-status) ;;
+            *) return 1 ;;
+        esac
+    done
+    return 0
+}
+
+if commit_uses_index_only "$command"; then
+    check_worktree=0
+else
+    check_worktree=1
+fi
+
+# index に docs/adr のファイルがあるか。git が失敗したら判定できないので止める。
+if ! staged_listing=$(git -C "$PROJECT_DIR" ls-files --cached -- "$ADR_REL/" 2>&1); then
+    echo "adr-commit-gate: ステージした内容を読めません（git ls-files が失敗）: $staged_listing" >&2
+    exit 2
+fi
+check_index=0
+[ -n "$staged_listing" ] && check_index=1
+[ "$check_worktree" -eq 1 ] && [ -d "$PROJECT_DIR/$ADR_REL" ] || check_worktree=0
+
+# commit されうる内容に docs/adr が無ければ no-op で通す。commit を実行するリポジトリが ADR を
+# 使っていない場合と、未追跡の ADR だけがあり、index をそのまま commit する場合がこれに当たる。
+# 後者で commit されるのは ADR を含まない内容であり、検査する対象が無い。
 # lint-adr.sh は対象 dir 不在時に exit 2 でブロックするため、このガードが無いと ADR を持たない
 # リポジトリの全 commit が止まる。
-[ -d "$ADR_DIR" ] || exit 0
+[ "$check_index" -eq 1 ] || [ "$check_worktree" -eq 1 ] || exit 0
 
 # 同梱 lint が見つからなければ前提破壊としてブロックする（silent fail-open を作らない）。
 if [ ! -f "$LINT_ADR" ]; then
@@ -89,6 +164,112 @@ if [ ! -f "$LINT_ADR" ]; then
     exit 2
 fi
 
-# lint 実行。違反時 exit 1・対象不在時 exit 2 のいずれも「通さない」側へ倒す。
-bash "$LINT_ADR" "$ADR_DIR" >&2 || exit 2
+# 設定ファイル（導入先の言語に依存する語を定める）の置き場。正本は adr-config.sh の
+# ADR_CONFIG_USER_RELPATH であり、ここでは写さずに読む。adr-config.sh は読み込んだ時点では
+# 定数と関数を定義するだけで、何も読まない。読めなければ、設定を取り出せないので止める。
+if ! config_rel=$(. "$ADR_CONFIG_LIB" 2>/dev/null && printf '%s' "${ADR_CONFIG_USER_RELPATH:-}") ||
+    [ -z "$config_rel" ]; then
+    echo "adr-commit-gate: 設定ファイルの置き場を adr-config.sh から読めません: $ADR_CONFIG_LIB" >&2
+    exit 2
+fi
+
+# 作業ツリーの docs/adr と設定が index と同じなら、作業ツリーの検査は index の検査と同じ結果に
+# なるので省く（lint の実行時間が倍になるのを避ける）。同じと言えるのは、追跡中のファイルに
+# 差分が無く、未追跡のファイル（ignore されたものを含む）も無いときに限る。設定も比べるのは、
+# ADR が同じでも、設定が異なれば判定が変わるためである。diff-files は index を書き換えない。
+# 判定に失敗したときは省かない。
+if [ "$check_worktree" -eq 1 ] && [ "$check_index" -eq 1 ] &&
+    git -C "$PROJECT_DIR" diff-files --quiet -- "$ADR_REL/" "$config_rel" 2>/dev/null &&
+    untracked=$(git -C "$PROJECT_DIR" ls-files --others -- "$ADR_REL/" "$config_rel" 2>/dev/null) &&
+    [ -z "$untracked" ]; then
+    check_worktree=0
+fi
+
+# index のうち、引数2 以降の pathspec に当たる項目を、引数1 のディレクトリの下へ同じ相対パスで
+# 書き出す。書き出すのはブロブそのものであり、改行変換（core.autocrlf・.gitattributes の eol）や smudge を
+# 通さない。checkout-index は変換後の内容を書き出すため、commit されるブロブが正しくても、
+# 変換後の内容で判定がずれる。書き出せない項目があれば 1 を返す。
+#   - stage が 0 でない項目（未解決のマージ衝突）は、commit される内容が決まっていない
+#   - 通常ファイルと実行可能ファイルはブロブを書き、シンボリックリンクはブロブをリンク先として張る
+#   - submodule（gitlink）は中身を持たないので飛ばす
+extract_staged() {
+    local root="$1" listing="$1/.staged-listing"
+    local rec meta path dir mode oid stage target made_dir=""
+    shift
+    git -C "$PROJECT_DIR" ls-files -s -z -- "$@" >"$listing" || return 1
+    while IFS= read -r -d '' rec; do
+        meta="${rec%%$'\t'*}"
+        path="${rec#*$'\t'}"
+        read -r mode oid stage <<<"$meta"
+        if [ "$stage" != "0" ]; then
+            echo "未解決のマージ衝突があります: $path"
+            return 1
+        fi
+        # 同じディレクトリが続く間は作り直さない
+        case "$path" in
+            */*) dir="${path%/*}" ;;
+            *) dir="." ;;
+        esac
+        if [ "$dir" != "$made_dir" ]; then
+            made_dir="$dir"
+            mkdir -p "$root/$made_dir" || return 1
+        fi
+        case "$mode" in
+            100644 | 100755)
+                git -C "$PROJECT_DIR" cat-file blob "$oid" >"$root/$path" || return 1 ;;
+            120000)
+                target=$(git -C "$PROJECT_DIR" cat-file blob "$oid") || return 1
+                ln -s "$target" "$root/$path" || return 1 ;;
+            160000) ;;
+            *)
+                echo "取り出せない種類の項目です（mode $mode）: $path"
+                return 1 ;;
+        esac
+    done <"$listing"
+}
+
+blocked=0
+
+if [ "$check_index" -eq 1 ]; then
+    # index の docs/adr と設定ファイルを一時ディレクトリへ取り出す。lint が読むのは、渡した
+    # ADR ディレクトリ（レイヤ2 の index.md の照合を含む）と、ADR_CONFIG_ROOT が指すトップ
+    # レベルの設定ファイルだけである。一時ディレクトリは git のリポジトリではないため、
+    # ADR_CONFIG_ROOT で一時ディレクトリをトップレベルとして明示する。明示しないと、設定を
+    # 探す lint が既定値へ落ちるか、TMPDIR を含む別のリポジトリの設定を読む。設定も index から
+    # 取り出すのは、作業ツリーの設定で index を判定するとずれが残るためである。index に設定が
+    # 無ければ置かず、既定値で判定する。取り出しに失敗したら、検査しないまま通さない。
+    if ! staged_root=$(mktemp -d "${TMPDIR:-/tmp}/adr-commit-gate.XXXXXX" 2>/dev/null); then
+        echo "adr-commit-gate: ステージした内容を取り出す一時ディレクトリを作れません。" >&2
+        exit 2
+    fi
+    trap 'rm -rf "$staged_root"' EXIT
+    trap 'exit 2' HUP INT TERM
+
+    if ! extract_err=$(extract_staged "$staged_root" "$ADR_REL/" "$config_rel" 2>&1); then
+        echo "adr-commit-gate: ステージした docs/adr と設定ファイルを取り出せません。" >&2
+        printf '%s\n' "$extract_err" >&2
+        exit 2
+    fi
+
+    # 違反時 exit 1・対象不在時 exit 2 のいずれも「通さない」側へ倒す。
+    if ! lint_out=$(cd "$staged_root" && ADR_CONFIG_ROOT="$staged_root" bash "$LINT_ADR" "$ADR_REL" 2>&1); then
+        echo "adr-commit-gate: ステージした内容（index）の $ADR_REL が drift-lint に違反しています。" >&2
+        printf '%s\n' "$lint_out" >&2
+        blocked=1
+    fi
+fi
+
+if [ "$check_worktree" -eq 1 ]; then
+    # 作業ツリーの設定で判定する。利用者の環境に ADR_CONFIG_ROOT が残っていても、それを使わない
+    if ! lint_out=$(cd "$PROJECT_DIR" && ADR_CONFIG_ROOT="$PROJECT_DIR" bash "$LINT_ADR" "$ADR_REL" 2>&1); then
+        echo "adr-commit-gate: 作業ツリーの $ADR_REL が drift-lint に違反しています。" >&2
+        echo "  このコマンドは commit の中でステージを変えうるため、作業ツリーも検査しました。" >&2
+        echo "  ステージした内容だけを commit するなら、git add 等を別のコマンドとして先に実行し、" >&2
+        echo "  -a やパスを付けない git commit を単独で実行してください。" >&2
+        printf '%s\n' "$lint_out" >&2
+        blocked=1
+    fi
+fi
+
+[ "$blocked" -eq 0 ] || exit 2
 exit 0
