@@ -12,6 +12,7 @@ allowed-tools:
   - Bash(bash *scripts/gen-adr-index.sh*)
   - Bash(bash *scripts/next-adr-id.sh*)
   - Bash(bash *scripts/verify-split-verbatim.sh*)
+  - Bash(bash *scripts/print-adr-config.sh*)
 ---
 
 # ADRライフサイクル操作（Manage ADR）
@@ -21,18 +22,23 @@ allowed-tools:
 - **対象範囲**: 指定されたADRと許可された遷移・編集分類だけを扱う。
 - **成果物**: front-matter、本文、相互参照をスキーマに沿って必要十分に更新する。
 - **停止条件**: 遷移条件、参照整合、lintのいずれかが未決・不合格なら状態を進めない。
-- **変更境界**: 対象ADR以外を変更せず、別判断を黙って混ぜない。ただし遷移手順（`transitions.md`「共通: 退役に伴う inbound `Related:` の点検・付け替え」節）が付け替えを指示する相互参照相手（対象ADRを指す他の有効ADRの`Related:`行、非ADR文書）と、自己検証で再生成する`index.md`は、対象ADR以外の変更として許容する。
+- **変更境界**: 対象ADR以外を変更せず、別判断を黙って混ぜない。ただし次の2つは、対象ADR以外の変更として許容する。1つは、遷移手順（`transitions.md`「共通: 退役に伴う inbound `Related:` の点検・付け替え」節）が付け替えを指示する相互参照相手である。相手は、対象ADRを指す他の `validity-active` のADRの`Related:`行と、非ADR文書である。もう1つは、自己検証で再生成する`index.md`である。
 - **変更境界（取り消し）**: `transitions.md`「取り消し（誤った退役の訂正）」節が編集を指示する後継ADRと`Related:`行も、対象ADR以外の変更として許容する。
 
-ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR の編集で、front-matter（`status`/`validity`/`superseded-by`）と `## 関連ADR` の相互参照を正しく書き込む。手順の実体は本スキルが持ち、手作業で組み立てずスキル経由で一貫した状態遷移を実行し、各操作の締めに drift-lint で自己検証する。
+ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR の編集で、front-matter と相互参照の節を正しく書き込む。front-matter のキーは `status`/`validity`/`superseded-by` であり、相互参照の節は `## <xref-heading>` である。手順の実体は本スキルが持ち、手作業で組み立てずスキル経由で一貫した状態遷移を実行し、各操作の締めに drift-lint で自己検証する。
 
 Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行する。Codexにはこのplugin単位hookがないため、ホストにかかわらず各操作後の明示lintを必須とする。
 
-状態値の値域と各値の定義は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「状態の2軸」に従う（キーは英語の構造的フィールド名、値は日本語ユビキタス言語）。値の説明・トレーリングコメントを front-matter 内に書かない（lint パーサが行全体を値として取り込むため）。
+状態は、役割を表す設定のキーで指す。各状態の定義と既定値は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「状態の2軸」に従う。
+
+- 承認軸: `status-proposed`（承認前）／`status-approved`（承認）／`status-rejected`（却下）
+- 有効性軸: `validity-active`（効力を持つ）／`validity-superseded`（後継へ置換）／`validity-abandoned`（後継なしで終了）
+
+手順と参照ファイルの `<キー>`（例: `status: <status-proposed>`、`## <xref-heading>`）は、後掲「書き込む値の取得」で得た値に置き換えて書く。値を例として示すときは、既定値であることを添える（例: 既定値 `提案中`）。既定値は導入先の設定で変わる。値の説明・トレーリングコメントを front-matter 内に書かない（lint パーサが行全体を値として取り込むため）。
 
 ## 引数
 
-- 操作種別（`起票`／`承認`／`上書き`／`分割`／`廃止`／`却下`／`編集`／`取り消し`）と対象 ADR の識別子・パス
+- 操作種別（起票／承認／上書き／分割／廃止／却下／編集／取り消し）と対象 ADR の識別子・パス
 - 省略時は会話コンテキストから意図を判定する。操作種別・対象が特定できなければ、その1点のみ質問する
 
 ## 対象操作
@@ -41,17 +47,17 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 
 | 操作 | 概要 |
 |---|---|
-| 起票 | 採番規則で新規 ADR ファイルを生成し、状態の型の `提案中` 構成子へ置く |
-| 承認 | `有効` 構成子へ移す |
-| 上書き | 旧 ADR を後継を保持する `上書き済み` 構成子へ移し、後継本文 `## 関連ADR` に `Supersedes: <旧>`、旧 ADR 本文 `## 関連ADR` に `Superseded by: <後継>` を書く（双方向） |
-| 廃止 | `廃止済み` 構成子へ移す |
-| 却下 | `却下` 構成子へ移す |
+| 起票 | 採番規則で新規 ADR ファイルを生成し、状態の型の `status-proposed` の構成子へ置く |
+| 承認 | `validity-active` の構成子へ移す |
+| 上書き | 旧 ADR を後継を保持する `validity-superseded` の構成子へ移し、後継本文 `## <xref-heading>` に `Supersedes: <旧>`、旧 ADR 本文 `## <xref-heading>` に `Superseded by: <後継>` を書く（双方向） |
+| 廃止 | `validity-abandoned` の構成子へ移す |
+| 却下 | `status-rejected` の構成子へ移す |
 
 各遷移後の front-matter 最終状態は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「状態の型」の構成子として構成できる形にする。採番規則・写入手順・上書きの双方向相互参照の書き込みは `${CLAUDE_SKILL_DIR}/references/transitions.md` を参照する。ADR 本文へ他文書への参照を書く場合（起票時を含む）は、`${CLAUDE_SKILL_DIR}/references/adr-reference-principle.md` に従う。原 ADR の一部決定だけが反転する 1→N（部分上書き）は、5遷移ではなく下記「分割」を扱う。
 
 ### 分割（多決定 ADR の部分上書き。5遷移とは別軸の構造操作）
 
-複数の決定を束ねた ADR の一部だけが core 反転して残りが生存する場合（1→N の部分上書き）、または束ね ADR を予防的に分解する場合（衛生的分割）に使う。原 ADR 全体を `上書き済み` にすると生存決定を誤って退役させるため、生存決定を後継へ逐語 restate してから原 ADR を上書きする。後継を立てずに原 ADR へ残してよい生存決定の条件は、後掲の手順の実体が定める。
+複数の決定を束ねた ADR の一部だけが core 反転して残りが生存する場合（1→N の部分上書き）、または束ね ADR を予防的に分解する場合（衛生的分割）に使う。原 ADR 全体を `validity-superseded` にすると生存決定を誤って退役させるため、生存決定を後継へ逐語 restate してから原 ADR を上書きする。後継を立てずに原 ADR へ残してよい生存決定の条件は、後掲の手順の実体が定める。
 
 呼び出しの適用条件は2トリガに分かれる。**既定は分割しない**——既存の多決定 ADR を遡及的に分割せず、下記いずれかのトリガが立ったときにのみ駆動する。
 
@@ -60,7 +66,7 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 
 新規に起こす ADR が独立に反転しうる core を束ねないための制約は `${CLAUDE_SKILL_DIR}/references/adr-splitting.md` に従う。
 
-分割は5遷移（front-matter 状態遷移）の一種ではない。決定のファイル間再配置という別軸の構造操作であり、本文編集の core／非core／些末分類でもなくリファクタリングに相当する。終端 front-matter は上書きと同型（原 ADR `validity: 上書き済み`・`superseded-by` に全後継を列挙）だが、後継が複数（1→N）で生存決定の救出を伴う点で上書き（1→1）と操作が異なる。
+分割は5遷移（front-matter 状態遷移）の一種ではない。決定のファイル間再配置という別軸の構造操作であり、本文編集の core／非core／些末分類でもなくリファクタリングに相当する。終端 front-matter は上書きと同型である（原 ADR `validity: <validity-superseded>`・`superseded-by` に全後継を列挙）。ただし後継が複数（1→N）で生存決定の救出を伴う点で、上書き（1→1）と操作が異なる。
 
 手順の実体は `${CLAUDE_SKILL_DIR}/references/transitions.md`「分割（多決定 ADR の部分上書き）」節を参照する。同節は、決定の振り分け・起票・逐語 restate・却下代替の持ち越し・開示・相互参照の各手順と、締めの検査を持つ。
 
@@ -68,13 +74,13 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 
 ### 編集判定フロー（既存 ADR の変更）
 
-`validity: 有効` な ADR への変更は、変更種別（core／非core／些末）を `AskUserQuestion` で利用者へ問って確定する。既定選択肢は core（安全則「迷ったら core」）。分類に応じて操作を分岐する。
+`validity-active` の ADR への変更は、変更種別（core／非core／些末）を `AskUserQuestion` で利用者へ問って確定する。既定選択肢は core（安全則「迷ったら core」）。分類に応じて操作を分岐する。
 
 - **core** → 新規 ADR 起票＋旧 ADR 上書き（5遷移へ）
 - **非core** → 直接編集＋本文 `## 変更履歴` に1行追記（front-matter は不変）。節を持たない ADR で新設する場合の配置は後掲の雛形が定める
 - **些末** → 直接編集のみ（front-matter・`## 変更履歴` 不変、履歴は git）
 
-分類はスキルが自動判定せず、必ず利用者へ問う。判定基準・問い設計・分岐の詳細は `${CLAUDE_SKILL_DIR}/references/edit-decision.md` を参照する。`上書き済み`／`廃止済み` に退役した ADR は凍結された歴史的成果物であり本文編集しない。
+分類はスキルが自動判定せず、必ず利用者へ問う。判定基準・問い設計・分岐の詳細は `${CLAUDE_SKILL_DIR}/references/edit-decision.md` を参照する。`validity-superseded`／`validity-abandoned` に退役した ADR は凍結された歴史的成果物であり本文編集しない。
 
 ### ADR 化要否の判定（起票の前段）
 
@@ -84,13 +90,13 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 
 ### 格下げ判定（既存 ADR を退役させるか）
 
-既に記録された ADR を `validity: 廃止済み` へ移して index から外すかは、起票の判定とは別の基準で決める。実体は `${CLAUDE_SKILL_DIR}/references/adr-demotion.md` に在り、判定条件・判定形式（必要条件の連言）・安全側の向き（迷ったら残す）をここ以外で再定義しない。**`adr-scoping.md` の粒度判定基準を既存 ADR へ遡及適用して退役を決めない。** 退役と判定した場合は前掲5遷移の「廃止」へ進む（手順の実体は `${CLAUDE_SKILL_DIR}/references/transitions.md`「廃止（廃止済み）」節）。
+既に記録された ADR を `validity-abandoned` へ移して index から外すかは、起票の判定とは別の基準で決める。実体は `${CLAUDE_SKILL_DIR}/references/adr-demotion.md` に在る。判定条件・判定形式（必要条件の連言）・安全側の向き（迷ったら残す）を、ここ以外で再定義しない。**`adr-scoping.md` の粒度判定基準を既存 ADR へ遡及適用して退役を決めない。** 退役と判定した場合は前掲5遷移の「廃止」へ進む（手順の実体は `${CLAUDE_SKILL_DIR}/references/transitions.md`「廃止（廃止済み）」節）。
 
 判定を誰がいつ何へ回すか（起動主体・起動タイミング・入力範囲）は `${CLAUDE_SKILL_DIR}/references/adr-demotion.md`「判定の起動」に従う。定期の棚卸しとして ADR 群の全数へ回さない。
 
 ### 誤った退役の取り消し（遷移ではない）
 
-誤って行った上書き・廃止は、`有効` への状態遷移を足さず、退役操作の記録の訂正として取り消す。判定基準（退役を決めた基準の再適用）・実行手順・記録要件は、`${CLAUDE_SKILL_DIR}/references/transitions.md`「取り消し（誤った退役の訂正）」節が持つ。分割は取り消しの対象外である。
+誤って行った上書き・廃止は、`validity-active` への状態遷移を足さず、退役操作の記録の訂正として取り消す。判定基準（退役を決めた基準の再適用）・実行手順・記録要件は、`${CLAUDE_SKILL_DIR}/references/transitions.md`「取り消し（誤った退役の訂正）」節が持つ。分割は取り消しの対象外である。
 
 ## 手順の参照（各 references を直接参照）
 
@@ -103,11 +109,15 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 - `${CLAUDE_SKILL_DIR}/references/transitions.md` — 5遷移と分割の実行手順・取り消し・採番規則・双方向相互参照の書き込み・index の再生成
 - `${CLAUDE_SKILL_DIR}/references/edit-decision.md` — core／非core／些末 の判定と問い設計・操作分岐。参照の深さの数え方も持つ
 - `${CLAUDE_SKILL_DIR}/references/adr-reference-principle.md` — ADR 本文へ参照を書く／直す際の判定（記録の参照原則。起票時にも適用する）
-- `${CLAUDE_SKILL_DIR}/references/cross-references.md` — `## 関連ADR` の関係語彙・`Related:` の書式規約・機械検査の範囲と是正手段（相互参照を書くときに従う）
+- `${CLAUDE_SKILL_DIR}/references/cross-references.md` — 相互参照の関係語彙・`Related:` の書式規約・検査範囲・是正手段。相互参照を書くときに従う
 
 以降の手順に現れる `<対象ディレクトリ>` の解決（既定と第1引数による上書き）は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「配置」節に従う。
 
 識別子の発番は `bash ${CLAUDE_PLUGIN_ROOT}/scripts/next-adr-id.sh <対象ディレクトリ>` を実行し、その出力を用いる。時刻部（分粒度・ローカル時刻）の取得と同一時刻部内の連番決定はスクリプトが担う。`date` 等の外部コマンドを直接実行せず、配置ディレクトリを列挙して番号を組み立てない。
+
+### 書き込む値の取得
+
+front-matter か相互参照の節を読み書きする操作では、最初に値を取得する。実行形は `bash ${CLAUDE_PLUGIN_ROOT}/scripts/print-adr-config.sh <対象ディレクトリ>` である。出力の `キー: 値` の行が、導入先の設定（無ければ同梱の既定値）から lint-adr と同じ規則で解決した値である。front-matter と `## <xref-heading>` へはこの値を書き、遷移前の状態確認でもこの値と照合する。例として添えた既定値を書き込まない。exit 2 は設定の誤りか対象ディレクトリの不在である。標準エラーの原因を利用者へ示して操作を始めず、既定値へ切り替えて続けない。
 
 ## 各操作後の自己検証（必須）
 

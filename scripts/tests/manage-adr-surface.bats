@@ -403,7 +403,7 @@ setup_file() {
 # 参照面に現存する節名参照の件数。参照を減らす変更でここが赤になるのは意図した摩擦であり、
 # 減らすことが正しいと判断した場合に限り本定数を下げる。参照を増やす変更では増えた実数へ
 # 上げる。据え置くと、増やした参照が抽出から丸ごと落ちても下限を割らず緑で通る。
-AC5_SECTION_REF_MIN=58
+AC5_SECTION_REF_MIN=66
 
 # 参照面の見出しを "<basename><TAB><見出しテキスト>" の行として出す。
 surface_heading_index() {
@@ -722,6 +722,103 @@ lint_collect_absent() {
     lint_collect_absent "$(lint_rule_hits R6 "$scan")" \
         "#794[R6]: ヘッダに状態の値を ${LINT_VALUE_DOMAIN_MIN} つ以上並べる行が無い" \
         "値域は6語しかなく、1行にこれだけ並べる記述は値域そのものの再宣言である。値域の正本は adr-model.md「状態の2軸」が持つ。"
+
+    collect_finish
+}
+
+# ---- 書き込む値を設定から得ること ----
+#
+# 手順に状態の値を直接書くと、語の群を書き換えた導入先でスキルが既定値を書き込み、設定を
+# 読む lint が語彙外として commit を止める。手順は状態を設定のキーで書き、値は同梱の
+# print-adr-config.sh の出力から得る（SKILL.md「書き込む値の取得」）。本面は、手順の面に
+# 既定値を値として書いた箇所が無いことを見る。
+#
+# 検査語は語の正本（同梱の adr-config.default）から読み、本ファイルへ値を写さない。
+# 値の記述とみなす形は次の3つである。
+#   - バッククォートで囲んだ値そのもの（例: `提案中`）
+#   - front-matter の行の形（例: status: 提案中 / validity: 有効）
+#   - 相互参照の節の見出しの形（例: ## 関連ADR）
+# 免除: 直前に「既定値 」を置いたバッククォートの値は、既定値であることを示した例示として許す。
+# 裸の散文の語（「有効な」等）は語の選び方と区別できないため、本面の射程に含めない。
+# 遷移の節名（「起票（提案中）」等）は既定値の綴りを括弧で持つが、上の3つの形に当たらない。
+#
+# 手順を持たない2ファイル（状態モデルの規約 adr-model.md と雛形 template.md）は対象外とする。
+# 対象は AC5_SURFACE_FILES からこの2ファイルを除いて組み立てる。同リストは面①②が実在と
+# glob の両方向で照合するため、参照ファイルを足すと本面の対象にも自動で入る。除外の側は
+# basename で照合し、除外したファイルを改名すると本面の対象へ戻る（赤になる側へ倒れる）。
+ROLE_EXCLUDED_BASENAMES=(adr-model.md template.md)
+ROLE_CONFIG_DEFAULT="$PLUGIN_ROOT/scripts/adr-config.default"
+# 既定値のファイルから読む状態の値の件数（status の3値と validity の3値）。読み取りが
+# 退行して値が減ったまま緑になる経路を塞ぐ。
+ROLE_STATE_VALUE_COUNT=6
+
+@test "面⑧: 手順の面が状態の値と相互参照の見出しを既定値で直接書かない" {
+    collect_init
+
+    local -a values=()
+    local xref="" line value
+    while IFS= read -r line || [ -n "$line" ]; do
+        case "$line" in
+            status-*:* | validity-*:*)
+                value="${line#*:}"
+                value="${value#"${value%%[![:space:]]*}"}"
+                [ -n "$value" ] && values+=("$value")
+                ;;
+            xref-heading:*)
+                xref="${line#*:}"
+                xref="${xref#"${xref%%[![:space:]]*}"}"
+                ;;
+        esac
+    done < "$ROLE_CONFIG_DEFAULT"
+
+    collect_equals "${#values[@]}" "$ROLE_STATE_VALUE_COUNT" \
+        "既定値のファイルから状態の値を ${ROLE_STATE_VALUE_COUNT} 件読める"
+    if [ -n "$xref" ]; then
+        collect_ok "既定値のファイルから相互参照の見出しを読める"
+    else
+        collect_fail "既定値のファイルから相互参照の見出しを読める" "xref-heading の行が無い: $ROLE_CONFIG_DEFAULT"
+    fi
+
+    local f base n body v x skip checked=0
+    local -a hits=()
+    for f in "${AC5_SURFACE_FILES[@]}"; do
+        base="${f#"$MANAGE_ADR_DIR/"}"
+        skip=0
+        for x in "${ROLE_EXCLUDED_BASENAMES[@]}"; do
+            [ "${f##*/}" = "$x" ] && skip=1
+        done
+        [ "$skip" -eq 1 ] && continue
+        # 実在は面①が報告する。無いファイルは走査の件数から外れ、下の件数の照合でも赤になる
+        [ -f "$f" ] || continue
+        checked=$((checked + 1))
+        n=0
+        while IFS= read -r line || [ -n "$line" ]; do
+            n=$((n + 1))
+            if [ -n "$xref" ] && [[ "$line" == *"## $xref"* ]]; then
+                hits+=("$base:$n: ## $xref")
+            fi
+            for v in "${values[@]}"; do
+                body="${line//"既定値 \`$v\`"/}"
+                if [[ "$body" == *"\`$v\`"* ]]; then
+                    hits+=("$base:$n: \`$v\`")
+                fi
+                if [[ "$line" == *"status: $v"* || "$line" == *"validity: $v"* ]]; then
+                    hits+=("$base:$n: <キー>: $v")
+                fi
+            done
+        done < "$f"
+    done
+
+    # 対象が除外の側へ丸ごと倒れたまま緑になる経路を塞ぐ（期待リストから除外を差し引いた件数）
+    collect_equals "$checked" "$(( ${#AC5_SURFACE_FILES[@]} - ${#ROLE_EXCLUDED_BASENAMES[@]} ))" \
+        "手順の面のファイルを全件走査した"
+
+    if [ "${#hits[@]}" -eq 0 ]; then
+        collect_ok "手順の面に既定値を値として書いた箇所が無い"
+    else
+        collect_fail "手順の面に既定値を値として書いた箇所が無い" \
+            "設定のキー（例: \`status: <status-proposed>\`・\`## <xref-heading>\`）で書く。該当: $(printf '%s; ' "${hits[@]}")"
+    fi
 
     collect_finish
 }
