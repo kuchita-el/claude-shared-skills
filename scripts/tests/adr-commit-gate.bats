@@ -397,7 +397,7 @@ run_gate() {
         "$blob" "$path" "$blob" "$path" "$blob" "$path" | git -C "$repo" update-index --index-info
     run_gate "$repo" "$(hook_input "git commit -m x" "$repo")" "$repo"
     collect_rc 2 "index の docs/adr を取り出せなければ止める"
-    collect_contains "$output" "ステージした docs/adr と設定ファイルを取り出せません" "止めた理由が示される"
+    collect_contains "$output" "ステージした docs/adr を取り出せません" "止めた理由が示される"
 
     # 通した場合と止めた場合のどちらでも、一時ディレクトリを残さない
     tmpdir="$BATS_TEST_TMPDIR/cleanup-tmp"

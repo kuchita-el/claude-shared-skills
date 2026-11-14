@@ -93,6 +93,7 @@ MSG
 EXPECTED_BATS=(
     adr-commit-gate.bats
     adr-config.bats
+    adr-dir-config.bats
     adr-portability.bats
     eval-placement.bats
     gen-adr-index.bats
