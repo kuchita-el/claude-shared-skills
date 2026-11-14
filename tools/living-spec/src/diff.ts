@@ -115,12 +115,14 @@ function setOf(values: string[]): string {
 }
 
 // 表の記録の比べる中身。並びの型のキーと「、」区切りのキーは集合、文字列は前後の空白を除いた値（無い・空・null は ''）。
-// 仮説だけはキーの有無も比べる（無いは null、空の並びは '[]'）。表の定義に無いキーは値をそのまま比べる
+// 仮説だけはキーの有無も比べる（無いは null、空の並びは '[]'）。未決は（欄・内容）の組の集合。表の定義に無いキーは値をそのまま比べる
 function rowFields(row: Row, identity: readonly string[]): Fields {
   const fields: Fields = new Map();
   for (const [key, type] of Object.entries(row.def.keys)) {
     if (identity.includes(key)) continue;
     if (key === HYPOTHESIS) fields.set(key, Object.hasOwn(row.data, key) ? setOf(list(row, key)) : null);
+    // 未決は、読めた項目の（欄・内容）の組の集合。キーが無ければ空の集合
+    else if (type === 'open') fields.set(key, setOf(row.open.map((m) => JSON.stringify([m.key, m.content]))));
     else if (type === 'list' || row.def.splitKeys.includes(key)) fields.set(key, setOf(list(row, key)));
     else fields.set(key, str(row, key));
   }

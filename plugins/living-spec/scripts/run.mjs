@@ -1,5 +1,5 @@
 // living-spec の検査器を探して呼ぶ中継。依存を持たない。検査器そのものはプラグインに含めず、利用者が GitHub Release の添付物を取って入れる。
-// 使い方: node run.mjs check [--doc-missing] [起点] | node run.mjs render [--base <版>] [起点] | node run.mjs diff --base <版> [起点] | node run.mjs hook
+// 使い方: node run.mjs check [--doc-missing | --open] [起点] | node run.mjs render [--base <版>] [起点] | node run.mjs diff --base <版> [起点] | node run.mjs hook
 // 検査器を探す順:
 //   1. 環境変数 LIVING_SPEC_BIN（取った living-spec-<SHA>.mjs のパス）
 //   2. 解決の起点から解決できるパッケージ @kuchita-el/living-spec（開発者がリポジトリへ npm i -D で入れたもの）の bin
@@ -24,7 +24,7 @@ const PACKAGE = '@kuchita-el/living-spec';
 
 // プラグインの手順・書式が前提とする検査器の互換の世代。検査器が `compat` で答える値がこれより小さければ古い。
 // 検査器の側の世代と同じ値に保つ。版番号ではない（版はコミット SHA が担う）
-const REQUIRED_COMPAT = 3;
+const REQUIRED_COMPAT = 4;
 
 const INSTALL = `living-spec の検査器が見つからない。次の2段で入れる:
   1. 使う版のコミット SHA（40桁）を https://github.com/kuchita-el/claude-shared-skills/releases から選び、添付物を取る:

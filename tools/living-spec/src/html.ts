@@ -7,6 +7,7 @@ import type {
   DiffStatus,
   Marked,
   NamedView,
+  OpenView,
   Origin,
   ReferenceView,
   RequirementLineView,
@@ -149,6 +150,14 @@ function ucLink(name: string | null, known: boolean, view: View): string {
   return `<a href="#${uc.anchor}">${escapeHtml(name)}</a>`;
 }
 
+// 未決の印。仮説の印（破線・黄色の「仮説」バッジ）と見分けるため、実線の枠の「未決（<欄>）: <内容>」で出す。
+// 印を持たない要素には何も出さない
+function openHtml(open: OpenView[]): string {
+  return open
+    .map((m) => `<span class="open">未決（${escapeHtml(m.key)}）: ${escapeHtml(m.content)}</span>`)
+    .join('');
+}
+
 function hypothesisBadge(h: string[] | null): string {
   if (h === null) return '';
   const ids = h.length > 0 ? `: ${escapeHtml(h.join('、'))}` : '';
@@ -169,7 +178,7 @@ function stateModelSection(model: StateModelView, view: View): string {
     const to =
       t.to === null ? '<span class="note">（終端）</span>' : nameHtml({ name: t.to, known: t.toKnown });
     // 遷移の区分の印は、行の元の状態の欄の先頭に付ける
-    return `<tr><td>${diffMark(t)}${from}</td><td>${to}</td><td>${ucLink(t.uc, t.ucKnown, view)}</td><td>${escapeHtml(t.description)}</td><td>${t.hypothesis ? '仮説' : ''}</td></tr>`;
+    return `<tr><td>${diffMark(t)}${from}</td><td>${to}</td><td>${ucLink(t.uc, t.ucKnown, view)}</td><td>${escapeHtml(t.description)}${openHtml(t.open)}</td><td>${t.hypothesis ? '仮説' : ''}</td></tr>`;
   });
   return `<h3>${escapeHtml(model.name)}</h3>
 ${chartBlock(model, null)}
@@ -265,7 +274,7 @@ function definitionsHtml(line: RequirementLineView): string {
           `<div class="sub">${nameHtml(v)}${diffMark(v)}${v.values.length > 0 ? `: ${escapeHtml(v.values.join('、'))}` : ''}</div>`,
       )
       .join('');
-    return `<li><span class="kind">${escapeHtml(r.kind ?? '')}</span><strong>${escapeHtml(r.name)}</strong>${diffMark(r)}: ${escapeHtml(d.description)}${values}${attributes}${variations}</li>`;
+    return `<li><span class="kind">${escapeHtml(r.kind ?? '')}</span><strong>${escapeHtml(r.name)}</strong>${diffMark(r)}: ${escapeHtml(d.description)}${openHtml(d.open)}${values}${attributes}${variations}</li>`;
   });
   if (items.length === 0) return '';
   return `<div class="defs" hidden><ul>${items.join('')}</ul></div>`;
@@ -337,8 +346,10 @@ function exampleBlock(uc: UseCaseView): string {
 }
 
 function sliceSection(uc: UseCaseView, view: View): string {
-  const roles = (xs: (NamedView & { role: string })[]) =>
-    xs.map((x) => `<li>${nameHtml(x)}${diffMark(x)}${x.role === '' ? '' : `（${escapeHtml(x.role)}）`}</li>`).join('');
+  const roles = (xs: (NamedView & { role: string; open: OpenView[] })[]) =>
+    xs
+      .map((x) => `<li>${nameHtml(x)}${diffMark(x)}${x.role === '' ? '' : `（${escapeHtml(x.role)}）`}${openHtml(x.open)}</li>`)
+      .join('');
   const charts =
     uc.stateModels.length === 0
       ? '<p class="note">この UC が動かす遷移は無い</p>'
@@ -352,7 +363,7 @@ function sliceSection(uc: UseCaseView, view: View): string {
       : `<table><thead><tr><th>情報</th><th>説明</th><th>属性</th></tr></thead><tbody>${uc.information
           .map(
             (i) =>
-              `<tr><td>${nameHtml(i)}${diffMark(i)}</td><td>${escapeHtml(i.description)}</td><td>${escapeHtml(i.attributes.join('、'))}</td></tr>`,
+              `<tr><td>${nameHtml(i)}${diffMark(i)}</td><td>${escapeHtml(i.description)}${openHtml(i.open)}</td><td>${escapeHtml(i.attributes.join('、'))}</td></tr>`,
           )
           .join('')}</tbody></table>`;
   const conditions =
@@ -366,13 +377,13 @@ function sliceSection(uc: UseCaseView, view: View): string {
                   `<div>${nameHtml(v)}${diffMark(v)}${v.values.length > 0 ? `: ${escapeHtml(v.values.join('、'))}` : ''}</div>`,
               )
               .join('');
-            return `<tr><td>${nameHtml(c)}${diffMark(c)}</td><td>${escapeHtml(c.description)}</td><td>${vs}</td></tr>`;
+            return `<tr><td>${nameHtml(c)}${diffMark(c)}</td><td>${escapeHtml(c.description)}${openHtml(c.open)}</td><td>${vs}</td></tr>`;
           })
           .join('')}</tbody></table>`;
   return `<section class="slice" id="${uc.anchor}">
 <details>
 <summary><h2>${escapeHtml(uc.name)}${diffMark(uc)} ${hypothesisBadge(uc.hypothesis)}</h2></summary>
-<p>${escapeHtml(uc.description)}</p>
+<p>${escapeHtml(uc.description)}${openHtml(uc.open)}</p>
 <div class="cols">
 <div><h4>アクター</h4>${uc.actors.length === 0 ? '<p class="note">なし</p>' : `<ul>${roles(uc.actors)}</ul>`}</div>
 <div><h4>外部システム</h4>${uc.externalSystems.length === 0 ? '<p class="note">なし</p>' : `<ul>${roles(uc.externalSystems)}</ul>`}</div>
@@ -408,6 +419,31 @@ function strayBlock(view: View): string {
   return `<section id="stray"><h2>どの UC にも結び付かない要求票・例</h2><ul>${items.join('\n')}</ul></section>`;
 }
 
+// 表の全ての未決の印の一覧。縦串に現れない要素（どの UC からも指されない条件・バリエーション・アーキテクチャ特性など）の未決もここで読める。
+// 並びと所在は check --open と同じ。印が1つも無く、表の形の違反も無ければ節を出さない。
+// 表の形の違反があれば、読めない表・レコード・項目の未決が欠けうるので、印が0件でも節を残して欠けうることを示す
+// （節が消えると「未決なし」と読まれるため。check --open が一覧を出さないのと同じ危険）
+function openBlock(view: View): string {
+  if (view.open.length === 0 && view.openBlocking === 0) return '';
+  const warn =
+    view.openBlocking > 0
+      ? `\n<p class="missing">表の形の違反 ${view.openBlocking} 件のため、この一覧は欠けうる（違反は check で確かめる）。</p>`
+      : '';
+  const rows = view.open.map(
+    (e) =>
+      `<tr><td>${escapeHtml(e.target)}</td><td>${escapeHtml(e.key)}</td><td><span class="open">未決: ${escapeHtml(e.content)}</span></td><td class="file">${escapeHtml(`${e.file}:${e.line}`)}</td></tr>`,
+  );
+  const table =
+    rows.length === 0
+      ? '<p class="note">読めた表に未決の印は無い。</p>'
+      : `<table><thead><tr><th>要素</th><th>欄</th><th>未決の内容</th><th>所在</th></tr></thead>
+<tbody>${rows.join('\n')}</tbody></table>`;
+  return `<section id="open"><h2>未決の一覧</h2>${warn}
+<p class="note">表の『未決』キーの項目。決まったら項目を外す。</p>
+${table}
+</section>`;
+}
+
 function timestamp(d: Date): string {
   const p = (n: number) => String(n).padStart(2, '0');
   const offset = -d.getTimezoneOffset();
@@ -417,9 +453,9 @@ function timestamp(d: Date): string {
 }
 
 const STYLE = `
-:root { --fg:#212529; --bg:#ffffff; --muted:#6c757d; --line:#dee2e6; --panel:#f8f9fa; --warn:#c92a2a; --accent:#1c7ed6; --tip-bg:#343a40; --tip-fg:#f8f9fa; }
+:root { --fg:#212529; --bg:#ffffff; --muted:#6c757d; --line:#dee2e6; --panel:#f8f9fa; --warn:#c92a2a; --accent:#1c7ed6; --tip-bg:#343a40; --tip-fg:#f8f9fa; --open:#d9480f; }
 @media (prefers-color-scheme: dark) {
-  :root { --fg:#e9ecef; --bg:#1e1f22; --muted:#adb5bd; --line:#3a3d42; --panel:#26282c; --warn:#ff8787; --accent:#74c0fc; --tip-bg:#f1f3f5; --tip-fg:#212529; }
+  :root { --fg:#e9ecef; --bg:#1e1f22; --muted:#adb5bd; --line:#3a3d42; --panel:#26282c; --warn:#ff8787; --accent:#74c0fc; --tip-bg:#f1f3f5; --tip-fg:#212529; --open:#ffa94d; }
 }
 body { margin:0; padding:16px 24px 48px; color:var(--fg); background:var(--bg); font:15px/1.6 system-ui, sans-serif; }
 a { color:var(--accent); }
@@ -434,6 +470,7 @@ section.slice { border-top:1px solid var(--line); margin-top:0; padding:6px 0; }
 section.slice > details > summary { cursor:pointer; }
 section.slice > details > summary h2 { display:inline; margin:0; }
 .cols { display:flex; gap:32px; flex-wrap:wrap; }
+.open { display:inline-block; margin:2px 4px; padding:0 6px; border:1px solid var(--open); border-radius:4px; color:var(--open); font-size:12px; font-weight:normal; vertical-align:middle; }
 .badge { display:inline-block; font-size:12px; padding:1px 8px; border-radius:10px; background:#fff3bf; color:#5c3c00; vertical-align:middle; }
 .unknown { color:var(--warn); font-weight:600; }
 .missing { color:var(--warn); }
@@ -482,6 +519,7 @@ export function renderHtml(view: View, generatedAt: Date): string {
       ? '<p class="note">状態の表に状態モデルが無い</p>'
       : view.stateModels.map((m) => stateModelSection(m, view)).join('\n');
   const stray = strayBlock(view);
+  const open = openBlock(view);
   // 基準の版の行・凡例・CSS は、基準の版があるときだけ出す
   const base =
     view.base === undefined
@@ -501,7 +539,7 @@ export function renderHtml(view: View, generatedAt: Date): string {
 <h1>RDRA の設計の可視化</h1>
 <p>生成時刻: ${escapeHtml(timestamp(generatedAt))}</p>
 <p>根: ${escapeHtml(view.root)}</p>${base}
-<nav><a href="#states">状態遷移図</a><a href="#use-cases">UC の一覧</a>${stray === '' ? '' : '<a href="#stray">結び付かない要求票・例</a>'}
+<nav><a href="#states">状態遷移図</a><a href="#use-cases">UC の一覧</a>${open === '' ? '' : '<a href="#open">未決の一覧</a>'}${stray === '' ? '' : '<a href="#stray">結び付かない要求票・例</a>'}
 要求の行の中身（名前のクリックでも開閉）: <button type="button" data-defs="open">すべて開く</button><button type="button" data-defs="close">すべて閉じる</button></nav>
 </header>
 <section id="states"><h2>状態遷移図</h2>
@@ -511,6 +549,7 @@ ${models}
 <section id="use-cases"><h2>UC の一覧</h2>
 ${useCaseIndex(view)}
 </section>
+${open}
 ${stray}
 ${view.useCases.map((uc) => sliceSection(uc, view)).join('\n')}
 <script>

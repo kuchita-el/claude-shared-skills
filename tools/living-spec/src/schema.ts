@@ -66,8 +66,8 @@ export function tableFile(id: string, tables: string): string {
   return `${tables}/${id}.yaml`;
 }
 
-// string: YAML のスカラー文字列。list: 文字列のシーケンス。
-export type ValueType = 'string' | 'list';
+// string: YAML のスカラー文字列。list: 文字列のシーケンス。open: 未決の項目（「<文で書く欄>: <未決の内容>」の1組のマップ）のシーケンス。
+export type ValueType = 'string' | 'list' | 'open';
 
 export interface TableDef {
   // 表の識別子（ファイル名から拡張子を除いたもの）
@@ -78,8 +78,10 @@ export interface TableDef {
   kind: string;
   // 名前キー（必須・空不可の文字列）
   nameKey: string;
-  // 許すキーと値の型。名前キーと仮説を含む
+  // 許すキーと値の型。名前キーと仮説・未決を含む
   keys: Record<string, ValueType>;
+  // 未決の印を付けられる、文で書く欄（未決の項目の欄として書ける名前）
+  textKeys: string[];
   // 値が「、」区切りの1文字列であるキー（参照の解決では分割して扱う）
   splitKeys: string[];
   // 省略・空（null・空文字）を許すキー
@@ -91,6 +93,10 @@ export interface TableDef {
 // どの表も持てる任意のキー。キーがあれば仮説、無ければ事実
 export const HYPOTHESIS = '仮説';
 
+// どの表も持てる任意のキー。レコードの文で書く欄（textKeys）のうち決まっていない部分を、欄と内容の組の並びで書く。
+// 仮説（レコード単位の試す段階）とは別の印で、決まったら項目を外し、項目が尽きたらキーごと外す
+export const OPEN = '未決';
+
 export const TABLES: TableDef[] = [
   {
     id: 'actor',
@@ -99,7 +105,8 @@ export const TABLES: TableDef[] = [
     },
     kind: 'アクター',
     nameKey: 'アクター',
-    keys: { アクター: 'string', 役割: 'string', 社内外: 'string', [HYPOTHESIS]: 'list' },
+    keys: { アクター: 'string', 役割: 'string', 社内外: 'string', [HYPOTHESIS]: 'list', [OPEN]: 'open' },
+    textKeys: ['役割'],
     splitKeys: [],
     emptyOkKeys: [],
     requires: {},
@@ -111,7 +118,8 @@ export const TABLES: TableDef[] = [
     },
     kind: '外部システム',
     nameKey: '外部システム',
-    keys: { 外部システム: 'string', 役割: 'string', [HYPOTHESIS]: 'list' },
+    keys: { 外部システム: 'string', 役割: 'string', [HYPOTHESIS]: 'list', [OPEN]: 'open' },
+    textKeys: ['役割'],
     splitKeys: [],
     emptyOkKeys: [],
     requires: {},
@@ -131,7 +139,9 @@ export const TABLES: TableDef[] = [
       バリエーション: 'string',
       説明: 'string',
       [HYPOTHESIS]: 'list',
+      [OPEN]: 'open',
     },
+    textKeys: ['説明'],
     splitKeys: ['属性', '関連情報', '状態モデル', 'バリエーション'],
     emptyOkKeys: [],
     requires: {},
@@ -150,7 +160,9 @@ export const TABLES: TableDef[] = [
       遷移先状態: 'string',
       '状態モデル・状態の説明': 'string',
       [HYPOTHESIS]: 'list',
+      [OPEN]: 'open',
     },
+    textKeys: ['状態モデル・状態の説明'],
     splitKeys: [],
     // 初期遷移は 状態 を、終端の状態は 遷移UC・遷移先状態 を省略または空にする
     emptyOkKeys: ['状態', '遷移UC', '遷移先状態'],
@@ -171,7 +183,9 @@ export const TABLES: TableDef[] = [
       条件: 'list',
       説明: 'string',
       [HYPOTHESIS]: 'list',
+      [OPEN]: 'open',
     },
+    textKeys: ['説明'],
     splitKeys: [],
     emptyOkKeys: [],
     requires: {},
@@ -189,7 +203,9 @@ export const TABLES: TableDef[] = [
       バリエーション: 'string',
       状態モデル: 'string',
       [HYPOTHESIS]: 'list',
+      [OPEN]: 'open',
     },
+    textKeys: ['条件の説明'],
     splitKeys: ['バリエーション', '状態モデル'],
     emptyOkKeys: [],
     requires: {},
@@ -201,7 +217,8 @@ export const TABLES: TableDef[] = [
     },
     kind: 'バリエーション',
     nameKey: 'バリエーション',
-    keys: { バリエーション: 'string', 値: 'string', 説明: 'string', [HYPOTHESIS]: 'list' },
+    keys: { バリエーション: 'string', 値: 'string', 説明: 'string', [HYPOTHESIS]: 'list', [OPEN]: 'open' },
+    textKeys: ['説明'],
     splitKeys: ['値'],
     emptyOkKeys: [],
     requires: {},
@@ -220,7 +237,9 @@ export const TABLES: TableDef[] = [
       説明: 'string',
       検証方法: 'string',
       [HYPOTHESIS]: 'list',
+      [OPEN]: 'open',
     },
+    textKeys: ['説明'],
     splitKeys: [],
     emptyOkKeys: [],
     requires: { 分類: '分類体系' },

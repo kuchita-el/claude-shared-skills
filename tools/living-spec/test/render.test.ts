@@ -123,7 +123,8 @@ test('要求票の行の RDRA 欄が指す条件・バリエーション・情�
     description: '作成中で、種類が選ばれているときに提出できる',
     values: [],
     attributes: [],
-    variations: [{ name: '申請の種類', known: true, values: ['通常', '特急'], description: '申請の急ぎの度合い' }],
+    variations: [{ name: '申請の種類', known: true, values: ['通常', '特急'], description: '申請の急ぎの度合い', open: [] }],
+    open: [],
   });
   const variation = second.references.find((r) => r.raw === 'バリエーション「申請の種類」');
   assert.deepEqual(variation?.definition, {
@@ -131,6 +132,7 @@ test('要求票の行の RDRA 欄が指す条件・バリエーション・情�
     values: ['通常', '特急'],
     attributes: [],
     variations: [],
+    open: [],
   });
   const create = useCase(view, '申請を作成する').requirements[0].lines[0];
   assert.deepEqual(create.references.find((r) => r.raw === '情報「申請」')?.definition, {
@@ -138,6 +140,7 @@ test('要求票の行の RDRA 欄が指す条件・バリエーション・情�
     values: [],
     attributes: ['申請者', '状態'],
     variations: [],
+    open: [],
   });
   // 条件・バリエーション・情報以外の参照と、表に無い参照は中身を持たない
   assert.equal(first.references.length, 1);

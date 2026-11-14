@@ -134,6 +134,39 @@ test('--doc-missing: 要求票の無い UC を出して終了コード 1。全�
   assert.equal(full.status, 0, full.stdout + full.stderr);
 });
 
+test('--open: 表の未決の項目を1項目1行で出して終了コード 0。印が無ければ「なし」、表の形の違反があれば一覧を出さず終了コード 1', () => {
+  const example = (name: string) => materialize(join(here, '..', 'examples', 'invalid-shape', `${name}.txtar`));
+  const marked = example('pass-open-marked');
+  const open = run(['check', '--open', marked], tmpdir());
+  assert.equal(open.status, 0, open.stdout + open.stderr);
+  const lines = open.stdout.trimEnd().split('\n');
+  assert.equal(lines[0], `根: ${marked}`);
+  assert.equal(lines.at(-1), '未決の一覧: 6 件');
+  assert.equal(lines.filter((l) => l.startsWith('[未決] ')).length, 6);
+  assert.ok(
+    lines.includes('[未決] docs/rdra/condition.yaml:6 条件:提出可能 条件の説明: 上限の境目（上限ちょうどを含むか）が出典で揃っていない'),
+    open.stdout,
+  );
+  // 一覧は検査の結果ではない（違反の行・検査の要約を出さない）
+  assert.doesNotMatch(open.stdout, /RDRA の検査|^\[(?!未決)/m);
+
+  const unmarked = run(['check', '--open', example('pass-open-unmarked')], tmpdir());
+  assert.equal(unmarked.status, 0, unmarked.stdout + unmarked.stderr);
+  assert.equal(unmarked.stdout.trimEnd().split('\n').at(-1), '未決の一覧: なし');
+  assert.doesNotMatch(unmarked.stdout, /\[未決\]/);
+
+  const malformed = run(['check', '--open', example('fail-open-malformed')], tmpdir());
+  assert.equal(malformed.status, 1, malformed.stdout + malformed.stderr);
+  assert.match(malformed.stdout, /\[invalid-shape\] docs\/rdra\/condition\.yaml 条件:提出可能: /);
+  assert.match(malformed.stdout, /未決の一覧: 表の形の違反 5 件のため出せない/);
+  assert.doesNotMatch(malformed.stdout, /\[未決\]/);
+
+  // --open と --doc-missing は併せて渡せない
+  const both = run(['check', '--open', '--doc-missing', marked], tmpdir());
+  assert.equal(both.status, 2);
+  assert.match(both.stderr, /使い方/);
+});
+
 test('compat: 互換の世代を1行で出して終了コード 0', () => {
   const result = run(['compat'], tmpdir());
   assert.equal(result.status, 0, result.stderr);

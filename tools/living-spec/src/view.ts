@@ -1,7 +1,8 @@
 // 設計の可視化の材料を組む。RDRA の表・要求票・例を読み、状態モデルごとの遷移と UC ごとの縦串にまとめる。
 // 検査はしない（違反は check.ts が拾う）。違反があっても組み、表に無い名前は known: false にして残す。
 // HTML の文字列は html.ts が作る。
-import { loadTables } from './check.ts';
+import { collectOpenSources, loadTables } from './check.ts';
+import type { OpenEntry } from './check.ts';
 import { readSources } from './sources.ts';
 import type { Sources } from './sources.ts';
 import { parseExample } from './example.ts';
@@ -29,6 +30,12 @@ export interface Marked extends Origin {
   changed?: string[];
 }
 
+// 要素の文で書く欄に付いた未決の印（『未決』キーの項目）。key は欄、content は未決の内容
+export interface OpenView {
+  key: string;
+  content: string;
+}
+
 export interface TransitionView extends Marked {
   // 遷移元の状態。初期遷移（状態の無い記録）は null
   from: string | null;
@@ -41,6 +48,7 @@ export interface TransitionView extends Marked {
   toKnown: boolean;
   description: string;
   hypothesis: boolean;
+  open: OpenView[];
 }
 
 export interface StateModelView {
@@ -71,6 +79,7 @@ export interface RuleView extends Origin {
 export interface VariationView extends NamedView {
   values: string[];
   description: string;
+  open: OpenView[];
 }
 
 // 条件・バリエーション・情報の中身。要求文が名前で指す中身を、表を引き直さずに読めるよう行の直下に出す
@@ -83,6 +92,8 @@ export interface DefinitionView {
   attributes: string[];
   // 条件が持つバリエーション（バリエーションは空）
   variations: VariationView[];
+  // 条件・バリエーション・情報自身の未決の印
+  open: OpenView[];
 }
 
 export interface ReferenceView extends Marked {
@@ -120,10 +131,12 @@ export interface UseCaseView extends Marked {
   description: string;
   // 『仮説』キーの値。キーが無ければ null
   hypothesis: string[] | null;
-  actors: (NamedView & { role: string })[];
-  externalSystems: (NamedView & { role: string })[];
-  information: (NamedView & { description: string; attributes: string[] })[];
-  conditions: (NamedView & { description: string; variations: VariationView[] })[];
+  // UC 自身の未決の印。アクター・外部システム・情報・条件の未決の印は、それぞれの項の open が持つ
+  open: OpenView[];
+  actors: (NamedView & { role: string; open: OpenView[] })[];
+  externalSystems: (NamedView & { role: string; open: OpenView[] })[];
+  information: (NamedView & { description: string; attributes: string[]; open: OpenView[] })[];
+  conditions: (NamedView & { description: string; variations: VariationView[]; open: OpenView[] })[];
   // この UC が遷移 UC になっている状態モデルの名前
   stateModels: string[];
   requirements: RequirementView[];
@@ -144,6 +157,10 @@ export interface View {
   strayExamples: { file: string; name: string }[];
   // Gherkin として読めない、または機能の無い例
   unreadableExamples: { file: string; message: string }[];
+  // 表の全ての未決の印の一覧（check --open と同じ並び）。縦串に現れない要素の未決もここに載る
+  open: OpenEntry[];
+  // 表の形の違反（invalid-shape）の件数。1件以上なら、読めない表・レコード・項目の未決が open から欠けうる
+  openBlocking: number;
   // 表にある名前すべて（状態を含む）。要求文の中の名前に印を付けるとき、長い名前の一部へ誤って付けないために使う
   tableNames: string[];
   // 比べた基準の版（描き分けの材料だけが持つ）。commit は版が指すコミット
@@ -164,6 +181,10 @@ export function list(row: Row, key: string): string[] {
   }
   if (Array.isArray(v)) return v.filter((x): x is string => typeof x === 'string' && x.trim() !== '').map((x) => x.trim());
   return [];
+}
+
+function openOf(row: Row | undefined): OpenView[] {
+  return row === undefined ? [] : row.open.map((m) => ({ key: m.key, content: m.content }));
 }
 
 function hypothesisOf(row: Row): string[] | null {
@@ -201,6 +222,7 @@ function buildStateModels(rows: Rows, ucNames: Set<string>): StateModelView[] {
       toKnown: to === null || (statesOf.get(r.name)?.has(to) ?? false),
       description: str(r, '状態モデル・状態の説明'),
       hypothesis: Object.hasOwn(r.data, '仮説'),
+      open: openOf(r),
     });
   }
   return [...models.values()];
@@ -236,6 +258,7 @@ export function buildView(root: string, sources: Sources = readSources(root)): V
       known: row !== undefined,
       values: row ? list(row, '値') : [],
       description: row ? str(row, '説明') : '',
+      open: openOf(row),
     };
   };
   const definitionOf = (kind: string | null, name: string | null): DefinitionView | null => {
@@ -248,16 +271,17 @@ export function buildView(root: string, sources: Sources = readSources(root)): V
         values: [],
         attributes: [],
         variations: list(row, 'バリエーション').map(variationView),
+        open: openOf(row),
       };
     }
     if (kind === 'バリエーション') {
       const v = variationView(name);
-      return v.known ? { description: v.description, values: v.values, attributes: [], variations: [] } : null;
+      return v.known ? { description: v.description, values: v.values, attributes: [], variations: [], open: v.open } : null;
     }
     if (kind === '情報') {
       const row = information.get(name);
       if (row === undefined) return null;
-      return { description: str(row, '説明'), values: [], attributes: list(row, '属性'), variations: [] };
+      return { description: str(row, '説明'), values: [], attributes: list(row, '属性'), variations: [], open: openOf(row) };
     }
     return null;
   };
@@ -308,15 +332,18 @@ export function buildView(root: string, sources: Sources = readSources(root)): V
       anchor: `uc-${i + 1}`,
       description: str(r, '説明'),
       hypothesis: hypothesisOf(r),
+      open: openOf(r),
       actors: list(r, 'アクター').map((name) => ({
         name,
         known: actors.has(name),
         role: actors.has(name) ? str(actors.get(name)!, '役割') : '',
+        open: openOf(actors.get(name)),
       })),
       externalSystems: list(r, '外部システム').map((name) => ({
         name,
         known: externalSystems.has(name),
         role: externalSystems.has(name) ? str(externalSystems.get(name)!, '役割') : '',
+        open: openOf(externalSystems.get(name)),
       })),
       information: list(r, '情報').map((name) => {
         const row = information.get(name);
@@ -325,6 +352,7 @@ export function buildView(root: string, sources: Sources = readSources(root)): V
           known: row !== undefined,
           description: row ? str(row, '説明') : '',
           attributes: row ? list(row, '属性') : [],
+          open: openOf(row),
         };
       }),
       conditions: list(r, '条件').map((name) => {
@@ -334,6 +362,7 @@ export function buildView(root: string, sources: Sources = readSources(root)): V
           known: row !== undefined,
           description: row ? str(row, '条件の説明') : '',
           variations: (row ? list(row, 'バリエーション') : []).map(variationView),
+          open: openOf(row),
         };
       }),
       stateModels: stateModels.filter((m) => m.transitions.some((t) => t.uc === r.name)).map((m) => m.name),
@@ -364,6 +393,7 @@ export function buildView(root: string, sources: Sources = readSources(root)): V
     };
   });
 
+  const openList = collectOpenSources(sources);
   return {
     root,
     stateModels,
@@ -373,6 +403,8 @@ export function buildView(root: string, sources: Sources = readSources(root)): V
       .map((q) => ({ file: q.file, ucName: q.req.ucName })),
     strayExamples: features.filter((f) => !ucNames.has(f.name)).map((f) => ({ file: f.file, name: f.name })),
     unreadableExamples,
+    open: openList.entries,
+    openBlocking: openList.blocking.length,
     tableNames: [
       ...new Set([...Object.values(rows).flatMap((rs) => rs.map((r) => r.name)), ...stateModels.flatMap((m) => m.states)]),
     ],

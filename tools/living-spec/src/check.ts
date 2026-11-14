@@ -1,7 +1,8 @@
 // RDRA の表・要求票・例の機械検査。
 import { basename } from 'node:path';
-import { parseDocument } from 'yaml';
-import { TABLES, tableById } from './schema.ts';
+import { LineCounter, isAlias, isMap as isYamlMap, isScalar, isSeq, parseDocument } from 'yaml';
+import type { Node as YamlNode } from 'yaml';
+import { OPEN, TABLES, tableById } from './schema.ts';
 import { readSources } from './sources.ts';
 import type { Sources } from './sources.ts';
 import type { TableDef, ValueType } from './schema.ts';
@@ -34,11 +35,27 @@ export interface Violation {
 
 type Data = Record<string, unknown>;
 
+// 未決の項目1つ。key は文で書く欄、content は未決の内容（前後の空白を除き、改行をまたぐ空白を1つの空白にしたもの）、
+// line は項目が表のファイルで始まる行（1から）
+export interface OpenMark {
+  key: string;
+  content: string;
+  line: number;
+}
+
 interface Row {
   def: TableDef;
   data: Data;
   // 名前キーの値。名前が欠落・空・非文字列のレコードは意味検査から外すため、ここへは入らない
   name: string;
+  // 『未決』キーの項目のうち、書式どおりに読めたもの（表の順）。キーが無ければ空
+  open: OpenMark[];
+}
+
+// 未決の一覧の1項目。target は違反と同じ要素の表し方（種類:名前。状態は 状態:<状態モデル>／<状態>）
+export interface OpenEntry extends OpenMark {
+  file: string;
+  target: string;
 }
 
 export function formatViolation(v: Violation): string {
@@ -57,6 +74,53 @@ function typeOk(v: unknown, type: ValueType, emptyOk: boolean): boolean {
 
 function typeLabel(type: ValueType): string {
   return type === 'string' ? '文字列' : '文字列の並び';
+}
+
+// 未決の内容の正規化。前後の空白を除き、改行をまたぐ空白を1つの空白にする（一覧を1項目1行で出すため）
+function openContent(v: string): string {
+  return v.trim().replace(/\s*\n\s*/g, ' ');
+}
+
+// 『未決』キーの値を読み、書式どおりの項目を marks へ、書式の誤りを errors へ入れる。
+// 値は1件以上の項目の並びで、各項目は「<文で書く欄>: <未決の内容>」の1組のマップ。欄は表の textKeys のどれか、内容は空白だけでない文字列。
+// node はその値の YAML の節で、項目の行を引くために使う（引けなければ fallbackLine）
+function readOpen(
+  value: unknown,
+  def: TableDef,
+  node: YamlNode | undefined,
+  lineOf: (n: unknown, fallback: number) => number,
+  fallbackLine: number,
+): { marks: OpenMark[]; errors: string[] } {
+  const marks: OpenMark[] = [];
+  const errors: string[] = [];
+  const allowed = def.textKeys.map((k) => `『${k}』`).join('・');
+  if (value === null || (Array.isArray(value) && value.length === 0)) {
+    errors.push(`キー『${OPEN}』に項目が無い（決まったらキーごと外す）`);
+    return { marks, errors };
+  }
+  if (!Array.isArray(value)) {
+    errors.push(`キー『${OPEN}』の値が項目の並びになっていない（各項目は「<欄>: <未決の内容>」の1組。欄は ${allowed}）`);
+    return { marks, errors };
+  }
+  const items = isSeq(node) ? node.items : [];
+  value.forEach((item: unknown, j: number) => {
+    const at = `キー『${OPEN}』の${j + 1}番目の項目`;
+    if (!isMap(item) || Object.keys(item).length !== 1) {
+      errors.push(`${at}が「<欄>: <未決の内容>」の1組になっていない（欄は ${allowed}）`);
+      return;
+    }
+    const [key, content] = Object.entries(item)[0];
+    if (!def.textKeys.includes(key)) {
+      errors.push(`${at}の欄『${key}』は未決の印を付けられる欄でない（付けられる欄は ${allowed}）`);
+      return;
+    }
+    if (typeof content !== 'string' || content.trim() === '') {
+      errors.push(`${at}の未決の内容が空、または文字列でない`);
+      return;
+    }
+    marks.push({ key, content: openContent(content), line: lineOf(items[j], fallbackLine) });
+  });
+  return { marks, errors };
 }
 
 function stateTarget(model: string, state: string): string {
@@ -90,7 +154,13 @@ function values(row: Row, key: string): string[] {
 function loadTable(text: string | undefined, def: TableDef, out: Violation[]): Row[] {
   if (text === undefined) return [];
   const tableTarget = `表:${basename(def.file)}`;
-  const doc = parseDocument(text);
+  const lineCounter = new LineCounter();
+  const doc = parseDocument(text, { lineCounter });
+  // 節の始まりの行（1から）。節でない・位置を持たないときは fallback
+  const lineOf = (n: unknown, fallback: number): number => {
+    const range = (n as { range?: [number, number, number] | null } | undefined)?.range;
+    return range === undefined || range === null ? fallback : lineCounter.linePos(range[0]).line;
+  };
   if (doc.errors.length > 0) {
     const msg = doc.errors[0].message.split('\n')[0];
     out.push({ rule: 'invalid-shape', file: def.file, target: tableTarget, detail: `YAML の構文誤り: ${msg}` });
@@ -108,6 +178,7 @@ function loadTable(text: string | undefined, def: TableDef, out: Violation[]): R
     return [];
   }
   const rows: Row[] = [];
+  const recordNodes = isSeq(doc.contents) ? doc.contents.items : [];
   data.forEach((item: unknown, i: number) => {
     const ordinal = `#${i + 1}`;
     if (!isMap(item)) {
@@ -135,6 +206,7 @@ function loadTable(text: string | undefined, def: TableDef, out: Violation[]): R
         detail: `名前キー『${def.nameKey}』が無い、または空・文字列でない`,
       });
     }
+    let open: OpenMark[] = [];
     for (const [key, value] of Object.entries(item)) {
       const type = def.keys[key];
       if (type === undefined) {
@@ -142,6 +214,18 @@ function loadTable(text: string | undefined, def: TableDef, out: Violation[]): R
         continue;
       }
       if (key === def.nameKey) continue;
+      if (type === 'open') {
+        const recordNode = recordNodes[i];
+        const found = isYamlMap(recordNode)
+          ? (recordNode.items.find((p) => isScalar(p.key) && p.key.value === key)?.value as YamlNode | undefined)
+          : undefined;
+        // 値が別名（*a）なら、指す先の節から項目の行を引く
+        const valueNode = isAlias(found) ? (found.resolve(doc) as YamlNode | undefined) : found;
+        const read = readOpen(value, def, valueNode, lineOf, lineOf(recordNode, 1));
+        open = read.marks;
+        for (const detail of read.errors) out.push({ rule: 'invalid-shape', file: def.file, target, detail });
+        continue;
+      }
       if (!typeOk(value, type, def.emptyOkKeys.includes(key))) {
         out.push({
           rule: 'invalid-shape',
@@ -159,7 +243,7 @@ function loadTable(text: string | undefined, def: TableDef, out: Violation[]): R
       if (toVal !== undefined && (typeof toVal !== 'string' || toVal.trim() !== '')) continue;
       out.push({ rule: 'invalid-shape', file: def.file, target, detail: `キー『${from}』に値があるのに、キー『${to}』が無い、または空` });
     }
-    if (hasName) rows.push({ def, data: item, name });
+    if (hasName) rows.push({ def, data: item, name, open });
   });
   return rows;
 }
@@ -212,6 +296,29 @@ export function checkDocMissing(root: string): Violation[] {
 
 export function checkDocMissingSources(sources: Sources): Violation[] {
   return checkTrace(sources, traceContext(loadTables(sources, []))).docMissing;
+}
+
+// 未決の一覧。表の順・レコードの順・項目の順に並べる。blocking は表の形の違反（invalid-shape）で、
+// 1件でもあれば読めなかった表・レコード・項目の未決が一覧から欠けうるため、一覧を出す側はこれを先に見る
+export function collectOpen(root: string): { entries: OpenEntry[]; blocking: Violation[] } {
+  return collectOpenSources(readSources(root));
+}
+
+export function collectOpenSources(sources: Sources): { entries: OpenEntry[]; blocking: Violation[] } {
+  const out: Violation[] = [];
+  const rows = loadTables(sources, out);
+  const entries: OpenEntry[] = [];
+  for (const def of TABLES) {
+    for (const row of rows[def.id]) {
+      for (const m of row.open) entries.push({ ...m, file: def.file, target: rowTarget(row) });
+    }
+  }
+  return { entries, blocking: out.filter((v) => v.rule === 'invalid-shape') };
+}
+
+// 未決の一覧の1行。`[未決] <ファイル>:<行> <対象> <欄>: <未決の内容>`
+export function formatOpen(e: OpenEntry): string {
+  return `[未決] ${e.file}:${e.line} ${e.target} ${e.key}: ${e.content}`;
 }
 
 export function checkRepo(root: string): Violation[] {
