@@ -1,8 +1,8 @@
 #!/usr/bin/env bats
 # adr プラグインの設定の読み込み（plugins/adr/scripts/adr-config.sh）と、それを使う
-# lint-adr.sh・gen-adr-index.sh・commit ゲートのテスト。
+# lint-adr.sh・gen-adr-index.sh・print-adr-config.sh・commit ゲートのテスト。
 #
-# 固定するのは次の4つである。
+# 固定するのは次の5つである。
 #   - 導入先の設定が語の群を定めると、lint と index の生成器がその語で動く（英語の設定で、
 #     valid の ADR 群は exit 0、invalid の ADR 群は該当の違反で exit 1）
 #   - 設定の誤り（知らないキー・重複・空の値・語の群の一部だけ・6値の重複・形の崩れた行）は、
@@ -12,6 +12,8 @@
 #     ADR_CONFIG_ROOT が空でなければ、探索をせずその値をトップレベルとみなす（ゲートとテストが
 #     git の外で検査するための内部の経路）
 #   - 設定ファイルをシェルとして読み込まない
+#   - print-adr-config.sh は lint と同じ規則で解決した語の群を `キー: 値` で出し、設定の誤りと
+#     ADR ディレクトリの不在では値を出さずに exit 2 で止まる（manage-adr スキルが書き込む値の経路）
 # 設定ファイルが無い場合に挙動が変わらないことは、既存の lint と index のテスト全件が担う。
 #
 # 検出の側だけでなく、免除の側も対で置く。語の群を1つも書かない設定は誤りにしない
@@ -27,6 +29,7 @@ load 'helpers/common'
 
 SUT="$PLUGIN_ROOT/scripts/lint-adr.sh"
 GEN_INDEX="$PLUGIN_ROOT/scripts/gen-adr-index.sh"
+PRINT_CONFIG="$PLUGIN_ROOT/scripts/print-adr-config.sh"
 CONFIG_LIB="$PLUGIN_ROOT/scripts/adr-config.sh"
 CONFIG_DEFAULT="$PLUGIN_ROOT/scripts/adr-config.default"
 GATE="$PLUGIN_ROOT/hooks/adr-commit-gate"
@@ -38,7 +41,7 @@ CONFIG_ERROR_MESSAGE="adr プラグインの設定に誤りがあります"
 CORPORA=()
 # 呼び出し側の環境に残った値で、置き場の解決が変わらないようにする（面⑩だけが明示して渡す）。
 unset ADR_CONFIG_ROOT
-PRECONDITION_PATHS=("$GEN_INDEX" "$CONFIG_LIB" "$CONFIG_DEFAULT" "$GATE" "$EN_CONFIG" "$EN_VALID" "$JA_VALID")
+PRECONDITION_PATHS=("$GEN_INDEX" "$PRINT_CONFIG" "$CONFIG_LIB" "$CONFIG_DEFAULT" "$GATE" "$EN_CONFIG" "$EN_VALID" "$JA_VALID")
 
 setup_file() {
     common_setup_file
@@ -367,6 +370,94 @@ make_repo() {
         _ "$CONFIG_LIB" </dev/null
     collect_rc 0 "同梱の既定値を誤りなく読める"
     collect_equals "$output" "承認済み|関連ADR|有効 ADR インデックス" "同梱の既定値の語が読める"
+
+    collect_finish
+}
+
+# 設定ファイルと既定値のファイルから、語の群の行（コメントと空行を除く `キー: 値`）だけを出す。
+config_word_lines() {
+    grep -E '^[a-z][a-z-]*:' "$1"
+}
+
+# manage-adr スキルが ADR へ書く値を得る経路。lint と同じ ADR ディレクトリから同じ設定を解決し、
+# 語の群の全キーを設定ファイルと同じ書き方で出すことを固定する。
+@test "面⑫: print-adr-config.sh は解決した語の群を \`キー: 値\` の行で出す" {
+    collect_init
+
+    # 設定の無いリポジトリでは、同梱の既定値の語の群をそのまま出す
+    make_repo print-default "" "$JA_VALID"
+    run --separate-stderr bash "$PRINT_CONFIG" "$REPO/docs/adr" </dev/null
+    collect_rc 0 "設定の無いリポジトリで print-adr-config.sh は exit 0"
+    collect_contains "${lines[0]:-}" "# 解決元: " "1行目は解決元を示すコメント行"
+    collect_contains "${lines[0]:-}" "adr-config.default" "設定が無ければ解決元は同梱の既定値"
+    collect_equals "$(printf '%s\n' "${lines[@]:1}")" "$(config_word_lines "$CONFIG_DEFAULT")" \
+        "設定が無ければ、同梱の既定値の語の群を全キー出す"
+
+    # 英語の設定のリポジトリでは、その設定の語の群を出す
+    make_repo print-en "$EN_CONFIG" "$EN_VALID"
+    local en_repo="$REPO"
+    run --separate-stderr bash "$PRINT_CONFIG" "$REPO/docs/adr" </dev/null
+    collect_rc 0 "英語の設定のリポジトリで print-adr-config.sh は exit 0"
+    collect_equals "${lines[0]:-}" "# 解決元: $REPO/.claude/adr/config" "解決元は導入先の設定ファイル"
+    collect_equals "$(printf '%s\n' "${lines[@]:1}")" "$(config_word_lines "$EN_CONFIG")" \
+        "英語の設定の語の群を全キー出す"
+
+    # 出力は設定ファイルとしてそのまま読める（全キーが揃い、形が設定の書き方に従う）
+    local echoed="$output"
+    make_repo print-roundtrip "" "$EN_VALID"
+    mkdir -p "$REPO/.claude/adr"
+    printf '%s\n' "$echoed" >"$REPO/.claude/adr/config"
+    run --separate-stderr bash "$PRINT_CONFIG" "$REPO/docs/adr" </dev/null
+    collect_rc 0 "出力を設定ファイルとして置いても誤りにならない"
+    collect_equals "$(printf '%s\n' "${lines[@]:1}")" "$(config_word_lines "$EN_CONFIG")" \
+        "出力を設定ファイルとして置くと、同じ語の群へ解決する"
+
+    # 引数を省くと、カレントディレクトリの docs/adr から決める（lint-adr.sh と同じ既定）
+    run --separate-stderr bash -c 'cd "$1" && bash "$2"' _ "$en_repo" "$PRINT_CONFIG" </dev/null
+    collect_rc 0 "引数を省くと docs/adr を対象にする"
+    collect_equals "${lines[0]:-}" "# 解決元: $en_repo/.claude/adr/config" "引数を省いても導入先の設定を解決する"
+
+    # 設定の誤りは、値を出さずに原因を示して exit 2 で止まる（既定値へ落とさない）
+    make_repo print-error "$CONFIG_FIXTURES/errors/partial-words/config" "$EN_VALID"
+    run --separate-stderr bash "$PRINT_CONFIG" "$REPO/docs/adr" </dev/null
+    collect_rc 2 "設定に誤りがあれば print-adr-config.sh は exit 2"
+    collect_equals "$output" "" "設定に誤りがあれば値を出さない"
+    collect_contains "$stderr" "語の群の一部だけが書かれています" "設定の誤りの原因を標準エラーへ示す"
+
+    # ADR ディレクトリが無ければ、既定値へ落とさずに exit 2 で止まる
+    run --separate-stderr bash "$PRINT_CONFIG" "$en_repo/docs/__missing__" </dev/null
+    collect_rc 2 "ADR ディレクトリが無ければ exit 2"
+    collect_equals "$output" "" "ADR ディレクトリが無ければ値を出さない"
+    collect_contains "$stderr" "ディレクトリが見つかりません" "ADR ディレクトリの不在を原因として示す"
+
+    collect_finish
+}
+
+# スキルの起票の手順（SKILL.md「書き込む値の取得」と transitions.md「起票」）を、英語の設定の
+# リポジトリで機械的に辿る。front-matter の `status: <status-proposed>` と `## <xref-heading>` を
+# print-adr-config.sh の出力で置き換えて書いた ADR は、同じリポジトリの lint を通る。
+@test "面⑬: 英語の設定のリポジトリで、出力の値で起票した ADR が lint を通る" {
+    collect_init
+
+    make_repo print-draft "$EN_CONFIG" "$EN_VALID"
+    run --separate-stderr bash "$PRINT_CONFIG" "$REPO/docs/adr" </dev/null
+    collect_rc 0 "print-adr-config.sh は exit 0"
+
+    local proposed="" xref="" line
+    for line in "${lines[@]}"; do
+        case "$line" in
+            'status-proposed: '*) proposed="${line#status-proposed: }" ;;
+            'xref-heading: '*) xref="${line#xref-heading: }" ;;
+        esac
+    done
+    collect_equals "$proposed" "Proposed" "status-proposed の値は英語の設定の値"
+    collect_equals "$xref" "Related ADRs" "xref-heading の値は英語の設定の値"
+
+    printf -- '---\nstatus: %s\nvalidity:\nsuperseded-by:\n---\n# ADR-202601070900-01: Draft\n\n## Context\n\n## Decision\n\n## Consequences\n\n## %s\n\n- Related: ADR-202601020900-01-use-sqlite\n' \
+        "$proposed" "$xref" >"$REPO/docs/adr/ADR-202601070900-01-draft.md"
+    run_sut "$REPO/docs/adr"
+    collect_rc 0 "出力の値で起票した ADR を含む ADR 群は exit 0"
+    collect_equals "$output" "" "出力の値で起票した ADR は違反を出さない"
 
     collect_finish
 }

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# adr プラグインの設定の読み込み部。lint-adr.sh と gen-adr-index.sh が読み込んで使う
-# （単体では実行しない。関数と定数を定義するだけで、読み込んだ時点では何も読まない）。
+# adr プラグインの設定の読み込み部。lint-adr.sh・gen-adr-index.sh・print-adr-config.sh が
+# 読み込んで使う（単体では実行しない。関数と定数を定義するだけで、読み込んだ時点では何も読まない）。
+# manage-adr スキルは print-adr-config.sh の出力から、ADR へ書き込む値を得る。
 #
 # 設定は `キー: 値` を1行ずつ並べたファイルで定める。キーと書き方の説明は、同梱の
 # 既定値のファイル（adr-config.default）が持つ。
@@ -33,7 +34,7 @@
 # 気づけない。誤りは1件目で打ち切らず、全件を出してから戻る。
 #
 # 前提: lint-adr.sh は bash 4.2 以上を確かめてから読み込む。この部分自身は連想配列を
-# 使わない。版の確認を持たない gen-adr-index.sh からも読み込むためである。
+# 使わない。版の確認を持たない gen-adr-index.sh・print-adr-config.sh からも読み込むためである。
 
 # 同梱の既定値のファイル。読み込み元のパスから解決する（cwd に依存しない）。
 ADR_CONFIG_DEFAULT_FILE="$(dirname "${BASH_SOURCE[0]}")/adr-config.default"
