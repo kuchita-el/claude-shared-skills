@@ -2,7 +2,7 @@
 import { basename } from 'node:path';
 import { LineCounter, isAlias, isMap as isYamlMap, isScalar, isSeq, parseDocument } from 'yaml';
 import type { Node as YamlNode } from 'yaml';
-import { OPEN, TABLES, tableById } from './schema.ts';
+import { AGGREGATE_PARENT, OPEN, TABLES, tableById } from './schema.ts';
 import { readSources } from './sources.ts';
 import type { Sources } from './sources.ts';
 import type { TableDef, ValueType } from './schema.ts';
@@ -14,6 +14,7 @@ export type Rule =
   | 'invalid-shape'
   | 'undefined-reference'
   | 'unconnected'
+  | 'aggregate-cycle'
   | 'duplicate-name'
   | 'requirement-uc'
   | 'requirement-structure'
@@ -43,7 +44,7 @@ export interface OpenMark {
   line: number;
 }
 
-interface Row {
+export interface Row {
   def: TableDef;
   data: Data;
   // 名前キーの値。名前が欠落・空・非文字列のレコードは意味検査から外すため、ここへは入らない
@@ -248,6 +249,60 @@ function loadTable(text: string | undefined, def: TableDef, out: Violation[]): R
   return rows;
 }
 
+// 情報のレコードの集約の親の名前。キーが無い・空白だけ・文字列でないなら null（独立した情報。型の誤りは invalid-shape が拾う）
+export function aggregateParent(row: Row): string | null {
+  const v = row.data[AGGREGATE_PARENT];
+  return typeof v === 'string' && v.trim() !== '' ? v.trim() : null;
+}
+
+// 情報の名前 → それを集約の親に挙げる情報の名前（表の順）。描画が UC の情報の項に子を添えるために使う
+export function aggregateChildren(rows: Record<string, Row[]>): Map<string, string[]> {
+  const children = new Map<string, string[]>();
+  for (const r of rows['information']) {
+    const p = aggregateParent(r);
+    if (p === null) continue;
+    if (!children.has(p)) children.set(p, []);
+    children.get(p)!.push(r.name);
+  }
+  return children;
+}
+
+// 接続している情報の名前。UC の『情報』から指される情報と、集約の親が表にあり接続している情報（孫も親を辿って同じく）。
+// 関連情報からの参照は数えない（独立した情報どうしの参照にも使うため）。親を辿っても UC に着かない循環は接続しない
+function connectedInformation(rows: Record<string, Row[]>): Set<string> {
+  const connected = new Set<string>();
+  for (const uc of rows['use-case']) for (const v of values(uc, '情報')) connected.add(v);
+  const names = new Set(rows['information'].map((r) => r.name));
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const r of rows['information']) {
+      const p = aggregateParent(r);
+      if (p !== null && names.has(p) && connected.has(p) && !connected.has(r.name)) {
+        connected.add(r.name);
+        grew = true;
+      }
+    }
+  }
+  return connected;
+}
+
+// レコード start（集約の親 parent）から集約の親を辿って start の名前へ戻る道（start から始まり start で終わる名前の並び）。
+// 戻らなければ null。親が自身なら [名前, 名前]。parentsOf は名前 → 集約の親（同じ名前のレコードが複数あれば全ての親）
+function aggregateCycle(start: string, parent: string, parentsOf: Map<string, string[]>): string[] | null {
+  const seen = new Set<string>([parent]);
+  const walk = (name: string, path: string[]): string[] | null => {
+    if (name === start) return path;
+    for (const p of parentsOf.get(name) ?? []) {
+      if (seen.has(p) && p !== start) continue;
+      seen.add(p);
+      const found = walk(p, [...path, p]);
+      if (found !== null) return found;
+    }
+    return null;
+  };
+  return walk(parent, [start, parent]);
+}
+
 function rowTarget(row: Row): string {
   if (row.def.id === 'state') return stateTarget(row.name, one(row, '状態'));
   return `${row.def.kind}:${row.name}`;
@@ -342,7 +397,7 @@ export function checkSources(sources: Sources): Violation[] {
     statesOf.get(r.name)!.add(st);
   }
 
-  // 未定義の参照（公式の11種）
+  // 未定義の参照（公式の11種と、情報→集約の親）
   interface RefSpec {
     from: string;
     key: string;
@@ -356,6 +411,7 @@ export function checkSources(sources: Sources): Violation[] {
     { from: 'use-case', key: '情報', toKind: '情報', exists: has('information') },
     { from: 'use-case', key: '条件', toKind: '条件', exists: has('condition') },
     { from: 'information', key: '関連情報', toKind: '情報', exists: has('information') },
+    { from: 'information', key: AGGREGATE_PARENT, toKind: '情報', exists: has('information') },
     { from: 'information', key: '状態モデル', toKind: '状態モデル', exists: (v) => models.has(v) },
     { from: 'information', key: 'バリエーション', toKind: 'バリエーション', exists: has('variation') },
     { from: 'state', key: '遷移UC', toKind: 'UC', exists: has('use-case') },
@@ -385,7 +441,8 @@ export function checkSources(sources: Sources): Violation[] {
   }
 
   // 未接続: どの UC からも参照されていないアクター・外部システム・情報・条件。
-  // 『仮説』キーを持つレコード（値が空でも持つ扱い）は検証前の状態なので判定しない。仮説の UC からの参照も参照に数える
+  // 『仮説』キーを持つレコード（値が空でも持つ扱い）は検証前の状態なので判定しない。仮説の UC からの参照も参照に数える。
+  // 情報は、集約の親が接続していれば接続している（connectedInformation）。親が仮説のレコードでも、接続していれば子は接続する
   const connectSpecs: [string, string][] = [
     ['actor', 'アクター'],
     ['external-system', '外部システム'],
@@ -394,7 +451,8 @@ export function checkSources(sources: Sources): Violation[] {
   ];
   for (const [id, ucKey] of connectSpecs) {
     const referenced = new Set<string>();
-    for (const uc of rows['use-case']) for (const v of values(uc, ucKey)) referenced.add(v);
+    if (id === 'information') for (const v of connectedInformation(rows)) referenced.add(v);
+    else for (const uc of rows['use-case']) for (const v of values(uc, ucKey)) referenced.add(v);
     const def = tableById(id);
     for (const row of rows[id]) {
       if (Object.hasOwn(row.data, '仮説')) continue;
@@ -403,10 +461,35 @@ export function checkSources(sources: Sources): Violation[] {
           rule: 'unconnected',
           file: def.file,
           target: rowTarget(row),
-          detail: `どの UC の「${ucKey}」からも参照されていない`,
+          detail:
+            id === 'information' && aggregateParent(row) !== null
+              ? `どの UC の「${ucKey}」からも参照されず、集約の親『${aggregateParent(row)}』も接続していない`
+              : `どの UC の「${ucKey}」からも参照されていない`,
         });
       }
     }
+  }
+
+  // 集約の循環: 情報の集約の親を辿ると自身へ戻る（親が自身の場合を含む）。循環の上にあるレコードごとに出す。
+  // 循環へ入るだけで循環の上に無いレコードは出さない（直すのは循環の上のレコードである）
+  const parentsOf = new Map<string, string[]>();
+  for (const r of rows['information']) {
+    const p = aggregateParent(r);
+    if (p === null) continue;
+    if (!parentsOf.has(r.name)) parentsOf.set(r.name, []);
+    parentsOf.get(r.name)!.push(p);
+  }
+  for (const row of rows['information']) {
+    const parent = aggregateParent(row);
+    if (parent === null) continue;
+    const cycle = aggregateCycle(row.name, parent, parentsOf);
+    if (cycle === null) continue;
+    out.push({
+      rule: 'aggregate-cycle',
+      file: tableById('information').file,
+      target: rowTarget(row),
+      detail: `${AGGREGATE_PARENT}を辿ると自身へ戻る（${cycle.join(' → ')}）`,
+    });
   }
 
   // 名前の一意。state は（状態モデル, 状態, 遷移UC）の組

@@ -4,6 +4,7 @@
 // 印・図の class と linkStyle・見出しの行・凡例・描き分けの CSS は、区分か基準の版があるときだけ出し、
 // 区分の無い材料（基準の版なし）からは描き分けを足す前と同じ文字列を作る。
 import type {
+  AggregateChildView,
   DiffStatus,
   Marked,
   NamedView,
@@ -141,6 +142,11 @@ function nameHtml(n: NamedView): string {
   return n.known
     ? escapeHtml(n.name)
     : `<span class="unknown" title="表に無い名前">${escapeHtml(marked(n.name, false))}</span>`;
+}
+
+// 情報の項に添える集約の子の名前。孫は子の後ろの括弧に入れる。名前だけで、区分の印を付けない
+function childrenText(children: AggregateChildView[]): string {
+  return children.map((c) => escapeHtml(c.name) + (c.children.length > 0 ? `（集約の子: ${childrenText(c.children)}）` : '')).join('、');
 }
 
 function ucLink(name: string | null, known: boolean, view: View): string {
@@ -363,7 +369,7 @@ function sliceSection(uc: UseCaseView, view: View): string {
       : `<table><thead><tr><th>情報</th><th>説明</th><th>属性</th></tr></thead><tbody>${uc.information
           .map(
             (i) =>
-              `<tr><td>${nameHtml(i)}${diffMark(i)}</td><td>${escapeHtml(i.description)}${openHtml(i.open)}</td><td>${escapeHtml(i.attributes.join('、'))}</td></tr>`,
+              `<tr><td>${nameHtml(i)}${diffMark(i)}${i.children.length > 0 ? `<div class="note">集約の子: ${childrenText(i.children)}</div>` : ''}</td><td>${escapeHtml(i.description)}${openHtml(i.open)}</td><td>${escapeHtml(i.attributes.join('、'))}</td></tr>`,
           )
           .join('')}</tbody></table>`;
   const conditions =

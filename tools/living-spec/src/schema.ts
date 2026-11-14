@@ -97,6 +97,10 @@ export const HYPOTHESIS = '仮説';
 // 仮説（レコード単位の試す段階）とは別の印で、決まったら項目を外し、項目が尽きたらキーごと外す
 export const OPEN = '未決';
 
+// 情報の表だけが持てる任意のキー。値は、そのレコードを集約の子とする親の情報の名前（1つ）。キーが無い・空白だけなら独立した情報。
+// 集約の子は、親が UC から接続していれば接続しているとする（check.ts の未接続の検査）。関連情報（独立した情報どうしの参照にも使う）とは別のキー
+export const AGGREGATE_PARENT = '集約の親';
+
 export const TABLES: TableDef[] = [
   {
     id: 'actor',
@@ -135,6 +139,7 @@ export const TABLES: TableDef[] = [
       情報: 'string',
       属性: 'string',
       関連情報: 'string',
+      [AGGREGATE_PARENT]: 'string',
       状態モデル: 'string',
       バリエーション: 'string',
       説明: 'string',

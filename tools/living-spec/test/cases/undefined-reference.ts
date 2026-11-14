@@ -317,4 +317,20 @@ export const cases: Case[] = [
     },
     expected: ref('docs/rdra/use-case.yaml', 'UC:経費申請を作成する'),
   },
+  // 集約の親に、定義の無い情報を書くと落ちる（子を UC から直接参照し、unconnected が混ざらない入力にする）
+  {
+    name: 'fail-aggregate-parent',
+    files: {
+      'docs/rdra/information.yaml': t`
+        - 情報: 経費明細
+          集約の親: 経費申請書
+      `,
+      'docs/rdra/use-case.yaml': t`
+        - UC: 経費明細を直す
+          情報:
+            - 経費明細
+      `,
+    },
+    expected: ref('docs/rdra/information.yaml', '情報:経費明細'),
+  },
 ];

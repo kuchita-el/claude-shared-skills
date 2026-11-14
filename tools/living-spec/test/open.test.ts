@@ -242,7 +242,7 @@ const FORMAT_KEYS: Record<string, { file: string; nameKey: string; keys: string[
   information: {
     file: 'docs/rdra/information.yaml',
     nameKey: '情報',
-    keys: ['属性', '関連情報', '状態モデル', 'バリエーション', '説明'],
+    keys: ['属性', '関連情報', '集約の親', '状態モデル', 'バリエーション', '説明'],
     text: ['説明'],
   },
   state: {
@@ -293,7 +293,7 @@ test('未決の印の欄: 全8表で、文で書く欄には付けられ、そ�
       }
     }
   }
-  assert.equal(negatives, 42);
+  assert.equal(negatives, 43);
 });
 
 test('render: 未決の内容の HTML の特殊文字は、縦串の印と未決の一覧の節の両方でエスケープして出す', () => {
