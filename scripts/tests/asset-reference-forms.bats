@@ -19,9 +19,9 @@
 # 【語彙】面と語彙ラベルの対ごとに、行を拡張正規表現で照合する。
 #   reference  plugin-root-var   ${CLAUDE_PLUGIN_ROOT}（波括弧なしの $CLAUDE_PLUGIN_ROOT を含む）
 #   reference  skill-dir-var     ${CLAUDE_SKILL_DIR}（同上）
-#   reference  parent-relative   ../ を含むパス・Markdown 相対リンク
+#   3面すべて  parent-relative   ../ を含むパス・Markdown 相対リンク
+#                                （スキル本文の ${CLAUDE_SKILL_DIR}/../ の親相対もここで拾う）
 #   agent      skill-dir-var     ${CLAUDE_SKILL_DIR}
-#   skill      skill-dir-parent  ${CLAUDE_SKILL_DIR}/../
 #   3面すべて  placeholder       プラグインルートやスキルディレクトリを山括弧で書いた基点
 #   3面すべて  factory-path      plugins/<name>/... の形の、配布元リポジトリからの相対パス
 #
@@ -42,14 +42,14 @@
 #     （`$REPO/plugins/x/...`）と、後ろに名前が続かない plugins/ 単独の言及である。
 #
 # 【届かない範囲】本検査が見るのは上の語彙に当たる行だけであり、次は見ない。
-#   - references 本文が名指した資産へ、ハブ（スキル本文・agents 定義本文）が到達形を
+#   - references 本文が名指した資産へ、ハブ（当該スキルの本文）が到達形を
 #     持っているか
 #   - references 本文に在る、変数も ../ も伴わない素の `references/<name>` の言及
 #   - 面で許された形（スキル本文の ${CLAUDE_PLUGIN_ROOT}/... 等）が指す先の実在
 #   - 波括弧のパラメータ名（`{plugin_root}/...`・`{pluginRoot}/...`）と、同一ディレクトリ内を
 #     指す相対リンク
 #   - references 配下の .md 以外のファイル、README、hooks、同梱スクリプト
-#   - 語彙に無い形で書かれた基点。語彙は上の7行に固定である
+#   - 語彙に無い形で書かれた基点。語彙は上の一覧に固定である
 #
 # 【免除】到達を指示せず配置や変数名を説明するだけの言及は、同節が射程から除いている。
 # この区別は行の字面からは判定できないため、通す行を REFERENCE_FORM_EXEMPTIONS へ1行ずつ
@@ -98,7 +98,6 @@ PRECONDITION_PATHS=("$PLUGINS_ROOT")
 RE_PLUGIN_ROOT_VAR='\$\{?CLAUDE_PLUGIN_ROOT'
 RE_SKILL_DIR_VAR='\$\{?CLAUDE_SKILL_DIR'
 RE_PARENT_RELATIVE='(^|[^.])\.\./'
-RE_SKILL_DIR_PARENT='\$\{?CLAUDE_SKILL_DIR\}?/\.\./'
 RE_PLACEHOLDER='<[^<>/]*([Pp]lugin|PLUGIN|[Ss]kill|SKILL|プラグイン|スキル)[^<>/]*>/'
 RE_PLACEHOLDER="$RE_PLACEHOLDER"'|(^|[^[:alnum:]_./~-])<[^<>/]+>/(references|scripts|agents|skills)/'
 RE_FACTORY_PATH='(^|[^[:alnum:]_./~-])(\./)?plugins/[[:alnum:]_{<$]'
@@ -112,9 +111,10 @@ REFERENCE_FORM_VOCABULARY=(
     "reference|placeholder|$RE_PLACEHOLDER"
     "reference|factory-path|$RE_FACTORY_PATH"
     "agent|skill-dir-var|$RE_SKILL_DIR_VAR"
+    "agent|parent-relative|$RE_PARENT_RELATIVE"
     "agent|placeholder|$RE_PLACEHOLDER"
     "agent|factory-path|$RE_FACTORY_PATH"
-    "skill|skill-dir-parent|$RE_SKILL_DIR_PARENT"
+    "skill|parent-relative|$RE_PARENT_RELATIVE"
     "skill|placeholder|$RE_PLACEHOLDER"
     "skill|factory-path|$RE_FACTORY_PATH"
 )
@@ -360,7 +360,6 @@ violating_line_for() {
     plugin-root-var) printf '%s\n' '詳細は `${CLAUDE_PLUGIN_ROOT}/references/x.md` を読む' ;;
     skill-dir-var) printf '%s\n' '詳細は `${CLAUDE_SKILL_DIR}/references/x.md` を読む' ;;
     parent-relative) printf '%s\n' '詳細は [x.md](../../../references/x.md) を読む' ;;
-    skill-dir-parent) printf '%s\n' '詳細は `${CLAUDE_SKILL_DIR}/../../references/x.md` を読む' ;;
     placeholder) printf '%s\n' '詳細は `<plugin-root>/references/x.md` を読む' ;;
     factory-path) printf '%s\n' '詳細は `plugins/growth/references/x.md` を読む' ;;
     esac
@@ -464,9 +463,10 @@ violating_line_for() {
         'reference|placeholder'
         'reference|factory-path'
         'agent|skill-dir-var'
+        'agent|parent-relative'
         'agent|placeholder'
         'agent|factory-path'
-        'skill|skill-dir-parent'
+        'skill|parent-relative'
         'skill|placeholder'
         'skill|factory-path'
     )
@@ -564,6 +564,18 @@ violating_line_for() {
     run scan_reference_forms "$newdir_dup"
     collect_rc 1 "新設のプラグインの共有 references への書き足しは非0で終わる"
     collect_contains "$output" "plugin-root-var"$'\t'"zz-new-plugin/references/sub/new.md:1:${new_content}" "新設のプラグインの下位ディレクトリの一致行が出力される"
+
+    # スキル本文の変数つきの親相対（${CLAUDE_SKILL_DIR}/../）も parent-relative として拾う
+    local parent_dup="$BATS_TEST_TMPDIR/skill-dir-parent"
+    copy_plugins "$parent_dup"
+    local skill_target parent_content parent_line
+    skill_target="$(first_surface_file skill "$parent_dup")"
+    parent_content='詳細は `${CLAUDE_SKILL_DIR}/../../references/x.md` を読む'
+    parent_line="$(append_line "$parent_dup/$skill_target" "$parent_content")"
+    run scan_reference_forms "$parent_dup"
+    collect_rc 1 "スキル本文への変数つきの親相対の書き足しは非0で終わる"
+    collect_equals "$(summary_violations)" "1" "スキル本文への変数つきの親相対の書き足しは違反が1行になる"
+    collect_contains "$output" "parent-relative"$'\t'"${skill_target}:${parent_line}:${parent_content}" "スキル本文の変数つきの親相対が parent-relative として出力される"
 
     collect_finish
 }
