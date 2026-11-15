@@ -53,10 +53,10 @@ superseded-by:
 - Superseded by: ADR-YYYYMMDDHHMM-NN-<slug>
 - Related: ADR-YYYYMMDDHHMM-NN-<slug>
 各語彙の意味・front-matter の superseded-by との対応・書式規約と機械検査の範囲は「相互参照の規約」に従い、本雛形に再掲しない。
-該当なしの場合は「該当なし」と記述。関連Issueも併記可（書式: `関連Issue: #<番号>`、複数件はカンマ区切り）
+該当が無い場合の書き方は manage-adr スキルの `transitions.md`「起票（提案中）」に従う。関連Issueも併記可（書式: `関連Issue: #<番号>`、複数件はカンマ区切り）
 -->
 
-<先行ADR・後継ADR・関連ADRを full slug で列挙。該当なしの場合は「該当なし」と明記>
+<先行ADR・後継ADR・関連ADRを full slug で列挙。無い場合の書き方は上の注釈に従う>
 
 <!--
 変更履歴の節（`## 変更履歴`）の配置規約（本雛形が単一出典。他の手順書へ再掲しない）:
