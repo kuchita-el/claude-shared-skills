@@ -293,11 +293,18 @@ fi
 # 結果になるので省く（lint の実行時間が倍になるのを避ける）。同じと言えるのは、追跡中のファイルに
 # 差分が無く、未追跡のファイル（ignore されたものを含む）も無いときに限る。設定も比べるのは、
 # ADR が同じでも、設定が異なれば判定と検査する ADR ディレクトリが変わるためである（設定が同じなら、
-# 両側の ADR ディレクトリも同じである）。diff-files は index を書き換えない。判定に失敗したときは省かない。
+# 両側の ADR ディレクトリも同じである）。判定に失敗したときは省かない。
+#
+# 比べるのは中身である。`git diff-files` は index に記録した stat 情報だけで比べ、index を更新しない。
+# そのため、書いた秒と同じ秒に index が書かれた項目（racy-git で smudge された項目）や、中身を変えずに
+# mtime だけが変わった項目を、中身が同じでも差分ありと報告する。`git status` は stat が食い違う項目を
+# 中身で比べ直し、`--no-optional-locks` を付ければ index を書き換えない。status の出力の1文字目は
+# index と HEAD の差（ステージ済みの変更）を表すので見ず、2文字目（作業ツリーと index の差。`?` は
+# 未追跡、`!` は ignore された未追跡）だけを見る。
 if [ "$check_worktree" -eq 1 ] && [ "$check_index" -eq 1 ] &&
-    git -C "$PROJECT_DIR" diff-files --quiet -- "$worktree_adr_rel/" "$config_rel" 2>/dev/null &&
-    untracked=$(git -C "$PROJECT_DIR" ls-files --others -- "$worktree_adr_rel/" "$config_rel" 2>/dev/null) &&
-    [ -z "$untracked" ]; then
+    worktree_status=$(git -C "$PROJECT_DIR" --no-optional-locks status --porcelain=v1 \
+        --untracked-files=all --ignored -- "$worktree_adr_rel/" "$config_rel" 2>/dev/null) &&
+    ! printf '%s\n' "$worktree_status" | grep -q '^.[^ ]'; then
     check_worktree=0
 fi
 
