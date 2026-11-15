@@ -146,4 +146,4 @@ Markdown 等の長文を CLI オプションに直接渡さない。ファイル
 ## 関連
 
 - [`personal-store-spec.md`](personal-store-spec.md) — 個人ローカル store（生観測）仕様（#345）。学習ループの起点
-- [`learning-promotion-spec.md`](learning-promotion-spec.md) — 出来事ベースの昇格 Issue を本仕様の1欄エントリへ翻訳する変換規約（#383）。本仕様「記法ルール」を出口ゲートとして参照する
+- [`learning-promotion-spec.md`](learning-promotion-spec.md) — 裁定された仮説を本仕様の1欄エントリへ翻訳する変換規約（#383）。本仕様「記法ルール」を出口ゲートとして参照する
