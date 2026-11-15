@@ -22,6 +22,8 @@ runner はいずれかが失敗しても残りを最後まで実行してから�
 
 工場側は `tools/living-spec` からソースでビルドして試験し（生成物 `dist/` は追跡しない）、利用者へは GitHub Release の添付物として配る。規則の分岐（ファイルを置かない試験）・読み込みから出力までの見本・入口・描画・基準の版との差分は工場側の試験が持ち、runner の `living-spec` スイートが走らせる（`pnpm` は `mise.toml` が版を固定する）。プラグインの中継の振る舞いは、偽の検査器を使う `living-spec-run.bats` が見る。Release のワークフロー（`.github/workflows/living-spec-release.yml`）は runner の外にあり、手動の起動でだけ走るため、§2 の自動起動の射程に入らない（構造の不変条件は `living-spec-release-workflow.bats` が固定し、覆わないものと Release を切る手順は `living-spec-release.md` が定める）。
 
+adr プラグインの `lint-adr.sh` が bash 4.2 未満で原因を示して止まることは、runner の外で CI の別のジョブが実測する。ジョブは `.github/workflows/test.yml` の `lint-adr-old-bash` で、bash 3.2 の公式コンテナをダイジェストで固定して lint を起動する。起動した bash の版と、終了コードと案内の位置は `scripts/check-lint-adr-old-bash.sh` が確かめる。コンテナの実行環境を前提にするため、runner には組み込まない。検査器自身が期待と違う結果を見逃さないことは、`lint-adr-old-bash.bats` が runner の中で固定する。
+
 Writing Wave 2の追加検査は`writing-lint.bats`と`writing-contract.bats`で行う。前者は`lint-ja.mjs`のfile/diff、種別ごとの上限、一文長の数え方、検査できない入力の終了コードを検査する。`lint-ja.mjs`はNodeで動くため、`writing-lint.bats`はNode（`mise.toml`が版を固定する）を要し、解決できない環境では落ちる。後者はskill/agent、doc-reviewerの入力とtools、F1/F2/F3/F4/F5正負fixtureを検査する。最大2回loop、両host matrix、permission ledgerも後者が検査する。Codex agent登録面が利用できない場合の明示起動・degraded手動検査は、`plugins/writing/compatibility.json`へ記録する。
 
 配布プラグインの `claude plugin eval` ケース（`evals/<plugin>/`）は runner に含めない。理由と実行手順は §7 を参照。
