@@ -342,6 +342,15 @@ run_gate() {
     collect_contains "$output" "$STAGED_MESSAGE" "ステージした内容の違反が報告される"
     collect_not_contains "$output" "$WORKTREE_MESSAGE" "index と同じ作業ツリーは検査を重ねない"
 
+    # 中身が同じなら、stat 情報（mtime）が index の記録と食い違っても、同じと扱う。stat だけで比べると、
+    # 書いた秒と同じ秒に index が書かれた場合（racy-git）にも差分ありと誤り、上の項目が時刻次第で赤になる。
+    # mtime を未来へずらして、その食い違いを時刻に依らず作る。
+    repo="$(make_staged_repo both-invalid-touched "$INVALID_CORPUS" "$INVALID_CORPUS")"
+    touch -d "+1 hour" "$repo"/docs/adr/*
+    run_gate "$repo" "$(hook_input "git commit -a -m x" "$repo")" "$repo"
+    collect_rc 2 "mtime だけが食い違う作業ツリーでも、ステージした違反で止まる"
+    collect_not_contains "$output" "$WORKTREE_MESSAGE" "mtime だけが食い違う作業ツリーは、index と同じとして検査を重ねない"
+
     # 未追跡のファイルが1つでもあれば、index と同じとは扱わない
     repo="$(make_staged_repo extra-untracked "$VALID_CORPUS" "$VALID_CORPUS")"
     cp "$INVALID_CORPUS"/ADR-*.md "$repo/docs/adr/"
