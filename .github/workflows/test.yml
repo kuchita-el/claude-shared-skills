@@ -42,3 +42,17 @@ jobs:
         run: bash scripts/run-tests.sh
         env:
           RUN_TESTS_REQUIRE_ALL_SUITES: "1"
+
+  # adr プラグインの lint-adr.sh は bash 4.2 以上を要し、足りない版では原因を示して exit 2 で止まる。
+  # macOS の既定の /bin/bash は 3.2 であり、その実体で版の判定が働くことを確かめる。
+  # bats は BASH_VERSION を差し替えて分岐を確かめるが、本物の 3.2 が判定より前の行を解釈できる
+  # ことまでは確かめないため、bash 3.2 の公式コンテナで実測する。版は macOS の /bin/bash に揃える。
+  lint-adr-old-bash:
+    name: lint-adr on bash 3.2
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Run lint-adr.sh under bash 3.2
+        run: bash scripts/check-lint-adr-old-bash.sh docker run --rm -v "$GITHUB_WORKSPACE:/w" -w /w bash:3.2.57 bash

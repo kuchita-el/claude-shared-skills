@@ -98,6 +98,7 @@ EXPECTED_BATS=(
     eval-placement.bats
     gen-adr-index.bats
     lint-adr-layers.bats
+    lint-adr-old-bash.bats
     lint-adr-stem.bats
     lint-adr-xref.bats
     lint-adr-undo.bats
