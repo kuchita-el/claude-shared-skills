@@ -111,6 +111,7 @@ EXPECTED_BATS=(
     run-tests-runner.bats
     skill-portability.bats
     writing-lint.bats
+    shared-memory-check.bats
     writing-contract.bats
     distribution-boundary.bats
     living-spec-run.bats
