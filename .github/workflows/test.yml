@@ -55,4 +55,4 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Run lint-adr.sh under bash 3.2
-        run: bash scripts/check-lint-adr-old-bash.sh docker run --rm -v "$GITHUB_WORKSPACE:/w" -w /w bash:3.2.57 bash
+        run: bash scripts/check-lint-adr-old-bash.sh docker run --rm -v "$GITHUB_WORKSPACE:/w" -w /w bash:3.2.57@sha256:2556c2da19c32c1614d318645c73a7bf64d38be21cf69e98e3ca51f053983719 bash

@@ -14,7 +14,7 @@
 #
 # exit code:
 #   0: 古い bash で lint が exit 2 になり、版が足りないことを示すメッセージが出た
-#   1: 期待と異なる（exit 2 以外、またはメッセージが無い）
+#   1: 期待と異なる（起動したシェルが 4.2 未満の bash でない、exit 2 以外、またはメッセージが無い）
 #   2: 引数の誤り
 set -uo pipefail
 
@@ -23,9 +23,25 @@ if [ "$#" -eq 0 ]; then
     exit 2
 fi
 
-# 実測した版を記録に残す（CI のログが実測の記録になる）
-version_output=$("$@" -c 'printf "%s\n" "$BASH_VERSION"' 2>&1)
+# 実測した版を記録に残す（CI のログが実測の記録になる）。標準出力の最後の行だけを版として読む。
+# イメージの取得の進み具合は標準エラーへ出るため、版の行に混ざらない。
+version_output=$("$@" -c 'printf "%s\n" "$BASH_VERSION"' 2>/dev/null | tail -n 1)
 echo "起動した bash の版: ${version_output}"
+
+failed=0
+# 起動したシェルが本当に 4.2 未満の bash かを確かめる。新しい bash を誤って渡すと、
+# 版の判定が働かないまま lint が先へ進み、検査の前提が崩れる。
+if [[ "$version_output" =~ ^([0-9]+)\.([0-9]+) ]]; then
+    major=${BASH_REMATCH[1]}
+    minor=${BASH_REMATCH[2]}
+    if [ "$major" -gt 4 ] || { [ "$major" -eq 4 ] && [ "$minor" -ge 2 ]; }; then
+        echo "失敗: 起動した bash が 4.2 以上（${version_output}）であり、古い bash の実測にならない" >&2
+        failed=1
+    fi
+else
+    echo "失敗: 起動したシェルの版を bash の版として読めない（${version_output:-空}）" >&2
+    failed=1
+fi
 
 output=$("$@" plugins/adr/scripts/lint-adr.sh docs/adr 2>&1)
 rc=$?
@@ -33,7 +49,6 @@ echo "lint-adr.sh の exit code: ${rc}"
 echo "lint-adr.sh の出力:"
 printf '%s\n' "$output" | sed 's/^/  /'
 
-failed=0
 if [ "$rc" -ne 2 ]; then
     echo "失敗: bash 4.2 未満では exit 2 を期待したが ${rc} だった" >&2
     failed=1
