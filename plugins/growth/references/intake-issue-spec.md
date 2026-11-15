@@ -78,7 +78,7 @@ growth プラグインの学習ループにおいて、複数の `growth:promote
 | `growth:intake` | 識別（取り込み Issue 全体） | `#1D76DB` | 集約点を示す青系。inbox 識別子 `growth:promote`（濃緑）と視認上区別する |
 
 - 取り込み Issue は既存 `growth` ラベルと**併用**する（`growth` ＋ `growth:intake`）。`growth` は growth ドメイン全体の識別、`growth:intake` は集約点のサブ識別。
-- **ラベル実体の作成はセットアップ手順で行う**。intake の `allowed-tools` にラベル作成コマンドは無く、実作成は #385（承認フロー配線）またはセットアップ手順の実行時に委譲する（`promotion-issue-spec.md` のラベル方針と同一）。
+- **ラベル実体の作成はセットアップ手順で行う**。intake の `allowed-tools` にラベル作成コマンドは無く、実作成は利用者が次のコマンドを実行して行う（`promotion-issue-spec.md` のラベル方針と同一）。
 
 ```bash
 # ラベル実体の作成（セットアップ手順で実行する。intake 自身は作成しない）
@@ -93,7 +93,7 @@ gh label create growth:intake --color 1D76DB --description "取り込み Issue�
 | 裁定結果の記録形式（career・空間のテーブル。宛先 repo を持たない） | 仮説 Issue（`growth:promote`）のテンプレート自体（`promotion-issue-spec.md` #382 が担う） |
 | 取り込み時クローズの手順（リンクコメント ＋ not planned） | 各 career への実書き込み手順（learnings.md 変換 #383 / 残りキャリア #384 / 成果物 PR の作成） |
 | 集約トポロジの不変条件（集約先複数・public 拒否・scope 流用） | privacy ゲートの新設（公開可否 ≠ 広さ。留保。別 Issue） |
-| `growth:intake` 識別ラベルの定義 | ラベル実体の作成（`gh label create` の実行。#385 / セットアップへ委譲） |
+| `growth:intake` 識別ラベルの定義 | ラベル実体の作成（`gh label create` の実行。セットアップへ委譲） |
 | cascade-close を新設しない方針の明記 | フリート fan-in の供給（Phase 3） |
 
 ## 関連
