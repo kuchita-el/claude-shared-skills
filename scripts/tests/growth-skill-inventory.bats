@@ -1,9 +1,9 @@
 #!/usr/bin/env bats
 # growth の提供物（スキル）の列挙が、実体と食い違っていないことの機械検査。
 #
-# 【主題】growth のスキルの列挙は2つの文書に在る。配布物の `plugins/growth/README.md` と、
-# 配布元の `docs/development/growth/design.md` である。提供物の実体は
-# `plugins/growth/skills/` 直下のディレクトリであり、2つの列挙はその射影にあたる。
+# 【主題】growth のスキルの列挙は3か所に在る。配布物の `plugins/growth/README.md` の導入文と
+# 「提供物」節、配布元の `docs/development/growth/design.md` §4 である。提供物の実体は
+# `plugins/growth/skills/` 直下のディレクトリであり、3つの列挙はその射影にあたる。
 # 本ファイルは実体と各射影を1対ずつ突き合わせ、名前の集合が一致しなければ赤にする。
 # 射影どうしを直接比べない理由は `docs/development/growth/README.md` が持つ。
 #
@@ -11,6 +11,9 @@
 #   実体      — `plugins/growth/skills/` 直下のディレクトリ名
 #   README    — `## 提供物` 見出しの次の行から、次の `## ` 見出しの手前まで。
 #               「- **<name> スキル（`skills/<name>/`）**」形の箇条の <name>
+#   導入文    — README の最初の `## ` 見出しより前に在る、最初の
+#               「<N> つのスキル（<name> / <name> / …）」。括弧の中を「/」で区切った <name> と、
+#               件数 <N>。名前の集合に加えて、<N> が実体の件数と一致することも見る
 #   design.md — `## 4. プラグイン構成` 見出しの次の行から、次の `## ` 見出しの手前まで。
 #               「- `<name>` スキル（」形の箇条の <name>（行頭の字下げは問わない）
 # 見出しは行全体の一致で探す。<name> は英数字・ハイフン・アンダースコアの並びに限る。
@@ -37,6 +40,7 @@ DESIGN_REL="docs/development/growth/design.md"
 SKILLS_REL="plugins/growth/skills"
 README_HEADING="## 提供物"
 DESIGN_HEADING="## 4. プラグイン構成"
+INTRO_LABEL="$README_REL の導入文"
 
 # 節の本文を出す。$1 ファイル / $2 見出し行（行全体の一致）。
 # ファイルが無い・見出しが無いときは何も出さない（判定は呼び出し側が空集合として行う）。
@@ -60,6 +64,23 @@ readme_skill_names() {
     section_body "$1/$README_REL" "$README_HEADING" |
         sed -n 's|^- \*\*\([A-Za-z0-9_-][A-Za-z0-9_-]*\) スキル（`skills/\1/`）\*\*.*|\1|p' |
         LC_ALL=C sort -u
+}
+
+# 導入文の「<N> つのスキル（a / b / c）」を "<N>|a / b / c" の形で1行出す。無ければ何も出さない。
+readme_intro_phrase() {
+    [ -f "$1/$README_REL" ] || return 0
+    awk '/^## / { exit } { print }' "$1/$README_REL" |
+        sed -n 's/.*[^0-9]\([0-9][0-9]*\) つのスキル（\([A-Za-z0-9_ /-]*\)）.*/\1|\2/p' |
+        sed -n '1p'
+}
+
+readme_intro_skill_names() {
+    readme_intro_phrase "$1" | cut -d'|' -f2 | tr '/' '\n' |
+        sed 's/^ *//; s/ *$//' | sed '/^$/d' | LC_ALL=C sort -u
+}
+
+readme_intro_skill_count() {
+    readme_intro_phrase "$1" | cut -d'|' -f1
 }
 
 design_skill_names() {
@@ -86,6 +107,17 @@ diff_against_actual() {
     done < <(LC_ALL=C comm -13 <(printf '%s\n' "$actual") <(printf '%s\n' "$listed"))
 }
 
+# 導入文の件数 <N> を、実体の件数と突き合わせる。導入文を収集できない場合は、
+# diff_against_actual が既に報告しているので何も出さない。
+intro_count_against_actual() {
+    local actual="$1" stated="$2" count
+    [ -n "$stated" ] || return 0
+    count=$(printf '%s\n' "$actual" | sed '/^$/d' | wc -l | tr -d ' ')
+    if [ "$stated" != "$count" ]; then
+        printf '  - %s の件数（%s）が実体の件数（%s）と一致しない\n' "$INTRO_LABEL" "$stated" "$count"
+    fi
+}
+
 # 比較の本体。$1 はリポジトリのルート（実資産にも一時 fixture にも当てる）。
 # 一致すれば 0。食い違い・収集の欠落があれば、全件を出して 1。
 check_growth_skill_inventory() {
@@ -101,6 +133,9 @@ check_growth_skill_inventory() {
             "$README_REL「$README_HEADING」"
         diff_against_actual "$actual" "$(design_skill_names "$root")" \
             "$DESIGN_REL「$DESIGN_HEADING」"
+        diff_against_actual "$actual" "$(readme_intro_skill_names "$root")" \
+            "$INTRO_LABEL"
+        intro_count_against_actual "$actual" "$(readme_intro_skill_count "$root")"
     )
     if [ -n "$problems" ]; then
         printf 'growth の提供物の列挙が実体（%s/ 直下のディレクトリ名）と一致しません\n' "$SKILLS_REL"
@@ -175,6 +210,18 @@ replace_whole_line() {
     mv "$file.next" "$file"
 }
 
+# 導入文の「<N> つのスキル（…）」を $2 へ置き換える。ちょうど1行変わったことを確かめる。
+replace_intro_phrase() {
+    local file="$1" to="$2" hits
+    hits=$(grep -c '[0-9] つのスキル（[A-Za-z0-9_ /-]*）' "$file" || true)
+    if [ "$hits" -ne 1 ]; then
+        printf '変異が空振りした（導入文の列挙に一致する行が %d 行）: %s\n' "$hits" "$file" >&2
+        return 1
+    fi
+    sed 's|[0-9][0-9]* つのスキル（[A-Za-z0-9_ /-]*）|'"$to"'|' "$file" >"$file.next"
+    mv "$file.next" "$file"
+}
+
 readme_bullet() {
     printf -- '- **%s スキル（`skills/%s/`）**: 説明。' "$1" "$1"
 }
@@ -190,9 +237,11 @@ design_bullet() {
   check_growth_skill_inventory "$REPO_ROOT"
 }
 
-@test "実体と2つの文書へ同じスキルを足すと一致する（名前を固定で持っていないこと）" {
+@test "実体と3つの列挙へ同じスキルを足すと一致する（名前を固定で持っていないこと）" {
   make_fixture
   mkdir "$FIXTURE/$SKILLS_REL/zzz-new"
+  replace_intro_phrase "$FIXTURE/$README_REL" \
+      '5 つのスキル（capture / distill / promote / intake / zzz-new）'
   insert_line_after "$FIXTURE/$README_REL" "$README_HEADING" "$(readme_bullet zzz-new)"
   insert_line_after "$FIXTURE/$DESIGN_REL" "$DESIGN_HEADING" "$(design_bullet zzz-new)"
   run check_growth_skill_inventory "$FIXTURE"
@@ -264,6 +313,33 @@ design_bullet() {
   [ "$status" -eq 1 ]
   [[ "$output" == *"$README_REL「$README_HEADING」 に箇条が無い: intake"* ]]
   [[ "$output" == *"$README_REL「$README_HEADING」 に箇条が在るが実体が無い: zzz-renamed"* ]]
+}
+
+@test "導入文だけから名前が1件欠けると赤になり、欠けた名前と件数の食い違いを報告する" {
+  make_fixture
+  replace_intro_phrase "$FIXTURE/$README_REL" '3 つのスキル（capture / distill / promote）'
+  run check_growth_skill_inventory "$FIXTURE"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"$INTRO_LABEL に箇条が無い: intake"* ]]
+  [[ "$output" == *"$INTRO_LABEL の件数（3）が実体の件数（4）と一致しない"* ]]
+  [[ "$output" != *"$DESIGN_REL"* ]]
+}
+
+@test "導入文の件数だけが食い違うと赤になる（名前の集合が合っていても通さないこと）" {
+  make_fixture
+  replace_intro_phrase "$FIXTURE/$README_REL" '5 つのスキル（capture / distill / promote / intake）'
+  run check_growth_skill_inventory "$FIXTURE"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"$INTRO_LABEL の件数（5）が実体の件数（4）と一致しない"* ]]
+  [[ "$output" != *"箇条が無い"* ]]
+}
+
+@test "導入文から列挙を収集できないと赤になる" {
+  make_fixture
+  replace_intro_phrase "$FIXTURE/$README_REL" '複数のスキル'
+  run check_growth_skill_inventory "$FIXTURE"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"$INTRO_LABEL からスキルの箇条を1件も収集できない"* ]]
 }
 
 @test "README の見出しが改名されて箇条を収集できないと赤になる" {

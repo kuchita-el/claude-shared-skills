@@ -179,7 +179,7 @@ growth プラグインは2つの顔を持つ。
    - Distribute（裁定を経た学びの `learnings.md` への物理昇格）は、スキルとして提供しない。昇格は、既存ワークフローに乗る通常の PR として行う。`learnings.md` のエントリは [変換規約](../../../plugins/growth/references/learning-promotion-spec.md) に従って書く。変換規約は、取り込み Issue で裁定された仮説を1欄のエントリへ翻訳する手続きを定める。昇格 Issue のテンプレートは [昇格 Issue 規約](../../../plugins/growth/references/promotion-issue-spec.md) が持つ。昇格先キャリアは distill が仮説単位で生成し、確定（裁定）は上記 `intake` の集約点が担う。career 決定モデルは ADR-202606282107-01 が定め、昇格 Issue 規約も同 ADR に準拠する。
 2. **配布物**: 蓄積された汎用の学び置き場。プラグイン配布によって全利用者の Claude Code に届く学びの実体。
 
-dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 Issue を起票し、その Issue は既存の `refine-issue` / DoR に乗る。スキル同士を直接呼び出さない（各スキルは store／学び置き場というファイルを介して疎に連結する）。足すのはプラグイン1個であり、繋ぎ先（create-issue → refine-issue → plan-issue → implementation、PR レビューは pr-review-toolkit）はすべて既存資産。
+dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 Issue を起票する。起票された仮説 Issue は `intake` の集約点で束ねられ、取り込み Issue が既存の `refine-issue` / DoR に乗る。スキル同士を直接呼び出さない（各スキルは store／学び置き場というファイルを介して疎に連結する）。足すのはプラグイン1個であり、繋ぎ先（create-issue → refine-issue → plan-issue → implementation、PR レビューは pr-review-toolkit）はすべて既存資産。
 
 本リポジトリ自体が全世界への配布チャネルであるため、「内省 → 仮説 → 検証 → 反証レビュー（既存）→ マージ → 全利用者へ配布 → 効果測定」という閉ループが、新規の仕組みをほとんど足さずに既存資産で閉じる。
 
