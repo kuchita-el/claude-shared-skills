@@ -82,7 +82,7 @@ growth プラグインの学習ループにおいて、`promote` スキル（#34
 |---|---|---|---|
 | `growth:promote` | 識別（昇格 Issue 全体／inbox 識別子） | `#0B6E4F` | `growth #0E8A16` 同系の濃緑（teal 寄り）で growth ドメインの昇格ゲートを示す |
 
-> **`promote:*` の4 career ラベルは設けない**（ADR-202606282107-01 決定事項5）。career の裁定が人間による集約点（取り込み Issue）トリアージへ移り、1つの取り込み Issue が複数仮説を異種 career へ裁定しうるため、1-Issue-1-career-label のルーティング機構は意味を失う。career の結果は実際の成果物（ADR PR / プラグイン Issue / `learnings.md` PR / 強キャリア Issue）として実現し、取り込み Issue の task list が追跡する。4 career ラベルは #385 で未作成であり、これは「作らない」決定であり teardown コストはゼロ。
+> **`promote:*` の4 career ラベルは設けない**（ADR-202606282107-01 決定事項5）。career の裁定が人間による集約点（取り込み Issue）トリアージへ移り、1つの取り込み Issue が複数仮説を異種 career へ裁定しうるため、1-Issue-1-career-label のルーティング機構は意味を失う。career の結果は実際の成果物（ADR PR / プラグイン Issue / `learnings.md` PR / 強キャリア Issue）として実現し、取り込み Issue の task list が追跡する。4 career ラベルは「作らない」決定であり、本仕様は作成コマンドを持たない。
 
 ### 付与規約
 
@@ -104,7 +104,7 @@ gh issue list --label growth:promote --state open
 
 ### セットアップ手順（ラベル実体の作成）
 
-識別ラベル `growth:promote` の**実体作成はセットアップ手順で行う**。promote の `allowed-tools` にラベル作成コマンドは無く、実作成は #385（inbox 識別子のセットアップへ縮小。ADR-202606282107-01 決定事項5）またはセットアップ手順の実行時に委譲する。本仕様は作成コマンドを掲載するに留める。`promote:*` の4 career ラベルは設けないため作成しない。
+識別ラベル `growth:promote` の**実体作成はセットアップ手順で行う**。promote の `allowed-tools` にラベル作成コマンドは無く、実作成は利用者が次のコマンドを実行して行う。本仕様は作成コマンドを掲載するに留める。`promote:*` の4 career ラベルは設けないため作成しない。
 
 ```bash
 # ラベル実体の作成（セットアップ手順で実行する。promote 自身は作成しない）
@@ -118,7 +118,7 @@ gh label create growth:promote        --color 0B6E4F --description "配布物昇
 | 昇格 Issue のテンプレート（必須欄・空間マッピング・キャリア/スコープ注記・記入サンプル） | 各キャリアへの実書き込み手順（learnings.md / ADR / 改善還元 Issue / 強キャリアへの物理配布。#383/#384） |
 | 識別ラベル `growth:promote`（inbox 識別子・色・付与規約・絞り込みレシピ） | 昇格先キャリアの判定規則（決定表）の定義（distill 側＝distill-procedure.md が持つ。ADR-202606282107-01） |
 | learnings.md の1欄スキーマを壊さない制約 | career・宛先 repo の裁定（集約点＝取り込み Issue が担う。promote/本仕様は仮説を運ぶのみ） |
-| 仮説注記（distill 由来の career/scope 仮説）を保持する本文形式 | 集約点（取り込み Issue 規約・取り込みスキル）の新設（別 Issue）。承認フロー・越境ゲートの配線（#385）。ラベル実体の作成（`gh label create` の実行。#385/セットアップ手順へ委譲） |
+| 仮説注記（distill 由来の career/scope 仮説）を保持する本文形式 | 集約点（取り込み Issue 規約・取り込みスキル）の新設（別 Issue）。承認フロー・越境ゲートの配線。ラベル実体の作成（`gh label create` の実行。セットアップ手順へ委譲） |
 
 ## 関連
 
