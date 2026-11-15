@@ -121,3 +121,5 @@ ADR に書く語のうち言語に依存するものと、対象の ADR ディ�
 - 語の設定に従うのは、`lint-adr.sh`・`gen-adr-index.sh`・`print-adr-config.sh` と、lint を起動する commit 前ゲートである。`next-adr-id.sh` と `verify-split-verbatim.sh` は、設定の語を扱わない。
 - `adr-dir` に従うのは、上の3つのスクリプトと commit 前ゲートに、`next-adr-id.sh` を加えたものである。
 - manage-adr スキルは、`print-adr-config.sh` の出力から値を得る。得るのは、明示が無いときの対象の ADR ディレクトリと、front-matter と相互参照の節の見出しへ書く値である。語の群を設定で定めたリポジトリでも、スキルは設定の語で書き込む。
+- 雛形（`skills/manage-adr/references/template.md`）は設定に従わない。front-matter の値と相互参照の節の見出しは、既定値の綴りのまま置く。スキルは起票のとき雛形の値を写さず、設定の値を書く。雛形を直接写して使う場合は、設定の値に置き換える。
+- 相互参照が無いことを表す語は、設定に無い。スキルは、相互参照が無い ADR の節の本文を空にし、その語を書かない。
