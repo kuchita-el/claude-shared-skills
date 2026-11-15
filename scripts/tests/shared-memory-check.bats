@@ -276,3 +276,134 @@ E=MEM-202611140000-03
   [ "$status" -eq 2 ]
   [[ "$output" == *"記憶の根がディレクトリでない"* ]]
 }
+
+@test "records を持たないディレクトリは、記憶の根として扱わず exit 2 で終わる" {
+  rmdir "$ROOT/records"
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"記憶の根に records/ が無い"* ]]
+  run node "$SUT" index "$ROOT"
+  [ "$status" -eq 2 ]
+}
+
+@test "author・verification・confidence は、それぞれ値域に無い値で value に落ちる" {
+  local key
+  for key in author verification confidence; do
+    record "$A" first
+    edit "$A-first.md" "s/^$key: .*/$key: other/"
+    write_index
+    run node "$SUT" check "$ROOT"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *":value: $key は"* ]]
+  done
+}
+
+@test "日付の形でない updated は value で落ちる" {
+  record "$A" first
+  edit "$A-first.md" 's/^updated: .*/updated: 昨日/'
+  write_index
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *":value: updated は"* ]]
+}
+
+@test "形に合わない id は value で落ちる" {
+  record "$A" first
+  edit "$A-first.md" 's/^id: .*/id: MEM-1/'
+  write_index
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *":value: id は"* ]]
+}
+
+@test "evolution の from と to が指す記録が無いと、それぞれ dangling で落ちる" {
+  record "$E" change 'from:' "  - $A" 'to:' "  - $B"
+  edit "$E-change.md" 's/^type: knowledge/type: evolution/'
+  write_index
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *":dangling: from が指す記録が無い: $A"* ]]
+  [[ "$output" == *":dangling: to が指す記録が無い: $B"* ]]
+}
+
+@test "YAML が別の意味に読む値は、引用符で囲まなければ front-matter で落ちる" {
+  local value
+  for value in 'a #b' '#foo' '- foo' '? foo' ',foo' ']foo' '*foo' '-'; do
+    record "$A" first
+    edit "$A-first.md" "s/^title: .*/title: $value/"
+    write_index
+    run node "$SUT" check "$ROOT"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *":front-matter: 値を引用符で囲む: $value"* ]]
+  done
+}
+
+@test "記号で始まっても、YAML が値として読む形は通る" {
+  local value
+  for value in '-foo' '?foo' 'a#b' '"#foo"'; do
+    record "$A" first
+    edit "$A-first.md" "s/^title: .*/title: $value/"
+    write_index
+    run node "$SUT" check "$ROOT"
+    [ "$status" -eq 0 ]
+  done
+}
+
+@test "同じ項目を2回書いた記録は front-matter で落ちる" {
+  record "$A" first 'title: もう1つの主張'
+  write_index
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *":front-matter: キーが重複している: title"* ]]
+}
+
+@test "改行が CRLF の記録と索引も通る" {
+  record "$A" first
+  write_index
+  sed -i 's/$/\r/' "$ROOT/records/$A-first.md" "$ROOT/index.md"
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "日本語や空白を含む名前の項目も読み飛ばす" {
+  record "$A" first 'タグ: メモ' 'my prop: x' '関連:' '  - a'
+  write_index
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 0 ]
+}
+
+@test "索引は superseded-by を持つ記録を載せない" {
+  record "$A" first "superseded-by: $B"
+  record "$B" second
+  record "$E" change 'from:' "  - $A" 'to:' "  - $B"
+  edit "$E-change.md" 's/^type: knowledge/type: evolution/'
+  run node "$SUT" index "$ROOT"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"[$A]"* ]]
+  [[ "$output" == *"[$B]"* ]]
+  [[ "$output" == *"[$E]"* ]]
+}
+
+@test "belief の author は、joint だと value で落ち、human なら通る" {
+  record "$A" first
+  edit "$A-first.md" 's/^type: knowledge/type: belief/'
+  write_index
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 0 ]
+  edit "$A-first.md" 's/^author: human/author: joint/'
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *":value: belief の author は human か ai のどちらかにする"* ]]
+}
+
+@test "互いに置き換え合う記録は replacement で落ちる" {
+  record "$A" first "superseded-by: $B"
+  record "$B" second "superseded-by: $A"
+  record "$E" change 'from:' "  - $A" "  - $B" 'to:' "  - $A" "  - $B"
+  edit "$E-change.md" 's/^type: knowledge/type: evolution/'
+  write_index
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *":replacement: 置き換えが循環している"* ]]
+}

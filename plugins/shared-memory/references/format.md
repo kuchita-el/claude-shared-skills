@@ -11,7 +11,7 @@
 | `records/` | 記録。1記録1ファイル。下の階層は読まない |
 | `index.md` | 索引。検査器が生成する |
 
-根がどこに在るかは、利用先が決める。検査器は、根を引数で受け取る。
+根がどこに在るかは、利用先が決める。検査器は、根を引数で受け取る。`records/` を持たないディレクトリは、記憶の根として扱わない。記録がまだ無い根は、空の `records/` を持つ。
 
 ## 記録
 
@@ -42,7 +42,7 @@ updated: 2026-11-14
 | `id` | `MEM-<年月日時分の12桁>-<連番2桁>`。時刻は UTC で取る |
 | `type` | `knowledge`（知識・事実）、`experience`（作業や検証から得た経験）、`belief`（判断基準）、`decision`（意思決定と理由）、`evolution`（何からなぜ変わったか） |
 | `title` | 記録の主張を1文で |
-| `author` | `human`、`ai`、`joint`。`belief` では、`human` は本人が明示したもの、`ai` は AI が推測したものを表す |
+| `author` | `human`、`ai`、`joint`。`belief` では `human` か `ai` に限る。`human` は本人が明示したもの、`ai` は AI が推測したものを表す。人間と AI が話し合って本人が認めた判断基準は、`human` とする |
 | `verification` | `verified`、`unverified` |
 | `confidence` | `high`、`medium`、`low` |
 | `applies-when` | この記録が当てはまる条件 |
@@ -60,7 +60,7 @@ updated: 2026-11-14
 
 `superseded-by` か `moved-to` を持つ記録を、置き換え済みの記録と呼ぶ。両方を同時には書かない。
 
-ここに無い項目を足してもよい。検査器は読み飛ばす。
+ここに無い項目を足してもよい。検査器は読み飛ばす。項目の名前には、日本語や空白を使ってよい。コロンは使えない。
 
 ### ファイル名
 
@@ -69,7 +69,9 @@ updated: 2026-11-14
 ### front-matter の書き方
 
 - 値は1行で書く。`sources`・`from`・`to` は、項目の次の行から「`- 値`」を並べる。
-- 値に「`: `」や「` #`」を含むとき、記号で始まるときは、引用符で囲む。
+- 値に「`: `」や「` #`」を含むときは、引用符で囲む。
+- 値が次の記号で始まるときも、引用符で囲む。``[ ] { } , # & * ! | > ' " % @ ` ``と、後ろに空白が続く `-`・`?`・`:` である。YAML が別の意味に読むためである。
+- 改行は LF でも CRLF でもよい。
 
 ## 置き換え
 
@@ -95,12 +97,12 @@ updated: 2026-11-14
 |---|---|
 | `front-matter` | front-matter が無い、閉じていない、項目を読めない |
 | `required` | 必ず書く項目が無い |
-| `value` | 値が上の表の範囲に無い。`superseded-by` と `moved-to` を同時に書いている |
+| `value` | 値が上の表の範囲に無い。`superseded-by` と `moved-to` を同時に書いている。`belief` の `author` が `joint` である |
 | `filename` | ファイル名が形に合わない。ファイル名の識別子が `id` と一致しない |
 | `duplicate-id` | 同じ `id` の記録が2件以上ある |
 | `dangling` | `superseded-by`・`from`・`to` が指す記録が無い |
 | `evolution` | `evolution` が `from` か `to` を持たない。`evolution` でない記録が `from` か `to` を持つ |
-| `replacement` | `superseded-by` を持つ記録に、その置き換えを説明する `evolution` が無い。`evolution` の `from` の記録が、`to` の記録を `superseded-by` で指していない |
+| `replacement` | `superseded-by` を持つ記録に、その置き換えを説明する `evolution` が無い。`evolution` の `from` の記録が、`to` の記録を `superseded-by` で指していない。`superseded-by` を辿ると元の記録へ戻る |
 | `index` | 索引が無い。索引が記録と一致しない |
 
 検査器は、記録の内容だけから機械で決まる違反を扱う。記録どうしの意味の矛盾や、主張の正しさは扱わない。
@@ -113,4 +115,4 @@ node scripts/memory.mjs index <記憶の根>          # 索引を標準出力へ
 node scripts/memory.mjs index <記憶の根> --write  # 索引を index.md へ書く
 ```
 
-終了コードは、違反なしが 0、違反ありが 1、引数の誤りか検査できない入力が 2 である。Node 22 以上で動く。
+終了コードは、違反なしが 0、違反ありが 1、引数の誤りか検査できない入力が 2 である。記憶の根でないディレクトリを渡した場合は、検査できない入力に当たる。Node 22 以上で動く。

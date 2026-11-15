@@ -7,7 +7,7 @@ import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from '
 import { join } from 'node:path';
 
 const USAGE = `usage: memory.mjs check ROOT | memory.mjs index ROOT [--write]
-  ROOT: 記憶の根。records/ と index.md を直下に持つディレクトリ。
+  ROOT: 記憶の根。records/ を直下に持つディレクトリ。index.md も直下に置く。
   check: 記録の形式と、index.md が記録と一致することを検査する。
   index: 索引を標準出力へ出す。--write を付けると ROOT/index.md へ書く。
   終了コード: 0 違反なし、1 違反あり、2 引数の誤りか検査できない入力。`;
@@ -15,7 +15,8 @@ const USAGE = `usage: memory.mjs check ROOT | memory.mjs index ROOT [--write]
 const ID = /^MEM-[0-9]{12}-[0-9]{2}$/;
 const FILE_NAME = /^(MEM-[0-9]{12}-[0-9]{2})-[a-z0-9]+(?:-[a-z0-9]+)*\.md$/;
 const DATE = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
-const KEY_LINE = /^([A-Za-z][A-Za-z0-9_-]*):(?:[ \t]+(.*))?$/;
+// キーは、コロンを含まず、空白・#・- で始まらない文字の並び。日本語や空白を含むキーも読み飛ばせるようにする。
+const KEY_LINE = /^([^\s#:-][^:]*):(?:[ \t]+(.*))?$/;
 const ITEM_LINE = /^[ \t]*-[ \t]+(.*)$/;
 const ENUMS = {
   type: ['knowledge', 'experience', 'belief', 'decision', 'evolution'],
@@ -47,7 +48,9 @@ function scalar(raw) {
   const text = raw.trim();
   const quoted = text.match(/^"(.*)"$/) ?? text.match(/^'(.*)'$/);
   if (quoted) return quoted[1];
-  if (/^[\[{>|*&!%@`"']/.test(text) || text.includes(': ') || text.includes(' #') || text.endsWith(':')) {
+  // YAML が値の先頭で別の意味に読む記号。- ? : は、後ろが空白か行末のときだけ別の意味になる。
+  const indicator = /^[\[\]{},#&*!|>'"%@`]/.test(text) || /^[-?:]([ \t]|$)/.test(text);
+  if (indicator || text.includes(': ') || text.includes(' #') || text.endsWith(':')) {
     throw new Unreadable(`値を引用符で囲む: ${text}`);
   }
   return text;
@@ -103,7 +106,6 @@ function load(root) {
   const dir = join(root, 'records');
   const violations = [];
   const records = [];
-  if (!existsSync(dir)) return { records, violations };
   for (const file of readdirSync(dir).filter((name) => name.endsWith('.md')).sort()) {
     const path = `records/${file}`;
     const report = (rule, message) => violations.push(`${path}:${rule}: ${message}`);
@@ -133,6 +135,9 @@ function load(root) {
     if (!named) report('filename', 'ファイル名は <id>-<英小文字と数字をハイフンでつないだ名前>.md の形にする');
     else if (id !== undefined && named[1] !== id) report('filename', `ファイル名の識別子が id と一致しない: ${id}`);
     if (fields.has('superseded-by') && fields.has('moved-to')) report('value', 'superseded-by と moved-to は同時に書かない');
+    if (fields.get('type') === 'belief' && fields.get('author') === 'joint') {
+      report('value', 'belief の author は human か ai のどちらかにする');
+    }
     const isEvolution = fields.get('type') === 'evolution';
     for (const key of ['from', 'to']) {
       const listed = fields.get(key) ?? [];
@@ -172,6 +177,14 @@ function relations(records) {
       if (!explained) violations.push(`${record.path}:replacement: ${next} への置き換えを説明する evolution が無い`);
     }
     for (const key of ['from', 'to']) for (const target of record.fields.get(key) ?? []) refer(key, target);
+    const seen = new Set();
+    for (let at = record.fields.get('id'); at !== undefined; at = byId.get(at)?.fields.get('superseded-by')) {
+      if (seen.has(at)) {
+        violations.push(`${record.path}:replacement: 置き換えが循環している: ${at}`);
+        break;
+      }
+      seen.add(at);
+    }
   }
   for (const evolution of evolutions) {
     const to = evolution.fields.get('to') ?? [];
@@ -219,6 +232,11 @@ function main(argv) {
     console.error(`memory: 記憶の根がディレクトリでない: ${root}`);
     return 2;
   }
+  const recordsDir = join(root, 'records');
+  if (!existsSync(recordsDir) || !statSync(recordsDir).isDirectory()) {
+    console.error(`memory: 記憶の根に records/ が無い: ${root}`);
+    return 2;
+  }
   const { records, violations } = load(root);
   const indexPath = join(root, 'index.md');
   if (command === 'index') {
@@ -230,7 +248,7 @@ function main(argv) {
   const hasIndex = existsSync(indexPath);
   if (records.length > 0 || hasIndex) {
     if (!hasIndex) violations.push('index.md:index: 索引が無い。index --write で作る');
-    else if (readFileSync(indexPath, 'utf8') !== renderIndex(records)) {
+    else if (readFileSync(indexPath, 'utf8').replaceAll('\r\n', '\n') !== renderIndex(records)) {
       violations.push('index.md:index: 索引が記録と一致しない。index --write で作り直す');
     }
   }
