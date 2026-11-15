@@ -4,7 +4,7 @@ growth プラグインの学習ループが仮説へ付与する `career-hypothe
 
 ## 位置づけ
 
-- 本仕様が定義するのは**キャリア軸そのもの**（値域と各値の意味、強キャリア内部の区別）である。仮説をどのキャリアへ振り分けるかの**判定表**は [`distill-procedure.md`](../skills/distill/references/distill-procedure.md)（「career-hypothesis の判定（決定表）」）を単一出典とし、本仕様は複製しない。
+- 本仕様が定義するのは**キャリア軸そのもの**（値域と各値の意味、強キャリア内部の区別）である。仮説をどのキャリアへ振り分けるかの**判定表**は distill スキルの `distill-procedure.md`（「career-hypothesis の判定（決定表）」）を単一出典とし、本仕様は複製しない。
 - 仮説のメタ欄としての書式（`<career> / repo: <宛先 repo 仮説>` の1行）とスキーマは [`personal-store-spec.md`](personal-store-spec.md)（`career-hypothesis`）が持つ。
 - distill が付与するキャリアは**仮説**であり確証しない。キャリアと宛先 repo の最終裁定は集約点（取り込み Issue）が担う（ADR-202606282107-01）。
 
@@ -30,7 +30,7 @@ growth プラグインの学習ループが仮説へ付与する `career-hypothe
 
 - 両群はいずれも**強キャリア**であり、決定表 行1 の出力キャリアは同一である。区別は強制の確実性にあり、キャリアの値を分けるものではない。
 - 決定表 行1 が「強キャリアへ構造変換可能か」を判定する際、変換先が機構強制とモデル媒介のいずれであっても行1 に合致する。
-- **配布物内で**本節の値域を再掲している箇所は [`distill-procedure.md`](../skills/distill/references/distill-procedure.md) の決定表 行1 のみである（決定表を読みながら評価する動線を切らないため、当該セルにのみ再掲を許す）。値域を変える際はそこも併せて追随させる。配布物の外にも再掲がある場合は、そちらの追随は配布元側の責務である。
+- **配布物内で**本節の値域を再掲している箇所は distill スキルの `distill-procedure.md` の決定表 行1 のみである（決定表を読みながら評価する動線を切らないため、当該セルにのみ再掲を許す）。値域を変える際はそこも併せて追随させる。配布物の外にも再掲がある場合は、そちらの追随は配布元側の責務である。
 
 ## 空間軸との関係（キャリア軸 ⊥ 空間軸）
 
@@ -38,6 +38,6 @@ growth プラグインの学習ループが仮説へ付与する `career-hypothe
 
 ## 関連
 
-- [`distill-procedure.md`](../skills/distill/references/distill-procedure.md) — 4 分類の判定表（「career-hypothesis の判定（決定表）」）の単一出典。本仕様は判定表を持たない
+- distill スキルの `distill-procedure.md` — 4 分類の判定表（「career-hypothesis の判定（決定表）」）の単一出典。本仕様は判定表を持たない
 - [`personal-store-spec.md`](personal-store-spec.md) — `career-hypothesis` のメタ欄スキーマ・書式・provenance 規約
 - [`learning-store-spec.md`](learning-store-spec.md) — 空間軸（2空間モデル）の定義。本仕様のキャリア軸と直交する

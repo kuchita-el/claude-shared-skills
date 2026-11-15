@@ -1,6 +1,6 @@
 # capture 記述例
 
-capture SKILL.md の Step 3（生観察の生成）・Step 4（store 書き込み）から参照される記述例。判定基準の詳細は `${CLAUDE_SKILL_DIR}/references/capture-procedure.md` を参照する。
+capture SKILL.md の Step 3（生観察の生成）・Step 4（store 書き込み）から参照される記述例。判定基準の詳細は `capture-procedure.md` を参照する。
 
 ## observation 本文の例（Step 3）
 

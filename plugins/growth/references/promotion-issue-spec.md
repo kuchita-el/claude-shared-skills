@@ -12,8 +12,8 @@ growth プラグインの学習ループにおいて、`promote` スキル（#34
 - **関連仕様との関係**:
   - [`learning-store-spec.md`](learning-store-spec.md) — 配布物（`learnings.md`）の**着地先形式**を定義する。昇格 Issue のうち learnings.md 行きのものが最終的に到達する先であり、本仕様はその1欄スキーマ（メタ欄を持たない）を壊さない制約に従う。
   - [`personal-store-spec.md`](personal-store-spec.md) — 昇格 Issue の**入力源**となる仮説ファイル（`candidates.md`）の `scope-hypothesis`（`universal` / `project-local`）・`career-hypothesis`（昇格先キャリア＋宛先 repo 仮説）スキーマを定義する。本仕様のテンプレート「空間」欄・「昇格先キャリア」注記はこれらのタグからマッピングされる。
-  - [`distill-procedure.md`](../skills/distill/references/distill-procedure.md) — `career-hypothesis` の昇格先キャリアを判定する**決定表の単一出典**。本仕様は決定表を持たない（ADR-202606282107-01）。
-- **promote（#348）との接続**: promote はこの規約を満たす Issue 本文を `--body-file` でプログラム生成し、`gh issue create` で自動起票する。本仕様は promote が起票した Issue の終端規約であり、promote 自身の検証・candidate-status 前進の手順（[`../skills/promote/references/promote-procedure.md`](../skills/promote/references/promote-procedure.md)）には踏み込まない。
+  - distill スキルの `distill-procedure.md` — `career-hypothesis` の昇格先キャリアを判定する**決定表の単一出典**。本仕様は決定表を持たない（ADR-202606282107-01）。
+- **promote（#348）との接続**: promote はこの規約を満たす Issue 本文を `--body-file` でプログラム生成し、`gh issue create` で自動起票する。本仕様は promote が起票した Issue の終端規約であり、promote 自身の検証・candidate-status 前進の手順（promote スキルの `promote-procedure.md`）には踏み込まない。
 
 ## テンプレート
 
@@ -125,5 +125,5 @@ gh label create growth:promote        --color 0B6E4F --description "配布物昇
 - [`learning-store-spec.md`](learning-store-spec.md) — 配布物（`learnings.md`）の着地先形式（1欄スキーマ・2空間モデル・参照規約）
 - [`learning-promotion-spec.md`](learning-promotion-spec.md) — 本規約準拠の learnings.md 行き昇格 Issue を1欄エントリへ翻訳する変換規約（#383）。本仕様を入力として受ける後続手続き
 - [`personal-store-spec.md`](personal-store-spec.md) — 昇格 Issue の入力源 仮説ファイル（`candidates.md`）の `scope-hypothesis` スキーマ
-- [`promote/SKILL.md`](../skills/promote/SKILL.md) — 昇格 Issue を自動起票する Promote 段スキル（#348）
+- `promote` スキルの `SKILL.md` — 昇格 Issue を自動起票する Promote 段スキル（#348）
 - #349 — 昇格先キャリアの4分類（D1）と Issue 規約として実現する方針（D2）の決定 Issue

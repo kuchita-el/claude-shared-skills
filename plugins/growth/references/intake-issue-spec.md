@@ -98,7 +98,7 @@ gh label create growth:intake --color 1D76DB --description "取り込み Issue�
 
 ## 関連
 
-- [`../skills/intake/SKILL.md`](../skills/intake/SKILL.md) — 本規約を実行する取り込みスキル（仮説の束ね・裁定提示・取り込み時クローズ）
+- `intake` スキルの `SKILL.md` — 本規約を実行する取り込みスキル（仮説の束ね・裁定提示・取り込み時クローズ）
 - [`promotion-issue-spec.md`](promotion-issue-spec.md) — 入力源 `growth:promote` 仮説 Issue のテンプレート（ADR-202606282107-01 準拠）
 - [`learning-promotion-spec.md`](learning-promotion-spec.md) — 裁定結果を入力境界とする learnings.md 変換規約（#383）
 - ADR-202606282107-01 — career 決定モデルの再設計（distill 仮説 ＋ 集約点裁定）。本規約の決定根拠
