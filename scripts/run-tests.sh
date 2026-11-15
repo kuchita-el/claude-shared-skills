@@ -113,6 +113,7 @@ EXPECTED_BATS=(
     writing-lint.bats
     writing-contract.bats
     distribution-boundary.bats
+    growth-skill-inventory.bats
     living-spec-run.bats
     living-spec-release-workflow.bats
 )
