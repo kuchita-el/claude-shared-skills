@@ -36,7 +36,7 @@ allowed-tools:
 
 判定基準・コマンド・本文書式の詳細は `${CLAUDE_SKILL_DIR}/references/intake-procedure.md` を常に読む（手順本文を SKILL.md に二重化しない）。worked example（`${CLAUDE_SKILL_DIR}/references/intake-examples.md`）は、規則本文だけで判定がつかないときに該当する例だけを読む。取り込み Issue の構造・裁定結果の記録形式・不変条件は `${CLAUDE_PLUGIN_ROOT}/references/intake-issue-spec.md` を参照する。
 
-参照先仕様がさらに参照する判定基準も、このSKILLから直接到達できるようにする。対象は `${CLAUDE_PLUGIN_ROOT}/skills/distill/references/distill-procedure.md`、`${CLAUDE_PLUGIN_ROOT}/skills/promote/references/promote-procedure.md`、`${CLAUDE_PLUGIN_ROOT}/references/learning-store-spec.md`、`${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` である。
+参照先仕様がさらに参照する判定基準も、このSKILLから直接到達できるようにする。対象は `${CLAUDE_PLUGIN_ROOT}/references/learning-store-spec.md`、`${CLAUDE_PLUGIN_ROOT}/references/personal-store-spec.md` である。
 
 1. **取り込み対象の特定（AC2）**: 引数で仮説 Issue 番号が渡ればそれを対象にする。無ければ `gh issue list --label growth:promote --state open` で inbox を列挙し、対象を人間に選ばせる。各仮説を `gh issue view` で読む（career 提案と裁定サマリの材料。procedure §1）。
 2. **既存取り込み先の検出（不変条件・AC5）**: `gh issue list --label growth:intake --state open` で既存の取り込み Issue を列挙し、各仮説の内容と意味的に照合する。重複する取り込み先があれば「既存 #X へ合流」、無ければ「新規作成」を束ね先として決める（procedure §2）。

@@ -40,7 +40,7 @@ growth プラグインの学習ループにおいて、複数の `growth:promote
 
 - **career 軸**: #349 D1 の4分類。行2（dev-workflow スキル改善）は ADR-202606282107-01 決定6 により「任意のプラグイン／コミュニティの改善還元 → 当該 repo へ Issue」へ一般化されている。`promotion-issue-spec.md` も行2 を新分類名（改善還元 Issue）で持つため、裁定結果テーブルにも同じ新分類名で記録する。
 - **宛先 repo は記録しない**: 当面は単一 repo 配線であり、仮説 Issue は既に宛先 repo（取り込み Issue が置かれた repo）へ届いている前提に立つ。career を実体化する成果物も同 repo 内に生む。よって裁定結果に宛先 repo 欄は持たせない。集約先が複数になる将来の multi-repo 配線（後述「不変条件」）で再導入余地を残すが、現時点では YAGNI として持たない。
-- **入力境界**: この裁定結果テーブルは、#383（learnings.md 昇格ハンドラ）・#384（残りキャリア）が「ラベル filter 依存」から「取り込み Issue の裁定結果依存」へ改訂される際の入力である。career 列でハンドラが対象仮説を仕分けられるよう、値は4分類の名称をそのまま記す。
+- **入力境界**: この裁定結果テーブルは、裁定後の実書き込み手順が対象仮説を選ぶ入力である。learnings.md 変換規約は、ラベルではなく本テーブルの career 列と空間列で対象を絞り込む。その定めは [`learning-promotion-spec.md`](learning-promotion-spec.md)「入力境界」に在る。career 列でハンドラが対象仮説を仕分けられるよう、値は4分類の名称をそのまま記す。
 
 ## 取り込み時クローズ
 
@@ -78,7 +78,7 @@ growth プラグインの学習ループにおいて、複数の `growth:promote
 | `growth:intake` | 識別（取り込み Issue 全体） | `#1D76DB` | 集約点を示す青系。inbox 識別子 `growth:promote`（濃緑）と視認上区別する |
 
 - 取り込み Issue は既存 `growth` ラベルと**併用**する（`growth` ＋ `growth:intake`）。`growth` は growth ドメイン全体の識別、`growth:intake` は集約点のサブ識別。
-- **ラベル実体の作成はセットアップ手順で行う**。intake の `allowed-tools` にラベル作成コマンドは無く、実作成は #385（承認フロー配線）またはセットアップ手順の実行時に委譲する（`promotion-issue-spec.md` のラベル方針と同一）。
+- **ラベル実体の作成はセットアップ手順で行う**。intake の `allowed-tools` にラベル作成コマンドは無く、実作成は利用者が次のコマンドを実行して行う（`promotion-issue-spec.md` のラベル方針と同一）。
 
 ```bash
 # ラベル実体の作成（セットアップ手順で実行する。intake 自身は作成しない）
@@ -93,12 +93,12 @@ gh label create growth:intake --color 1D76DB --description "取り込み Issue�
 | 裁定結果の記録形式（career・空間のテーブル。宛先 repo を持たない） | 仮説 Issue（`growth:promote`）のテンプレート自体（`promotion-issue-spec.md` #382 が担う） |
 | 取り込み時クローズの手順（リンクコメント ＋ not planned） | 各 career への実書き込み手順（learnings.md 変換 #383 / 残りキャリア #384 / 成果物 PR の作成） |
 | 集約トポロジの不変条件（集約先複数・public 拒否・scope 流用） | privacy ゲートの新設（公開可否 ≠ 広さ。留保。別 Issue） |
-| `growth:intake` 識別ラベルの定義 | ラベル実体の作成（`gh label create` の実行。#385 / セットアップへ委譲） |
+| `growth:intake` 識別ラベルの定義 | ラベル実体の作成（`gh label create` の実行。セットアップへ委譲） |
 | cascade-close を新設しない方針の明記 | フリート fan-in の供給（Phase 3） |
 
 ## 関連
 
-- [`../skills/intake/SKILL.md`](../skills/intake/SKILL.md) — 本規約を実行する取り込みスキル（仮説の束ね・裁定提示・取り込み時クローズ）
+- `intake` スキルの `SKILL.md` — 本規約を実行する取り込みスキル（仮説の束ね・裁定提示・取り込み時クローズ）
 - [`promotion-issue-spec.md`](promotion-issue-spec.md) — 入力源 `growth:promote` 仮説 Issue のテンプレート（ADR-202606282107-01 準拠）
 - [`learning-promotion-spec.md`](learning-promotion-spec.md) — 裁定結果を入力境界とする learnings.md 変換規約（#383）
 - ADR-202606282107-01 — career 決定モデルの再設計（distill 仮説 ＋ 集約点裁定）。本規約の決定根拠

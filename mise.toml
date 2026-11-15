@@ -8,6 +8,7 @@
 # （検査が無言で消えることを避けるための fail-closed）。
 # node — plugins/living-spec/scripts/run.mjs（検査器を呼ぶ中継）を走らせる（scripts/tests/living-spec-run.bats）。
 # あわせて plugins/writing/scripts/lint-ja.mjs（一文長の検査。scripts/tests/writing-lint.bats）も走らせる。
+# plugins/shared-memory/scripts/memory.mjs（記憶の検査器。scripts/tests/shared-memory-check.bats）も走らせる。
 [tools]
 bats = "1.14.0"
 node = "24.16.0"

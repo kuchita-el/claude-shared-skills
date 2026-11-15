@@ -24,7 +24,7 @@ growth プラグインの学習ループ（概念上の5段: `[Capture] → [Dis
 - **バケット名生成規約**: バケット名 `captures-YYYY-MM-DD.md` の `YYYY-MM-DD` は、観測の見出しキー timestamp（capture 実行時刻・UTC・ISO 8601）の **UTC 日付部分**である。capture は `date -u` 由来の同一 timestamp から見出しキーとバケット名の両方を導く**純関数**であり、ローテーション状態を持たない（無状態 append）。例: 見出しキー `2026-07-11T09:19:03Z` → バケット `captures-2026-07-11.md`。
 - **同一 UTC 日の全観測は同一バケットに同居する**（run をまたいでも）。日付が変わると次のバケットへ自然に切り替わる。バケット跨ぎは UTC 日付の境界でのみ起こり、capture 側の状態遷移では起こらない。
 - **表記規約（概念名 vs 物理形）**: 以降 store 全体（観測記録コーパス）を指す**概念名**として `captures.md` を用いることがあるが、**物理形はセグメント `captures-*.md`（日付バケット群）**である。単一の `captures.md` というファイルは本仕様では存在しない（バケット化以前に生成された単一 `captures.md` は本 store 形式の対象外。#485 OUT・移行は手動）。概念文中の `captures.md` はこの別称であり、パス・処理源・書き込み先を指す文脈ではセグメント `captures-*.md` を用いる。
-- `<project-id>` は既存 memory 機構が用いるプロジェクト識別子と同一（このリポジトリでは作業ディレクトリのパス区切りを `-` に置換した形式。例: `-home-kuchita-Development-claude-shared-skills`）。memory が `projects/<project-id>/memory/` を使うのと同階層に `projects/<project-id>/growth/` を置く。
+- `<project-id>` はリポジトリルートの絶対パスから導く。worktree で開始したセッションでも、共通の `.git` ディレクトリが在る側のルートを使うため同じ値になる。導出の手順は次節「project-id とパスの解決手順」が単一出典として定める。既存 memory 機構が `projects/<project-id>/memory/` を使うのと同階層に `projects/<project-id>/growth/` を置く。
 - **スコープは per-project**。観測はプロジェクト文脈（作業セッション）で発生するため、store をプロジェクトごとに分離してこの文脈を保持する。Distill はこのプロジェクト単位の store を入力源とする。
 - このパスはユーザースコープ（`~/.claude/` 配下）にあり、本リポジトリの work tree の外にある。したがって**配布物（プラグイン）に物理的に含まれず**、プラグイン更新で消えず、配布を受けた consumer の環境でも各自の user-local 領域として成立する。
 
