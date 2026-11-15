@@ -17,7 +17,7 @@ distill スキルの仮説形成判定基準の詳細。SKILL.md の手順 overv
   - 検証（仮説が本物か／母集団に予測力を持つかの判定。promote の責務）
   - 仮説検証ゲート（Promote）・Issue 起票（`gh`）・配布物（`learnings.md`）への書き込み
   - 候補の `candidate-status` の promote/reject 前進（`pending → promoted`/`rejected`。前進の実行主体は promote。personal-store-spec.md「仮説ファイル（candidates.md）」）
-- distill が書き込むのは `candidates.md`（第3の個人ローカル成果物）と `distill-state.md`（処理済みカーソル。§2.1 の前進）のみ。`captures.md`（store）と `${CLAUDE_PLUGIN_ROOT}/learnings.md`（配布物）のいずれにも書き込まない。台帳（§2 参照源）は**読み取り専用**で書き換えない。仮説は `candidates.md` へ永続化しつつチャットにも提示する。
+- distill が書き込むのは `candidates.md`（第3の個人ローカル成果物）と `distill-state.md`（処理済みカーソル。§2.1 の前進）のみ。`captures.md`（store）とプラグインルート直下の `learnings.md`（配布物）のいずれにも書き込まない。台帳（§2 参照源）は**読み取り専用**で書き換えない。仮説は `candidates.md` へ永続化しつつチャットにも提示する。
 - 足場を痩せさせる仮説形成に従い、実行不能な内省はここで捨てる。肥大を下流へ送らない。
 
 > **冪等性（有界化＝カーソル／重複排除＝provenance 導出）**: 「どの観測を処理するか」は captures 側のフラグではなく distill 側の処理源選択で定める（`captures.md` は無状態。personal-store-spec.md「distill 処理源選択と処理済みカーソル」）。ルーチン distill はカーソル（`distill-state.md` の `- distill-cursor:` 行）より新しい観測のみを走査し（有界化）、そのスライス内で既に `promoted`/`pending` 候補を provenance に持つ観測を除外する（重複排除）。処理後 distill がカーソルを最新 timestamp へ前進させるため、次回 distill は処理済みノイズを再走査せず同一仮説を再生成しない。加えて仮説ファイル側では、distill が provenance キーで upsert することで再実行時の仮説重複を防ぎ、promote が棄却した仮説は `candidate-status: rejected` で追跡され安易な再提示を避ける（§7.4 の不可侵制約・§8 の upsert で `rejected`/`promoted` を保持）。有界化（カーソル）と重複排除（provenance）は役割が異なり合成される。
@@ -69,7 +69,7 @@ distill の入力は**処理源**と**参照源**の2種に分離する（処理
 - 突合対象の台帳と、仮説のスコープに応じた解決範囲（祖先を含む）は §7「スコープ別台帳突合」の表を単一出典とする。
 - 参照源には `candidates.md` 自身も含む。既存 pending 仮説を実行時台帳で再評価するため（§7・pending 再評価）。
 
-> **入力契約（AC6）**: distill の入力は処理源（セグメント `captures-*.md`）＋ 参照源（`CLAUDE.md` 2層・`${CLAUDE_PLUGIN_ROOT}/learnings.md`・`candidates.md` 自身）である。参照源は時変であるため、distill は**時間不変性を意図的に手放す**（同一の処理源でも台帳の成文化が進めば出力が変わる。これは #417 の目的そのもの）。台帳を**明示的入力**として宣言することで決定性（同一入力→同一出力）と参照透過性は保持する。手放した再現性は、突合でマッチした台帳ルールへの参照を仮説本文に記録することで監査可能性として回復する（ADR-202607200855-01 決定1・§7）。
+> **入力契約（AC6）**: distill の入力は処理源（セグメント `captures-*.md`）＋ 参照源（`CLAUDE.md` 2層・プラグインルート直下の `learnings.md`・`candidates.md` 自身）である。参照源は時変であるため、distill は**時間不変性を意図的に手放す**（同一の処理源でも台帳の成文化が進めば出力が変わる。これは #417 の目的そのもの）。台帳を**明示的入力**として宣言することで決定性（同一入力→同一出力）と参照透過性は保持する。手放した再現性は、突合でマッチした台帳ルールへの参照を仮説本文に記録することで監査可能性として回復する（ADR-202607200855-01 決定1・§7）。
 
 ## 3. 棄却の合否境界（知識型で分岐）
 
@@ -224,7 +224,7 @@ distill の入力は**処理源**と**参照源**の2種に分離する（処理
 
 | candidate の `scope-hypothesis` | 突合台帳（入れ子＝祖先を含む） |
 |---|---|
-| `universal` | user-global rules（`~/.claude/CLAUDE.md`）・グローバル有効プラグイン同梱 rules/skills・global `learnings.md`（`${CLAUDE_PLUGIN_ROOT}/learnings.md`） |
+| `universal` | user-global rules（`~/.claude/CLAUDE.md`）・グローバル有効プラグイン同梱 rules/skills・global `learnings.md`（プラグインルート直下） |
 | `project-local` | 上記 global ＋ プロジェクト rules（project `CLAUDE.md` / `.claude`）・プロジェクト skills・プロジェクト有効プラグイン同梱 |
 
 - **祖先を含む理由**: project-local の振る舞いも global ルールで既に成文化されている場合があるため、project-local 仮説は global 台帳まで遡って突合する。逆に universal 仮説は project 台帳を突合対象にしない（適用範囲が狭い台帳で広い仮説の既知性は判定できない）。

@@ -1,6 +1,6 @@
 # capture 判定基準の詳細
 
-capture SKILL.md の Step 1（session jsonl の所在解決）・Step 2（シグナル検知）・Step 3（生観察の生成）・Step 4（store 書き込み）から参照される判定基準・規約・採用理由の単一出典。記述例は `${CLAUDE_SKILL_DIR}/references/capture-examples.md` を参照する。
+capture SKILL.md の Step 1（session jsonl の所在解決）・Step 2（シグナル検知）・Step 3（生観察の生成）・Step 4（store 書き込み）から参照される判定基準・規約・採用理由の単一出典。記述例は `capture-examples.md` を参照する。
 
 ## session jsonl の所在解決（Step 1）
 
