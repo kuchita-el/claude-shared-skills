@@ -44,7 +44,8 @@
 # 【届かない範囲】本検査が見るのは上の語彙に当たる行だけであり、次は見ない。
 #   - references 本文が名指した資産へ、ハブ（当該スキルの本文）が到達形を
 #     持っているか
-#   - references 本文に在る、変数も ../ も伴わない素の `references/<name>` の言及
+#   - references 本文に在る、変数も ../ も伴わない素の `references/<name>`・`scripts/<name>` の
+#     言及。相対パスで書いた実行形（`node scripts/x.mjs`）を含む
 #   - 面で許された形（スキル本文の ${CLAUDE_PLUGIN_ROOT}/... 等）が指す先の実在
 #   - 波括弧のパラメータ名（`{plugin_root}/...`・`{pluginRoot}/...`）と、同一ディレクトリ内を
 #     指す相対リンク
