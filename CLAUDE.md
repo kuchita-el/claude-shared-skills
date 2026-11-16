@@ -85,6 +85,12 @@ allowed-tools:
 
 @.claude/review/criteria.md
 
+## ホストに共通の指示
+
+Claude Code と Codex の両方へ届ける指示は、`AGENTS.md` に置く。Codex は `AGENTS.md` だけを読むためである。下の取り込み行で、Claude Code にも同じ指示を届ける。
+
+@AGENTS.md
+
 ## Conventions
 
 - ドキュメントおよびスキル内のコメントは日本語で書く
