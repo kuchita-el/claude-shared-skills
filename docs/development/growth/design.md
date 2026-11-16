@@ -174,12 +174,12 @@ growth プラグインは2つの顔を持つ。
 1. **エンジン**: 学習ループの各段を担うスキル群。1段＝1スキルで関心を分離し、段ごとに別タイミングで起動する。
    - `capture` スキル（Capture）: 現セッションの会話履歴から摩擦知（予測誤差検出器）と判断知（教示信号検出器）の2種を検知し、生観察を個人ローカル store に記録する。
    - `distill` スキル（Distill＋Route 統合）: store に溜まった未処理の生観察を Capture と非同期にバッチで仮説形成し、クラスタ化・重複排除して仮説へ変換する。Route をタグ付与として統合し、スコープ・キャリアはいずれも仮説どまりで、確定（裁定）は集約点に置く。
-   - `promote` スキル（Promote・新規）: 仮説を検証し（原理2＝未検証を配布経路に乗せないフィルタ）、通過した仮説だけを `gh` で**自動起票**して既存ワークフローへ疎結合に渡す。起票前に人間承認ゲートを置かず、L2 承認は起票後の既存ワークフロー（refine-issue / DoR / PR レビュー）が担う。promote は**ルーティング不可知**で、スコープ・キャリアの裁定を行わない。
+   - `promote` スキル（Promote・新規）: 仮説を検証し（原理2＝未検証を配布経路に乗せないフィルタ）、通過した仮説だけを `gh` で**自動起票**する。起票した Issue は、既存ワークフローへ疎結合に渡す。起票前に人間承認ゲートを置かない。起票後の二段ゲート L2 は、`intake` の集約点での人間による裁定と、取り込み Issue が乗る既存ワークフロー（refine-issue / DoR / PR レビュー）が担う。promote は**ルーティング不可知**で、スコープ・キャリアの裁定を行わない。
    - `intake` スキル（制度化＝二段ゲート L2・Phase 2）: 複数の仮説 Issue を1つの取り込み Issue へ束ね、人間が昇格先キャリアを裁定する集約点を運用する。承認後は各仮説を取り込み時クローズして inbox から外し、取り込み Issue 自体は通常の単一 Issue として既存ワークフロー（refine-issue / DoR / PR レビュー）に乗る。取り込み Issue の構造・裁定結果の記録形式・集約トポロジの不変条件は [`intake-issue-spec.md`](../../../plugins/growth/references/intake-issue-spec.md)（ADR-202606282107-01）。
-   - 残る Distribute（検証済みの学びの `learnings.md` への物理昇格）は後続 Phase（Phase 2）。検証を経た仮説は Issue 起票（小さければ PR）として既存ワークフローに渡す。昇格 Issue のテンプレートは [`promotion-issue-spec.md`](../../../plugins/growth/references/promotion-issue-spec.md)（#382）で定義する。昇格先キャリアは distill が仮説単位で生成し、確定（裁定）は上記 `intake` の集約点が担う（career 決定モデルは ADR-202606282107-01。#382 は本決定に合わせ再定義予定）。出来事ベースの昇格 Issue を `learnings.md` の1欄エントリへ翻訳する変換規約は [`learning-promotion-spec.md`](../../../plugins/growth/references/learning-promotion-spec.md)（#383）で定義する。
+   - Distribute（裁定を経た学びの `learnings.md` への物理昇格）は、スキルとして提供しない。昇格は、既存ワークフローに乗る通常の PR として行う。`learnings.md` のエントリは [変換規約](../../../plugins/growth/references/learning-promotion-spec.md) に従って書く。変換規約は、取り込み Issue で裁定された仮説を1欄のエントリへ翻訳する手続きを定める。昇格 Issue のテンプレートは [昇格 Issue 規約](../../../plugins/growth/references/promotion-issue-spec.md) が持つ。昇格先キャリアは distill が仮説単位で生成し、確定（裁定）は上記 `intake` の集約点が担う。career 決定モデルは ADR-202606282107-01 が定め、昇格 Issue 規約も同 ADR に準拠する。
 2. **配布物**: 蓄積された汎用の学び置き場。プラグイン配布によって全利用者の Claude Code に届く学びの実体。
 
-dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 Issue を起票し、その Issue は既存の `refine-issue` / DoR に乗る。スキル同士を直接呼び出さない（各スキルは store／学び置き場というファイルを介して疎に連結する）。足すのはプラグイン1個であり、繋ぎ先（create-issue → refine-issue → plan-issue → implementation、PR レビューは pr-review-toolkit）はすべて既存資産。
+dev-workflow との接続は疎結合とする。エンジンは `gh` で直接 Issue を起票する。起票された仮説 Issue は `intake` の集約点で束ねられ、取り込み Issue が既存の `refine-issue` / DoR に乗る。スキル同士を直接呼び出さない（各スキルは store／学び置き場というファイルを介して疎に連結する）。足すのはプラグイン1個である。繋ぎ先は、すべて既存資産である。工程は create-issue → refine-issue → plan-issue → implementation であり、PR レビューは pr-review-toolkit が担う。
 
 本リポジトリ自体が全世界への配布チャネルであるため、「内省 → 仮説 → 検証 → 反証レビュー（既存）→ マージ → 全利用者へ配布 → 効果測定」という閉ループが、新規の仕組みをほとんど足さずに既存資産で閉じる。
 

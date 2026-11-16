@@ -114,6 +114,7 @@ EXPECTED_BATS=(
     shared-memory-check.bats
     writing-contract.bats
     distribution-boundary.bats
+    growth-skill-inventory.bats
     living-spec-run.bats
     living-spec-release-workflow.bats
 )
