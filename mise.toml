@@ -11,6 +11,6 @@
 # plugins/shared-memory/scripts/memory.mjs（記憶の検査器。scripts/tests/shared-memory-check.bats）も走らせる。
 [tools]
 bats = "1.14.0"
-node = "24.16.0"
+node = "26.13.1"
 # pnpm — tools/living-spec の依存の導入と試験（scripts/run-tests.sh の living-spec スイート）。
 pnpm = "12.5.1"

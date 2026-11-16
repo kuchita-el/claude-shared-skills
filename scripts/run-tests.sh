@@ -115,6 +115,7 @@ EXPECTED_BATS=(
     writing-contract.bats
     distribution-boundary.bats
     asset-reference-forms.bats
+    growth-skill-inventory.bats
     living-spec-run.bats
     living-spec-release-workflow.bats
 )

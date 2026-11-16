@@ -116,7 +116,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: ['22.0.0', '24']
+        node: ['22.0.0', '26']
     env:
       ASSET: living-spec-${{ github.sha }}.mjs
     steps:
