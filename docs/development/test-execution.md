@@ -8,7 +8,7 @@
 
 | スイート | 実体 | 内容 |
 |---|---|---|
-| `bats` | `scripts/tests/*.bats` | adr プラグイン同梱の検査器のテスト（導入先の設定ファイルで語と ADR ディレクトリを定めたときの振る舞いを含む）・adr プラグインの commit ゲートが検査対象のツリーと検査する内容（index・作業ツリー）を決める振る舞い・writing プラグイン同梱の検査器のテスト・shared-memory プラグイン同梱の検査器のテスト・living-spec プラグインの中継（`scripts/run.mjs`）が検査器を見つけられないとき・検査器がプラグインの前提より古いときの振る舞い・living-spec の Release のワークフローの構造（起動契機・書き込み権限・待ち合わせ・job と step の条件）・配布物と配布元の一方向性の検査・growth のスキルの実体と2つの文書の列挙の一致・`run-codex-local.sh` の開発用ホームでの起動・runner 自身の fail-closed 検査（`scripts/tests/*.bats` の網羅列挙ではない） |
+| `bats` | `scripts/tests/*.bats` | adr プラグイン同梱の検査器のテスト（導入先の設定ファイルで語と ADR ディレクトリを定めたときの振る舞いを含む）・adr プラグインの commit ゲートが検査対象のツリーと検査する内容（index・作業ツリー）を決める振る舞い・writing プラグイン同梱の検査器のテスト・shared-memory プラグイン同梱の検査器のテスト・living-spec プラグインの中継（`scripts/run.mjs`）が検査器を見つけられないとき・検査器がプラグインの前提より古いときの振る舞い・living-spec の Release のワークフローの構造（起動契機・書き込み権限・待ち合わせ・job と step の条件）・配布物と配布元の一方向性の検査・配布物の本文が同梱資産を指す表記の形の検査・growth のスキルの実体と2つの文書の列挙の一致・`run-codex-local.sh` の開発用ホームでの起動・runner 自身の fail-closed 検査（`scripts/tests/*.bats` の網羅列挙ではない） |
 | `living-spec` | `pnpm --dir tools/living-spec test`（依存が入っていなければ先に `pnpm --dir tools/living-spec install --frozen-lockfile`） | living-spec の検査器の試験（規則の分岐・読み込みから出力までの見本・入口・描画・基準の版との差分・前提より古い検査器のフックを中継が扱うときの範囲の判定） |
 | `validate-plugin-manifests` | `scripts/validate-plugin-manifests.sh .` | marketplace、manifest、README、skill集合の双方向一致 |
 | `validate-plugin-portability` | `scripts/validate-plugin-portability.sh .` | matrix、permission ledger、参照境界 |
@@ -25,6 +25,12 @@ runner はいずれかが失敗しても残りを最後まで実行してから�
 adr プラグインの `lint-adr.sh` が bash 4.2 未満で原因を示して止まることは、runner の外で CI の別のジョブが実測する。ジョブは `.github/workflows/test.yml` の `lint-adr-old-bash` で、bash 3.2 の公式コンテナをダイジェストで固定して lint を起動する。起動した bash の版と、終了コードと案内の位置は `scripts/check-lint-adr-old-bash.sh` が確かめる。コンテナの実行環境を前提にするため、runner には組み込まない。検査器自身が期待と違う結果を見逃さないことは、`lint-adr-old-bash.bats` が runner の中で固定する。
 
 Writing Wave 2の追加検査は`writing-lint.bats`と`writing-contract.bats`で行う。前者は`lint-ja.mjs`のfile/diff、種別ごとの上限、一文長の数え方、検査できない入力の終了コードを検査する。`lint-ja.mjs`はNodeで動くため、`writing-lint.bats`はNode（`mise.toml`が版を固定する）を要し、解決できない環境では落ちる。後者はskill/agent、doc-reviewerの入力とtools、F1/F2/F3/F4/F5正負fixtureを検査する。最大2回loop、両host matrix、permission ledgerも後者が検査する。Codex agent登録面が利用できない場合の明示起動・degraded手動検査は、`plugins/writing/compatibility.json`へ記録する。
+
+配布物の本文が同梱資産を指す表記の形は、`asset-reference-forms.bats` が全プラグインの実資産に対して検査する。
+走査面は、スキル本文、agents 定義本文、references 本文の3つである。
+規範の正本は `docs/development/coding-agent-plugin-design-principles.md` §6 にある。
+赤にする表記の語彙と、検査が届かない範囲は、同ファイルの冒頭が持つ。
+説明の言及を通す免除の表と、検査の置き場所を決めた理由も、同じ冒頭が持つ。
 
 配布プラグインの `claude plugin eval` ケース（`evals/<plugin>/`）は runner に含めない。理由と実行手順は §7 を参照。
 

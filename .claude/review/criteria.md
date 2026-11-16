@@ -5,7 +5,7 @@
 ## 適用の仕方
 
 - 差分が触れた面に当たる節を適用する。どの節にも当たらない差分には、既定の観点だけを使う。
-- CI（`scripts/run-tests.sh`）が実資産に掛ける検査の対象は指摘しない。対象はマニフェストの整合と、SKILL.md からの参照切れ・配布元への逆参照である。
+- CI（`scripts/run-tests.sh`）が実資産に掛ける検査の対象は指摘しない。対象はマニフェストの整合と、SKILL.md からの参照切れ・配布元への逆参照である。同梱資産を指す表記の形は、`scripts/tests/asset-reference-forms.bats` の語彙に当たるものだけが対象に入る。
 - ADR の front-matter・相互参照と日本語の一文長は、CI では実資産を検査しない。前者は Claude Code 経由の commit でだけ走り、後者は手動実行だけなので、指摘の対象に含める。
 - 指摘は欠陥そのものを主語に書く。計量（何字一致・何件）を主語にすると、計量だけを潰す表層の修正が返る。
 - 振る舞いの断定には `file:line` の根拠を添える。命名からの推測で断定しない。
@@ -30,7 +30,7 @@
 ## 2. 配布境界とホスト
 
 - 配布物（`plugins/` 配下）から、配布元にしかないもの（`docs/`・ADR・`scripts/tests/`・他のプラグイン）を参照していないか。出典は `docs/distribution-boundary.md`。
-- `${CLAUDE_PLUGIN_ROOT}`・`${CLAUDE_SKILL_DIR}` を、その変数が展開される面で使っているか。agents/・README・references 同士の参照は機械検査の外にある。
+- `${CLAUDE_PLUGIN_ROOT}`・`${CLAUDE_SKILL_DIR}` を、その変数が展開される面で使っているか。走査面ごとの表記の形は `scripts/tests/asset-reference-forms.bats` が見る。次の4つは機械検査の外にある。同検査の免除の表へ足した行が到達指示でないこと、references 本文が名前で呼ぶ先へハブが到達形を持つこと、同検査の冒頭が「届かない範囲」に挙げる書き方、README の記述である。
 - Claude Code と Codex の片方でしか成り立たない記述・検査になっていないか。出典は `docs/references/cross-host-plugin-conformance.md`。
 
 ## 3. スキルとサブエージェントの定義
