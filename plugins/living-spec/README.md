@@ -62,7 +62,7 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
-          node-version: 24
+          node-version: 26
 
       - name: living-spec の検査器を取る
         run: curl -fsSL -o "$RUNNER_TEMP/living-spec.mjs" "https://github.com/kuchita-el/claude-shared-skills/releases/download/living-spec-${LIVING_SPEC_REF}/living-spec-${LIVING_SPEC_REF}.mjs"
@@ -83,7 +83,7 @@ jobs:
 
 ## 前提
 
-- Node 22 以上（22.23・24.16 で確かめています）と、検査器の取得に使う curl。基準の版との描き分け（`render --base`）と、`crosscheck` に基準の版を渡したときの一覧（`diff`）には git も要ります。
+- Node 22 以上（22.23・26.13 で確かめています）と、検査器の取得に使う curl。基準の版との描き分け（`render --base`）と、`crosscheck` に基準の版を渡したときの一覧（`diff`）には git も要ります。
 - 可視化の図は Mermaid を jsdelivr から読むため、表示にネットワークが要ります。
 
 ## 契約
