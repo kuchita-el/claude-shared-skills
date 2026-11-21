@@ -5,7 +5,7 @@
 //
 // 使い方は USAGE を見る。違反は「パス:規則: 説明」の形で標準出力へ出す。
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const USAGE = `usage: memory.mjs check ROOT [--no-task-memory]
@@ -439,13 +439,15 @@ function renderIndex(records) {
 
 /**
  * Task Memory の残留を集める。tasks の直下に在るものを、1件につき1行の違反にする。
+ * tasks がリンクのときは辿らない。辿ると、切れたリンクと、空のディレクトリを指すリンクが、残留なしに見える。
  * @param {string} root
  * @returns {string[]}
  */
 function taskMemory(root) {
   const dir = join(root, 'tasks');
-  if (!existsSync(dir)) return [];
-  if (!statSync(dir).isDirectory()) return ['tasks:task-memory: tasks がディレクトリでない。既定のブランチへ入れる前に取り除く'];
+  const found = lstatSync(dir, { throwIfNoEntry: false });
+  if (found === undefined) return [];
+  if (!found.isDirectory()) return ['tasks:task-memory: tasks がディレクトリでない。リンクは辿らない。既定のブランチへ入れる前に取り除く'];
   return readdirSync(dir).sort().map((name) => `tasks/${name}:task-memory: Task Memory が残っている。既定のブランチへ入れる前に取り除く`);
 }
 

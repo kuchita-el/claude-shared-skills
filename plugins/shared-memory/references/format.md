@@ -199,6 +199,7 @@ Task Memory は、1つのタスクの間だけ持つ覚え書きである。記�
 - 形式は検査しない。確かめていない仮説を書いてよい。索引には載らない。
 - 作業中のブランチにだけ置く。既定のブランチへは持ち込まない。レビューへ出す前に、残す価値のあるものを記録などへ取り出し、ファイルを消す。
 - ほかのタスクのファイルには書かない。
+- 別の文脈や別のセッションが読むものとして書く。追跡していない文書でしか解けない記号や略語に頼らない。
 - 既定のブランチへ入るツリーに残っていないことは、`check` に `--no-task-memory` を付けて確かめる。いつ確かめるかは、呼び出す側が決める。
 
 ## 検査器が違反とするもの
@@ -214,7 +215,7 @@ Task Memory は、1つのタスクの間だけ持つ覚え書きである。記�
 | `evolution` | `evolution` が `from` か `to` を持たない。`evolution` でない記録が `from` か `to` を持つ |
 | `replacement` | `superseded-by` を持つ記録に、その置き換えを説明する `evolution` が無い。`evolution` の `from` の記録が、`to` の記録を `superseded-by` で指していない。`superseded-by` を辿ると元の記録へ戻る |
 | `index` | 索引が無い。索引が記録と一致しない |
-| `task-memory` | `tasks/` の直下に何かが在る。`tasks` がディレクトリでない。`check` に `--no-task-memory` を付けたときだけ見る |
+| `task-memory` | `tasks/` の直下に何かが在る。`tasks` がディレクトリでない。`tasks` がリンクのときは、辿らずに、ディレクトリでないものとして扱う。`check` に `--no-task-memory` を付けたときだけ見る |
 
 `front-matter`・`required`・`value`・`filename` は、記録と台帳の両方に掛かる。`task-memory` は、`tasks` だけに掛かる。ほかの規則は、記録だけに掛かる。違反の行のパスは、記録が `records/`、台帳が `adopted/`、Task Memory の残留が `tasks` で始まる。
 

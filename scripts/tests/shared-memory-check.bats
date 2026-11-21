@@ -629,6 +629,22 @@ E=MEM-202611140000-03
   [ -z "$output" ]
 }
 
+@test "Task Memory: tasks がリンクのとき、辿らずに task-memory の1行で落ちる" {
+  mkdir -p "$BATS_TEST_TMPDIR/empty" "$BATS_TEST_TMPDIR/filled"
+  printf '%s\n' '覚え書き。' >"$BATS_TEST_TMPDIR/filled/a.md"
+  local target
+  for target in "$BATS_TEST_TMPDIR/empty" "$BATS_TEST_TMPDIR/filled" "$BATS_TEST_TMPDIR/missing"; do
+    rm -f "$ROOT/tasks"
+    ln -s "$target" "$ROOT/tasks"
+    run node "$SUT" check "$ROOT" --no-task-memory
+    [ "$status" -eq 1 ]
+    [ "$output" = "tasks:task-memory: tasks がディレクトリでない。リンクは辿らない。既定のブランチへ入れる前に取り除く" ]
+    run node "$SUT" check "$ROOT"
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+  done
+}
+
 @test "Task Memory: --no-task-memory の置き方の誤りは exit 2 で終わる" {
   run node "$SUT" check "$ROOT" --no-task-memory extra
   [ "$status" -eq 2 ]
