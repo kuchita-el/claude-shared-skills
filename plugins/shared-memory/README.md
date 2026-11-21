@@ -13,8 +13,9 @@ claude --plugin-dir <このディレクトリ>
 - **記録の形式**（`references/format.md`）: 記録・索引・採用の台帳の形、置き換えの手順、記録の版の書き方、採用した記録の変化の判定、検査器が違反とするもの。Task Memory の置き場も定める。
 - **検査器**（`scripts/memory.mjs`）: 記録と台帳の形式を検査し、索引を生成する。記録の版を返し、採用した記録の変化を報告する。Task Memory の残留を検出する。Node 22 以上で動く。Node の組み込みのほかに依存は無い。ただし、`version` と `adopted` は git を要する。
 - **スキル `propose-records`**（`/shared-memory:propose-records`）: タスクの材料から、学びの候補を挙げる。既存の記録と照らして、足す・直す・捨てるに分ける。足すものと直すものは、記録の下書きにして検査する。捨てた候補も、理由つきで示す。
+- **スキル `replace-record`**（`/shared-memory:replace-record`）: 置き換えると決まった記録について、3つをそろえ、検査器で確かめる。3つは、新しい記録・旧い記録の `superseded-by`・`evolution` の記録である。置き換えるかどうかは決めない。
 - **サブエージェント `record-matcher`**（`agents/record-matcher.md`）: 主張を、既存の記録と照らす。読み取り専用である。
-- **共有の参照**: 2つ在る。`references/matching.md` は、照合の手順と、返す形を定める。`references/confidentiality.md` は、記録がリポジトリの境界を越えるときの、機密の確認を定める。
+- **共有の参照**: `references/matching.md` は、照合の手順と、返す形を定める。`references/confidentiality.md` は、記録がリポジトリの境界を越えるときの、機密の確認を定める。`references/replacement.md` は、置き換えの3つをそろえる順序と、確かめ方を定める。
 
 ```bash
 node scripts/memory.mjs check <記憶の根>
