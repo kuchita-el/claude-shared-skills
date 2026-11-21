@@ -52,4 +52,4 @@ node scripts/memory.mjs adopted <プロジェクト側の記憶の根> <Global M
 
 ファイルを探す道具（`Glob`・`Grep`）を持たないホストも在る。そのホストでは、照合は、索引に載っていない記録を拾う段を省き、見た範囲にそう書く。機密の語の照合は、どのホストでも、シェルの `grep` で行う。
 
-Codex では確かめていない。
+Codex には未対応である。`.codex-plugin/plugin.json` を持たないので、Codex からは導入できない。

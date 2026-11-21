@@ -9,8 +9,6 @@ allowed_tools:
   - Read
   - Write
   - Edit
-  - Grep
-  - Glob
   - Agent
   - Bash(git rev-parse*)
   - Bash(git status*)
