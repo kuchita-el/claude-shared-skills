@@ -549,3 +549,100 @@ E=MEM-202611140000-03
   run node "$SUT" check "$ROOT"
   [ "$status" -eq 0 ]
 }
+
+# ここから下は、Task Memory（tasks/）の試験である。残留の検出は、--no-task-memory を付けたときだけ働く。
+
+@test "Task Memory: tasks と adopted は、記録の検査にも索引にも混ざらない" {
+  record "$A" first
+  mkdir -p "$ROOT/tasks"
+  printf '%s\n' '覚え書き。front-matter は無い。' >"$ROOT/tasks/claude-x.md"
+  printf '%s\n' '---' 'id: 閉じていない' >"$ROOT/tasks/MEM-202611140000-09-looks-like-record.md"
+  adopt "$A"
+  write_index
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  run node "$SUT" index "$ROOT"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"tasks/"* ]]
+  [[ "$output" != *"adopted/"* ]]
+  [ "$(grep -c '^| \[MEM-' <<<"$output")" -eq 1 ]
+}
+
+@test "Task Memory: --no-task-memory は、tasks の直下の1件につき1行の task-memory で落ちる" {
+  mkdir -p "$ROOT/tasks/sub"
+  printf '%s\n' '覚え書き。' >"$ROOT/tasks/a.md"
+  : >"$ROOT/tasks/.gitkeep"
+  printf '%s\n' '覚え書き。' >"$ROOT/tasks/sub/inner.md"
+  run node "$SUT" check "$ROOT" --no-task-memory
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"tasks/a.md:task-memory: "* ]]
+  [[ "$output" == *"tasks/.gitkeep:task-memory: "* ]]
+  [[ "$output" == *"tasks/sub:task-memory: "* ]]
+  [ "$(grep -c ':task-memory: ' <<<"$output")" -eq 3 ]
+  [[ "$output" != *"tasks/sub/inner.md"* ]]
+}
+
+@test "Task Memory: --no-task-memory を付けなければ、tasks が在っても通る" {
+  mkdir -p "$ROOT/tasks/sub"
+  printf '%s\n' '覚え書き。' >"$ROOT/tasks/a.md"
+  : >"$ROOT/tasks/.gitkeep"
+  printf '%s\n' '覚え書き。' >"$ROOT/tasks/sub/inner.md"
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "Task Memory: tasks が無い根と、空の tasks は、--no-task-memory でも通る" {
+  run node "$SUT" check "$ROOT" --no-task-memory
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  mkdir -p "$ROOT/tasks"
+  run node "$SUT" check "$ROOT" --no-task-memory
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "Task Memory: --no-task-memory を付けても、記録の検査と索引の一致は変わらない" {
+  record "$A" first
+  write_index
+  run node "$SUT" check "$ROOT" --no-task-memory
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  edit "$A-first.md" '/^applies-when:/d'
+  mkdir -p "$ROOT/tasks"
+  printf '%s\n' '覚え書き。' >"$ROOT/tasks/a.md"
+  run node "$SUT" check "$ROOT" --no-task-memory
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"records/$A-first.md:required: applies-when が無い"* ]]
+  [[ "$output" == *"index.md:index: 索引が記録と一致しない"* ]]
+  [[ "$output" == *"tasks/a.md:task-memory: "* ]]
+}
+
+@test "Task Memory: tasks がディレクトリでないとき、--no-task-memory は task-memory で落ちる" {
+  : >"$ROOT/tasks"
+  run node "$SUT" check "$ROOT" --no-task-memory
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"tasks:task-memory: tasks がディレクトリでない"* ]]
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "Task Memory: --no-task-memory の置き方の誤りは exit 2 で終わる" {
+  run node "$SUT" check "$ROOT" --no-task-memory extra
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"usage: memory.mjs check ROOT [--no-task-memory]"* ]]
+  run node "$SUT" check "$ROOT" --no-task-memory --no-task-memory
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"usage: memory.mjs check ROOT [--no-task-memory]"* ]]
+  run node "$SUT" index "$ROOT" --no-task-memory
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"usage: memory.mjs check ROOT [--no-task-memory]"* ]]
+  run node "$SUT" check "$ROOT" --write
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"usage: memory.mjs check ROOT [--no-task-memory]"* ]]
+  run node "$SUT" check --no-task-memory "$ROOT"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"usage: memory.mjs check ROOT [--no-task-memory]"* ]]
+}
