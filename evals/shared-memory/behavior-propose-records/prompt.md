@@ -19,6 +19,7 @@ allowed_tools:
   - Bash(git -C * log -1*)
   - Bash(git remote get-url *)
   - Bash(date -u*)
+  - Bash(grep -i -F *)
   - Bash(node *scripts/memory.mjs*)
 ---
 

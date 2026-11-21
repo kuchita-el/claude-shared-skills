@@ -222,7 +222,8 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
 
   ```bash
   --allow-tools Write Edit 'Bash(node *scripts/memory.mjs*)' 'Bash(git rev-parse*)' 'Bash(git status*)' \
-    'Bash(git log*)' 'Bash(git diff*)' 'Bash(git -C * log -1*)' 'Bash(git remote get-url *)' 'Bash(date -u*)'
+    'Bash(git log*)' 'Bash(git diff*)' 'Bash(git -C * log -1*)' 'Bash(git remote get-url *)' 'Bash(date -u*)' \
+    'Bash(grep -i -F *)'
   ```
 
 - `Bash` を付与するケースは、サンドボックスの道具（`bubblewrap` と `socat`）が無い Linux では、起動を拒まれる。2026年11月に、root で動く Claude Code on the web のコンテナで実測した。2つを入れた後は動いた。ただし、成功した Bash のコマンドも終了コード 1 と表示された（標準出力は正しかった）。終了コードで分岐する手順を測るときは、trace の出力で判断する
