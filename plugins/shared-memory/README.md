@@ -14,7 +14,9 @@ claude --plugin-dir <このディレクトリ>
 - **検査器**（`scripts/memory.mjs`）: 記録と台帳の形式を検査し、索引を生成する。記録の版を返し、採用した記録の変化を報告する。Task Memory の残留を検出する。Node 22 以上で動く。Node の組み込みのほかに依存は無い。ただし、`version` と `adopted` は git を要する。
 - **スキル `propose-records`**（`/shared-memory:propose-records`）: タスクの材料から、学びの候補を挙げる。既存の記録と照らして、足す・直す・捨てるに分ける。足すものと直すものは、記録の下書きにして検査する。捨てた候補も、理由つきで示す。
 - **スキル `replace-record`**（`/shared-memory:replace-record`）: 置き換えると決まった記録について、3つをそろえ、検査器で確かめる。3つは、新しい記録・旧い記録の `superseded-by`・`evolution` の記録である。置き換えるかどうかは決めない。
+- **スキル `crosscheck-records`**（`/shared-memory:crosscheck-records`）: 記録を、書いた文脈とは別の文脈で突き合わせる。相手は、既に在る記録である。食い違いと重なりを報告し、記録は直さない。
 - **サブエージェント `record-matcher`**（`agents/record-matcher.md`）: 主張を、既存の記録と照らす。読み取り専用である。
+- **サブエージェント `record-crosschecker`**（`agents/record-crosschecker.md`）: 昇格と突き合わせに使う。読み取り専用である。照合の手順は、`record-matcher` と同じ参照を読む。語を渡されたときは、機密の混入の疑いも探す。
 - **共有の参照**: `references/matching.md` は、照合の手順と、返す形を定める。`references/confidentiality.md` は、記録がリポジトリの境界を越えるときの、機密の確認を定める。`references/replacement.md` は、置き換えの3つをそろえる順序と、確かめ方を定める。
 
 ```bash
@@ -40,8 +42,11 @@ node scripts/memory.mjs adopted <プロジェクト側の記憶の根> <Global M
 | 定義 | `model` | `effort` | 値の意図 | `tools` |
 |---|---|---|---|---|
 | `record-matcher` | `sonnet` | `high` | 必要最小水準 | `Read, Glob, Grep` |
+| `record-crosschecker` | `opus` | `high` | 必要最小水準 | `Read, Glob, Grep` |
 
-「必要最小水準」は、その役割が成立するために必要な下限として選んだ値である。照合の問いは有界であり、答えは索引と記録に在る。「重なる」「食い違う」と返った組は、スキルが根拠の記録を読んで確かめる。全体は、記録の PR で人間が見る。
+「必要最小水準」は、その役割が成立するために必要な下限として選んだ値である。`record-matcher` が受け持つ照合の問いは有界であり、答えは索引と記録に在る。「重なる」「食い違う」と返った組は、スキルが根拠の記録を読んで確かめる。全体は、記録の PR で人間が見る。
+
+`record-crosschecker` は、水準を下げない。昇格の突き合わせは、後ろに再検証の担い手が居ない。機密の読みは、誤りを巻き戻せない。
 
 ## ホストによる違い
 
