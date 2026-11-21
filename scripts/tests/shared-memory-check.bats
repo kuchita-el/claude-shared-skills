@@ -32,6 +32,23 @@ write_index() {
   node "$SUT" index "$ROOT" --write
 }
 
+# 形式に合う採用の台帳を1件書く。$1 は記録の識別子、$2 以降は front-matter へ足す行。
+adopt() {
+  local id="$1"
+  shift
+  mkdir -p "$ROOT/adopted"
+  {
+    printf '%s\n' '---' "record: $id" 'version: a1c5dc1' 'decisions:' '  - ADR-202611200000-01' 'adopted: 2026-11-21'
+    [ "$#" -eq 0 ] || printf '%s\n' "$@"
+    printf '%s\n' '---' '' '採用の理由。'
+  } >"$ROOT/adopted/$id.md"
+}
+
+# 台帳の1行を sed の式で書き換える。$1 はファイル名、$2 は式。
+edit_adopted() {
+  sed -i "$2" "$ROOT/adopted/$1"
+}
+
 A=MEM-202611140000-01
 B=MEM-202611140000-02
 E=MEM-202611140000-03
@@ -406,4 +423,129 @@ E=MEM-202611140000-03
   run node "$SUT" check "$ROOT"
   [ "$status" -eq 1 ]
   [[ "$output" == *":replacement: 置き換えが循環している"* ]]
+}
+
+# ---- 採用の台帳（adopted/） ----
+
+@test "台帳: 形式に合う台帳は通過し、知らない項目を読み飛ばす" {
+  adopt "$A"
+  adopt "$B" 'note: 補足' 'タグ:' '  - memo'
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "台帳: 必ず書く項目は、どれが無くても required で落ちる" {
+  local key
+  for key in record version adopted decisions; do
+    adopt "$A"
+    edit_adopted "$A.md" "/^$key:/d"
+    [ "$key" != decisions ] || edit_adopted "$A.md" '/^  - /d'
+    run node "$SUT" check "$ROOT"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"adopted/$A.md:required: $key が無い"* ]]
+  done
+}
+
+@test "台帳: decisions が0件の台帳と、本文が空の台帳は required で落ちる" {
+  adopt "$A"
+  edit_adopted "$A.md" '/^  - /d'
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [ "$output" = "adopted/$A.md:required: decisions が無い" ]
+  adopt "$A"
+  edit_adopted "$A.md" 's/^採用の理由。$/  /'
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [[ "$output" == "adopted/$A.md:required: 本文が無い"* ]]
+}
+
+@test "台帳: record・version・adopted は、形に合わない値で value に落ちる" {
+  local line
+  for line in 'record: MEM-1' 'version: a1c5dc' 'version: A1C5DC1' 'version: a1c5dcg' 'adopted: 2026/11/21'; do
+    adopt "$A"
+    edit_adopted "$A.md" "s|^${line%%:*}: .*|$line|"
+    run node "$SUT" check "$ROOT"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"adopted/$A.md:value: ${line%%:*} は"* ]]
+  done
+}
+
+@test "台帳: version は7桁から64桁までを受け、65桁で value に落ちる" {
+  local hex
+  for hex in a1c5dc1 a1c5dc1a1c5dc1a1c5dc1a1c5dc1a1c5dc1a1c5d "$(printf 'a%.0s' {1..64})"; do
+    adopt "$A"
+    edit_adopted "$A.md" "s/^version: .*/version: $hex/"
+    run node "$SUT" check "$ROOT"
+    [ "$status" -eq 0 ]
+  done
+  edit_adopted "$A.md" "s/^version: .*/version: $(printf 'a%.0s' {1..65})/"
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *":value: version は"* ]]
+}
+
+@test "台帳: ファイル名が <record>.md でないと filename で落ちる" {
+  adopt "$A"
+  mv "$ROOT/adopted/$A.md" "$ROOT/adopted/$A-first.md"
+  adopt "$B"
+  edit_adopted "$B.md" "s/^record: .*/record: $E/"
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"adopted/$A-first.md:filename: ファイル名は"* ]]
+  [[ "$output" == *"adopted/$B.md:filename: ファイル名の識別子が record と一致しない: $E"* ]]
+}
+
+@test "台帳: front-matter が無い台帳と、同じ項目を2回書いた台帳は front-matter で落ちる" {
+  mkdir -p "$ROOT/adopted"
+  printf '%s\n' '本文だけ。' >"$ROOT/adopted/$A.md"
+  adopt "$B" 'version: b2d6ed2'
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"adopted/$A.md:front-matter: 1行目が --- でない"* ]]
+  [[ "$output" == *"adopted/$B.md:front-matter: キーが重複している: version"* ]]
+}
+
+@test "台帳: adopted の下の階層と、.md で終わらないファイルは読まない" {
+  adopt "$A"
+  mkdir -p "$ROOT/adopted/archive"
+  printf '%s\n' '本文だけ。' >"$ROOT/adopted/archive/$B.md"
+  printf '%s\n' '覚え書き。' >"$ROOT/adopted/notes.txt"
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "台帳: adopted がディレクトリでないと、検査できない入力として exit 2 で終わる" {
+  : >"$ROOT/adopted"
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"adopted がディレクトリでない"* ]]
+}
+
+@test "台帳: 記録の違反と台帳の違反を、同じ実行で両方出す" {
+  record "$A" first
+  adopt "$B"
+  edit_adopted "$B.md" '/^adopted:/d'
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"index.md:index: 索引が無い"* ]]
+  [[ "$output" == *"adopted/$B.md:required: adopted が無い"* ]]
+}
+
+@test "台帳: index は台帳を読まず、索引に載せない" {
+  record "$A" first
+  adopt "$A"
+  : >"$ROOT/adopted/broken.md"
+  run node "$SUT" index "$ROOT"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"adopted"* ]]
+}
+
+@test "台帳: 記録の項目名を台帳に書いても読み飛ばし、台帳の項目名を記録に書いても読み飛ばす" {
+  record "$A" first 'record: x: y' 'decisions: 1行の値'
+  write_index
+  adopt "$A" 'id: x: y' 'sources: 1行の値'
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 0 ]
 }
