@@ -10,7 +10,6 @@ allowed_tools:
   - Write
   - Edit
   - Glob
-  - Grep
   - Bash(node *scripts/memory.mjs*)
   - Bash(date -u*)
 ---

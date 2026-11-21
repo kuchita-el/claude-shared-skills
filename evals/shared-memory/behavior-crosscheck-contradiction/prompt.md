@@ -7,7 +7,6 @@ timeout_seconds: 1200
 allowed_tools:
   - Skill
   - Read
-  - Grep
   - Glob
   - Write
   - Edit
