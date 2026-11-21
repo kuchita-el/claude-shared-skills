@@ -13,6 +13,7 @@ claude --plugin-dir <このディレクトリ>
 - **記録の形式**（`references/format.md`）: 記録・索引・採用の台帳の形、置き換えの手順、記録の版の書き方、採用した記録の変化の判定、検査器が違反とするもの。Task Memory の置き場も定める。
 - **検査器**（`scripts/memory.mjs`）: 記録と台帳の形式を検査し、索引を生成する。記録の版を返し、採用した記録の変化を報告する。Task Memory の残留を検出する。Node 22 以上で動く。Node の組み込みのほかに依存は無い。ただし、`version` と `adopted` は git を要する。
 - **スキル `propose-records`**（`/shared-memory:propose-records`）: タスクの材料から、学びの候補を挙げる。既存の記録と照らして、足す・直す・捨てるに分ける。足すものと直すものは、記録の下書きにして検査する。捨てた候補も、理由つきで示す。
+- **スキル `promote-record`**（`/shared-memory:promote-record`）: 記録を一般化し、Global Memory へ提案する。元にできるのは、既定のブランチに在る Project Memory の記録である。出す前に、機密の情報の混入と、既存の記録との矛盾を確かめる。5つの確認の結果を、PR の本文に書く。機密の確認は、利用規則で外せない。
 - **スキル `replace-record`**（`/shared-memory:replace-record`）: 置き換えると決まった記録について、3つをそろえ、検査器で確かめる。3つは、新しい記録・旧い記録の `superseded-by`・`evolution` の記録である。置き換えるかどうかは決めない。
 - **スキル `crosscheck-records`**（`/shared-memory:crosscheck-records`）: 記録を、書いた文脈とは別の文脈で突き合わせる。相手は、既に在る記録である。食い違いと重なりを報告し、記録は直さない。
 - **サブエージェント `record-matcher`**（`agents/record-matcher.md`）: 主張を、既存の記録と照らす。読み取り専用である。
@@ -37,6 +38,12 @@ node scripts/memory.mjs adopted <プロジェクト側の記憶の根> <Global M
 - Global Memory へ置く下書きは、出す前に機密の確認を通す。この確認は、利用規則で外せない。
 - Project Memory では、作り直した索引を同じ変更に含める。索引を変更に含めないと規則が定める根では、索引を書かない。
 
+## 推奨の経路
+
+`propose-records` で候補を記録にする。プロジェクトの PR がマージされたら、`promote-record` で Global Memory へ提案する。人間が PR で裁定する。置き換えると決めたら、`replace-record` を使う。どのスキルも、前の段を通っていなくても起動できる。
+
+`promote-record`・`crosscheck-records`・`replace-record` も、commit・push・PR の作成を事前に許可しない。出し方は、その根の規則に従う。`promote-record` は、PR を出せないとき、記録と PR の本文を Project Memory の根の `tasks/` へ2つのファイルとして置く。運んだ者が、昇格先で PR にして消す。
+
 ## サブエージェントの実行パラメータ
 
 | 定義 | `model` | `effort` | 値の意図 | `tools` |
@@ -56,9 +63,11 @@ node scripts/memory.mjs adopted <プロジェクト側の記憶の根> <Global M
 - 汎用のサブエージェントだけを起動できるホスト: `agents/record-matcher.md` を読んで従うよう伝え、同じ入力を渡す。
 - 別の文脈を起こせないホスト: 同じ文脈で、`references/matching.md` の手順どおりに照合し、出力にそう書く。
 
+上は、`propose-records` の照合の扱いである。別の文脈を作れないホストでの扱いは、スキルで違う。`promote-record` と `crosscheck-records` の突き合わせと、機密の読みは、同じ文脈で代えない。未実施と書き、別のセッションで行うための入力を示す。`propose-records` が Global Memory へ置く下書きの機密の読みも、同じ文脈で代えない。機密の読みが済んでいない記録は、Global Memory へ出さない。
+
 ファイルを探す道具（`Glob`・`Grep`）を持たないホストも在る。そのホストでは、次のとおり動く。
 
 - 照合は、索引に載っていない記録を拾う段を省き、見た範囲にそう書く。
-- 機密の語の照合は、シェルの `grep` で行う。
+- `propose-records` の機密の語の照合は、シェルの `grep` で行う。`promote-record` は、語の照合を行えないので止まる。
 
 Codex では確かめていない。
