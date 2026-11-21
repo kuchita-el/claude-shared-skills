@@ -784,30 +784,33 @@ C=MEM-202611140000-04
 
 # ---- eval の題材（昇格・突き合わせ・置き換え） ----
 # 題材は、上の scaffold_case で $BATS_TEST_TMPDIR/<ケース> へ作る。
+# 採点器が前提にする記録の実在と、索引の行数の下限は、上の scaffold_root_gaps で見る。
 
 @test "eval の題材: 矛盾の突き合わせの根は、焦点の記録を足す前は通り、足した後の違反は索引の1行だけである" {
   local CASE_DIR="$BATS_TEST_TMPDIR/behavior-crosscheck-contradiction"
   scaffold_case behavior-crosscheck-contradiction
+  # 食い違いの相手、対照の2件、焦点の4件が在る。索引の行は、焦点を含めて4行になる。
+  run scaffold_root_gaps "$CASE_DIR/docs/memory" 4 \
+    MEM-202611010000-01-cron-evaluated-in-utc.md MEM-202611010000-02-linter-ci-before-precommit.md \
+    MEM-202611010000-03-cron-next-shows-fire-time.md MEM-202611020000-01-cron-evaluated-in-local-time.md
+  [ -z "$output" ]
   run node "$SUT" check "$CASE_DIR/docs/memory"
   [ "$status" -eq 1 ]
   [ "${#lines[@]}" -eq 1 ]
   [[ "${lines[0]}" == index.md:index:* ]]
 
   rm "$CASE_DIR"/docs/memory/records/MEM-202611020000-01-*.md
-  run node "$SUT" check "$CASE_DIR/docs/memory"
-  [ "$status" -eq 0 ]
-  [ -z "$output" ]
+  assert_scaffold_root "$CASE_DIR/docs/memory" 3 \
+    MEM-202611010000-01-cron-evaluated-in-utc.md MEM-202611010000-02-linter-ci-before-precommit.md \
+    MEM-202611010000-03-cron-next-shows-fire-time.md
 }
 
 @test "eval の題材: 昇格の2つの根は通り、元の記録の版が得られ、仕込んだ文字列を持つ採点器の全てが同じ字面で見る" {
   local CASE_DIR="$BATS_TEST_TMPDIR/behavior-promote-confidential"
   scaffold_case behavior-promote-confidential
-  run node "$SUT" check "$CASE_DIR/docs/memory"
-  [ "$status" -eq 0 ]
-  [ -z "$output" ]
-  run node "$SUT" check "$CASE_DIR/global-memory"
-  [ "$status" -eq 0 ]
-  [ -z "$output" ]
+  assert_scaffold_root "$CASE_DIR/docs/memory" 1 MEM-202611010000-01-bom-breaks-header-match.md
+  assert_scaffold_root "$CASE_DIR/global-memory" 1 MEM-202610150000-01-tls-min-version-handshake.md
+  [ -f "$CASE_DIR/global-memory/policies/memory-policy.md" ]
   run node "$SUT" version "$CASE_DIR/docs/memory" MEM-202611010000-01
   [ "$status" -eq 0 ]
   [[ "$output" =~ ^MEM-202611010000-01@[0-9a-f]{7,}$ ]]
@@ -868,10 +871,9 @@ C=MEM-202611140000-04
   grep -Fq '省いた' "$graders/pr-body-policy-omission-followed.md"
 }
 
-@test "eval の題材: 置き換えの根は通る" {
+@test "eval の題材: 置き換えの根は通り、旧い記録と無関係の記録を持つ" {
   local CASE_DIR="$BATS_TEST_TMPDIR/behavior-replace-record"
   scaffold_case behavior-replace-record
-  run node "$SUT" check "$CASE_DIR/docs/memory"
-  [ "$status" -eq 0 ]
-  [ -z "$output" ]
+  assert_scaffold_root "$CASE_DIR/docs/memory" 2 \
+    MEM-202611010000-01-failed-job-retried-three-times.md MEM-202611010000-02-job-log-kept-thirty-days.md
 }

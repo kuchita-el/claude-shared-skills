@@ -40,7 +40,15 @@ node scripts/memory.mjs adopted <プロジェクト側の記憶の根> <Global M
 
 ## 推奨の経路
 
-`propose-records` で候補を記録にする。プロジェクトの PR がマージされたら、`promote-record` で Global Memory へ提案する。人間が PR で裁定する。置き換えると決めたら、`replace-record` を使う。どのスキルも、前の段を通っていなくても起動できる。
+`propose-records` で候補を記録にする。プロジェクトの PR がマージされたら、`promote-record` で Global Memory へ提案する。そこから先は、次の順に進む。
+
+1. 昇格の PR を出す。マージは、まだしない。
+2. 新しい記録を、既に在る記録と突き合わせる。`promote-record` が行う。後から確かめ直すときは、`crosscheck-records` を使う。
+3. 食い違いを、人間が PR で裁定する。
+4. 置き換えると決めたら、昇格の PR と同じブランチで `replace-record` を使う。置き換えの3つが、同じ PR に入る。
+5. マージする。
+
+どのスキルも、前の段を通っていなくても起動できる。ただし、`replace-record` が新しい記録に使えるのは、その起動で書く記録か、同じブランチの上に在って、まだ既定のブランチに入っていない記録である。どちらも既に既定のブランチに在る2件の記録の食い違いは、`replace-record` の対象の外である。
 
 `promote-record`・`crosscheck-records`・`replace-record` も、commit・push・PR の作成を事前に許可しない。出し方は、その根の規則に従う。`promote-record` は、PR を出せないとき、記録と PR の本文を Project Memory の根の `tasks/` へ2つのファイルとして置く。運んだ者が、昇格先で PR にして消す。
 

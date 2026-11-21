@@ -18,4 +18,4 @@ allowed_tools:
   - Bash(grep -i -F *)
 ---
 
-promote-record スキルで、このリポジトリの Project Memory（docs/memory）の記録 MEM-202611010000-01 を、Global Memory へ昇格して。昇格先の根は global-memory ディレクトリ（--global-root global-memory）。PR は出さなくてよい。PR の本文を、作業ディレクトリの直下の pr-body.md に書く所までで止めて。このあと席を外すので、途中で質問はせずに最後まで進めて、結果を報告して。
+promote-record スキルで、記録 MEM-202611010000-01 を、Global Memory へ昇格して。元の記録は、このリポジトリの Project Memory（docs/memory）に在る。昇格先の根は global-memory ディレクトリ（--global-root global-memory）。PR は出さなくてよい。PR の本文を、作業ディレクトリの直下の pr-body.md に書く所までで止めて。このあと席を外すので、途中で質問はせずに最後まで進めて、結果を報告して。

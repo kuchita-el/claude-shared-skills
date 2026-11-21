@@ -15,4 +15,4 @@ allowed_tools:
   - Bash(git rev-parse*)
 ---
 
-crosscheck-records スキルで、docs/memory/records/MEM-202611020000-01-cron-evaluated-in-local-time.md を、既に在る記録と突き合わせて。このあと席を外すので、途中で質問はせずに最後まで進めて、結果を報告して。
+crosscheck-records スキルで、次の記録を、既に在る記録と突き合わせて。対象は docs/memory/records/MEM-202611020000-01-cron-evaluated-in-local-time.md。このあと席を外すので、途中で質問はせずに最後まで進めて、結果を報告して。
