@@ -25,9 +25,9 @@ runner はいずれかが失敗しても残りを最後まで実行してから�
 
 adr プラグインの `lint-adr.sh` が bash 4.2 未満で原因を示して止まることは、runner の外で CI の別のジョブが実測する。ジョブは `.github/workflows/test.yml` の `lint-adr-old-bash` で、bash 3.2 の公式コンテナをダイジェストで固定して lint を起動する。起動した bash の版と、終了コードと案内の位置は `scripts/check-lint-adr-old-bash.sh` が確かめる。コンテナの実行環境を前提にするため、runner には組み込まない。検査器自身が期待と違う結果を見逃さないことは、`lint-adr-old-bash.bats` が runner の中で固定する。
 
-Task Memory（`docs/memory/tasks/`）の残留は、runner の外で、CI の別のワークフローが見る。ワークフローは `.github/workflows/task-memory.yml` である。`main` を base にする pull request と、`main` への push で走る。実体は、`project-memory` スイートのコマンドに `--no-task-memory` を付けたものである。runner に組み込まないのは、runner が commit ゲートからも走るためである。作業中のブランチには Task Memory が在ってよく、そこで赤にすると commit できない。判定そのものは、`shared-memory-check.bats` が runner の中で固定する。ワークフローの配線（契機と条件）は、機械では検査しない。
+Task Memory（`docs/memory/tasks/`）の残留は、runner の外で、CI の別のワークフローが見る。ワークフローは `.github/workflows/task-memory.yml` である。`main` を base にする pull request と、`main` への push で走る。実体は、`project-memory` スイートのコマンドに `--no-task-memory` を付けたものである。runner に組み込まないのは、runner が commit ゲートからも走るためである。作業中のブランチには Task Memory が在ってよく、そこで赤にすると commit できない。判定そのものは、`shared-memory-check.bats` が runner の中で固定する。ワークフローの配線（契機・job の条件・検査器を呼ぶコマンド）は、`run-tests-runner.bats` が runner の中で固定する。ワークフローが実際に起動することは、機械では検査しない。
 
-`project-memory` スイートは Node（`mise.toml` が版を固定する）を要し、解決できない環境では落ちる。
+`project-memory` スイートは、PATH の `node` を直接呼ぶ。`mise exec` は通さない。走る Node の版は、PATH の並びで決まる。`node` を解決できない環境では落ちる。
 
 Writing Wave 2の追加検査は`writing-lint.bats`と`writing-contract.bats`で行う。前者は`lint-ja.mjs`のfile/diff、種別ごとの上限、一文長の数え方、検査できない入力の終了コードを検査する。`lint-ja.mjs`はNodeで動くため、`writing-lint.bats`はNode（`mise.toml`が版を固定する）を要し、解決できない環境では落ちる。後者はskill/agent、doc-reviewerの入力とtools、F1/F2/F3/F4/F5正負fixtureを検査する。最大2回loop、両host matrix、permission ledgerも後者が検査する。Codex agent登録面が利用できない場合の明示起動・degraded手動検査は、`plugins/writing/compatibility.json`へ記録する。
 

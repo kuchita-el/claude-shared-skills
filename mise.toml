@@ -9,7 +9,8 @@
 # node — plugins/living-spec/scripts/run.mjs（検査器を呼ぶ中継）を走らせる（scripts/tests/living-spec-run.bats）。
 # あわせて plugins/writing/scripts/lint-ja.mjs（一文長の検査。scripts/tests/writing-lint.bats）も走らせる。
 # plugins/shared-memory/scripts/memory.mjs（記憶の検査器。scripts/tests/shared-memory-check.bats と shared-memory-git.bats）も走らせる。
-# runner の project-memory スイートと、CI の Task Memory の残留の検出（.github/workflows/task-memory.yml）も、この node で検査器を走らせる。
+# CI の Task Memory の残留の検出（.github/workflows/task-memory.yml）も、この node で検査器を走らせる。
+# runner の project-memory スイートは、mise exec を通さず、PATH の node を直接呼ぶ。
 [tools]
 bats = "1.14.0"
 node = "26.13.1"

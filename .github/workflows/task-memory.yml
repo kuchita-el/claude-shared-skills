@@ -4,7 +4,9 @@ name: Task Memory
 # 作業中のブランチには在ってよいので、runner（scripts/run-tests.sh）には載せない。runner は commit ゲートからも走る。
 # 見る時点は2つある。main を base にする PR（マージの前に止める）と、main への push（すり抜けたものを拾う）。
 # edited を拾うのは、PR の base が後から main へ付け替わった場合に走らせるためである。
+# edited は、PR の題と説明の編集でも発火する。ジョブが軽いので、受け入れる。
 # 判定は検査器が持つ。ここは、いつ呼ぶかだけを決める。
+# 契機・job の条件・検査器を呼ぶコマンドは、scripts/tests/run-tests-runner.bats が固定する。
 
 on:
   pull_request:
@@ -33,7 +35,7 @@ jobs:
       - name: Trust repository configuration
         run: mise trust
 
-      # Node だけを入れる。版は mise.toml が固定する。
+      # この step が入れるのは Node である。版は mise.toml が固定する。
       - name: Install Node
         run: mise install node
 
