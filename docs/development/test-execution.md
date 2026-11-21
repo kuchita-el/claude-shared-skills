@@ -228,7 +228,7 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
 
 - `Bash` を付与するケースは、サンドボックスの道具（`bubblewrap` と `socat`）が無い Linux では、起動を拒まれる。2026年11月に、root で動く Claude Code on the web のコンテナで実測した。2つを入れた後は動いた。ただし、成功した Bash のコマンドも終了コード 1 と表示された（標準出力は正しかった）。終了コードで分岐する手順を測るときは、trace の出力で判断する
 - 付与の過不足は、結果の trace（`--keep-temp` で残る `trace.jsonl`）の system 行が持つ `tools` の一覧で確かめられる
-- `Bash` を付与する挙動ケース（`adr`・`writing`・`growth`）は、`~/.docker` 内に symlink があると eval 側が起動を拒否する。実行の直前に退避し、終了後に戻す（**この退避はスクリプトが自動化しない。手順として実行者が行う**）
+- `Bash` を付与する挙動ケースは、`adr`・`writing`・`growth`・`shared-memory` に在る。これらは、`~/.docker` 内に symlink があると eval 側が起動を拒否する。実行の直前に退避し、終了後に戻す（**この退避はスクリプトが自動化しない。手順として実行者が行う**）
 
   ```bash
   mv ~/.docker ~/.docker.eval-off
