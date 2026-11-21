@@ -218,6 +218,14 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
 - `domain-design` は `--allow-tools Write` を付ける。スキルの `allowed-tools` に Write があっても、eval の子セッションには付与されない。付けないと挙動ケースが成果物を書けずに止まり、不合格になる
 - `growth` は `--allow-tools Write 'Bash(git rev-parse *)' 'Bash(date *)' 'Bash(rm ~/.claude/projects/*/growth/captures-*.md)'` を付ける（Write と、distill の `allowed-tools` と同じ Bash パターン）
 - `growth` の `behavior-distill` の採点器のうち `cursor-advanced`・`example-entry-hypothesized`・`upsert-preserves-existing` は、拒否された Write の試みの内容で判定する。拒否後に書き込みを試みるかは回ごとに揺れるため、不合格が出たら trace の最終応答で判断の中身を確かめてから退行と判定する
+- `shared-memory` は、次の `--allow-tools` を付ける。`Write`・`Edit` と、`propose-records` の `allowed-tools` と同じ Bash パターンである
+
+  ```bash
+  --allow-tools Write Edit 'Bash(node *scripts/memory.mjs*)' 'Bash(git rev-parse*)' 'Bash(git status*)' \
+    'Bash(git log*)' 'Bash(git diff*)' 'Bash(git -C * log -1*)' 'Bash(git remote get-url *)' 'Bash(date -u*)'
+  ```
+
+- `Bash` を付与するケースは、サンドボックスの道具（`bubblewrap` と `socat`）が無い Linux では、起動を拒まれる。2026年11月に、root で動く Claude Code on the web のコンテナで実測した。2つを入れた後は動いた。ただし、成功した Bash のコマンドも終了コード 1 と表示された（標準出力は正しかった）。終了コードで分岐する手順を測るときは、trace の出力で判断する
 - 付与の過不足は、結果の trace（`--keep-temp` で残る `trace.jsonl`）の system 行が持つ `tools` の一覧で確かめられる
 - `Bash` を付与する挙動ケース（`adr`・`writing`・`growth`）は、`~/.docker` 内に symlink があると eval 側が起動を拒否する。実行の直前に退避し、終了後に戻す（**この退避はスクリプトが自動化しない。手順として実行者が行う**）
 

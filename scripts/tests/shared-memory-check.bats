@@ -662,3 +662,20 @@ E=MEM-202611140000-03
   [ "$status" -eq 2 ]
   [[ "$output" == *"usage: memory.mjs check ROOT [--no-task-memory]"* ]]
 }
+
+# eval の題材（evals/shared-memory/<ケース>/scaffold.sh）が作る根を、検査器へ掛ける。
+# eval は runner に入らない。形式や索引の出力を変えたとき、題材が最初から違反を持つ状態へ
+# 黙って古くなることを、ここで赤にする。$1 はケースの名前。題材は $BATS_TEST_TMPDIR/<ケース> へ作る。
+scaffold_case() {
+  local case_dir="$BATS_TEST_TMPDIR/$1"
+  mkdir -p "$case_dir"
+  (cd "$case_dir" && bash "$REPO_ROOT/evals/shared-memory/$1/scaffold.sh")
+}
+
+@test "eval の題材: behavior-propose-records の scaffold が作る根は、check を通る" {
+  scaffold_case behavior-propose-records
+  [ -f "$BATS_TEST_TMPDIR/behavior-propose-records/notes/task-notes.md" ]
+  run node "$SUT" check "$BATS_TEST_TMPDIR/behavior-propose-records/docs/memory"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}

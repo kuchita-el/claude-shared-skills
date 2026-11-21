@@ -22,9 +22,9 @@ load 'helpers/common'
   [ -z "$output" ]
 }
 
-@test "対照: evals/<plugin>/ はリポジトリ直下に実在する（5プラグイン分）" {
+@test "対照: evals/<plugin>/ はリポジトリ直下に実在する（6プラグイン分）" {
   local plugin
-  for plugin in adr dependency-insight domain-design growth writing; do
+  for plugin in adr dependency-insight domain-design growth shared-memory writing; do
     [ -d "$REPO_ROOT/evals/$plugin" ] || {
       echo "evals/$plugin/ が存在しない" >&2
       return 1
