@@ -1,20 +1,37 @@
-// 共有の記憶（Shared Memory）の検査器。記録の形式を検査し、索引を生成する。
+// 共有の記憶（Shared Memory）の検査器。記録と採用の台帳の形式を検査し、索引を生成する。
+// 記録の版を返し、採用した記録の変化を報告する。
 // 形式の正本は references/format.md であり、ここはその規則に従う実装である。
 // 規則を変えるときは、format.md を先に改める。
 //
 // 使い方は USAGE を見る。違反は「パス:規則: 説明」の形で標準出力へ出す。
+import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const USAGE = `usage: memory.mjs check ROOT | memory.mjs index ROOT [--write]
-  ROOT: 記憶の根。records/ を直下に持つディレクトリ。index.md も直下に置く。
-  check: 記録の形式と、index.md が記録と一致することを検査する。
+const USAGE = `usage: memory.mjs check ROOT
+       memory.mjs index ROOT [--write]
+       memory.mjs version ROOT ID [--ref REF]
+       memory.mjs adopted ROOT GLOBAL_ROOT [--ref REF]
+  ROOT: 記憶の根。records/ を直下に持つディレクトリ。index.md と adopted/（採用の台帳）も直下に置く。
+  check: 記録と採用の台帳の形式と、index.md が記録と一致することを検査する。
   index: 索引を標準出力へ出す。--write を付けると ROOT/index.md へ書く。
-  終了コード: 0 違反なし、1 違反あり、2 引数の誤りか検査できない入力。`;
+  version: 記録 ID の版を「ID@コミットの省略形」で標準出力へ出す。版は、REF でその記録を最後に変えたコミット。
+  adopted: ROOT の台帳の1件ごとに、GLOBAL_ROOT の REF と比べた結果を「パス:結果: 説明」で標準出力へ出す。
+           結果は unchanged / changed / superseded / moved / missing。
+  --ref REF: 版を数える起点。省くと refs/remotes/origin/HEAD。作業中の HEAD は使わない。
+  version と adopted は git を要し、ネットワークを使わない。履歴の浅い checkout では exit 2 で止まる。
+  終了コード:
+    check / index: 0 違反なし、1 違反あり、2 引数の誤りか検査できない入力。
+    version: 0 版を返した、1 REF にその記録が1件に決まらない、2 引数の誤りか版を決められない状態。
+    adopted: 0 missing も台帳の違反も無い、1 missing か台帳の違反が在る、2 引数の誤りか検査できない状態。`;
 
 const ID = /^MEM-[0-9]{12}-[0-9]{2}$/;
 const FILE_NAME = /^(MEM-[0-9]{12}-[0-9]{2})-[a-z0-9]+(?:-[a-z0-9]+)*\.md$/;
 const DATE = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
+const COMMIT = /^[0-9a-f]{7,64}$/;
+const ADOPTED_DIR = 'adopted';
+const ADOPTED_FILE = /^(MEM-[0-9]{12}-[0-9]{2})\.md$/;
+const DEFAULT_REF = 'refs/remotes/origin/HEAD';
 // キーは、コロンを含まず、空白・#・- で始まらない文字の並び。日本語や空白を含むキーも読み飛ばせるようにする。
 const KEY_LINE = /^([^\s#:-][^:]*):(?:[ \t]+(.*))?$/;
 const ITEM_LINE = /^[ \t]*-[ \t]+(.*)$/;
@@ -27,7 +44,9 @@ const ENUMS = {
 const SCALARS = ['id', 'type', 'title', 'author', 'verification', 'confidence', 'applies-when', 'created', 'updated'];
 const OPTIONAL_SCALARS = ['superseded-by', 'moved-to'];
 const LISTS = ['sources', 'from', 'to'];
-const KNOWN = new Set([...SCALARS, ...OPTIONAL_SCALARS, ...LISTS]);
+const RECORD_KEYS = { scalars: [...SCALARS, ...OPTIONAL_SCALARS], lists: LISTS };
+const ADOPTED_SCALARS = ['record', 'version', 'adopted'];
+const ADOPTED_KEYS = { scalars: ADOPTED_SCALARS, lists: ['decisions'] };
 const INDEX_HEADER = [
   '# 索引',
   '',
@@ -38,6 +57,8 @@ const INDEX_HEADER = [
 ];
 
 class Unreadable extends Error {}
+// 検査できない状態。main の外で受け、説明を標準エラーへ出して exit 2 にする。
+class Unusable extends Error {}
 
 /**
  * 値を1つ読む。引用符で囲んだ値は中身を返す。囲まない値は、YAML として別の意味になる形を拒む。
@@ -59,9 +80,10 @@ function scalar(raw) {
 /**
  * front-matter を読む。知っているキーだけを厳密に読み、知らないキーは値ごと読み飛ばす。
  * @param {string} source
- * @returns {Map<string, string | string[]>}
+ * @param {{ scalars: string[], lists: string[] }} keys 知っているキー
+ * @returns {{ fields: Map<string, string | string[]>, body: string }}
  */
-function frontMatter(source) {
+function frontMatter(source, keys) {
   const lines = source.split('\n').map((line) => line.replace(/\r$/, ''));
   if (lines[0] !== '---') throw new Unreadable('1行目が --- でない');
   const end = lines.indexOf('---', 1);
@@ -80,9 +102,10 @@ function frontMatter(source) {
       if (lines[index].trim() !== '') nested.push(lines[index]);
       index += 1;
     }
-    if (!KNOWN.has(key)) continue;
+    const isList = keys.lists.includes(key);
+    if (!isList && !keys.scalars.includes(key)) continue;
     if (fields.has(key)) throw new Unreadable(`キーが重複している: ${key}`);
-    if (LISTS.includes(key)) {
+    if (isList) {
       if (rest !== undefined && rest.trim() !== '') throw new Unreadable(`${key} は「- 値」の行で書く`);
       fields.set(key, nested.map((item) => {
         const itemMatched = item.match(ITEM_LINE);
@@ -94,7 +117,7 @@ function frontMatter(source) {
       fields.set(key, scalar(rest));
     }
   }
-  return fields;
+  return { fields, body: lines.slice(end + 1).join('\n') };
 }
 
 /**
@@ -111,7 +134,7 @@ function load(root) {
     const report = (rule, message) => violations.push(`${path}:${rule}: ${message}`);
     let fields;
     try {
-      fields = frontMatter(readFileSync(join(dir, file), 'utf8'));
+      ({ fields } = frontMatter(readFileSync(join(dir, file), 'utf8'), RECORD_KEYS));
     } catch (error) {
       if (!(error instanceof Unreadable)) throw error;
       report('front-matter', error.message);
@@ -147,6 +170,193 @@ function load(root) {
     records.push({ path, file, fields });
   }
   return { records, violations };
+}
+
+/**
+ * 採用の台帳を1件ずつ読み、1件の中で決まる違反を集める。adopted/ が無ければ0件である。
+ * @param {string} root
+ * @returns {{ path: string, fields: Map<string, string | string[]>, violations: string[] }[]}
+ */
+function loadAdopted(root) {
+  const dir = join(root, ADOPTED_DIR);
+  if (!existsSync(dir)) return [];
+  if (!statSync(dir).isDirectory()) throw new Unusable(`${ADOPTED_DIR} がディレクトリでない: ${dir}`);
+  return readdirSync(dir).filter((name) => name.endsWith('.md')).sort().map((file) => {
+    const path = `${ADOPTED_DIR}/${file}`;
+    const violations = [];
+    const report = (rule, message) => violations.push(`${path}:${rule}: ${message}`);
+    let fields = new Map();
+    let body = '';
+    try {
+      ({ fields, body } = frontMatter(readFileSync(join(dir, file), 'utf8'), ADOPTED_KEYS));
+    } catch (error) {
+      if (!(error instanceof Unreadable)) throw error;
+      report('front-matter', error.message);
+      return { path, fields, violations };
+    }
+    for (const key of [...ADOPTED_SCALARS, 'decisions']) {
+      const value = fields.get(key);
+      if (value === undefined || value.length === 0) report('required', `${key} が無い`);
+    }
+    if (body.trim() === '') report('required', '本文が無い。採用の理由を書く');
+    const record = fields.get('record');
+    if (record !== undefined && !ID.test(record)) report('value', `record は MEM-<12桁>-<2桁> の形で書く: ${record}`);
+    const version = fields.get('version');
+    if (version !== undefined && !COMMIT.test(version)) report('value', `version は 7〜64桁の16進の小文字で書く: ${version}`);
+    const adopted = fields.get('adopted');
+    if (adopted !== undefined && !DATE.test(adopted)) report('value', `adopted は YYYY-MM-DD の形で書く: ${adopted}`);
+    const named = file.match(ADOPTED_FILE);
+    if (!named) report('filename', 'ファイル名は <record>.md の形にする');
+    else if (record !== undefined && named[1] !== record) report('filename', `ファイル名の識別子が record と一致しない: ${record}`);
+    return { path, fields, violations };
+  });
+}
+
+/**
+ * git を、シェルを介さずに記憶の根で実行する。パスの指定は文字どおりに解釈させる。
+ * @param {string} root
+ * @param {string[]} args
+ * @returns {{ status: number, stdout: string, stderr: string }}
+ */
+function git(root, args) {
+  const result = spawnSync('git', ['--literal-pathspecs', '-C', root, ...args], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  if (result.error) throw new Unusable(`git を実行できない: ${result.error.message}`);
+  if (result.status === null) throw new Unusable(`git ${args[0]} が中断された: ${result.signal}`);
+  return { status: result.status, stdout: result.stdout, stderr: result.stderr };
+}
+
+/**
+ * git を実行し、成功したときの標準出力を返す。失敗は、検査できない状態として扱う。
+ * @param {string} root
+ * @param {string[]} args
+ * @returns {string}
+ */
+function gitOutput(root, args) {
+  const { status, stdout, stderr } = git(root, args);
+  if (status !== 0) throw new Unusable(`git ${args[0]} が失敗した（exit ${status}）: ${stderr.trim()}`);
+  return stdout;
+}
+
+/**
+ * 履歴が揃っていることを確かめ、起点の ref をコミットへ解決する。git を使う最初の手順である。
+ * @param {string} root
+ * @param {string | undefined} ref
+ * @returns {string} 起点のコミット
+ */
+function startingCommit(root, ref) {
+  const probe = git(root, ['rev-parse', '--is-shallow-repository']);
+  if (probe.status !== 0) throw new Unusable(`git の作業ツリーの中に無い: ${root}\n${probe.stderr.trim()}`);
+  const shallow = probe.stdout.trim();
+  if (shallow === 'true') throw new Unusable(`履歴が浅く、版を決められない。git fetch --unshallow で履歴を取り直す: ${root}`);
+  if (shallow !== 'false') throw new Unusable(`履歴が浅いかどうかを git が答えない。git を新しくする: ${shallow}`);
+  const resolved = git(root, ['rev-parse', '--verify', '--quiet', `${ref ?? DEFAULT_REF}^{commit}`]);
+  if (resolved.status === 0) return resolved.stdout.trim();
+  if (ref === undefined) throw new Unusable(`既定のブランチを決められない（${DEFAULT_REF} が無い）。--ref で起点を指す`);
+  throw new Unusable(`起点の ref を解決できない: ${ref}`);
+}
+
+/**
+ * あるコミットでの、識別子に当たる記録を探す。records/ の直下のファイルだけを見る。
+ * @param {string} root
+ * @param {string} commit
+ * @param {string} id
+ * @returns {{ path: string, blob: string }[]} ちょうど1件のときだけ、記録が在る
+ */
+function recordsAt(root, commit, id) {
+  return gitOutput(root, ['ls-tree', '-z', commit, 'records/']).split('\0').filter((entry) => entry !== '').map((entry) => {
+    const tab = entry.indexOf('\t');
+    const [, type, blob] = entry.slice(0, tab).split(' ');
+    return { type, blob, path: entry.slice(tab + 1) };
+  }).filter((entry) => entry.type === 'blob' && entry.path.startsWith(`records/${id}-`) && entry.path.endsWith('.md'));
+}
+
+/**
+ * 記録の版を「識別子@コミットの省略形」で返す。版は、起点でその記録を最後に変えたコミットである。
+ * @param {string} root
+ * @param {string} commit 起点のコミット
+ * @param {string} id
+ * @param {string} path
+ * @returns {string}
+ */
+function versionAt(root, commit, id, path) {
+  const last = gitOutput(root, ['rev-list', '-1', commit, '--', path]).trim();
+  if (last === '') throw new Unusable(`記録を最後に変えたコミットが見つからない: ${path}`);
+  return `${id}@${gitOutput(root, ['rev-parse', '--short=7', last]).trim()}`;
+}
+
+/**
+ * version コマンド。
+ * @returns {number} 終了コード
+ */
+function version(root, id, ref) {
+  const start = startingCommit(root, ref);
+  const found = recordsAt(root, start, id);
+  if (found.length !== 1) {
+    console.error(`memory: ${ref ?? DEFAULT_REF} に、${id} の記録が${found.length === 0 ? '無い' : '複数在る'}`);
+    return 1;
+  }
+  const [{ path, blob }] = found;
+  const result = versionAt(root, start, id, path);
+  const file = join(root, path);
+  const same = existsSync(file) && statSync(file).isFile() && gitOutput(root, ['hash-object', '--', path]).trim() === blob;
+  console.log(result);
+  if (!same) console.error(`memory: 作業ツリーの記録は、この版と内容が違う: ${path}`);
+  return 0;
+}
+
+/**
+ * 台帳の1件を、Global Memory の起点と比べる。
+ * @returns {{ result: string, detail: string }}
+ */
+function compare(globalRoot, start, id, pinned) {
+  const cited = `${id}@${pinned}`;
+  const stale = '。Global Memory の履歴が古い場合にも起きる';
+  const resolved = git(globalRoot, ['rev-parse', '--verify', '--quiet', `${pinned}^{commit}`]);
+  if (resolved.status !== 0) return { result: 'missing', detail: `${cited} 版のコミットが無い${stale}` };
+  const commit = resolved.stdout.trim();
+  const ancestor = git(globalRoot, ['merge-base', '--is-ancestor', commit, start]);
+  if (ancestor.status === 1) return { result: 'missing', detail: `${cited} 版が起点の履歴に無い${stale}` };
+  if (ancestor.status !== 0) throw new Unusable(`git merge-base が失敗した（exit ${ancestor.status}）: ${ancestor.stderr.trim()}`);
+  const before = recordsAt(globalRoot, commit, id);
+  if (before.length !== 1) return { result: 'missing', detail: `${cited} 版に記録が無い` };
+  const after = recordsAt(globalRoot, start, id);
+  if (after.length !== 1) return { result: 'missing', detail: `${cited} 起点に記録が無い` };
+  const current = versionAt(globalRoot, start, id, after[0].path);
+  let fields = new Map();
+  let note = '';
+  try {
+    ({ fields } = frontMatter(gitOutput(globalRoot, ['cat-file', 'blob', after[0].blob]), RECORD_KEYS));
+  } catch (error) {
+    if (!(error instanceof Unreadable)) throw error;
+    note = '（起点の記録の front-matter を読めない）';
+  }
+  if (fields.has('superseded-by')) return { result: 'superseded', detail: `${cited} -> ${current} superseded-by ${fields.get('superseded-by')}` };
+  if (fields.has('moved-to')) return { result: 'moved', detail: `${cited} -> ${current} moved-to ${fields.get('moved-to')}` };
+  if (before[0].blob !== after[0].blob) return { result: 'changed', detail: `${cited} -> ${current}${note}` };
+  return { result: 'unchanged', detail: `${cited}${note}` };
+}
+
+/**
+ * adopted コマンド。台帳は作業ツリーから、Global Memory は起点のコミットの木から読む。
+ * @returns {number} 終了コード
+ */
+function adopted(root, globalRoot, ref) {
+  const entries = loadAdopted(root);
+  const start = startingCommit(globalRoot, ref);
+  const lines = [];
+  let failed = false;
+  for (const entry of entries) {
+    if (entry.violations.length > 0) {
+      lines.push(...entry.violations);
+      failed = true;
+      continue;
+    }
+    const { result, detail } = compare(globalRoot, start, entry.fields.get('record'), entry.fields.get('version'));
+    if (result === 'missing') failed = true;
+    lines.push(`${entry.path}:${result}: ${detail}`);
+  }
+  for (const line of lines) console.log(line);
+  return failed ? 1 : 0;
 }
 
 /**
@@ -220,22 +430,40 @@ function renderIndex(records) {
   return [...INDEX_HEADER, ...rows, ''].join('\n');
 }
 
+/**
+ * 記憶の根であることを確かめる。
+ * @param {string} root
+ */
+function requireRoot(root) {
+  if (!existsSync(root) || !statSync(root).isDirectory()) throw new Unusable(`記憶の根がディレクトリでない: ${root}`);
+  const recordsDir = join(root, 'records');
+  if (!existsSync(recordsDir) || !statSync(recordsDir).isDirectory()) throw new Unusable(`記憶の根に records/ が無い: ${root}`);
+}
+
+// コマンドごとの、位置で決まる引数の数。
+const POSITIONALS = { check: 1, index: 1, version: 2, adopted: 2 };
+
 function main(argv) {
-  const [command, root, ...options] = argv;
-  const write = options.length === 1 && options[0] === '--write';
-  const usable = (command === 'check' && options.length === 0) || (command === 'index' && (options.length === 0 || write));
-  if (!usable || root === undefined) {
+  const [command, ...rest] = argv;
+  const count = Object.hasOwn(POSITIONALS, command ?? '') ? POSITIONALS[command] : 0;
+  const positionals = rest.slice(0, count);
+  const options = rest.slice(count);
+  const write = command === 'index' && options.length === 1 && options[0] === '--write';
+  const takesRef = command === 'version' || command === 'adopted';
+  const ref = takesRef && options.length === 2 && options[0] === '--ref' && options[1] !== '' && !options[1].startsWith('-') ? options[1] : undefined;
+  if (count === 0 || positionals.length !== count || !(options.length === 0 || write || ref !== undefined)) {
     console.error(USAGE);
     return 2;
   }
-  if (!existsSync(root) || !statSync(root).isDirectory()) {
-    console.error(`memory: 記憶の根がディレクトリでない: ${root}`);
-    return 2;
+  const [root, second] = positionals;
+  requireRoot(root);
+  if (command === 'version') {
+    if (!ID.test(second)) throw new Unusable(`識別子は MEM-<12桁>-<2桁> の形で書く: ${second}`);
+    return version(root, second, ref);
   }
-  const recordsDir = join(root, 'records');
-  if (!existsSync(recordsDir) || !statSync(recordsDir).isDirectory()) {
-    console.error(`memory: 記憶の根に records/ が無い: ${root}`);
-    return 2;
+  if (command === 'adopted') {
+    requireRoot(second);
+    return adopted(root, second, ref);
   }
   const { records, violations } = load(root);
   const indexPath = join(root, 'index.md');
@@ -245,6 +473,7 @@ function main(argv) {
     return 0;
   }
   violations.push(...relations(records));
+  const ledger = loadAdopted(root);
   const hasIndex = existsSync(indexPath);
   if (records.length > 0 || hasIndex) {
     if (!hasIndex) violations.push('index.md:index: 索引が無い。index --write で作る');
@@ -252,6 +481,7 @@ function main(argv) {
       violations.push('index.md:index: 索引が記録と一致しない。index --write で作り直す');
     }
   }
+  for (const entry of ledger) violations.push(...entry.violations);
   for (const violation of violations) console.log(violation);
   return violations.length === 0 ? 0 : 1;
 }
@@ -259,6 +489,7 @@ function main(argv) {
 try {
   process.exitCode = main(process.argv.slice(2));
 } catch (error) {
-  console.error(`memory: 検査できない: ${error instanceof Error ? error.message : String(error)}`);
+  if (error instanceof Unusable) console.error(`memory: ${error.message}`);
+  else console.error(`memory: 検査できない: ${error instanceof Error ? error.message : String(error)}`);
   process.exitCode = 2;
 }
