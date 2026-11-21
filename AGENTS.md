@@ -4,6 +4,8 @@
 
 記憶は2つの層に在る。このリポジトリの記憶（Project Memory）と、全プロジェクトで共有する記憶（Global Memory）である。設計や方式に関わる作業の前に、Project Memory を先に、Global Memory を後に見る。両者が食い違う場合は、Project Memory を優先し、食い違いを示す。
 
+記録・Task Memory・引用の形の正本は、`plugins/shared-memory/references/format.md` である。この節は、そのうち動くのに要る最小の手順を、重ねて持つ。
+
 ### Project Memory
 
 - 置き場は `docs/memory/` である。`index.md` を先に読み、関わる記録（`records/`）の本文だけを読む。
