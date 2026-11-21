@@ -12,6 +12,7 @@
 | `living-spec` | `pnpm --dir tools/living-spec test`（依存が入っていなければ先に `pnpm --dir tools/living-spec install --frozen-lockfile`） | living-spec の検査器の試験（規則の分岐・読み込みから出力までの見本・入口・描画・基準の版との差分・前提より古い検査器のフックを中継が扱うときの範囲の判定） |
 | `validate-plugin-manifests` | `scripts/validate-plugin-manifests.sh .` | marketplace、manifest、README、skill集合の双方向一致 |
 | `validate-plugin-portability` | `scripts/validate-plugin-portability.sh .` | matrix、permission ledger、参照境界 |
+| `project-memory` | `node plugins/shared-memory/scripts/memory.mjs check docs/memory` | 本リポジトリの Project Memory（`docs/memory/`）の記録の形式と、索引が記録と一致すること |
 | `claude-plugin-validate` | `claude plugin validate .` | marketplace定義と、そこから解決できたClaude側plugin manifestのスキーマ検証（非strict） |
 
 この検査が読むのはmarketplace定義と、そこが `source` で指すClaude側の `plugin.json` だけである。Codex側のmarketplaceとmanifest（`.agents/plugins/marketplace.json` / `.codex-plugin/plugin.json`）は参照されない。両host manifestの整合を見るのは `validate-plugin-manifests` の `name` 一致とskill集合一致であり、本検査はその代わりにならない。marketplaceの項目が解決できなくなった場合、警告もエラーも出ないまま検査対象が静かに縮む（`source` を不在パスへ書き換えると警告件数が減ってrc=0）。この縮みを拾うのは `validate-plugin-manifests` 側である。
@@ -23,6 +24,10 @@ runner はいずれかが失敗しても残りを最後まで実行してから�
 工場側は `tools/living-spec` からソースでビルドして試験し（生成物 `dist/` は追跡しない）、利用者へは GitHub Release の添付物として配る。規則の分岐（ファイルを置かない試験）・読み込みから出力までの見本・入口・描画・基準の版との差分は工場側の試験が持ち、runner の `living-spec` スイートが走らせる（`pnpm` は `mise.toml` が版を固定する）。プラグインの中継の振る舞いは、偽の検査器を使う `living-spec-run.bats` が見る。Release のワークフロー（`.github/workflows/living-spec-release.yml`）は runner の外にあり、手動の起動でだけ走るため、§2 の自動起動の射程に入らない（構造の不変条件は `living-spec-release-workflow.bats` が固定し、覆わないものと Release を切る手順は `living-spec-release.md` が定める）。
 
 adr プラグインの `lint-adr.sh` が bash 4.2 未満で原因を示して止まることは、runner の外で CI の別のジョブが実測する。ジョブは `.github/workflows/test.yml` の `lint-adr-old-bash` で、bash 3.2 の公式コンテナをダイジェストで固定して lint を起動する。起動した bash の版と、終了コードと案内の位置は `scripts/check-lint-adr-old-bash.sh` が確かめる。コンテナの実行環境を前提にするため、runner には組み込まない。検査器自身が期待と違う結果を見逃さないことは、`lint-adr-old-bash.bats` が runner の中で固定する。
+
+Task Memory（`docs/memory/tasks/`）の残留は、runner の外で、CI の別のワークフローが見る。ワークフローは `.github/workflows/task-memory.yml` である。`main` を base にする pull request と、`main` への push で走る。実体は、`project-memory` スイートのコマンドに `--no-task-memory` を付けたものである。runner に組み込まないのは、runner が commit ゲートからも走るためである。作業中のブランチには Task Memory が在ってよく、そこで赤にすると commit できない。判定そのものは、`shared-memory-check.bats` が runner の中で固定する。ワークフローの配線（契機と条件）は、機械では検査しない。
+
+`project-memory` スイートは Node（`mise.toml` が版を固定する）を要し、解決できない環境では落ちる。
 
 Writing Wave 2の追加検査は`writing-lint.bats`と`writing-contract.bats`で行う。前者は`lint-ja.mjs`のfile/diff、種別ごとの上限、一文長の数え方、検査できない入力の終了コードを検査する。`lint-ja.mjs`はNodeで動くため、`writing-lint.bats`はNode（`mise.toml`が版を固定する）を要し、解決できない環境では落ちる。後者はskill/agent、doc-reviewerの入力とtools、F1/F2/F3/F4/F5正負fixtureを検査する。最大2回loop、両host matrix、permission ledgerも後者が検査する。Codex agent登録面が利用できない場合の明示起動・degraded手動検査は、`plugins/writing/compatibility.json`へ記録する。
 
@@ -75,6 +80,7 @@ bash scripts/run-tests.sh
 bash scripts/run-tests.sh bats
 bash scripts/run-tests.sh validate-plugin-manifests
 bash scripts/run-tests.sh validate-plugin-portability
+bash scripts/run-tests.sh project-memory
 bash scripts/run-tests.sh claude-plugin-validate
 
 # スイート名の一覧

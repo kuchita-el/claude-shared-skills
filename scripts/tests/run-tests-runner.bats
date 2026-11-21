@@ -170,3 +170,13 @@ workflow_step_facts() {
   run grep -c 'claude-plugin-validate) claude plugin validate' "$RUNNER"
   [ "$output" -eq 1 ]
 }
+
+@test "project-memory スイートが一覧と実体の双方に登録され、Task Memory の残留を見ない" {
+  run bash "$RUNNER" --list
+  [ "$status" -eq 0 ]
+  [ "$(grep -cx 'project-memory' <<<"$output")" -eq 1 ]
+  # 実体は、記録の形式と索引の一致だけを見る。--no-task-memory を付けると、作業中のブランチで
+  # commit できなくなる（runner は commit ゲートからも走る）。行の終わりまでを照合して、付いていないことを見る。
+  run grep -c '^ *project-memory) node plugins/shared-memory/scripts/memory.mjs check docs/memory ;;$' "$RUNNER"
+  [ "$output" -eq 1 ]
+}

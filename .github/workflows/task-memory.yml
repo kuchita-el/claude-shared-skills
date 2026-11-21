@@ -1,0 +1,41 @@
+name: Task Memory
+
+# Task Memory（docs/memory/tasks/）が、既定のブランチへ入るツリーに残っていないことを確かめる。
+# 作業中のブランチには在ってよいので、runner（scripts/run-tests.sh）には載せない。runner は commit ゲートからも走る。
+# 見る時点は2つある。main を base にする PR（マージの前に止める）と、main への push（すり抜けたものを拾う）。
+# edited を拾うのは、PR の base が後から main へ付け替わった場合に走らせるためである。
+# 判定は検査器が持つ。ここは、いつ呼ぶかだけを決める。
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  no-task-memory:
+    name: no task memory
+    if: github.event_name == 'push' || github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Set up mise
+        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c  # v5.2.6
+        with:
+          install: false
+
+      - name: Trust repository configuration
+        run: mise trust
+
+      # Node だけを入れる。版は mise.toml が固定する。
+      - name: Install Node
+        run: mise install node
+
+      - name: Check that no task memory remains
+        run: mise exec -- node plugins/shared-memory/scripts/memory.mjs check docs/memory --no-task-memory
