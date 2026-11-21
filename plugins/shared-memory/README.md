@@ -10,11 +10,11 @@ claude --plugin-dir <このディレクトリ>
 
 いま在るのは次のとおりである。
 
-- **記録の形式**（`references/format.md`）: 記録・索引・採用の台帳の形、置き換えの手順、記録の版の書き方、採用した記録の変化の判定、検査器が違反とするもの。Task Memory の置き場も定める。
+- **記録の形式**（`references/format.md`）: 記録・索引・採用の台帳の形、置き換えでそろえる3つ、記録の版の書き方、採用した記録の変化の判定、検査器が違反とするもの。Task Memory の置き場も定める。
 - **検査器**（`scripts/memory.mjs`）: 記録と台帳の形式を検査し、索引を生成する。記録の版を返し、採用した記録の変化を報告する。Task Memory の残留を検出する。Node 22 以上で動く。Node の組み込みのほかに依存は無い。ただし、`version` と `adopted` は git を要する。
 - **スキル `propose-records`**（`/shared-memory:propose-records`）: タスクの材料から、学びの候補を挙げる。既存の記録と照らして、足す・直す・捨てるに分ける。足すものと直すものは、記録の下書きにして検査する。捨てた候補も、理由つきで示す。
-- **スキル `promote-record`**（`/shared-memory:promote-record`）: 記録を一般化し、Global Memory へ提案する。元にできるのは、既定のブランチに在る Project Memory の記録である。出す前に、機密の情報の混入と、既存の記録との矛盾を確かめる。5つの確認の結果を、PR の本文に書く。機密の確認は、利用規則で外せない。
-- **スキル `replace-record`**（`/shared-memory:replace-record`）: 置き換えると決まった記録について、3つをそろえ、検査器で確かめる。3つは、新しい記録・旧い記録の `superseded-by`・`evolution` の記録である。置き換えるかどうかは決めない。
+- **スキル `promote-record`**（`/shared-memory:promote-record`）: 記録を一般化し、Global Memory へ提案する。元にできるのは、既定のブランチに在る Project Memory の記録である。出す前に、機密の情報の混入と、既存の記録との矛盾を確かめる。5つの確認の結果を、PR の本文に書く。機密の確認は、利用規則で外せない。確認を通るまで、記録は昇格先の根へ書かない。
+- **スキル `replace-record`**（`/shared-memory:replace-record`）: 置き換えると決まった記録について、置き換えの3つをそろえ、検査器で確かめる。置き換えるかどうかは決めない。
 - **スキル `crosscheck-records`**（`/shared-memory:crosscheck-records`）: 記録を、書いた文脈とは別の文脈で突き合わせる。相手は、既に在る記録である。食い違いと重なりを報告し、記録は直さない。
 - **サブエージェント `record-matcher`**（`agents/record-matcher.md`）: 主張を、既存の記録と照らす。読み取り専用である。
 - **サブエージェント `record-crosschecker`**（`agents/record-crosschecker.md`）: 昇格と突き合わせに使う。読み取り専用である。照合の手順は、`record-matcher` と同じ参照を読む。語を渡されたときは、機密の混入の疑いも探す。
@@ -65,6 +65,6 @@ node scripts/memory.mjs adopted <プロジェクト側の記憶の根> <Global M
 
 上は、`propose-records` の照合の扱いである。別の文脈を作れないホストでの扱いは、スキルで違う。`promote-record` と `crosscheck-records` の突き合わせと、機密の読みは、同じ文脈で代えない。未実施と書き、別のセッションで行うための入力を示す。`propose-records` が Global Memory へ置く下書きの機密の読みも、同じ文脈で代えない。機密の読みが済んでいない記録は、Global Memory へ出さない。
 
-ファイルを探す道具（`Glob`・`Grep`）を持たないホストも在る。そのホストでは、照合は、索引に載っていない記録を拾う段を省き、見た範囲にそう書く。機密の語の照合は、どのホストでも、シェルの `grep` で行う。
+ファイルを探す道具（`Glob`・`Grep`）を持たないホストも在る。そのホストでは、照合は、索引に載っていない記録を拾う段を省き、見た範囲にそう書く。機密の語の照合は、どのホストでも、シェルの `grep` で行う。`crosscheck-records` は、焦点を識別子で渡されると、ファイルを探す道具でその記録を探す。道具が無いホストでは、焦点をファイルのパスで渡す。
 
 Codex では確かめていない。
