@@ -1,19 +1,20 @@
 // 共有の記憶（Shared Memory）の検査器。記録と採用の台帳の形式を検査し、索引を生成する。
-// 記録の版を返し、採用した記録の変化を報告する。
+// 記録の版を返し、採用した記録の変化を報告する。Task Memory の残留を検出する。
 // 形式の正本は references/format.md であり、ここはその規則に従う実装である。
 // 規則を変えるときは、format.md を先に改める。
 //
 // 使い方は USAGE を見る。違反は「パス:規則: 説明」の形で標準出力へ出す。
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const USAGE = `usage: memory.mjs check ROOT
+const USAGE = `usage: memory.mjs check ROOT [--no-task-memory]
        memory.mjs index ROOT [--write]
        memory.mjs version ROOT ID [--ref REF]
        memory.mjs adopted ROOT GLOBAL_ROOT [--ref REF]
   ROOT: 記憶の根。records/ を直下に持つディレクトリ。index.md と adopted/（採用の台帳）も直下に置く。
   check: 記録と採用の台帳の形式と、index.md が記録と一致することを検査する。
+  --no-task-memory: ROOT/tasks/ の直下に何か在れば違反にする。既定のブランチへ入るツリーに使う。
   index: 索引を標準出力へ出す。--write を付けると ROOT/index.md へ書く。
   version: 記録 ID の版を「ID@コミットの省略形」で標準出力へ出す。版は、REF でその記録を最後に変えたコミット。
   adopted: ROOT の台帳の1件ごとに、GLOBAL_ROOT の REF と比べた結果を「パス:結果: 説明」で標準出力へ出す。
@@ -437,6 +438,20 @@ function renderIndex(records) {
 }
 
 /**
+ * Task Memory の残留を集める。tasks の直下に在るものを、1件につき1行の違反にする。
+ * tasks がリンクのときは辿らない。辿ると、切れたリンクと、空のディレクトリを指すリンクが、残留なしに見える。
+ * @param {string} root
+ * @returns {string[]}
+ */
+function taskMemory(root) {
+  const dir = join(root, 'tasks');
+  const found = lstatSync(dir, { throwIfNoEntry: false });
+  if (found === undefined) return [];
+  if (!found.isDirectory()) return ['tasks:task-memory: tasks がディレクトリでない。リンクは辿らない。既定のブランチへ入れる前に取り除く'];
+  return readdirSync(dir).sort().map((name) => `tasks/${name}:task-memory: Task Memory が残っている。既定のブランチへ入れる前に取り除く`);
+}
+
+/**
  * 記憶の根であることを確かめる。
  * @param {string} root
  */
@@ -455,9 +470,10 @@ function main(argv) {
   const positionals = rest.slice(0, count);
   const options = rest.slice(count);
   const write = command === 'index' && options.length === 1 && options[0] === '--write';
+  const noTaskMemory = command === 'check' && options.length === 1 && options[0] === '--no-task-memory';
   const takesRef = command === 'version' || command === 'adopted';
   const ref = takesRef && options.length === 2 && options[0] === '--ref' && options[1] !== '' && !options[1].startsWith('-') ? options[1] : undefined;
-  if (count === 0 || positionals.length !== count || !(options.length === 0 || write || ref !== undefined)) {
+  if (count === 0 || positionals.length !== count || !(options.length === 0 || write || noTaskMemory || ref !== undefined)) {
     console.error(USAGE);
     return 2;
   }
@@ -488,6 +504,7 @@ function main(argv) {
     }
   }
   for (const entry of ledger) violations.push(...entry.violations);
+  if (noTaskMemory) violations.push(...taskMemory(root));
   for (const violation of violations) console.log(violation);
   return violations.length === 0 ? 0 : 1;
 }

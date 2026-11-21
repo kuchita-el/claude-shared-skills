@@ -5,7 +5,7 @@
 ## 適用の仕方
 
 - 差分が触れた面に当たる節を適用する。どの節にも当たらない差分には、既定の観点だけを使う。
-- CI（`scripts/run-tests.sh`）が実資産に掛ける検査の対象は指摘しない。対象はマニフェストの整合と、SKILL.md からの参照切れ・配布元への逆参照である。同梱資産を指す表記の形は、`scripts/tests/asset-reference-forms.bats` の語彙に当たるものだけが対象に入る。
+- CI（`scripts/run-tests.sh`）が実資産に掛ける検査の対象は指摘しない。対象は、マニフェストの整合、SKILL.md からの参照切れ・配布元への逆参照、Project Memory（`docs/memory/`）の記録の形式と索引の一致である。同梱資産を指す表記の形は、`scripts/tests/asset-reference-forms.bats` の語彙に当たるものだけが対象に入る。
 - ADR の front-matter・相互参照と日本語の一文長は、CI では実資産を検査しない。前者は Claude Code 経由の commit でだけ走り、後者は手動実行だけなので、指摘の対象に含める。
 - 指摘は欠陥そのものを主語に書く。計量（何字一致・何件）を主語にすると、計量だけを潰す表層の修正が返る。
 - 振る舞いの断定には `file:line` の根拠を添える。命名からの推測で断定しない。
@@ -62,6 +62,7 @@
 
 - `docs/` に工程の記録・一時的な数値・Issue や PR の番号を置いていないか。出典は `docs/references/document-permanence.md`。
 - 追跡下の文書が、追跡外（gitignore 対象の `docs/plans/` 等）の内容を根拠にしていないか。
+- 追跡下の文書が、既定のブランチへ入らない Task Memory（`docs/memory/tasks/`）の内容を根拠にしていないか。
 - mermaid の subgraph のタイトルに全角の等号（U+FF1D）を直書きしていないか。図全体が描画されなくなる。
 
 ## 7. 転換期間
