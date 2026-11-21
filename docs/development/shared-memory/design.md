@@ -343,6 +343,8 @@ Global Memory の使い方は2つある。
 
 - ADR-202611140016-01 — 独立プラグインとして起こした判断と、却下した代替
 - ADR-202611140053-01 — 立ち上げを、配布カタログへ登録するまで直接コミットで回す判断
+- ADR-202611211016-01 — Project Memory の記録を、追随義務を恒久に免れる形式として `docs/memory/` に置く判断
 - `docs/principles.md`「ナレッジ＝共有メモリ前提」「知識の汚染ループと provenance」 — 知識の出所を管理する理由
 - `docs/development/coding-agent-plugin-design-principles.md` — 設計原則 C04・C05・C06・C07
 - `docs/distribution-boundary.md` — 配布物へ置くものと置かないもの
+- `docs/references/document-permanence.md` — `docs/memory/` の記録を、追随の対象から外す規約
