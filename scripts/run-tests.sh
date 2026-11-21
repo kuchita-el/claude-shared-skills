@@ -112,6 +112,7 @@ EXPECTED_BATS=(
     skill-portability.bats
     writing-lint.bats
     shared-memory-check.bats
+    shared-memory-git.bats
     writing-contract.bats
     distribution-boundary.bats
     asset-reference-forms.bats
