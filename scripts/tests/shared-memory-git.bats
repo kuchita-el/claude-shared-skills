@@ -171,7 +171,7 @@ three_commits() {
   done
 }
 
-@test "version: ネットワークを使わない（origin が届かない場所を指していても同じ版を返す）" {
+@test "version: 履歴を取りに行かない（origin が届かない場所を指していても同じ版を返す）" {
   three_commits
   clone_global
   git -C "$GM" remote set-url origin "file://$BATS_TEST_TMPDIR/no-such-remote"
@@ -436,4 +436,90 @@ three_commits() {
   [ -z "$output" ]
   run --separate-stderr node "$SUT" adopted "$PM" "$UP" --ref
   [ "$status" -eq 2 ]
+}
+
+# ---- 記録の決め方と、git の呼び出し方 ----
+
+@test "adopted: 起点に同じ識別子の記録が2件在るときは missing で exit 1" {
+  three_commits
+  record "$UP" "$A" other
+  commit "$UP" twice
+  adopt "$A" "$V1"
+  run --separate-stderr node "$SUT" adopted "$PM" "$UP" --ref main
+  [ "$status" -eq 1 ]
+  [ "$output" = "adopted/$A.md:missing: $A@$V1 起点に記録が複数在る" ]
+}
+
+@test "adopted: 版のコミットに同じ識別子の記録が2件在るときは missing で exit 1" {
+  record "$UP" "$A" first
+  record "$UP" "$A" other
+  commit "$UP" c1
+  local v1
+  v1=$(short "$UP")
+  git -C "$UP" rm -q "records/$A-other.md"
+  commit "$UP" c2
+  adopt "$A" "$v1"
+  run --separate-stderr node "$SUT" adopted "$PM" "$UP" --ref main
+  [ "$status" -eq 1 ]
+  [ "$output" = "adopted/$A.md:missing: $A@$v1 版に記録が複数在る" ]
+}
+
+@test "adopted: 版と同じ綴りの名前の ref が在っても、それを版として解決しない" {
+  three_commits
+  git -C "$UP" tag abcdef1 "$V1"
+  adopt "$A" abcdef1
+  run --separate-stderr node "$SUT" adopted "$PM" "$UP" --ref main
+  [ "$status" -eq 1 ]
+  [[ "$output" == "adopted/$A.md:missing: $A@abcdef1 版のコミットが無い"* ]]
+}
+
+@test "version: records の直下のディレクトリと、.md で終わらないファイルは、記録に数えない" {
+  three_commits
+  mkdir "$UP/records/$A-dir.md"
+  printf '%s\n' '下の階層。' >"$UP/records/$A-dir.md/inner.md"
+  commit "$UP" tree
+  run --separate-stderr node "$SUT" version "$UP" "$A" --ref main
+  [ "$status" -eq 0 ]
+  [ "$output" = "$A@$V1" ]
+  printf '%s\n' '控え。' >"$UP/records/$A-first.md.bak"
+  commit "$UP" backup
+  run --separate-stderr node "$SUT" version "$UP" "$A" --ref main
+  [ "$status" -eq 0 ]
+  [ "$output" = "$A@$V1" ]
+}
+
+@test "version: 記録の名前に含まれる * を、パターンとして読まない" {
+  record "$UP" "$A" first
+  record "$UP" "$A" 'f*'
+  commit "$UP" c1
+  local v1
+  v1=$(short "$UP")
+  git -C "$UP" rm -q "records/$A-first.md"
+  commit "$UP" c2
+  run --separate-stderr node "$SUT" version "$UP" "$A" --ref main
+  [ "$status" -eq 0 ]
+  [ "$output" = "$A@$v1" ]
+}
+
+@test "version と adopted: 継承した GIT_DIR と GIT_WORK_TREE に左右されず、渡した根のリポジトリを読む" {
+  local repo="$BATS_TEST_TMPDIR/project" other="$BATS_TEST_TMPDIR/other"
+  git init -q -b main "$repo"
+  record "$PM" "$A" first
+  commit "$repo" c1
+  local v1
+  v1=$(short "$repo")
+  git init -q -b main "$other"
+  : >"$other/other.txt"
+  commit "$other" c1
+  local variable
+  for variable in "GIT_DIR=$other/.git" "GIT_WORK_TREE=$other"; do
+    run --separate-stderr env "$variable" node "$SUT" version "$PM" "$A" --ref main
+    [ "$status" -eq 0 ]
+    [ "$output" = "$A@$v1" ]
+  done
+  three_commits
+  adopt "$B" "$V1"
+  run --separate-stderr env "GIT_DIR=$other/.git" node "$SUT" adopted "$PM" "$UP" --ref main
+  [ "$status" -eq 0 ]
+  [ "$output" = "adopted/$B.md:changed: $B@$V1 -> $B@$V2" ]
 }

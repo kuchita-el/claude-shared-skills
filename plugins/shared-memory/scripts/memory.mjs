@@ -19,7 +19,8 @@ const USAGE = `usage: memory.mjs check ROOT
   adopted: ROOT の台帳の1件ごとに、GLOBAL_ROOT の REF と比べた結果を「パス:結果: 説明」で標準出力へ出す。
            結果は unchanged / changed / superseded / moved / missing。
   --ref REF: 版を数える起点。省くと refs/remotes/origin/HEAD。作業中の HEAD は使わない。
-  version と adopted は git を要し、ネットワークを使わない。履歴の浅い checkout では exit 2 で止まる。
+  version と adopted は git を要する。fetch のようにネットワークへ出る git のコマンドは呼ばない。
+  履歴の浅い checkout では exit 2 で止まる。
   終了コード:
     check / index: 0 違反なし、1 違反あり、2 引数の誤りか検査できない入力。
     version: 0 版を返した、1 REF にその記録が1件に決まらない、2 引数の誤りか版を決められない状態。
@@ -32,6 +33,9 @@ const COMMIT = /^[0-9a-f]{7,64}$/;
 const ADOPTED_DIR = 'adopted';
 const ADOPTED_FILE = /^(MEM-[0-9]{12}-[0-9]{2})\.md$/;
 const DEFAULT_REF = 'refs/remotes/origin/HEAD';
+// git へ渡さない環境変数。継承すると -C より優先され、根とは別のリポジトリを読む。git のフックの中では、これらが立っている。
+const INHERITED_GIT = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE'];
+const GIT_ENV = Object.fromEntries(Object.entries(process.env).filter(([name]) => !INHERITED_GIT.includes(name)));
 // キーは、コロンを含まず、空白・#・- で始まらない文字の並び。日本語や空白を含むキーも読み飛ばせるようにする。
 const KEY_LINE = /^([^\s#:-][^:]*):(?:[ \t]+(.*))?$/;
 const ITEM_LINE = /^[ \t]*-[ \t]+(.*)$/;
@@ -219,7 +223,7 @@ function loadAdopted(root) {
  * @returns {{ status: number, stdout: string, stderr: string }}
  */
 function git(root, args) {
-  const result = spawnSync('git', ['--literal-pathspecs', '-C', root, ...args], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const result = spawnSync('git', ['--literal-pathspecs', '-C', root, ...args], { encoding: 'utf8', env: GIT_ENV, maxBuffer: 64 * 1024 * 1024 });
   if (result.error) throw new Unusable(`git を実行できない: ${result.error.message}`);
   if (result.status === null) throw new Unusable(`git ${args[0]} が中断された: ${result.signal}`);
   return { status: result.status, stdout: result.stdout, stderr: result.stderr };
@@ -314,13 +318,15 @@ function compare(globalRoot, start, id, pinned) {
   const resolved = git(globalRoot, ['rev-parse', '--verify', '--quiet', `${pinned}^{commit}`]);
   if (resolved.status !== 0) return { result: 'missing', detail: `${cited} 版のコミットが無い${stale}` };
   const commit = resolved.stdout.trim();
+  // 16進だけの名前の ref が在ると、git はコミットの省略形より先に ref を解決する。それを版として扱わない。
+  if (!commit.startsWith(pinned)) return { result: 'missing', detail: `${cited} 版のコミットが無い。同じ名前の ref は、版として扱わない` };
   const ancestor = git(globalRoot, ['merge-base', '--is-ancestor', commit, start]);
   if (ancestor.status === 1) return { result: 'missing', detail: `${cited} 版が起点の履歴に無い${stale}` };
   if (ancestor.status !== 0) throw new Unusable(`git merge-base が失敗した（exit ${ancestor.status}）: ${ancestor.stderr.trim()}`);
   const before = recordsAt(globalRoot, commit, id);
-  if (before.length !== 1) return { result: 'missing', detail: `${cited} 版に記録が無い` };
+  if (before.length !== 1) return { result: 'missing', detail: `${cited} 版に記録が${before.length === 0 ? '無い' : '複数在る'}` };
   const after = recordsAt(globalRoot, start, id);
-  if (after.length !== 1) return { result: 'missing', detail: `${cited} 起点に記録が無い` };
+  if (after.length !== 1) return { result: 'missing', detail: `${cited} 起点に記録が${after.length === 0 ? '無い' : '複数在る'}` };
   const current = versionAt(globalRoot, start, id, after[0].path);
   let fields = new Map();
   let note = '';
