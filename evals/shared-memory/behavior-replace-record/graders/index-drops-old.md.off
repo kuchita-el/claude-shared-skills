@@ -1,5 +1,7 @@
 ---
 # 索引から旧い記録が消え、無関係の記録が残り、evolution の行が在る
+# この実行系では index --write が EROFS で失敗し、索引が変わる経路は手書きだけになる。
+# 手書き（退行）で合格し、手順どおりに終了コード 2 で止まると不合格になるので、外した（test-execution.md §7.2）
 type: regex
 target:
   source: file

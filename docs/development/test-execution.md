@@ -239,7 +239,13 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
   ```
 
 - Bash のサンドボックスの中では、作業ディレクトリへの書き込みが EROFS で失敗する。`memory.mjs index --write` のように作業ディレクトリへ書く手順は、`Bash` を付与した eval では成功しない。ここでは制約の記述に留め、対処は定めない
-- `shared-memory` の `behavior-replace-record` の採点器 `index-not-handwritten` は、索引を手で書いていないことを見る。この採点器は、`.md.off` で無効化してある。この実行系では、`memory.mjs index --write` は上の EROFS で失敗し、終了コード 2 で終わる。手順はそこで止まると定めるが、終了コードの表示が当てにならない（次の項目）ので、エージェントは 2 だと判別できず、索引を手で書いて回避する。スキルの退行と別の理由で不合格になるため、外した。索引の内容の正しさ（旧い記録が消え、無関係の記録と evolution の行が在ること）は、`index-drops-old` が見続ける
+- `shared-memory` の手順では、`memory.mjs index --write` が上の EROFS で失敗し、終了コード 2 で終わる。手順はそこで止まると定めるので、索引が変わる経路は手書きだけになる。索引を見る採点器は、手書き（退行）で合格し、手順どおりの停止で不合格になる。このため、この実行系では、作り直した索引の中身と、索引を手で書かないことを測る採点器は無い。次の採点器を `.md.off` で外し、`behavior-replace-record` の `report-lists-changes` からは検査の結果（違反の件数）の条件を外した。`index --write` の呼び出しを数える `index-regenerated` は、失敗しても合格するので残してある
+  - `behavior-replace-record`: `index-not-handwritten`（索引を手で書いていない）・`index-drops-old`（作り直した索引の中身）
+  - `behavior-propose-records`: `index-drops-superseded`（作り直した索引の中身）
+- 同じ理由で、手順どおりに止まると、`index --write` の後の `check` が走らない。次の採点器は、手順どおりの停止で不合格になる。これらは外していない。不合格が出たら、trace で `index --write` の失敗の後に止まったかを確かめてから、退行と判定する
+  - `behavior-replace-record`: `check-after-evolution`
+  - `behavior-propose-records`: `check-after-draft`・`check-result-reported`
+- エージェントは、終了コード 2 で止まらずに、索引を手で書いて回避した。終了コードの表示から 2 だと判別できない（次の項目）ためと見られるが、確かめていない
 - 成功した Bash のコマンドが、終了コード 1 と表示されることがある（標準出力は正しい）。いまの採点器は終了コードを見ないので、採点はこの表示に左右されない。一方で、手順が終了コードで分岐するか（終了コード 2 で止まる等）は、採点では測れない。確かめるときは、trace の出力で判断する。作業ディレクトリの EROFS とは別の現象である。root で動く Claude Code on the web のコンテナで観測した。Claude Code 2.1.330 の実装を読むと、`cwd-<id>` は作業ディレクトリではない。Bash の実行後に現在のディレクトリを書き込む追跡用のファイルで、サンドボックスの一時ディレクトリに置かれる。終了コード 1 はこのファイルを書けないためと見られるが、確かめていない
 - eval ケースの `prompt.md` の `allowed_tools` は、子セッションが `Glob`・`Grep` を持つかどうかを決めない。外すには、`claude plugin eval` へ `--disallow-tools Glob Grep` を渡す。`scripts/run-plugin-eval.sh` は、引数をそのまま `claude plugin eval` へ渡す
 - 付与の過不足は、結果の trace（`--keep-temp` で残る `trace.jsonl`）の system 行が持つ `tools` の一覧で確かめられる
