@@ -14,7 +14,7 @@ allowed-tools:
   - Bash(git -C * log -1*)       # 別のリポジトリに在る根の、先頭のコミット
   - Bash(git remote get-url *)   # 機密の語（リポジトリの名前）を得る
   - Bash(git -C * remote get-url *)              # 同上。Project の根が別のリポジトリに在るとき
-  - Bash(git -C * rev-parse --show-toplevel*)    # remote が無いときの語。同上
+  - Bash(git -C * rev-parse --show-toplevel*)    # 根が別のリポジトリに在るかの判定と、remote が無いときの語
   - Bash(mktemp -d*)             # 根の外の一時の置き場を作る
   - Bash(date -u*)
   - Bash(node *scripts/memory.mjs*)
@@ -58,6 +58,8 @@ allowed-tools:
 記録の形は `${CLAUDE_PLUGIN_ROOT}/references/format.md` が定める。識別子・項目・置き換え・出典と版の書き方は同書に従い、ここへ写さない。
 
 コマンドは、下に書いた形のまま、1回に1つずつ実行する。`cd` や `echo` をつないだ形と、書かれていない所へ `-C` を足した形は、許可した型に当たらず、拒まれることがある。手順に無いコマンド（`ls`・`printenv` など）は Bash で使わず、手順が示すパスは `Read` で読む。
+
+Project の根が別のリポジトリに在るかは、2つの出力を比べて決める。`git -C <Project の根> rev-parse --show-toplevel` と、`git rev-parse --show-toplevel` である。一致しなければ、別のリポジトリである。そのときだけ、手順7 でリポジトリの名前を得る `git` のコマンドに `-C <Project の根>` を足す。パスの包含では決めない。作業ツリーの中に、別のリポジトリが置かれていることがあるためである。
 
 1. **根を決める。** 上の順で決める。リポジトリの根は `git rev-parse --show-toplevel` で得る。
    - 決めた場所が記憶の根かどうかは、`node "${CLAUDE_PLUGIN_ROOT}/scripts/memory.mjs" check <場所>` で確かめる。終了コード 2 で、標準エラーが `records/` が無いか、ディレクトリでないと述べるなら、その層は無いものとして扱う。
@@ -126,7 +128,7 @@ allowed-tools:
    - 下書きが足した違反が残れば、下書きを直して、検査し直す。
 7. **機密を確かめ、通った下書きを Global の根へ書く。** Global の下書きが在るときだけ行う。利用規則の定めにかかわらず行う。対象・手順・コマンドの形は `${CLAUDE_PLUGIN_ROOT}/references/confidentiality.md` が定め、ここへ写さない。
    - PR の本文を、同じ置き場の一時ファイルへ書く。本文には、Global の候補の表・照合の見た範囲・この確認の結果を書き、下書きを置く先のパス（根からの相対）を全て載せる。
-   - 語の照合: 同書の「語の照合」に従う。対象は、置き場の下書きのファイルと、PR の本文のファイルである。リポジトリの名前を得るコマンドは、同書の形のまま実行する。Project の根が作業ディレクトリのリポジトリ（`git rev-parse --show-toplevel`）の外に在るときだけ、`git -C <Project の根>` で始まる形にする。
+   - 語の照合: 同書の「語の照合」に従う。対象は、置き場の下書きのファイルと、PR の本文のファイルである。リポジトリの名前を得るコマンドは、同書の形のまま実行する。Project の根が別のリポジトリに在るとき（判定は「手順」の冒頭）だけ、`git -C <Project の根>` で始まる形にする。
    - 読み: `record-crosschecker` エージェントへ委ねる。根は渡さず、語を渡す。機密の読みだけが行われる。渡すのは、次の5つだけである。会話と、候補を挙げた経緯は渡さない。モデルと effort は、定義の front-matter に従う。
      - 焦点: 置き場の下書きのファイルのパス
      - 照合した語の並び
