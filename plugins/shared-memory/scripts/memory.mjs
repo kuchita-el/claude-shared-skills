@@ -6,7 +6,7 @@
 // 使い方は USAGE を見る。違反は「パス:規則: 説明」の形で標準出力へ出す。
 import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 const USAGE = `usage: memory.mjs check ROOT [--no-task-memory]
        memory.mjs index ROOT [--write]
@@ -20,8 +20,9 @@ const USAGE = `usage: memory.mjs check ROOT [--no-task-memory]
   adopted: ROOT の台帳の1件ごとに、GLOBAL_ROOT の REF と比べた結果を「パス:結果: 説明」で標準出力へ出す。
            結果は unchanged / changed / superseded / moved / missing。
   --ref REF: 版を数える起点。省くと refs/remotes/origin/HEAD。作業中の HEAD は使わない。
+           remote 追跡の ref（省いたときの既定を含む）と FETCH_HEAD は、最後に取り直した結果（FETCH_HEAD）と照合する。
   version と adopted は git を要する。fetch のようにネットワークへ出る git のコマンドは呼ばない。
-  履歴の浅い checkout では exit 2 で止まる。
+  履歴の浅い checkout と、起点が最後に取り直した結果と食い違う checkout では、exit 2 で止まる。
   終了コード:
     check / index: 0 違反なし、1 違反あり、2 引数の誤りか検査できない入力。
     version: 0 版を返した、1 REF にその記録が1件に決まらない、2 引数の誤りか版を決められない状態。
@@ -34,6 +35,10 @@ const COMMIT = /^[0-9a-f]{7,64}$/;
 const ADOPTED_DIR = 'adopted';
 const ADOPTED_FILE = /^(MEM-[0-9]{12}-[0-9]{2})\.md$/;
 const DEFAULT_REF = 'refs/remotes/origin/HEAD';
+const FETCH_HEAD = 'FETCH_HEAD';
+const TRACKING = 'refs/remotes/';
+// FETCH_HEAD の、枝を取り直した行。2列目は、空か not-for-merge である。3列目の URL は照合に使わない。
+const FETCHED_BRANCH = /^([0-9a-f]{40,64})\t(?:not-for-merge)?\tbranch '(.*)' of /;
 // git へ渡さない環境変数。継承すると -C より優先され、根とは別のリポジトリを読む。git のフックの中では、これらが立っている。
 const INHERITED_GIT = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE'];
 const GIT_ENV = Object.fromEntries(Object.entries(process.env).filter(([name]) => !INHERITED_GIT.includes(name)));
@@ -243,7 +248,59 @@ function gitOutput(root, args) {
 }
 
 /**
+ * 最後に取り直した結果（その worktree の FETCH_HEAD）から、枝を取り直した行を読む。
+ * @param {string} root
+ * @returns {{ commit: string, branch: string }[]} FETCH_HEAD が無いときは空
+ */
+function fetchedBranches(root) {
+  const path = resolve(root, gitOutput(root, ['rev-parse', '--git-path', FETCH_HEAD]).trim());
+  if (!existsSync(path)) return [];
+  return readFileSync(path, 'utf8').split('\n').map((line) => line.match(FETCHED_BRANCH)).filter((matched) => matched !== null)
+    .map(([, commit, branch]) => ({ commit, branch }));
+}
+
+/**
+ * remote 追跡の ref の完全な名前を、remote と枝に分ける。remote の名前は、設定に在る remote のうち最も長く一致するものとする。
+ * @param {string} root
+ * @param {string} fullName refs/remotes/ で始まる名前
+ * @returns {{ remote: string, branch: string }}
+ */
+function trackedBranch(root, fullName) {
+  const rest = fullName.slice(TRACKING.length);
+  const remotes = gitOutput(root, ['remote']).split('\n').filter((name) => name !== '' && rest.startsWith(`${name}/`));
+  const remote = remotes.sort((a, b) => b.length - a.length)[0] ?? rest.split('/')[0];
+  return { remote, branch: rest.slice(remote.length + 1) };
+}
+
+/**
+ * 起点が、最後に取り直した結果と食い違わないことを確かめる。照合するのは、remote 追跡の ref と FETCH_HEAD だけである。
+ * ローカルのブランチ・タグ・コミットは、照合しない。URL は照合しない。クラウドの checkout では、取り直した URL が remote の URL と違うことがある。
+ * @param {string} root
+ * @param {string} name 渡された起点
+ * @param {{ remote: string, branch: string } | undefined} tracked 起点が remote 追跡の ref なら、その remote と枝
+ * @param {string} commit 起点のコミット
+ */
+function requireFetched(root, name, tracked, commit) {
+  if (tracked !== undefined) {
+    const { remote, branch } = tracked;
+    const fetch = `git fetch ${remote} ${branch} で取り直してから実行する`;
+    const lines = fetchedBranches(root).filter((line) => line.branch === branch);
+    if (lines.length === 0) throw new Unusable(`起点 ${name} の枝 ${branch} を取り直した記録が、FETCH_HEAD に無い。${fetch}`);
+    if (!lines.some((line) => line.commit === commit)) {
+      throw new Unusable(`起点 ${name} が、最後に取り直した結果（FETCH_HEAD）と食い違う。${fetch}`);
+    }
+    return;
+  }
+  if (name !== FETCH_HEAD) return;
+  const lines = fetchedBranches(root);
+  const fetch = '既定のブランチだけを git fetch <remote> <既定のブランチ> で取り直してから実行する';
+  if (lines.length !== 1) throw new Unusable(`FETCH_HEAD が、枝を取り直した行を1つに決められない（${lines.length}行）。${fetch}`);
+  if (lines[0].commit !== commit) throw new Unusable(`FETCH_HEAD の先頭が、枝を取り直した行と違う。${fetch}`);
+}
+
+/**
  * 履歴が揃っていることを確かめ、起点の ref をコミットへ解決する。git を使う最初の手順である。
+ * 起点が remote 追跡の ref か FETCH_HEAD なら、最後に取り直した結果と照合する（requireFetched）。
  * @param {string} root
  * @param {string | undefined} ref
  * @returns {string} 起点のコミット
@@ -252,12 +309,23 @@ function startingCommit(root, ref) {
   const probe = git(root, ['rev-parse', '--is-shallow-repository']);
   if (probe.status !== 0) throw new Unusable(`git の作業ツリーの中に無い: ${root}\n${probe.stderr.trim()}`);
   const shallow = probe.stdout.trim();
-  if (shallow === 'true') throw new Unusable(`履歴が浅く、版を決められない。git fetch --unshallow で履歴を取り直す: ${root}`);
+  const name = ref ?? DEFAULT_REF;
+  const symbolic = git(root, ['rev-parse', '--symbolic-full-name', name]);
+  const fullName = symbolic.status === 0 ? symbolic.stdout.trim() : '';
+  const tracked = fullName.startsWith(TRACKING) ? trackedBranch(root, fullName) : undefined;
+  if (shallow === 'true') {
+    const target = tracked === undefined ? 'origin <既定のブランチ>' : `${tracked.remote} ${tracked.branch}`;
+    throw new Unusable(`履歴が浅く、版を決められない。git fetch --deepen=1000 ${target} で履歴を取り直す。まだ浅ければ、深さを増やす: ${root}`);
+  }
   if (shallow !== 'false') throw new Unusable(`履歴が浅いかどうかを git が答えない。git を新しくする: ${shallow}`);
-  const resolved = git(root, ['rev-parse', '--verify', '--quiet', `${ref ?? DEFAULT_REF}^{commit}`]);
-  if (resolved.status === 0) return resolved.stdout.trim();
-  if (ref === undefined) throw new Unusable(`既定のブランチを決められない（${DEFAULT_REF} が無い）。--ref で起点を指す`);
-  throw new Unusable(`起点の ref を解決できない: ${ref}`);
+  const resolved = git(root, ['rev-parse', '--verify', '--quiet', `${name}^{commit}`]);
+  if (resolved.status !== 0) {
+    if (ref === undefined) throw new Unusable(`既定のブランチを決められない（${DEFAULT_REF} が無い）。--ref で起点を指すか、git remote set-head origin <既定のブランチ> で作る`);
+    throw new Unusable(`起点の ref を解決できない: ${ref}`);
+  }
+  const commit = resolved.stdout.trim();
+  requireFetched(root, name, tracked, commit);
+  return commit;
 }
 
 /**
