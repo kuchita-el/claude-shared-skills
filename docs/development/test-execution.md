@@ -231,14 +231,22 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
 - `regex` の採点器は、`match: not_contains` で、文字列が無いことを見られる。`target` に `source: file` を指すと、エージェントが書いたファイルも、字面のパスで読める。名前が実行のたびに変わるファイルは読めないので、依頼文で置き場を指定するか、書いた入力を trace で見る
 - `shared-memory` の `behavior-promote-confidential` は、新しい記録の名前が時刻で決まる。記録に仕込んだ文字列が残っていないことは、`--keep-temp` で残った作業ディレクトリ（`<残ったディレクトリ>/home/cwd/`）を検索して確かめる
 
-- `Bash` を付与するケースは、サンドボックスの道具（`bubblewrap` と `socat`）が無い Linux では、起動を拒まれる。2026年11月に、root で動く Claude Code on the web のコンテナで実測した。2つを入れた後は動いた。ただし、成功した Bash のコマンドも終了コード 1 と表示された（標準出力は正しかった）。終了コードで分岐する手順を測るときは、trace の出力で判断する
-- 付与の過不足は、結果の trace（`--keep-temp` で残る `trace.jsonl`）の system 行が持つ `tools` の一覧で確かめられる
-- `Bash` を付与する挙動ケースは、`adr`・`writing`・`growth`・`shared-memory` に在る。これらは、`~/.docker` 内に symlink があると eval 側が起動を拒否する。実行の直前に退避し、終了後に戻す（**この退避はスクリプトが自動化しない。手順として実行者が行う**）
+- `Bash` を付与するケースは、サンドボックスの道具（`bubblewrap` と `socat`）が無い Linux では、起動を拒まれる。root で次のとおり入れる。apt のパッケージリストが空のコンテナでは、`apt-get update` を先に行わないと「Unable to locate package」になる。クラウドの環境では、同じコマンドを環境のセットアップスクリプトへ置ける
 
   ```bash
-  mv ~/.docker ~/.docker.eval-off
+  apt-get update && apt-get install -y bubblewrap socat
+  ```
+
+- Bash のサンドボックスの中では、作業ディレクトリへの書き込みが EROFS で失敗する。`memory.mjs index --write` のように作業ディレクトリへ書く手順は、`Bash` を付与した eval では成功しない。ここでは制約の記述に留め、対処は定めない
+- 成功した Bash のコマンドが、終了コード 1 と表示されることがある（標準出力は正しい）。終了コードで分岐する手順を測るときは、trace の出力で判断する。作業ディレクトリの EROFS とは別の現象である。Claude Code の実装を読むと、`cwd-<id>` は作業ディレクトリではない。Bash の実行後に現在のディレクトリを書き込む追跡用のファイルで、サンドボックスの一時ディレクトリに置かれる。終了コード 1 はこのファイルを書けないためと見られるが、確かめていない
+- eval ケースの `prompt.md` の `allowed_tools` は、子セッションが `Glob`・`Grep` を持つかどうかを決めない。外すには、`claude plugin eval` へ `--disallow-tools Glob Grep` を渡す。`scripts/run-plugin-eval.sh` は、引数をそのまま `claude plugin eval` へ渡す
+- 付与の過不足は、結果の trace（`--keep-temp` で残る `trace.jsonl`）の system 行が持つ `tools` の一覧で確かめられる
+- `Bash` を付与する挙動ケースは、`adr`・`writing`・`growth`・`shared-memory` に在る。これらは、`~/.docker` 内に symlink があると eval 側が起動を拒否する。`~/.docker` が在る場合だけ、実行の直前に退避し、終了後に戻す（**この退避はスクリプトが自動化しない。手順として実行者が行う**）
+
+  ```bash
+  [ -e ~/.docker ] && mv ~/.docker ~/.docker.eval-off
   # ここで対象の eval を実行する
-  mv ~/.docker.eval-off ~/.docker
+  [ -e ~/.docker.eval-off ] && mv ~/.docker.eval-off ~/.docker
   ```
 
 - Claude Code のサンドボックス内からは実行しない。サンドボックスが認証情報の読み取りを拒否し、子セッションが未ログイン状態になる
@@ -246,9 +254,9 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
 - 結果の出力先（`--output-dir`）は追跡外の置き場を指定する。リポジトリ直下の `.local/eval-results/` は `.gitignore` で無視されるため、`.local/eval-results/<plugin>/` を推奨する
 
 ```bash
-mv ~/.docker ~/.docker.eval-off  # Bash 付与ケースのみ
+[ -e ~/.docker ] && mv ~/.docker ~/.docker.eval-off  # Bash 付与ケースのみ
 bash scripts/run-plugin-eval.sh dependency-insight \
   --runs 3 --ablation none --no-publish --trust-plugin --scaffold \
   --max-cost-usd 5 --output-dir .local/eval-results/dependency-insight
-mv ~/.docker.eval-off ~/.docker  # Bash 付与ケースのみ
+[ -e ~/.docker.eval-off ] && mv ~/.docker.eval-off ~/.docker  # Bash 付与ケースのみ
 ```
