@@ -662,3 +662,69 @@ E=MEM-202611140000-03
   [ "$status" -eq 2 ]
   [[ "$output" == *"usage: memory.mjs check ROOT [--no-task-memory]"* ]]
 }
+
+# eval の題材（evals/shared-memory/<ケース>/scaffold.sh）が作る根を、検査器へ掛ける。
+# eval は runner に入らない。形式や索引の出力を変えたとき、題材が最初から違反を持つ状態へ
+# 黙って古くなることを、ここで赤にする。$1 はケースの名前。題材は $BATS_TEST_TMPDIR/<ケース> へ作る。
+scaffold_case() {
+  local case_dir="$BATS_TEST_TMPDIR/$1"
+  mkdir -p "$case_dir"
+  (cd "$case_dir" && bash "$REPO_ROOT/evals/shared-memory/$1/scaffold.sh")
+}
+
+# 題材の根が、採点器の前提にする記録を持つことを見る。check の通過だけでは足りない。
+# 記録が1件も無く索引も無い根は、違反0件で check を通るためである。
+# $1 は根、$2 は索引の行数の下限、$3 以降は records/ の直下のファイル名。
+# 欠けを1行ずつ出す。欠けが無ければ何も出さない。
+scaffold_root_gaps() {
+  local root="$1" min="$2" name rows
+  shift 2
+  for name in "$@"; do
+    [ -f "$root/records/$name" ] || printf '記録が無い: records/%s\n' "$name"
+  done
+  rows=$(node "$SUT" index "$root" 2>/dev/null | grep -c '^| \[MEM-' || true)
+  [ "${rows:-0}" -ge "$min" ] || printf '索引の行が足りない: %s 行（下限は %s 行）\n' "${rows:-0}" "$min"
+}
+
+# 題材の根を、検査器と scaffold_root_gaps の両方へ掛ける。引数は scaffold_root_gaps と同じ。
+assert_scaffold_root() {
+  run node "$SUT" check "$1"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  run scaffold_root_gaps "$@"
+  [ -z "$output" ]
+}
+
+PROPOSE_RECORDS=(MEM-202611010000-01-empty-input-zero-report.md MEM-202611010000-02-csv-shift-jis.md)
+
+@test "eval の題材: behavior-propose-records の scaffold が作る根は、check を通り、記録2件を持つ" {
+  scaffold_case behavior-propose-records
+  [ -f "$BATS_TEST_TMPDIR/behavior-propose-records/notes/task-notes.md" ]
+  assert_scaffold_root "$BATS_TEST_TMPDIR/behavior-propose-records/docs/memory" 2 "${PROPOSE_RECORDS[@]}"
+}
+
+@test "eval の題材: 記録と索引を根の外へ書く題材は、check を通るが、記録の欠けとして報告される" {
+  local case_dir="$BATS_TEST_TMPDIR/mutant" root="$BATS_TEST_TMPDIR/mutant/docs/memory"
+  mkdir -p "$case_dir/docs/elsewhere/records"
+  sed -e 's|> docs/memory/records/|> docs/elsewhere/records/|' -e 's|> docs/memory/index.md|> docs/elsewhere/index.md|' \
+    "$REPO_ROOT/evals/shared-memory/behavior-propose-records/scaffold.sh" >"$BATS_TEST_TMPDIR/mutant.sh"
+  run ! cmp -s "$REPO_ROOT/evals/shared-memory/behavior-propose-records/scaffold.sh" "$BATS_TEST_TMPDIR/mutant.sh"
+  (cd "$case_dir" && bash "$BATS_TEST_TMPDIR/mutant.sh")
+  run node "$SUT" check "$root"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  run scaffold_root_gaps "$root" 2 "${PROPOSE_RECORDS[@]}"
+  [[ "$output" == *"記録が無い: records/${PROPOSE_RECORDS[0]}"* ]]
+  [[ "$output" == *"記録が無い: records/${PROPOSE_RECORDS[1]}"* ]]
+  [[ "$output" == *"索引の行が足りない: 0 行（下限は 2 行）"* ]]
+}
+
+@test "eval の題材: 記録を1件だけ欠く根は、索引の行数の下限で報告される" {
+  scaffold_case behavior-propose-records
+  local root="$BATS_TEST_TMPDIR/behavior-propose-records/docs/memory"
+  rm "$root/records/${PROPOSE_RECORDS[1]}"
+  run scaffold_root_gaps "$root" 2 "${PROPOSE_RECORDS[@]}"
+  [[ "$output" != *"${PROPOSE_RECORDS[0]}"* ]]
+  [[ "$output" == *"記録が無い: records/${PROPOSE_RECORDS[1]}"* ]]
+  [[ "$output" == *"索引の行が足りない: 1 行（下限は 2 行）"* ]]
+}

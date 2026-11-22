@@ -114,6 +114,7 @@ EXPECTED_BATS=(
     writing-lint.bats
     shared-memory-check.bats
     shared-memory-git.bats
+    shared-memory-eval-permissions.bats
     writing-contract.bats
     distribution-boundary.bats
     asset-reference-forms.bats
