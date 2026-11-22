@@ -86,8 +86,10 @@ IDX
 git add -A
 git -c user.name=fixture -c user.email=fixture@example.invalid -c commit.gpgsign=false commit -q -m "seed"
 # 版は、origin/HEAD の指すコミットから数える。題材は取得できる remote を持たないので、参照だけを作る。
+# 検査器は、remote 追跡の ref を最後に取り直した結果（FETCH_HEAD）と照合する。git fetch origin main の後と同じ行を書く。
 git update-ref refs/remotes/origin/main HEAD
 git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main
+printf '%s\t\tbranch '"'"'main'"'"' of %s\n' "$(git rev-parse HEAD)" "$(git remote get-url origin)" > "$(git rev-parse --git-path FETCH_HEAD)"
 
 # 昇格先の根。プロジェクトの追跡の外に置く。
 printf '%s\n' 'global-memory/' >> .git/info/exclude
