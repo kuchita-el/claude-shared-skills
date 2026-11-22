@@ -854,7 +854,8 @@ C=MEM-202611140000-04
   [[ "$output" =~ ^MEM-202611010000-01@[0-9a-f]{7,}$ ]]
   # 利用規則が定める出し方（ブランチと PR）を試せるよう、昇格先は独立したリポジトリである。
   [ "$(git -C "$CASE_DIR/global-memory" rev-parse --show-toplevel)" = "$(cd "$CASE_DIR/global-memory" && pwd -P)" ]
-  # 採点器の file_exists は、運ぶファイルを題材が持たないことを前提にする。
+  # 題材は tasks/ を持たない。運ぶ途中の提案が在ると、手順4 が止まり、運ぶ経路まで届かないためである。
+  # 2つのファイルの存在は carry-*-exists（regex の target: files）が見る。作られたファイルだけの一覧なので、この前提には依らない。
   [ ! -e "$CASE_DIR/docs/memory/tasks" ]
 }
 
