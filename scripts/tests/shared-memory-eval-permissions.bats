@@ -51,6 +51,7 @@ GUIDE_ANCHOR='- `shared-memory` は、次の `--allow-tools` を付ける。'
 CASES=(
     "behavior-propose-records|propose-records|Skill"
     "behavior-promote-confidential|promote-record|Skill"
+    "behavior-promote-carry|promote-record|Skill"
     "behavior-crosscheck-contradiction|crosscheck-records|Skill Write Edit"
     "behavior-replace-record|replace-record|Skill"
 )

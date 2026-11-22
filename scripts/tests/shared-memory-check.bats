@@ -843,6 +843,21 @@ C=MEM-202611140000-04
   [ "$found" -eq 4 ]
 }
 
+@test "eval の題材: 運ぶ経路の2つの根は通り、元の記録の版が得られ、昇格先は別のリポジトリで、運ぶファイルをまだ持たない" {
+  local CASE_DIR="$BATS_TEST_TMPDIR/behavior-promote-carry"
+  scaffold_case behavior-promote-carry
+  assert_scaffold_root "$CASE_DIR/docs/memory" 1 MEM-202611010000-01-bom-breaks-header-match.md
+  assert_scaffold_root "$CASE_DIR/global-memory" 1 MEM-202610150000-01-tls-min-version-handshake.md
+  [ -f "$CASE_DIR/global-memory/policies/memory-policy.md" ]
+  run node "$SUT" version "$CASE_DIR/docs/memory" MEM-202611010000-01
+  [ "$status" -eq 0 ]
+  [[ "$output" =~ ^MEM-202611010000-01@[0-9a-f]{7,}$ ]]
+  # 利用規則が定める出し方（ブランチと PR）を試せるよう、昇格先は独立したリポジトリである。
+  [ "$(git -C "$CASE_DIR/global-memory" rev-parse --show-toplevel)" = "$(cd "$CASE_DIR/global-memory" && pwd -P)" ]
+  # 採点器の file_exists は、運ぶファイルを題材が持たないことを前提にする。
+  [ ! -e "$CASE_DIR/docs/memory/tasks" ]
+}
+
 @test "eval の採点器と題材が字面で照合する5つの確認の文言は、PR の本文の雛形（正本）と一致する" {
   local body graders scaffold phrase found=0
   body="$REPO_ROOT/plugins/shared-memory/skills/promote-record/references/pr-body.md"
