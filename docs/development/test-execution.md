@@ -238,7 +238,7 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
   ```
 
 - Bash のサンドボックスの中では、作業ディレクトリへの書き込みが EROFS で失敗する。`memory.mjs index --write` のように作業ディレクトリへ書く手順は、`Bash` を付与した eval では成功しない。ここでは制約の記述に留め、対処は定めない
-- `shared-memory` の採点器 `index-not-handwritten` は、索引を `memory.mjs index --write` で作り直したかを見る。この実行系では書き込みが失敗するため測れない。不合格が出ても、trace で書き込みの失敗を確かめるまでは、退行と判定しない
+- `shared-memory` の採点器 `index-not-handwritten` は、索引（`docs/memory/index.md`）への `Write` が0回かを見る。この実行系では `memory.mjs index --write` の書き込みが失敗する。モデルが失敗と受け取って索引を手で書くと不合格になるが、スキルの退行とは限らない。不合格が出たら、trace で `index --write` の後に書いたのかを確かめてから判定する
 - 成功した Bash のコマンドが、終了コード 1 と表示されることがある（標準出力は正しい）。終了コードで分岐する手順を測るときは、trace の出力で判断する。作業ディレクトリの EROFS とは別の現象である。root で動く Claude Code on the web のコンテナで観測した。Claude Code 2.1.330 の実装を読むと、`cwd-<id>` は作業ディレクトリではない。Bash の実行後に現在のディレクトリを書き込む追跡用のファイルで、サンドボックスの一時ディレクトリに置かれる。終了コード 1 はこのファイルを書けないためと見られるが、確かめていない
 - eval ケースの `prompt.md` の `allowed_tools` は、子セッションが `Glob`・`Grep` を持つかどうかを決めない。外すには、`claude plugin eval` へ `--disallow-tools Glob Grep` を渡す。`scripts/run-plugin-eval.sh` は、引数をそのまま `claude plugin eval` へ渡す
 - 付与の過不足は、結果の trace（`--keep-temp` で残る `trace.jsonl`）の system 行が持つ `tools` の一覧で確かめられる
