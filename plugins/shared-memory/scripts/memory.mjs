@@ -274,7 +274,7 @@ function trackedBranch(root, fullName) {
 
 /**
  * 起点が、最後に取り直した結果と食い違わないことを確かめる。照合するのは、remote 追跡の ref と FETCH_HEAD だけである。
- * ローカルのブランチ・タグ・コミットは、照合しない。URL は照合しない。クラウドの checkout では、取り直した URL が remote の URL と違う。
+ * ローカルのブランチ・タグ・コミットは、照合しない。URL は照合しない。クラウドの checkout では、取り直した URL が remote の URL と違うことがある。
  * @param {string} root
  * @param {string} name 渡された起点
  * @param {{ remote: string, branch: string } | undefined} tracked 起点が remote 追跡の ref なら、その remote と枝
