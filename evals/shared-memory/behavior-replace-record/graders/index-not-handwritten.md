@@ -1,7 +1,8 @@
 ---
-# 索引を手で書いていない（format.md は、索引を検査器で作り直すと定める）
-# eval の子セッションでは、成功したコマンドも終了コード 1 と表示される。index --write は標準出力が無いので、
-# モデルが失敗と取り違えて手で書くことが在る。不合格なら trace を読み、index --write の後に書いたのかを確かめる
+# 索引を Write で書いていない（format.md は、索引を検査器で作り直すと定める）。Edit は対の index-not-edited が見る
+# eval の Bash のサンドボックスでは、作業ディレクトリへの書き込みが EROFS で失敗し、index --write は終了コード 2 で終わる。
+# 終了コード 2 と EROFS の標準エラーは、エージェントに見えている。計測では、止まる回と、index の出力を Write で書いて先へ進む回があった。
+# 手順どおりに止まれば合格し、索引を Write で書いて進めば不合格になる。向きが正しいので、この実行系でも測れる
 type: tool_used
 tool: Write
 input_match: 'docs/memory/index\.md'
