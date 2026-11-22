@@ -218,13 +218,18 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
 - `domain-design` は `--allow-tools Write` を付ける。スキルの `allowed-tools` に Write があっても、eval の子セッションには付与されない。付けないと挙動ケースが成果物を書けずに止まり、不合格になる
 - `growth` は `--allow-tools Write 'Bash(git rev-parse *)' 'Bash(date *)' 'Bash(rm ~/.claude/projects/*/growth/captures-*.md)'` を付ける（Write と、distill の `allowed-tools` と同じ Bash パターン）
 - `growth` の `behavior-distill` の採点器のうち `cursor-advanced`・`example-entry-hypothesized`・`upsert-preserves-existing` は、拒否された Write の試みの内容で判定する。拒否後に書き込みを試みるかは回ごとに揺れるため、不合格が出たら trace の最終応答で判断の中身を確かめてから退行と判定する
-- `shared-memory` は、次の `--allow-tools` を付ける。`Write`・`Edit` と、`propose-records` の `allowed-tools` と同じ Bash パターンである
+- `shared-memory` は、次の `--allow-tools` を付ける。`Write`・`Edit` と、4つのスキルの `allowed-tools` に在る Bash パターンの和集合である
+- `shared-memory` の `behavior-crosscheck-contradiction` も、スキルが使わない `Write`・`Edit` を付与したまま走らせる。書き換えないことを、採点器が道具の呼び出しの回数で見るためである
 
   ```bash
   --allow-tools Write Edit 'Bash(node *scripts/memory.mjs*)' 'Bash(git rev-parse*)' 'Bash(git status*)' \
     'Bash(git log*)' 'Bash(git diff*)' 'Bash(git -C * log -1*)' 'Bash(git remote get-url *)' 'Bash(date -u*)' \
     'Bash(grep -i -F *)'
   ```
+
+- `tool_used` の採点器で「1回も呼ばない」を見るときは、`min: 0` と `max: 0` の両方を書く。`max: 0` だけでは、下限が 1 のままになり、常に不合格になる
+- `regex` の採点器は、`match: not_contains` で、文字列が無いことを見られる。`target` に `source: file` を指すと、エージェントが書いたファイルも、字面のパスで読める。名前が実行のたびに変わるファイルは読めないので、依頼文で置き場を指定するか、書いた入力を trace で見る
+- `shared-memory` の `behavior-promote-confidential` は、新しい記録の名前が時刻で決まる。記録に仕込んだ文字列が残っていないことは、`--keep-temp` で残った作業ディレクトリ（`<残ったディレクトリ>/home/cwd/`）を検索して確かめる
 
 - `Bash` を付与するケースは、サンドボックスの道具（`bubblewrap` と `socat`）が無い Linux では、起動を拒まれる。2026年11月に、root で動く Claude Code on the web のコンテナで実測した。2つを入れた後は動いた。ただし、成功した Bash のコマンドも終了コード 1 と表示された（標準出力は正しかった）。終了コードで分岐する手順を測るときは、trace の出力で判断する
 - 付与の過不足は、結果の trace（`--keep-temp` で残る `trace.jsonl`）の system 行が持つ `tools` の一覧で確かめられる

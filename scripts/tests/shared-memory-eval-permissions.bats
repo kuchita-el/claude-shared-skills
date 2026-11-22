@@ -46,8 +46,13 @@ GUIDE_ANCHOR='- `shared-memory` は、次の `--allow-tools` を付ける。'
 
 # 「<ケース>|<スキル>|<eval だけが足す道具。空白で区切る>」
 # Skill は、依頼文からスキルを起動するために要る。スキル自身の許可には現れない。
+# behavior-crosscheck-contradiction の Write と Edit は、書き換えないことを、採点器が道具の
+# 呼び出しの回数で見るために足す。理由の正本は、実行ガイドに在る。
 CASES=(
     "behavior-propose-records|propose-records|Skill"
+    "behavior-promote-confidential|promote-record|Skill"
+    "behavior-crosscheck-contradiction|crosscheck-records|Skill Write Edit"
+    "behavior-replace-record|replace-record|Skill"
 )
 
 # ガイドの指定が、Bash パターンのほかに持つ道具。
@@ -336,7 +341,7 @@ EVAL_FILE="$EVALS_REL/behavior-propose-records/prompt.md"
     cp "$FIXTURE/$SKILL_FILE" "$FIXTURE/$SKILLS_REL/added-skill/SKILL.md"
     run check_permissions "$FIXTURE"
     [ "$status" -eq 1 ]
-    [[ "$output" == *"$GUIDE_REL の指定の説明が、スキル added-skill を名指していない"* ]]
+    [[ "$output" == *"$GUIDE_REL が述べるスキルの件数（4）が、実体の件数（5）と一致しない"* ]]
 }
 
 # ---- 収集の欠落 ----
@@ -363,6 +368,23 @@ EVAL_FILE="$EVALS_REL/behavior-propose-records/prompt.md"
     run check_permissions "$FIXTURE"
     [ "$status" -eq 1 ]
     [[ "$output" == *"$GUIDE_REL から shared-memory の --allow-tools の指定を収集できない"* ]]
+}
+
+@test "変異: ガイドの説明が件数を述べなくなると、全てのスキルの名指しを求めて赤になる" {
+    make_fixture
+    mutate "$FIXTURE/$GUIDE_REL" 's/、4つのスキルの `allowed-tools` に在る/、スキルの `allowed-tools` に在る/'
+    run check_permissions "$FIXTURE"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"$GUIDE_REL の指定の説明が、スキル crosscheck-records を名指していない"* ]]
+    [[ "$output" == *"$GUIDE_REL の指定の説明が、スキル replace-record を名指していない"* ]]
+}
+
+@test "変異: 書き換えないことを見るために足した道具を eval から消すと赤になる" {
+    make_fixture
+    mutate "$FIXTURE/$EVALS_REL/behavior-crosscheck-contradiction/prompt.md" '/^  - Edit$/d'
+    run check_permissions "$FIXTURE"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"$EVALS_REL/behavior-crosscheck-contradiction/prompt.md に無い（crosscheck-records の allowed-tools と宣言した差 に在る）: Edit"* ]]
 }
 
 @test "変異: 対応を宣言していないケースが在ると赤になる" {

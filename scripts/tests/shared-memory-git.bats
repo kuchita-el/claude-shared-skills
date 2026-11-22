@@ -129,11 +129,14 @@ three_commits() {
   [ "$status" -eq 1 ]
   [ -z "$output" ]
   [[ "$stderr" == *"$C"* ]]
+  # 無いのか、複数在るのかを、標準エラーが分けて述べる。置き換えと下書きの手順が、この2つを判定の入力にする。
+  [[ "$stderr" == *"の記録が無い"* ]]
   record "$UP" "$C" other
   commit "$UP" twice
   run --separate-stderr node "$SUT" version "$UP" "$C" --ref topic
   [ "$status" -eq 1 ]
   [ -z "$output" ]
+  [[ "$stderr" == *"の記録が複数在る"* ]]
 }
 
 @test "version: 作業中のブランチで記録を変えていても、--ref が指す起点のコミットを返す" {

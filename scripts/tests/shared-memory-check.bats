@@ -728,3 +728,152 @@ PROPOSE_RECORDS=(MEM-202611010000-01-empty-input-zero-report.md MEM-202611010000
   [[ "$output" == *"記録が無い: records/${PROPOSE_RECORDS[1]}"* ]]
   [[ "$output" == *"索引の行が足りない: 1 行（下限は 2 行）"* ]]
 }
+
+
+# ---- 昇格の出典と、複数の記録の置き換え ----
+
+C=MEM-202611140000-04
+
+@test "sources に層の名前・識別子・版を引用符なしで書いた記録は通過する" {
+  record "$A" first
+  edit "$A-first.md" 's/^  - 出典$/  - Project MEM-202611210300-01@1a2b3c4/'
+  write_index
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  grep -Fq '  - Project MEM-202611210300-01@1a2b3c4' "$ROOT/records/$A-first.md"
+}
+
+@test "複数の旧い記録を1つで置き換える形は通り、旧い記録の1件が superseded-by を欠くと replacement で落ちる" {
+  record "$A" old-one "superseded-by: $C"
+  record "$B" old-two "superseded-by: $C"
+  record "$C" new
+  record "$E" change 'from:' "  - $A" "  - $B" 'to:' "  - $C"
+  edit "$E-change.md" 's/^type: knowledge$/type: evolution/'
+  write_index
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+
+  edit "$B-old-two.md" '/^superseded-by:/d'
+  write_index
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"records/$E-change.md:replacement:"* ]]
+  [[ "$output" == *"$B"* ]]
+}
+
+@test "1つの旧い記録を複数で置き換える形は通り、superseded-by が to に無い記録を指すと replacement で落ちる" {
+  # superseded-by に書く主たる1件は、to の先頭でなくてよい。
+  record "$A" old "superseded-by: $C"
+  record "$B" new-one
+  record "$C" new-two
+  record "$E" change 'from:' "  - $A" 'to:' "  - $B" "  - $C"
+  edit "$E-change.md" 's/^type: knowledge$/type: evolution/'
+  write_index
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+
+  edit "$E-change.md" "/^  - $C\$/d"
+  write_index
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *":replacement:"* ]]
+}
+
+# ---- eval の題材（昇格・突き合わせ・置き換え） ----
+# 題材は、上の scaffold_case で $BATS_TEST_TMPDIR/<ケース> へ作る。
+# 採点器が前提にする記録の実在と、索引の行数の下限は、上の scaffold_root_gaps で見る。
+
+@test "eval の題材: 矛盾の突き合わせの根は、焦点の記録を足す前は通り、足した後の違反は索引の1行だけである" {
+  local CASE_DIR="$BATS_TEST_TMPDIR/behavior-crosscheck-contradiction"
+  scaffold_case behavior-crosscheck-contradiction
+  # 食い違いの相手、対照の2件、焦点の4件が在る。索引の行は、焦点を含めて4行になる。
+  run scaffold_root_gaps "$CASE_DIR/docs/memory" 4 \
+    MEM-202611010000-01-cron-evaluated-in-utc.md MEM-202611010000-02-linter-ci-before-precommit.md \
+    MEM-202611010000-03-cron-next-shows-fire-time.md MEM-202611020000-01-cron-evaluated-in-local-time.md
+  [ -z "$output" ]
+  run node "$SUT" check "$CASE_DIR/docs/memory"
+  [ "$status" -eq 1 ]
+  [ "${#lines[@]}" -eq 1 ]
+  [[ "${lines[0]}" == index.md:index:* ]]
+
+  rm "$CASE_DIR"/docs/memory/records/MEM-202611020000-01-*.md
+  assert_scaffold_root "$CASE_DIR/docs/memory" 3 \
+    MEM-202611010000-01-cron-evaluated-in-utc.md MEM-202611010000-02-linter-ci-before-precommit.md \
+    MEM-202611010000-03-cron-next-shows-fire-time.md
+}
+
+@test "eval の題材: 昇格の2つの根は通り、元の記録の版が得られ、仕込んだ文字列を持つ採点器の全てが同じ字面で見る" {
+  local CASE_DIR="$BATS_TEST_TMPDIR/behavior-promote-confidential"
+  scaffold_case behavior-promote-confidential
+  assert_scaffold_root "$CASE_DIR/docs/memory" 1 MEM-202611010000-01-bom-breaks-header-match.md
+  assert_scaffold_root "$CASE_DIR/global-memory" 1 MEM-202610150000-01-tls-min-version-handshake.md
+  [ -f "$CASE_DIR/global-memory/policies/memory-policy.md" ]
+  run node "$SUT" version "$CASE_DIR/docs/memory" MEM-202611010000-01
+  [ "$status" -eq 0 ]
+  [[ "$output" =~ ^MEM-202611010000-01@[0-9a-f]{7,}$ ]]
+
+  # 仕込んだ文字列を持つ採点器は、どれも題材と同じ字面を持つ。
+  local planted grader source graders
+  source="$CASE_DIR/docs/memory/records/MEM-202611010000-01-bom-breaks-header-match.md"
+  graders="$REPO_ROOT/evals/shared-memory/behavior-promote-confidential/graders"
+  grep -Fq 'kumo-works/hakobune-ledger' "$CASE_DIR/.git/config"
+  for planted in 'hakobune-ledger' 'kumo-works' 'ledger-stg' 'hkb-9f8e7d6c5b4a39281706'; do
+    grep -Fq "$planted" "$source"
+    for grader in pr-body-no-planted report-no-planted; do
+      grep -Fq "$planted" "$graders/$grader.md" || { echo "$grader に無い: $planted" >&2; return 1; }
+    done
+  done
+  for planted in 'ledger-stg' 'hkb-9f8e7d6c5b4a39281706'; do
+    grep -Fq "$planted" "$graders/agent-input-no-source-body.md" || { echo "agent-input-no-source-body に無い: $planted" >&2; return 1; }
+  done
+  for planted in 'hakobune-ledger' 'kumo-works'; do
+    for grader in crosschecker-got-words word-grep-ran; do
+      grep -Fq "$planted" "$graders/$grader.md" || { echo "$grader に無い: $planted" >&2; return 1; }
+    done
+  done
+  # 逆向き: 採点器が持つ、仕込みの形の文字列は、全て題材に在る（採点器の側の書き損じを拾う）。
+  local found=0
+  while IFS= read -r planted; do
+    found=$((found + 1))
+    grep -Fq "$planted" "$source" || { echo "題材に無い文字列を、採点器が持つ: $planted" >&2; return 1; }
+  done < <(grep -ohE 'hakobune-[a-z0-9-]+|kumo-[a-z0-9-]+|ledger-[a-z0-9-]+|hkb-[0-9a-z]+' "$graders"/*.md | sort -u)
+  [ "$found" -eq 4 ]
+}
+
+@test "eval の採点器と題材が字面で照合する5つの確認の文言は、PR の本文の雛形（正本）と一致する" {
+  local body graders scaffold phrase found=0
+  body="$REPO_ROOT/plugins/shared-memory/skills/promote-record/references/pr-body.md"
+  graders="$REPO_ROOT/evals/shared-memory/behavior-promote-confidential/graders"
+  scaffold="$REPO_ROOT/evals/shared-memory/behavior-promote-confidential/scaffold.sh"
+  # 正本は、表の1列目に5つの行を持つ。
+  [ "$(grep -c '^| [^|]*か | … | … | ' "$body")" -eq 5 ]
+  # 採点器の正規表現が持つ「\| <文言> \|」は、全て正本の行である。5つとも、採点器に現れる。
+  while IFS= read -r phrase; do
+    found=$((found + 1))
+    grep -Fq "| $phrase | … | … | " "$body" || { echo "正本に無い文言を、採点器が持つ: $phrase" >&2; return 1; }
+  done < <(grep -ohE '\\\| [^|\\]+ \\\|' "$graders"/*.md | sed -E 's/^\\\| //; s/ \\\|$//' | sort -u)
+  [ "$found" -eq 5 ]
+  [ "$(grep -oE '\\\| [^|\\]+ \\\|' "$graders/pr-body-five-rows.md" | sort -u | wc -l)" -eq 5 ]
+  # 題材の利用規則が名指す2つの確認も、正本の行である。
+  found=0
+  while IFS= read -r phrase; do
+    found=$((found + 1))
+    grep -Fq "| $phrase | … | … | " "$body" || { echo "正本に無い文言を、題材が持つ: $phrase" >&2; return 1; }
+  done < <(grep -F '」の確認は省く。' "$scaffold" | sed -e 's/^- 「//' -e 's/」の確認は省く。$//')
+  [ "$found" -eq 2 ]
+  # 採点器が見る結果の語は、正本が定める結果の形である。
+  grep -Fq '`確かめた: ' "$body"
+  grep -Fq '`省いた: ' "$body"
+  grep -Fq '確かめた' "$graders/pr-body-confidential-confirmed.md"
+  grep -Fq '省いた' "$graders/pr-body-policy-omission-followed.md"
+}
+
+@test "eval の題材: 置き換えの根は通り、旧い記録と無関係の記録を持つ" {
+  local CASE_DIR="$BATS_TEST_TMPDIR/behavior-replace-record"
+  scaffold_case behavior-replace-record
+  assert_scaffold_root "$CASE_DIR/docs/memory" 2 \
+    MEM-202611010000-01-failed-job-retried-three-times.md MEM-202611010000-02-job-log-kept-thirty-days.md
+}
