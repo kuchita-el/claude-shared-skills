@@ -28,6 +28,8 @@ node scripts/memory.mjs version <記憶の根> <識別子> --ref <ref>
 node scripts/memory.mjs adopted <プロジェクト側の記憶の根> <Global Memory の根> --ref <ref>
 ```
 
+`version` と `adopted` の前に、記録が在るリポジトリで既定のブランチを取り直す。検査器は、remote 追跡の ref と `FETCH_HEAD` を最後に取り直した結果と照合し、取り直していない起点を終了コード 2 で拒む。取り直しの手順と照合の範囲は、`references/format.md` の「記録の版」が定める。
+
 ## スキル `propose-records`
 
 - 自動では起動しない。人間か AI が、明示して起動する。タスクのどの時点で候補を確かめるかは、利用先の規則が決める。

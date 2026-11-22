@@ -48,8 +48,15 @@ short() {
 }
 
 # 上流を全履歴で clone して Global Memory の根にする。$1 以降は clone へ足す引数。
+# 版を求める前の取り直し（git fetch origin main）まで行う。clone しただけの checkout は、検査器が拒む。
 clone_global() {
   git clone -q "$@" "file://$UP" "$GM"
+  git -C "$GM" fetch -q origin main
+}
+
+# $1 のリポジトリの remote 追跡の ref（origin/main）を、上流の $2 のコミットへ戻す。取り直した結果（FETCH_HEAD）は変えない。
+rewind_tracking() {
+  git -C "$1" update-ref refs/remotes/origin/main "$(git -C "$UP" rev-parse "$2")"
 }
 
 # 台帳を1件書く。$1 は記録の識別子、$2 は版。
@@ -92,7 +99,9 @@ three_commits() {
   run --separate-stderr node "$SUT" version "$GM" "$B"
   [ "$status" -eq 2 ]
   [ -z "$output" ]
-  [[ "$stderr" == *"--unshallow"* ]]
+  [[ "$stderr" == *"git fetch --deepen=1000 origin main"* ]]
+  # 引数なしの --unshallow は、全履歴の clone で失敗する。どちらの clone でも通る形だけを示す。
+  [[ "$stderr" != *"--unshallow"* ]]
 }
 
 @test "version: 浅い clone でも、履歴を取り直して --ref FETCH_HEAD を指せば正しい版を返す" {
@@ -110,6 +119,8 @@ three_commits() {
   [ "$status" -eq 2 ]
   [ -z "$output" ]
   [[ "$stderr" == *"--ref"* ]]
+  # クラウドの checkout では、取り直しても既定の起点が無いことがある。ネットワークに出ずに作る方法を示す。
+  [[ "$stderr" == *"git remote set-head origin"* ]]
 }
 
 @test "version: 解決できない --ref は exit 2 で止まる" {
@@ -174,10 +185,10 @@ three_commits() {
   done
 }
 
-@test "version: 履歴を取りに行かない（origin が届かない場所を指していても同じ版を返す）" {
+@test "version: 履歴を取りに行かない（取り直した後に上流を消しても、同じ版を返す）" {
   three_commits
   clone_global
-  git -C "$GM" remote set-url origin "file://$BATS_TEST_TMPDIR/no-such-remote"
+  mv "$UP" "$BATS_TEST_TMPDIR/moved"
   run --separate-stderr node "$SUT" version "$GM" "$B"
   [ "$status" -eq 0 ]
   [ "$output" = "$B@$V2" ]
@@ -211,6 +222,324 @@ three_commits() {
   [ "$status" -eq 0 ]
   [ "$output" = "$A@$v1" ]
   [ -z "$stderr" ]
+}
+
+# ---- 起点と、最後に取り直した結果との照合 ----
+
+@test "version: 取り直した後に remote 追跡の ref が古くなると、誤った版を返さず exit 2 で止まり、取り直し方を示す" {
+  three_commits
+  clone_global
+  # 再現: ref だけを、B を直す前（c1）へ戻す。照合が無ければ、誤った版 $B@$V1 が exit 0 で返る。
+  rewind_tracking "$GM" HEAD~2
+  local ref
+  for ref in refs/remotes/origin/main origin/main; do
+    run --separate-stderr node "$SUT" version "$GM" "$B" --ref "$ref"
+    [ "$status" -eq 2 ]
+    [ -z "$output" ]
+    [[ "$stderr" == *"git fetch origin main"* ]]
+  done
+  # --ref を省いたときの refs/remotes/origin/HEAD も、解決した先（origin/main）で照合する。
+  run --separate-stderr node "$SUT" version "$GM" "$B"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"git fetch origin main"* ]]
+}
+
+@test "version: 古い ref に無い、マージ済みの記録は、「無い」（exit 1）ではなく exit 2 で止まる" {
+  three_commits
+  clone_global
+  record "$UP" "$C" third
+  commit "$UP" c4
+  git -C "$GM" fetch -q origin main
+  rewind_tracking "$GM" HEAD~1
+  run --separate-stderr node "$SUT" version "$GM" "$C" --ref refs/remotes/origin/main
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" != *"の記録が無い"* ]]
+}
+
+@test "version: 記録が変わっていなくても、起点が古ければ exit 2 で止まる（結果ではなく起点で判定する）" {
+  three_commits
+  clone_global
+  : >"$UP/later.txt"
+  commit "$UP" c4
+  git -C "$GM" fetch -q origin main
+  rewind_tracking "$GM" HEAD~1
+  # A は c1 から変わっていないので、古い起点から数えても版は同じ $A@$V1 になる。それでも止める。
+  run --separate-stderr node "$SUT" version "$GM" "$A" --ref refs/remotes/origin/main
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+}
+
+@test "version: clone しただけで取り直していない checkout は、--ref を省いても exit 2 で止まる" {
+  three_commits
+  git clone -q "file://$UP" "$GM"
+  run --separate-stderr node "$SUT" version "$GM" "$B"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"FETCH_HEAD"* ]]
+  [[ "$stderr" == *"git fetch origin main"* ]]
+}
+
+@test "version: 別の枝だけを取り直した後は、既定のブランチの ref を起点にすると exit 2 で止まる" {
+  three_commits
+  git -C "$UP" branch topic HEAD~1
+  clone_global
+  git -C "$GM" fetch -q origin topic
+  run --separate-stderr node "$SUT" version "$GM" "$B"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  # 取り直した枝の ref なら通る。
+  run --separate-stderr node "$SUT" version "$GM" "$B" --ref refs/remotes/origin/topic
+  [ "$status" -eq 0 ]
+  [ "$output" = "$B@$V2" ]
+}
+
+@test "version: 複数の枝を取り直した FETCH_HEAD を --ref FETCH_HEAD で指すと exit 2 で止まり、remote 追跡の ref なら通る" {
+  three_commits
+  git -C "$UP" branch topic HEAD~2
+  clone_global
+  # 引数なしの fetch は、全ての枝を FETCH_HEAD へ書く。FETCH_HEAD は、どの枝を指すかが設定に左右される。
+  git -C "$GM" fetch -q
+  [ "$(grep -c "branch '" "$(git -C "$GM" rev-parse --absolute-git-dir)/FETCH_HEAD")" -eq 2 ]
+  run --separate-stderr node "$SUT" version "$GM" "$B" --ref FETCH_HEAD
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"FETCH_HEAD"* ]]
+  local ref
+  for ref in refs/remotes/origin/main ""; do
+    # shellcheck disable=SC2086
+    run --separate-stderr node "$SUT" version "$GM" "$B" ${ref:+--ref "$ref"}
+    [ "$status" -eq 0 ]
+    [ "$output" = "$B@$V2" ]
+  done
+  run --separate-stderr node "$SUT" version "$GM" "$B" --ref refs/remotes/origin/topic
+  [ "$status" -eq 0 ]
+  [ "$output" = "$B@$V1" ]
+}
+
+@test "version: 上流が進んだ後に git fetch origin main で取り直せば、省略時も remote 追跡の ref も新しい版を返す" {
+  three_commits
+  clone_global
+  sed -i 's/^本文を直した。$/もう一度直した。/' "$UP/records/$B-second.md"
+  commit "$UP" c4
+  local v4
+  v4=$(short "$UP")
+  git -C "$GM" fetch -q origin main
+  local ref
+  for ref in refs/remotes/origin/main origin/main ""; do
+    # shellcheck disable=SC2086
+    run --separate-stderr node "$SUT" version "$GM" "$B" ${ref:+--ref "$ref"}
+    [ "$status" -eq 0 ]
+    [ "$output" = "$B@$v4" ]
+  done
+}
+
+@test "version: ローカルのブランチを起点に渡すと、取り直した結果と照合しない" {
+  three_commits
+  git clone -q "file://$UP" "$GM"
+  # 取り直していない（FETCH_HEAD が無い）checkout でも、ローカルのブランチ main なら通る。
+  run --separate-stderr node "$SUT" version "$GM" "$B" --ref main
+  [ "$status" -eq 0 ]
+  [ "$output" = "$B@$V2" ]
+}
+
+@test "version: linked worktree では、その worktree の FETCH_HEAD と照合する" {
+  three_commits
+  clone_global
+  local wt="$BATS_TEST_TMPDIR/global-wt"
+  git -C "$GM" worktree add -q "$wt" -b work
+  # 元の checkout で取り直した結果は、linked worktree の照合に数えない。
+  run --separate-stderr node "$SUT" version "$wt" "$B"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  git -C "$wt" fetch -q origin main
+  run --separate-stderr node "$SUT" version "$wt" "$B"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$B@$V2" ]
+}
+
+@test "version: 別の remote から同じ名前の枝を取り直しただけでは、古い remote 追跡の ref を通さない" {
+  three_commits
+  local fork="$BATS_TEST_TMPDIR/fork"
+  git clone -q "file://$UP" "$fork"
+  git clone -q "file://$fork" "$GM"
+  git -C "$GM" remote add upstream "file://$UP"
+  git -C "$GM" fetch -q origin main
+  git -C "$GM" fetch -q upstream main
+  # fork の main だけを進め、upstream の main だけを取り直す。FETCH_HEAD は upstream の main の1行になる。
+  sed -i 's/^本文を直した。$/fork で直した。/' "$fork/records/$B-second.md"
+  commit "$fork" fork
+  git -C "$GM" fetch -q upstream main
+  [ "$(git -C "$GM" rev-parse refs/remotes/origin/main)" = "$(git -C "$UP" rev-parse HEAD)" ]
+  run --separate-stderr node "$SUT" version "$GM" "$B" --ref refs/remotes/origin/main
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"git fetch origin main"* ]]
+  git -C "$GM" fetch -q origin main
+  run --separate-stderr node "$SUT" version "$GM" "$B" --ref refs/remotes/origin/main
+  [ "$status" -eq 0 ]
+  [ "$output" = "$B@$(short "$fork")" ]
+  # upstream の ref は、upstream から取り直した行と照合する。
+  git -C "$GM" fetch -q upstream main
+  run --separate-stderr node "$SUT" version "$GM" "$B" --ref refs/remotes/upstream/main
+  [ "$status" -eq 0 ]
+  [ "$output" = "$B@$V2" ]
+}
+
+@test "version: 取り直した後に origin の URL を別の場所へ変えると exit 2 で止まり、新しい場所から取り直せば通る" {
+  three_commits
+  clone_global
+  local other="$BATS_TEST_TMPDIR/other.git"
+  git clone -q --bare "file://$UP" "$other"
+  git -C "$GM" remote set-url origin "file://$other"
+  run --separate-stderr node "$SUT" version "$GM" "$B"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  git -C "$GM" fetch -q origin main
+  run --separate-stderr node "$SUT" version "$GM" "$B"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$B@$V2" ]
+}
+
+@test "version: URL は、末尾の / と .git の有無の違いを除いて比べる" {
+  three_commits
+  local bare="$BATS_TEST_TMPDIR/bare"
+  git clone -q --bare "file://$UP" "$bare.git"
+  # git は、FETCH_HEAD へ書く URL から末尾の / と .git を落とす。設定の URL は、そのまま残る。
+  git clone -q "file://$bare.git/" "$GM"
+  git -C "$GM" fetch -q origin main
+  [[ "$(cat "$GM/.git/FETCH_HEAD")" == *" of file://$bare" ]]
+  local url
+  for url in "file://$bare.git/" "file://$bare.git" "file://$bare" "file://$bare/"; do
+    git -C "$GM" remote set-url origin "$url"
+    run --separate-stderr node "$SUT" version "$GM" "$B"
+    [ "$status" -eq 0 ]
+    [ "$output" = "$B@$V2" ]
+  done
+  # 作業ツリーを持つリポジトリの .git を指す URL では、.git を落とした後に / が残る。
+  rm -rf "$GM"
+  git clone -q "file://$UP/.git" "$GM"
+  git -C "$GM" fetch -q origin main
+  [[ "$(cat "$GM/.git/FETCH_HEAD")" == *" of file://$UP/" ]]
+  run --separate-stderr node "$SUT" version "$GM" "$B"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$B@$V2" ]
+}
+
+@test "version: insteadOf で書き換える remote は、書き換えた後の URL で比べる" {
+  three_commits
+  git -c "url.file://$BATS_TEST_TMPDIR/.insteadOf=mirror:" clone -q mirror:upstream "$GM"
+  git -C "$GM" config "url.file://$BATS_TEST_TMPDIR/.insteadOf" mirror:
+  git -C "$GM" fetch -q origin main
+  [ "$(git -C "$GM" config remote.origin.url)" = mirror:upstream ]
+  run --separate-stderr node "$SUT" version "$GM" "$B"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$B@$V2" ]
+}
+
+@test "version: remote の URL の認証情報は、比べる前に除く" {
+  three_commits
+  clone_global
+  # git は、FETCH_HEAD へ書く URL から認証情報を除く。届かない URL は取り直せないので、取り直した後と同じ行を書く。
+  local fetch_head commit
+  fetch_head="$(git -C "$GM" rev-parse --absolute-git-dir)/FETCH_HEAD"
+  commit=$(git -C "$UP" rev-parse HEAD)
+  local pair
+  for pair in "https://user:secret@example.invalid/team/repo.git|https://example.invalid/team/repo" \
+    "git@example.invalid:team/repo.git|example.invalid:team/repo"; do
+    git -C "$GM" remote set-url origin "${pair%%|*}"
+    printf '%s\t\tbranch %s of %s\n' "$commit" "'main'" "${pair#*|}" >"$fetch_head"
+    run --separate-stderr node "$SUT" version "$GM" "$B"
+    [ "$status" -eq 0 ]
+    [ "$output" = "$B@$V2" ]
+  done
+  # 認証情報を除いても、ホストが違えば通さない。
+  printf '%s\t\tbranch %s of %s\n' "$commit" "'main'" "https://example.invalid/other/repo" >"$fetch_head"
+  git -C "$GM" remote set-url origin "https://user:secret@example.invalid/team/repo.git"
+  run --separate-stderr node "$SUT" version "$GM" "$B"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+}
+
+@test "version: / を含む名前の remote は、名前の全体で決める（最初の / で切らない）" {
+  three_commits
+  local fork="$BATS_TEST_TMPDIR/fork"
+  git clone -q "file://$UP" "$fork"
+  sed -i 's/^本文を直した。$/fork で直した。/' "$fork/records/$B-second.md"
+  commit "$fork" fork
+  git init -q -b main "$GM"
+  mkdir "$GM/records"
+  # 新しい git は、互いに接頭辞になる remote の名前（team と team/fork）を作らせない。team は持たせない。
+  git -C "$GM" remote add team/fork "file://$fork"
+  git -C "$GM" fetch -q team/fork main
+  # refs/remotes/team/fork/main は、remote team の枝 fork/main ではなく、remote team/fork の枝 main である。
+  run --separate-stderr node "$SUT" version "$GM" "$B" --ref refs/remotes/team/fork/main
+  [ "$status" -eq 0 ]
+  [ "$output" = "$B@$(short "$fork")" ]
+}
+
+@test "version: refspec の外の枝は、remote 追跡の ref が作られないので、FETCH_HEAD を起点にするよう案内する" {
+  three_commits
+  git -C "$UP" branch topic HEAD~2
+  git clone -q --single-branch --branch topic "file://$UP" "$GM"
+  run --separate-stderr node "$SUT" version "$GM" "$B" --ref refs/remotes/origin/main
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"git fetch origin main で取り直してから、--ref FETCH_HEAD を渡す"* ]]
+  git -C "$GM" fetch -q origin main
+  ! git -C "$GM" rev-parse --verify -q refs/remotes/origin/main
+  run --separate-stderr node "$SUT" version "$GM" "$B" --ref refs/remotes/origin/main
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"そのまま --ref FETCH_HEAD で実行し直せる"* ]]
+  run --separate-stderr node "$SUT" version "$GM" "$B" --ref FETCH_HEAD
+  [ "$status" -eq 0 ]
+  [ "$output" = "$B@$V2" ]
+}
+
+@test "version: refspec の外に残った古い remote 追跡の ref には、取り直しではなく FETCH_HEAD を案内する" {
+  three_commits
+  git -C "$UP" branch topic HEAD~2
+  git clone -q --single-branch --branch topic "file://$UP" "$GM"
+  git -C "$GM" update-ref refs/remotes/origin/main "$(git -C "$UP" rev-parse HEAD~2)"
+  git -C "$GM" fetch -q origin main
+  # 取り直しても、refspec の外の ref は進まない。
+  [ "$(git -C "$GM" rev-parse refs/remotes/origin/main)" = "$(git -C "$UP" rev-parse HEAD~2)" ]
+  run --separate-stderr node "$SUT" version "$GM" "$B" --ref refs/remotes/origin/main
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"そのまま --ref FETCH_HEAD で実行し直せる"* ]]
+  [[ "$stderr" != *"取り直してから実行する"* ]]
+}
+
+@test "version: シンボリックでない refs/remotes/origin/HEAD は exit 2 で止まり、案内どおり set-head すれば通る" {
+  three_commits
+  clone_global
+  git -C "$GM" symbolic-ref --delete refs/remotes/origin/HEAD
+  git -C "$GM" update-ref refs/remotes/origin/HEAD "$(git -C "$UP" rev-parse HEAD)"
+  run --separate-stderr node "$SUT" version "$GM" "$B"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"git remote set-head origin"* ]]
+  git -C "$GM" remote set-head origin main
+  run --separate-stderr node "$SUT" version "$GM" "$B"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$B@$V2" ]
+}
+
+@test "adopted: Global Memory の remote 追跡の ref が取り直した結果より古いと、何も出さずに exit 2 で止まる" {
+  three_commits
+  clone_global
+  adopt "$A" "$V1"
+  rewind_tracking "$GM" HEAD~1
+  run --separate-stderr node "$SUT" adopted "$PM" "$GM"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"git fetch origin main"* ]]
+  run --separate-stderr node "$SUT" adopted "$PM" "$GM" --ref refs/remotes/origin/main
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
 }
 
 # ---- adopted ----
@@ -363,7 +692,9 @@ three_commits() {
   run --separate-stderr node "$SUT" adopted "$PM" "$GM"
   [ "$status" -eq 2 ]
   [ -z "$output" ]
-  [[ "$stderr" == *"--unshallow"* ]]
+  [[ "$stderr" == *"git fetch --deepen=1000 origin main"* ]]
+  # 引数なしの --unshallow は、全履歴の clone で失敗する。どちらの clone でも通る形だけを示す。
+  [[ "$stderr" != *"--unshallow"* ]]
 }
 
 @test "adopted: 形式の違反が在る台帳は check と同じ行を出して exit 1 とし、ほかの件は判定する" {
