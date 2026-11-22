@@ -245,10 +245,10 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
   - `behavior-propose-records`: `index-drops-superseded`（作り直した索引の中身）
   - `behavior-propose-records`: `check-after-draft`（下書きの後の検査）
   - `behavior-propose-records`: `check-result-reported`（検査の結果の報告）
-- `behavior-replace-record` の `index-not-handwritten`（索引を手で書いていない）は、外さずに残してある。手順どおりに止まれば合格し、索引を手で書いて進めば不合格になるので、向きが正しく、この実行系でも測れる
+- `behavior-replace-record` の `index-not-handwritten` と `index-not-edited` は、外さずに残してある。前者は索引への `Write`、後者は索引への `Edit` が無いことを見る。手順どおりに止まれば両方が合格し、索引を手で書いて進めばどちらかが不合格になるので、向きが正しく、この実行系でも測れる
 - `index --write` の終了コード 2 は、`Exit code 2` と EROFS の標準エラーの形で、エージェントに見える。それでも、止まる回と、サンドボックスの不具合とみて索引を `Write` で書いて先へ進む回がある
 - `shared-memory` の `behavior-promote-confidential` では、手順の `mktemp -d` が失敗した。原因は上の `TMPDIR` の EROFS で、計測の3回とも失敗した。エージェントは、`Write` で別の場所に置き場を作って回避した。作業ツリーの中の追跡外に作った回があり、手順の「どちらのリポジトリの追跡下にもない」から外れる。置き場の後に来る採点器は、この手順に無い回避を通ったときだけ合格する。`new-record-written`・`check-ran-on-destination`・`sources-form`・`pr-body-*` が当たる。`mktemp -d` が失敗したときの扱いを、手順はまだ定めていない。扱いは別の Issue で決める
-- 成功した Bash のコマンドが、終了コード 1 と表示されることがある（標準出力は正しい）。いまの採点器は終了コードを見ないので、採点はこの表示に左右されない。作業ディレクトリの EROFS とは別で、上の `TMPDIR` の EROFS による現象である。root で動く Claude Code on the web のコンテナで観測した。Claude Code 2.1.330 の実装を読むと、`cwd-<id>` は作業ディレクトリではない。Bash の実行後に現在のディレクトリを書き込む追跡用のファイルで、サンドボックスの一時ディレクトリに置かれる。出力の末尾に `cwd-<id>: Read-only file system` の行が出るので、終了コード 1 はこのファイルを書けないためである。手順が終了コードで分岐するかは、分岐の後の道具の呼び出しで測る。たとえば、終了コード 2 で止まったかは、`index-not-handwritten` が索引への `Write` の有無で見る
+- 成功した Bash のコマンドが、終了コード 1 と表示されることがある（標準出力は正しい）。いまの採点器は終了コードを見ないので、採点はこの表示に左右されない。作業ディレクトリの EROFS とは別で、上の `TMPDIR` の EROFS による現象である。root で動く Claude Code on the web のコンテナで観測した。Claude Code 2.1.330 の実装を読むと、`cwd-<id>` は作業ディレクトリではない。Bash の実行後に現在のディレクトリを書き込む追跡用のファイルで、サンドボックスの一時ディレクトリに置かれる。出力の末尾に `cwd-<id>: Read-only file system` の行が出るので、終了コード 1 はこのファイルを書けないためである。手順が終了コードで分岐するかは、分岐の後の道具の呼び出しで測る。たとえば、終了コード 2 で止まったかは、`index-not-handwritten` と `index-not-edited` が索引への `Write`・`Edit` の有無で見る
 - eval ケースの `prompt.md` の `allowed_tools` は、子セッションが `Glob`・`Grep` を持つかどうかを決めない。外すには、`claude plugin eval` へ `--disallow-tools Glob Grep` を渡す。`scripts/run-plugin-eval.sh` は、引数をそのまま `claude plugin eval` へ渡す
 - 付与の過不足は、結果の trace（`--keep-temp` で残る `trace.jsonl`）の system 行が持つ `tools` の一覧で確かめられる
 - `Bash` を付与する挙動ケースは、`adr`・`writing`・`growth`・`shared-memory` に在る。これらは、`~/.docker` 内に symlink があると eval 側が起動を拒否する。`~/.docker` が在る場合だけ、実行の直前に退避し、終了後に戻す（**この退避はスクリプトが自動化しない。手順として実行者が行う**）
