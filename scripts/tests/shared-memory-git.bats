@@ -462,7 +462,7 @@ three_commits() {
   [ -z "$output" ]
 }
 
-@test "version: remote の名前は、設定に在る remote のうち最も長く一致するもので決める" {
+@test "version: / を含む名前の remote は、名前の全体で決める（最初の / で切らない）" {
   three_commits
   local fork="$BATS_TEST_TMPDIR/fork"
   git clone -q "file://$UP" "$fork"
@@ -470,12 +470,11 @@ three_commits() {
   commit "$fork" fork
   git init -q -b main "$GM"
   mkdir "$GM/records"
-  git -C "$GM" remote add up "file://$UP"
-  git -C "$GM" remote add up/x "file://$fork"
-  git -C "$GM" fetch -q up main
-  git -C "$GM" fetch -q up/x main
-  # refs/remotes/up/x/main は、remote up の枝 x/main ではなく、remote up/x の枝 main である。
-  run --separate-stderr node "$SUT" version "$GM" "$B" --ref refs/remotes/up/x/main
+  # 新しい git は、互いに接頭辞になる remote の名前（team と team/fork）を作らせない。team は持たせない。
+  git -C "$GM" remote add team/fork "file://$fork"
+  git -C "$GM" fetch -q team/fork main
+  # refs/remotes/team/fork/main は、remote team の枝 fork/main ではなく、remote team/fork の枝 main である。
+  run --separate-stderr node "$SUT" version "$GM" "$B" --ref refs/remotes/team/fork/main
   [ "$status" -eq 0 ]
   [ "$output" = "$B@$(short "$fork")" ]
 }
