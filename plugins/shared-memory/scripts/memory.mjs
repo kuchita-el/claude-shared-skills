@@ -37,8 +37,8 @@ const ADOPTED_FILE = /^(MEM-[0-9]{12}-[0-9]{2})\.md$/;
 const DEFAULT_REF = 'refs/remotes/origin/HEAD';
 const FETCH_HEAD = 'FETCH_HEAD';
 const TRACKING = 'refs/remotes/';
-// FETCH_HEAD の、枝を取り直した行。2列目は、空か not-for-merge である。3列目の URL は照合に使わない。
-const FETCHED_BRANCH = /^([0-9a-f]{40,64})\t(?:not-for-merge)?\tbranch '(.*)' of /;
+// FETCH_HEAD の、枝を取り直した行。2列目は、空か not-for-merge である。3列目は「branch '<枝>' of <取り直した URL>」。
+const FETCHED_BRANCH = /^([0-9a-f]{40,64})\t(?:not-for-merge)?\tbranch '(.*)' of (.*)$/;
 // git へ渡さない環境変数。継承すると -C より優先され、根とは別のリポジトリを読む。git のフックの中では、これらが立っている。
 const INHERITED_GIT = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE'];
 const GIT_ENV = Object.fromEntries(Object.entries(process.env).filter(([name]) => !INHERITED_GIT.includes(name)));
@@ -250,44 +250,107 @@ function gitOutput(root, args) {
 /**
  * 最後に取り直した結果（その worktree の FETCH_HEAD）から、枝を取り直した行を読む。
  * @param {string} root
- * @returns {{ commit: string, branch: string }[]} FETCH_HEAD が無いときは空
+ * @returns {{ commit: string, branch: string, url: string }[]} FETCH_HEAD が無いときは空
  */
 function fetchedBranches(root) {
   const path = resolve(root, gitOutput(root, ['rev-parse', '--git-path', FETCH_HEAD]).trim());
   if (!existsSync(path)) return [];
   return readFileSync(path, 'utf8').split('\n').map((line) => line.match(FETCHED_BRANCH)).filter((matched) => matched !== null)
-    .map(([, commit, branch]) => ({ commit, branch }));
+    .map(([, commit, branch, url]) => ({ commit, branch, url }));
+}
+
+/**
+ * URL を比べられる形にする。認証情報（user:password@）と、末尾の / と .git を除く。
+ * git は、FETCH_HEAD へ書く URL を同じ形に整える。remote の設定の URL は、整えていない。
+ * @param {string} url
+ * @returns {string}
+ */
+function comparableUrl(url) {
+  let text = url.trim();
+  const at = text.indexOf('@');
+  const scheme = text.indexOf('://');
+  if (at !== -1 && scheme !== -1) {
+    const slash = text.indexOf('/', scheme + 3);
+    if (slash === -1 || at < slash) text = text.slice(0, scheme + 3) + text.slice(at + 1);
+  } else if (at !== -1 && !text.slice(0, at).includes('/') && text.slice(at + 1).includes(':')) {
+    // user@host:path の形（scp の書き方）。
+    text = text.slice(at + 1);
+  }
+  return text.replace(/\/+$/, '').replace(/\.git$/, '').replace(/\/+$/, '');
 }
 
 /**
  * remote 追跡の ref の完全な名前を、remote と枝に分ける。remote の名前は、設定に在る remote のうち最も長く一致するものとする。
  * @param {string} root
  * @param {string} fullName refs/remotes/ で始まる名前
- * @returns {{ remote: string, branch: string }}
+ * @returns {{ remote: string, branch: string, fullName: string }}
  */
 function trackedBranch(root, fullName) {
   const rest = fullName.slice(TRACKING.length);
   const remotes = gitOutput(root, ['remote']).split('\n').filter((name) => name !== '' && rest.startsWith(`${name}/`));
   const remote = remotes.sort((a, b) => b.length - a.length)[0] ?? rest.split('/')[0];
-  return { remote, branch: rest.slice(remote.length + 1) };
+  return { remote, branch: rest.slice(remote.length + 1), fullName };
+}
+
+/**
+ * remote の fetch の refspec が、その枝を、その remote 追跡の ref へ写すか。写さなければ、取り直しても ref は進まない。
+ * @param {string} root
+ * @param {{ remote: string, branch: string, fullName: string }} tracked
+ * @returns {boolean}
+ */
+function mapsToTracking(root, { remote, branch, fullName }) {
+  const found = git(root, ['config', '--get-all', `remote.${remote}.fetch`]);
+  if (found.status > 1) throw new Unusable(`git config が失敗した（exit ${found.status}）: ${found.stderr.trim()}`);
+  const source = `refs/heads/${branch}`;
+  return found.stdout.split('\n').map((line) => line.trim().replace(/^\+/, '')).some((spec) => {
+    const [from, to] = spec.split(':');
+    if (to === undefined || from.startsWith('^')) return false;
+    if (!from.includes('*')) return from === source && to === fullName;
+    const [head, tail] = from.split('*');
+    if (source.length < head.length + tail.length || !source.startsWith(head) || !source.endsWith(tail)) return false;
+    return to.replace('*', source.slice(head.length, source.length - tail.length)) === fullName;
+  });
+}
+
+/**
+ * refspec の外の枝で、remote 追跡の ref が進まないときの案内。
+ * FETCH_HEAD が、その remote のその枝を取り直した1行だけを持つときに限り、そのまま FETCH_HEAD を起点にできると述べる。
+ * @param {string} root
+ * @param {{ remote: string, branch: string, fullName: string }} tracked
+ * @returns {string}
+ */
+function outsideRefspec(root, tracked) {
+  const { remote, branch, fullName } = tracked;
+  const url = comparableUrl(gitOutput(root, ['ls-remote', '--get-url', remote]));
+  const lines = fetchedBranches(root);
+  const reason = `remote.${remote}.fetch が refs/heads/${branch} を ${fullName} へ写さないので、取り直してもこの ref は進まない`;
+  if (lines.length === 1 && lines[0].branch === branch && comparableUrl(lines[0].url) === url) {
+    return `${reason}。そのまま --ref FETCH_HEAD で実行し直せる（FETCH_HEAD は、${remote} の枝 ${branch} を取り直した1行だけを持つ）`;
+  }
+  return `${reason}。git fetch ${remote} ${branch} で取り直してから、--ref FETCH_HEAD を渡す`;
 }
 
 /**
  * 起点が、最後に取り直した結果と食い違わないことを確かめる。照合するのは、remote 追跡の ref と FETCH_HEAD だけである。
- * ローカルのブランチ・タグ・コミットは、照合しない。URL は照合しない。クラウドの checkout では、取り直した URL が remote の URL と違うことがある。
+ * remote 追跡の ref は、FETCH_HEAD のうち、同じ枝を同じ remote の URL から取り直した行と照合する。別の remote の同じ名前の枝の行では通さない。
+ * ローカルのブランチ・タグ・コミットは、照合しない。
  * @param {string} root
  * @param {string} name 渡された起点
- * @param {{ remote: string, branch: string } | undefined} tracked 起点が remote 追跡の ref なら、その remote と枝
+ * @param {{ remote: string, branch: string, fullName: string } | undefined} tracked 起点が remote 追跡の ref なら、その remote と枝
  * @param {string} commit 起点のコミット
  */
 function requireFetched(root, name, tracked, commit) {
   if (tracked !== undefined) {
     const { remote, branch } = tracked;
-    const fetch = `git fetch ${remote} ${branch} で取り直してから実行する`;
-    const lines = fetchedBranches(root).filter((line) => line.branch === branch);
-    if (lines.length === 0) throw new Unusable(`起点 ${name} の枝 ${branch} を取り直した記録が、FETCH_HEAD に無い。${fetch}`);
+    if (branch === 'HEAD') {
+      throw new Unusable(`起点 ${name} が枝を指していない（シンボリックな ref でない）。git remote set-head ${remote} <既定のブランチ> で枝を指させるか、--ref で起点を指す`);
+    }
+    const url = comparableUrl(gitOutput(root, ['ls-remote', '--get-url', remote]));
+    const advice = mapsToTracking(root, tracked) ? `git fetch ${remote} ${branch} で取り直してから実行する` : outsideRefspec(root, tracked);
+    const lines = fetchedBranches(root).filter((line) => line.branch === branch && comparableUrl(line.url) === url);
+    if (lines.length === 0) throw new Unusable(`起点 ${name} の枝 ${branch} を ${remote} から取り直した記録が、FETCH_HEAD に無い。${advice}`);
     if (!lines.some((line) => line.commit === commit)) {
-      throw new Unusable(`起点 ${name} が、最後に取り直した結果（FETCH_HEAD）と食い違う。${fetch}`);
+      throw new Unusable(`起点 ${name} が、最後に取り直した結果（FETCH_HEAD）と食い違う。${advice}`);
     }
     return;
   }
@@ -296,6 +359,22 @@ function requireFetched(root, name, tracked, commit) {
   const fetch = '既定のブランチだけを git fetch <remote> <既定のブランチ> で取り直してから実行する';
   if (lines.length !== 1) throw new Unusable(`FETCH_HEAD が、枝を取り直した行を1つに決められない（${lines.length}行）。${fetch}`);
   if (lines[0].commit !== commit) throw new Unusable(`FETCH_HEAD の先頭が、枝を取り直した行と違う。${fetch}`);
+}
+
+/**
+ * 解決できない起点が、refspec の外の枝の remote 追跡の ref なら、その案内を返す。そうでなければ空文字列。
+ * @param {string} root
+ * @param {string} ref
+ * @returns {string}
+ */
+function unresolvedTracking(root, ref) {
+  const fullName = ref.startsWith(TRACKING) ? ref : `${TRACKING}${ref}`;
+  const rest = fullName.slice(TRACKING.length);
+  const known = gitOutput(root, ['remote']).split('\n').some((name) => name !== '' && rest.startsWith(`${name}/`));
+  if (!known) return '';
+  const tracked = trackedBranch(root, fullName);
+  if (tracked.branch === '' || mapsToTracking(root, tracked)) return '';
+  return `。${outsideRefspec(root, tracked)}`;
 }
 
 /**
@@ -320,8 +399,10 @@ function startingCommit(root, ref) {
   if (shallow !== 'false') throw new Unusable(`履歴が浅いかどうかを git が答えない。git を新しくする: ${shallow}`);
   const resolved = git(root, ['rev-parse', '--verify', '--quiet', `${name}^{commit}`]);
   if (resolved.status !== 0) {
-    if (ref === undefined) throw new Unusable(`既定のブランチを決められない（${DEFAULT_REF} が無い）。--ref で起点を指すか、git remote set-head origin <既定のブランチ> で作る`);
-    throw new Unusable(`起点の ref を解決できない: ${ref}`);
+    if (ref === undefined) {
+      throw new Unusable(`既定のブランチを決められない（${DEFAULT_REF} が無い）。--ref で起点を指す（取り直した直後の FETCH_HEAD か、remote 追跡の ref）。remote 追跡の ref が在れば、git remote set-head origin <既定のブランチ> で作ってもよい`);
+    }
+    throw new Unusable(`起点の ref を解決できない: ${ref}${unresolvedTracking(root, ref)}`);
   }
   const commit = resolved.stdout.trim();
   requireFetched(root, name, tracked, commit);

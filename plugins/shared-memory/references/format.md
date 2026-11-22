@@ -116,7 +116,7 @@ updated: 2026-11-14
 MEM-202611141215-01@a1c5dc1
 ```
 
-版は、検査器の `version` で得る。得る前に、記録が在るリポジトリで、既定のブランチを取り直す。次の `origin` と `main` は、そのリポジトリの remote と既定のブランチの名前に置き換える。
+版は、検査器の `version` で得る。得る前に、記録が在るリポジトリで、既定のブランチを取り直す。次の `origin` と `main` は、そのリポジトリの remote と既定のブランチの名前に置き換える。名前は、その根の利用規則か、プロジェクトの指示ファイルが名指す。`scripts/memory.mjs` は、このプラグインの根からの相対パスである。
 
 ```bash
 git fetch --deepen=1000 origin main
@@ -126,11 +126,14 @@ node scripts/memory.mjs version <記憶の根> <識別子> --ref FETCH_HEAD
 - 省略形は7桁である。7桁で一意にならないときは、git が伸ばす。
 - 取り直しには `--deepen` を使う。全履歴の clone でも、浅い clone でも通る。`--unshallow` は、全履歴の clone では失敗する。使うなら、先に `git rev-parse --is-shallow-repository` が `true` を返すことを確かめ、`origin main` を付ける。
 - 取り直しが失敗したら、版を得ない。検査器が版を返しても、確定した版として扱わない。前に取り直した結果が残っていると、検査器は古い起点から版を返すためである。
-- 起点の ref は、`--ref` で指す。取り直した直後の `FETCH_HEAD` か、取り直した枝の remote 追跡の ref（`refs/remotes/origin/main` など）を指す。取り直した後なら、どちらも同じコミットを指す。
-- `--ref` を省くと、`refs/remotes/origin/HEAD` を使う。clone のときに git が記録する、remote の既定のブランチである。clone の仕方によっては無い。無いときは、`--ref` で起点を指すか、`git remote set-head origin main` で作る。この形は、ネットワークへ出ない。
+- 起点の ref は、`--ref` で指す。取り直した直後の `FETCH_HEAD` か、取り直した枝の remote 追跡の ref（`refs/remotes/origin/main` など）を指す。
+- 取り直した枝が `remote.<remote>.fetch` の refspec に含まれていれば、取り直した後は、どちらも同じコミットを指す。含まれていなければ、remote 追跡の ref は作られないか、進まない（`--single-branch` の clone など）。そのときは `FETCH_HEAD` を指す。
+- `--ref` を省くと、`refs/remotes/origin/HEAD` を使う。clone のときに git が記録する、remote の既定のブランチである。clone の仕方によっては無い。無いときは、`--ref` で起点を指す。remote 追跡の ref が在れば、`git remote set-head origin main` で作ってもよい。この形は、ネットワークへ出ない。
 - 検査器は、起点を最後に取り直した結果（その worktree の `FETCH_HEAD`）と照合する。食い違えば、版を返さずに終了コード 2 で止まり、取り直し方を示す。
-  - remote 追跡の ref は、省いたときの既定も含めて、照合する。`FETCH_HEAD` に同じ枝を取り直した行が在り、その行のコミットが起点と一致するときだけ通す。行が無いときも止まる。clone しただけで取り直していない checkout が、これに当たる。
-  - 照合は枝の名前で行い、URL では行わない。取り直した URL が、remote の URL と一致しない checkout があるためである。
+  - remote 追跡の ref は、省いたときの既定も含めて、照合する。`FETCH_HEAD` に、同じ枝をその remote の URL から取り直した行が在り、その行のコミットが起点と一致するときだけ通す。行が無いときも止まる。clone しただけで取り直していない checkout と、別の remote から同じ名前の枝を取り直しただけの checkout が、これに当たる。
+  - URL は、`git ls-remote --get-url <remote>` が返す URL（insteadOf を解いたもの）と比べる。比べる前に、両方から認証情報と末尾の `/`・`.git` を除く。git は、`FETCH_HEAD` へ書く URL を、この形に整えるためである。
+  - 枝が refspec の外なら、`FETCH_HEAD` を起点にするよう案内する。`FETCH_HEAD` が、その remote のその枝を取り直した1行だけを持つときは、「そのまま `--ref FETCH_HEAD` で実行し直せる」と述べる。
+  - `refs/remotes/origin/HEAD` が、枝を指すシンボリックな ref でないときは止まり、`git remote set-head` を案内する。
   - `FETCH_HEAD` を起点に渡したときは、枝を取り直した行がちょうど1つのときだけ通す。引数なしの `git fetch` は全ての枝の行を書き、`FETCH_HEAD` がどの枝を指すかが設定に左右されるためである。
   - ローカルのブランチ・タグ・コミットを起点に渡したときは、照合しない。それが既定のブランチを指すことは、渡す側が責任を持つ。
 - 照合で分かるのは、起点が最後に取り直した結果と食い違わないことまでである。取り直した後に上流が進み、ref と `FETCH_HEAD` が揃って古くなった状態は、ネットワークへ出ずには見分けられない。版を求める直前に取り直すのは、そのためである。
