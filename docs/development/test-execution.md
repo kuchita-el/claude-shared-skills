@@ -224,7 +224,8 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
   ```bash
   --allow-tools Write Edit 'Bash(node *scripts/memory.mjs*)' 'Bash(git rev-parse*)' 'Bash(git status*)' \
     'Bash(git log*)' 'Bash(git diff*)' 'Bash(git -C * log -1*)' 'Bash(git remote get-url *)' 'Bash(date -u*)' \
-    'Bash(grep -i -F *)'
+    'Bash(grep -i -F *)' 'Bash(git -C * remote get-url *)' 'Bash(git -C * rev-parse --verify *)' \
+    'Bash(git -C * rev-parse --show-toplevel*)' 'Bash(mktemp -d*)'
   ```
 
 - `tool_used` の採点器で「1回も呼ばない」を見るときは、`min: 0` と `max: 0` の両方を書く。`max: 0` だけでは、下限が 1 のままになり、常に不合格になる
