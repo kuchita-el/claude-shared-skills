@@ -239,8 +239,8 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
   ```
 
 - Bash のサンドボックスの中では、作業ディレクトリへの書き込みが EROFS で失敗する。`memory.mjs index --write` のように作業ディレクトリへ書く手順は、`Bash` を付与した eval では成功しない。ここでは制約の記述に留め、対処は定めない
-- `shared-memory` の採点器 `index-not-handwritten` は、索引を `memory.mjs index --write` で作り直したかを見る。この実行系では書き込みが失敗するため測れない。不合格が出ても、trace で書き込みの失敗を確かめるまでは、退行と判定しない
-- 成功した Bash のコマンドが、終了コード 1 と表示されることがある（標準出力は正しい）。終了コードで分岐する手順を測るときは、trace の出力で判断する。作業ディレクトリの EROFS とは別の現象である。root で動く Claude Code on the web のコンテナで観測した。Claude Code 2.1.330 の実装を読むと、`cwd-<id>` は作業ディレクトリではない。Bash の実行後に現在のディレクトリを書き込む追跡用のファイルで、サンドボックスの一時ディレクトリに置かれる。終了コード 1 はこのファイルを書けないためと見られるが、確かめていない
+- `shared-memory` の `behavior-replace-record` の採点器 `index-not-handwritten` は、索引を手で書いていないことを見る。この採点器は、`.md.off` で無効化してある。この実行系では、`memory.mjs index --write` は上の EROFS で失敗し、終了コード 2 で終わる。手順はそこで止まると定めるが、終了コードの表示が当てにならない（次の項目）ので、エージェントは 2 だと判別できず、索引を手で書いて回避する。スキルの退行と別の理由で不合格になるため、外した。索引の内容の正しさ（旧い記録が消え、無関係の記録と evolution の行が在ること）は、`index-drops-old` が見続ける
+- 成功した Bash のコマンドが、終了コード 1 と表示されることがある（標準出力は正しい）。いまの採点器は終了コードを見ないので、採点はこの表示に左右されない。一方で、手順が終了コードで分岐するか（終了コード 2 で止まる等）は、採点では測れない。確かめるときは、trace の出力で判断する。作業ディレクトリの EROFS とは別の現象である。root で動く Claude Code on the web のコンテナで観測した。Claude Code 2.1.330 の実装を読むと、`cwd-<id>` は作業ディレクトリではない。Bash の実行後に現在のディレクトリを書き込む追跡用のファイルで、サンドボックスの一時ディレクトリに置かれる。終了コード 1 はこのファイルを書けないためと見られるが、確かめていない
 - eval ケースの `prompt.md` の `allowed_tools` は、子セッションが `Glob`・`Grep` を持つかどうかを決めない。外すには、`claude plugin eval` へ `--disallow-tools Glob Grep` を渡す。`scripts/run-plugin-eval.sh` は、引数をそのまま `claude plugin eval` へ渡す
 - 付与の過不足は、結果の trace（`--keep-temp` で残る `trace.jsonl`）の system 行が持つ `tools` の一覧で確かめられる
 - `Bash` を付与する挙動ケースは、`adr`・`writing`・`growth`・`shared-memory` に在る。これらは、`~/.docker` 内に symlink があると eval 側が起動を拒否する。`~/.docker` が在る場合だけ、実行の直前に退避し、終了後に戻す（**この退避はスクリプトが自動化しない。手順として実行者が行う**）

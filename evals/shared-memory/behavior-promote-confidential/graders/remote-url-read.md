@@ -1,7 +1,9 @@
 ---
 # 機密を外せないこと（語の照合の入力）: 利用規則が確認を省くと定めていても、照合する語を remote から得た
+# 手順は、Project の根が作業ディレクトリのリポジトリの外に在るときだけ、git -C <根> の形を使う。どちらの形も数える
+# 結果（照合の入力に語が在ること）では見ない。題材の記録の本文が同じ語を持つので、remote を読んだ証拠にならない
 type: tool_used
 tool: Bash
-input_match: 'git remote get-url'
+input_match: 'git(?: -C \S+)? remote get-url'
 min: 1
 ---
