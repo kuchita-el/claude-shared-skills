@@ -31,6 +31,7 @@ SUITES=(
     "living-spec|test"
     "validate-plugin-manifests|check"
     "validate-plugin-portability|check"
+    "project-memory|check"
     "claude-plugin-validate|check"
 )
 
@@ -189,6 +190,11 @@ run_one() {
             ;;
         validate-plugin-manifests) bash scripts/validate-plugin-manifests.sh . ;;
         validate-plugin-portability) bash scripts/validate-plugin-portability.sh . ;;
+        # 本リポジトリの Project Memory（docs/memory）の記録の形式と、索引が記録と一致することを見る。
+        # Task Memory の残留は、ここでは見ない。作業中のブランチには在ってよく、commit ゲートも
+        # この runner を呼ぶためである。残留は .github/workflows/task-memory.yml が、既定の
+        # ブランチへ入るツリーに対して見る。node を解決できなければ、そのまま非0で終わる。
+        project-memory) node plugins/shared-memory/scripts/memory.mjs check docs/memory ;;
         # 非 strict で呼ぶ。--strict は version フィールドの欠落を含む警告をエラーへ昇格
         # させるが、本リポジトリは版をコミット SHA へ委ねており version を持たない
         # （ADR-202609061416-01）。

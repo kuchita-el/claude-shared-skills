@@ -170,3 +170,127 @@ workflow_step_facts() {
   run grep -c 'claude-plugin-validate) claude plugin validate' "$RUNNER"
   [ "$output" -eq 1 ]
 }
+
+@test "project-memory スイートが一覧と実体の双方に登録され、Task Memory の残留を見ない" {
+  run bash "$RUNNER" --list
+  [ "$status" -eq 0 ]
+  [ "$(grep -cx 'project-memory' <<<"$output")" -eq 1 ]
+  # 実体は、記録の形式と索引の一致だけを見る。--no-task-memory を付けると、作業中のブランチで
+  # commit できなくなる（runner は commit ゲートからも走る）。行の終わりまでを照合して、付いていないことを見る。
+  run grep -c '^ *project-memory) node plugins/shared-memory/scripts/memory.mjs check docs/memory ;;$' "$RUNNER"
+  [ "$output" -eq 1 ]
+}
+
+# Task Memory の残留を見るワークフロー（.github/workflows/task-memory.yml）の配線を、facts にして出す。
+# 見るのは3つである。いつ起動するか（on: のブロックの全体）、job がいつ走るか（job の if:）、
+# 検査器を --no-task-memory つきで呼ぶ step が、条件なしで走るか。
+# コマンドは行の終わりまでを照合する。--no-task-memory を落とすと、ワークフロー自身は緑のまま、
+# 残留の検出だけが止まる。その退行を、ここで赤にする。
+#
+# 読み方は字下げの形（on: の子は2桁以上、job のキーは4桁、step は6桁の `- `、step のキーは8桁）を
+# 前提にする。形が崩れれば facts が欠け、呼び出し側のケースが赤になる。
+task_memory_workflow_facts() {
+  awk '
+    function flush(   i, l, cmd, kind, has_if, has_coe) {
+      if (n == 0) return
+      kind = ""; has_if = 0; has_coe = 0
+      for (i = 1; i <= n; i++) {
+        l = block[i]
+        if (l ~ /^      - run:[ \t]/ || l ~ /^        run:[ \t]/) {
+          cmd = l
+          sub(/^[^:]*:[ \t]*/, "", cmd)
+          if (cmd == "mise exec -- node plugins/shared-memory/scripts/memory.mjs check docs/memory --no-task-memory") kind = "check"
+        }
+        if (l ~ /^        if:/) has_if = 1
+        if (l ~ /^        continue-on-error:/) has_coe = 1
+      }
+      if (kind != "") printf "%s if=%d continue-on-error=%d\n", kind, has_if, has_coe
+      n = 0
+    }
+    /^[ \t]*(#.*)?$/ { next }
+    /^[^ \t]/ { flush(); in_on = ($0 == "on:"); in_steps = 0; if (in_on) { on = "on:" } ; next }
+    in_on { on = on "|" $0; next }
+    /^    if:/ { sub(/^    if:[ \t]*/, ""); print "job-if " $0; next }
+    /^    continue-on-error:/ { print "job-continue-on-error"; next }
+    /^    steps:/ { in_steps = 1; next }
+    in_steps && /^      - / { flush() }
+    in_steps { block[++n] = $0 }
+    END { flush(); print on }
+  ' "$1"
+}
+
+@test "Task Memory の残留を見るワークフローが、main へ入るツリーで検査器を --no-task-memory つきで呼ぶ" {
+  local workflow="$REPO_ROOT/.github/workflows/task-memory.yml"
+  [ -f "$workflow" ]
+  run task_memory_workflow_facts "$workflow"
+  [ "$status" -eq 0 ]
+  # 起動: PR の作成・更新・再開・編集（base の付け替えを含む）と、main への push。
+  [ "$(grep -cxF 'on:|  pull_request:|    types: [opened, synchronize, reopened, edited]|  push:|    branches:|      - main' <<<"$output")" -eq 1 ]
+  # job の条件: push か、base が main の PR。job は1つで、失敗を握りつぶさない。
+  [ "$(grep -c '^job-if ' <<<"$output")" -eq 1 ]
+  [ "$(grep -cxF "job-if github.event_name == 'push' || github.base_ref == 'main'" <<<"$output")" -eq 1 ]
+  [ "$(grep -c '^job-continue-on-error' <<<"$output")" -eq 0 ]
+  # 検査器を呼ぶ step: 1つだけ在り、条件も continue-on-error も持たない。
+  [ "$(grep -c '^check ' <<<"$output")" -eq 1 ]
+  [ "$(grep -cx 'check if=0 continue-on-error=0' <<<"$output")" -eq 1 ]
+}
+
+@test "Task Memory のワークフローから配線を落とす変異を facts が捉える" {
+  local workflow="$REPO_ROOT/.github/workflows/task-memory.yml" mutant
+  mutant="$BATS_TEST_TMPDIR/task-memory.yml"
+
+  # 変異1: 検査器の呼び出しから --no-task-memory を落とす（ワークフロー自身は緑のままになる）
+  sed 's| check docs/memory --no-task-memory$| check docs/memory|' "$workflow" >"$mutant"
+  run cmp -s "$workflow" "$mutant"
+  [ "$status" -ne 0 ]
+  run task_memory_workflow_facts "$mutant"
+  [ "$(grep -c '^check ' <<<"$output")" -eq 0 ]
+
+  # 変異2: 検査器を呼ぶ step へ if: を足し、走らないようにする
+  sed 's|^        run: mise exec -- node |        if: false\n        run: mise exec -- node |' "$workflow" >"$mutant"
+  run task_memory_workflow_facts "$mutant"
+  [[ "$output" == *'check if=1 continue-on-error=0'* ]]
+
+  # 変異3: 検査器を呼ぶ step の失敗を握りつぶす
+  sed 's|^        run: mise exec -- node |        continue-on-error: true\n        run: mise exec -- node |' "$workflow" >"$mutant"
+  run task_memory_workflow_facts "$mutant"
+  [[ "$output" == *'check if=0 continue-on-error=1'* ]]
+
+  # 変異4: 失敗しても成功で終わる形へ、コマンドを変える
+  sed 's| check docs/memory --no-task-memory$| check docs/memory --no-task-memory \|\| true|' "$workflow" >"$mutant"
+  run task_memory_workflow_facts "$mutant"
+  [ "$(grep -c '^check ' <<<"$output")" -eq 0 ]
+
+  # 変異5: job の条件から、base が main の PR を外す
+  sed "s/ || github.base_ref == 'main'\$//" "$workflow" >"$mutant"
+  run cmp -s "$workflow" "$mutant"
+  [ "$status" -ne 0 ]
+  run task_memory_workflow_facts "$mutant"
+  [ "$(grep -cxF "job-if github.event_name == 'push' || github.base_ref == 'main'" <<<"$output")" -eq 0 ]
+
+  # 変異6: job の失敗を握りつぶす
+  sed 's|^    runs-on: |    continue-on-error: true\n    runs-on: |' "$workflow" >"$mutant"
+  run task_memory_workflow_facts "$mutant"
+  [ "$(grep -c '^job-continue-on-error' <<<"$output")" -eq 1 ]
+
+  # 変異7: 起動の契機から edited を外す（base の付け替えで走らなくなる）
+  sed 's/, edited\]/]/' "$workflow" >"$mutant"
+  run cmp -s "$workflow" "$mutant"
+  [ "$status" -ne 0 ]
+  run task_memory_workflow_facts "$mutant"
+  [ "$(grep -c 'types: \[opened, synchronize, reopened, edited\]' <<<"$output")" -eq 0 ]
+
+  # 変異8: main への push の契機を外す
+  awk '/^  push:$/ { skip = 3 } skip > 0 { skip--; next } { print }' "$workflow" >"$mutant"
+  run cmp -s "$workflow" "$mutant"
+  [ "$status" -ne 0 ]
+  run task_memory_workflow_facts "$mutant"
+  [ "$(grep -c '|  push:|    branches:|      - main' <<<"$output")" -eq 0 ]
+
+  # 変異9: PR の契機を、特定のパスの変更に絞る
+  sed 's|^    types: \[\(.*\)\]$|    types: [\1]\n    paths:\n      - docs/**|' "$workflow" >"$mutant"
+  run cmp -s "$workflow" "$mutant"
+  [ "$status" -ne 0 ]
+  run task_memory_workflow_facts "$mutant"
+  [ "$(grep -cxF 'on:|  pull_request:|    types: [opened, synchronize, reopened, edited]|  push:|    branches:|      - main' <<<"$output")" -eq 0 ]
+}
