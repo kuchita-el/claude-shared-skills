@@ -15,6 +15,10 @@ allowed_tools:
   - Bash(date -u*)
   - Bash(git rev-parse*)
   - Bash(git remote get-url *)
+  - Bash(git -C * remote get-url *)
+  - Bash(git -C * rev-parse --verify *)
+  - Bash(git -C * rev-parse --show-toplevel*)
+  - Bash(mktemp -d*)
   - Bash(grep -i -F *)
 ---
 
