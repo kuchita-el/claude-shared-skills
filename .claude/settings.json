@@ -18,6 +18,14 @@
       }
     ]
   },
+  "extraKnownMarketplaces": {
+    "claude-shared-skills": {
+      "source": {
+        "source": "github",
+        "repo": "kuchita-el/claude-shared-skills"
+      }
+    }
+  },
   "enabledPlugins": {
     "pr-review-toolkit@claude-plugins-official": true,
     "skill-creator@claude-plugins-official": true,
