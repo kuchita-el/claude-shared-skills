@@ -34,5 +34,5 @@
 設計や方式に関わる提案に記録を使ったら、層の名前・識別子・版を添える。
 
 - 書き方: `Project MEM-202611210300-01@1a2b3c4`、`Global MEM-202611141215-01@a1c5dc1`
-- 版は、その記録が在るリポジトリの既定のブランチで、記録を最後に変えたコミットである。得方は、版を得る前の取り直しの手順も含めて、`plugins/shared-memory/references/format.md`「記録の版」に従う。
+- 版は、その記録が在るリポジトリの既定のブランチで、記録を最後に変えたコミットである。得方は、版を得る前の取り直しの手順も含めて、`plugins/shared-memory/references/format.md`「記録の版」に従う。このリポジトリでは、remote は `origin`、既定のブランチは `main`、検査器は `plugins/shared-memory/scripts/memory.mjs` である。
 - まだ既定のブランチに無い記録は、版の代わりに「未マージ」と書く。例は `Project MEM-202611210300-01（未マージ）` である。
