@@ -894,6 +894,16 @@ C=MEM-202611140000-04
     MEM-202611010000-01-failed-job-retried-three-times.md MEM-202611010000-02-job-log-kept-thirty-days.md
 }
 
+@test "eval の題材: 選別の根は check を通り、記録2件と候補3件を持つ" {
+  local CASE_DIR="$BATS_TEST_TMPDIR/behavior-triage-candidates"
+  scaffold_case behavior-triage-candidates
+  assert_scaffold_root "$CASE_DIR/global-memory" 2 \
+    MEM-202611010000-01-cron-evaluated-in-utc.md MEM-202611010000-02-linter-ci-before-precommit.md
+  [ "$(find "$CASE_DIR/global-memory/candidates" -name 'MEM-*.md' | wc -l)" -eq 3 ]
+  run node "$SUT" index "$CASE_DIR/global-memory"
+  [ "$(printf '%s\n' "$output" | grep -c '^| \[MEM-202611150000-')" -eq 3 ]
+}
+
 # ここから下は、送り出しの下書き（outbox/）と選別の前の候補（candidates/）の試験である。
 
 # 形式に合う下書きか候補を1件書く。$1 は置き場（outbox か candidates）、$2 は識別子、$3 は名前、$4 以降は front-matter へ足す行。
