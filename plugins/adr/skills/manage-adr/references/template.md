@@ -29,7 +29,7 @@ superseded-by:
 ファイル名規則: ADR-YYYYMMDDHHMM-NN-<slug>.md
 - `YYYYMMDDHHMM` は起票時刻（分粒度・ローカル時刻）。同梱の next-adr-id.sh が発番する
 - `-NN` は同一時刻部内の連番。`01` 始まりの2桁ゼロ埋めで、1件目にも `-01` を付与
-- `<slug>` は内容を表す短い英数字ハイフン区切り（例: cache-layer-replacement）
+- `<slug>` は内容を表す短い名前。小文字英数字（a-z, 0-9）を単一のハイフンでつなぐ（例: cache-layer-replacement）
 詳細は manage-adr スキルを参照
 -->
 
