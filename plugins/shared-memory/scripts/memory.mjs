@@ -27,6 +27,8 @@ const USAGE = `usage: memory.mjs check ROOT [--no-task-memory]
   --ref REF: 版を数える起点。省くと refs/remotes/origin/HEAD。作業中の HEAD は使わない。
            remote 追跡の ref（省いたときの既定を含む）と FETCH_HEAD は、最後に取り直した結果（FETCH_HEAD）と照合する。
   --project-ref REF / --global-ref REF: carry の、ROOT と GLOBAL_ROOT の起点。決め方と照合は --ref と同じ。
+           --project-ref は、origin の既定のブランチ（refs/remotes/origin/HEAD が指す枝）の remote 追跡の ref か、
+           その枝だけを取り直した FETCH_HEAD に限る。ほかの起点は exit 2 で止める。
   version・adopted・carry は git を要する。fetch のようにネットワークへ出る git のコマンドは呼ばない。
   履歴の浅い checkout と、起点が最後に取り直した結果と食い違う checkout では、exit 2 で止まる。
   終了コード:
@@ -442,15 +444,49 @@ function unresolvedTracking(root, ref) {
 }
 
 /**
+ * 起点が、origin の既定のブランチを指す ref であることを確かめる。carry の Project の起点に使う。
+ * 既定のブランチは、refs/remotes/origin/HEAD が指す枝である。通すのは、省いたとき、その枝の remote 追跡の ref、
+ * その枝を origin から取り直した1行だけを持つ FETCH_HEAD である。最後に取り直した結果との照合は、requireFetched が重ねて行う。
+ * 解決できない起点は、ここでは止めず、呼び出す側の解決で止める。
+ * @param {string} root
+ * @param {string | undefined} ref
+ */
+function requireDefaultBranch(root, ref) {
+  const head = git(root, ['symbolic-ref', '-q', DEFAULT_REF]);
+  if (head.status > 1) throw new Unusable(`git symbolic-ref が失敗した（exit ${head.status}）: ${head.stderr.trim()}`);
+  const target = head.stdout.trim();
+  const prefix = `${TRACKING}origin/`;
+  if (head.status !== 0 || !target.startsWith(prefix) || target.length === prefix.length) {
+    const remotes = gitOutput(root, ['remote']).split('\n').map((n) => n.trim());
+    const rename = remotes.includes('origin') ? '' : '。carry は、プロジェクトの remote が origin という名前であることを前提にする。別の名前なら git remote rename <名前> origin で改める（origin を同じ URL で足してもよい）';
+    throw new Unusable(`既定のブランチを決められない（${DEFAULT_REF} が無いか、origin の枝を指すシンボリックな ref でない）。git remote set-head origin <既定のブランチ> で作る。この形は、ネットワークへ出ない${rename}`);
+  }
+  if (ref === undefined) return;
+  const branch = target.slice(prefix.length);
+  const refuse = () => new Unusable(`carry は、プロジェクトの既定のブランチ（origin の ${branch}）からしか読まない。--project-ref は、省くか、${target} か、git fetch origin ${branch} の直後の FETCH_HEAD を渡す: ${ref}`);
+  if (ref === FETCH_HEAD) {
+    const lines = fetchedBranches(root);
+    const url = comparableUrl(gitOutput(root, ['ls-remote', '--get-url', 'origin']));
+    if (lines.length === 1 && (lines[0].branch !== branch || comparableUrl(lines[0].url) !== url)) throw refuse();
+    return;
+  }
+  if (git(root, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]).status !== 0) return;
+  const symbolic = git(root, ['rev-parse', '--symbolic-full-name', ref]);
+  if (symbolic.status !== 0 || symbolic.stdout.trim() !== target) throw refuse();
+}
+
+/**
  * 履歴が揃っていることを確かめ、起点の ref をコミットへ解決する。git を使う最初の手順である。
  * 起点が remote 追跡の ref か FETCH_HEAD なら、最後に取り直した結果と照合する（requireFetched）。
  * @param {string} root
  * @param {string | undefined} ref
+ * @param {boolean} [defaultOnly] 真なら、起点を既定のブランチに限る（requireDefaultBranch）
  * @returns {string} 起点のコミット
  */
-function startingCommit(root, ref) {
+function startingCommit(root, ref, defaultOnly = false) {
   const probe = git(root, ['rev-parse', '--is-shallow-repository']);
   if (probe.status !== 0) throw new Unusable(`git の作業ツリーの中に無い: ${root}\n${probe.stderr.trim()}`);
+  if (defaultOnly) requireDefaultBranch(root, ref);
   const shallow = probe.stdout.trim();
   const name = ref ?? DEFAULT_REF;
   const symbolic = git(root, ['rev-parse', '--symbolic-full-name', name]);
@@ -661,11 +697,12 @@ function carryOne(projectRoot, globalRoot, draft, history) {
 
 /**
  * carry コマンド。下書きは Project Memory の起点の木から、運び済みの判定は Global Memory の起点からの履歴から読む。
+ * Project Memory の起点は、既定のブランチに限る。承認されていない下書きを運ばないためである。
  * 両方の作業ツリーのうち、読むのは Global Memory の candidates/ だけである。書くのも、そこだけである。
  * @returns {number} 終了コード
  */
 function carry(projectRoot, globalRoot, projectRef, globalRef) {
-  const projectStart = startingCommit(projectRoot, projectRef);
+  const projectStart = startingCommit(projectRoot, projectRef, true);
   const globalStart = startingCommit(globalRoot, globalRef);
   const dir = join(globalRoot, CANDIDATES_DIR);
   const existing = lstatSync(dir, { throwIfNoEntry: false });
