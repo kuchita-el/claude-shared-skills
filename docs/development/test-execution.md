@@ -201,13 +201,13 @@ eval ケース（プロンプト・採点器・`scaffold.sh`・`case.yaml`）は
 bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
 ```
 
-スクリプトは `plugins/<plugin>/` を一時ディレクトリへ複製し、`evals/<plugin>/` をその複製の `evals/` として配置してから `claude plugin eval <複製先> [引数...]` を呼ぶ。実行後、一時ディレクトリは trap により必ず削除する。`plugins/<plugin>/` と `evals/<plugin>/` の作業ツリーには一切書き込まない。
+スクリプトは `plugins/<plugin>/` を実行ごとの作業場所へ複製し、`evals/<plugin>/` をその複製の `evals/` として配置してから、`TMPDIR` を作業場所の `tmp` へ向けて `claude plugin eval <複製先> [引数...]` を呼ぶ（`TMPDIR` を向け直す理由は §7.2）。実行後、作業場所は trap により必ず削除する（`--keep-temp` のときを除く）。`plugins/<plugin>/` と `evals/<plugin>/` の作業ツリーには一切書き込まない。
 
 引数検証: プラグイン名の省略、`plugins/<plugin>/` の不在、`evals/<plugin>/` の不在、`--output-dir`（`--output-dir X` / `--output-dir=X` のどちらの形式も可）の省略を、それぞれ理由付きで拒否する（非0終了）。`--output-dir` を必須にしているのは、省略時の既定の出力先が eval 置き場の下（＝一時ディレクトリ配下）になり、実行後の後始末で結果ごと消えるためである。
 
 **複製先へは `cd` しない。** `claude plugin eval` へは複製先の絶対パスを引数として渡すだけで、後続のユーザー引数（`--output-dir` 等）はそのまま透過する。したがって `--output-dir` に相対パスを渡した場合、その解決基準は「このスクリプトを呼び出した時点の cwd」のままであり、複製先基準へ絶対化する処理は行わない。
 
-`claude` は PATH から解決する（`command -v claude`）。これらの引数検証・複製・配置・後始末・引数透過・終了コード透過は、本物の `claude` を呼ばず PATH 上をスタブに差し替えた `scripts/tests/run-plugin-eval.bats` が検査する。`plugins/` 配下のどのプラグインにも `evals/` が存在しないこと（配布物へ eval ケースを同梱していないこと）は `scripts/tests/eval-placement.bats` が機械検査する。両ファイルとも runner の bats スイートに含まれるため、`bash scripts/run-tests.sh` で走る。
+`claude` は PATH から解決する（`command -v claude`）。これらの引数検証・複製・配置・`TMPDIR` の向け先・後始末・`--keep-temp` での残し方・引数透過・終了コード透過は、本物の `claude` を呼ばず PATH 上をスタブに差し替えた `scripts/tests/run-plugin-eval.bats` が検査する。`plugins/` 配下のどのプラグインにも `evals/` が存在しないこと（配布物へ eval ケースを同梱していないこと）は `scripts/tests/eval-placement.bats` が機械検査する。両ファイルとも runner の bats スイートに含まれるため、`bash scripts/run-tests.sh` で走る。
 
 ### 7.2 実行条件
 
@@ -228,6 +228,7 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
     'Bash(git -C * rev-parse --show-toplevel*)' 'Bash(mktemp -d*)'
   ```
 
+- `shared-memory` は、`--judge-model sonnet` を付ける。`llm` の採点器の1票は、判定器が1語で答えた文に `PASS` が在り、`FAIL` の語が無いときだけ合格になり、3票の多数で決まる。既定の haiku は、表を含む日本語の最終応答で、同じ応答に `PASS` と `FAIL` を返し、票が割れることがある。判定の理由は結果に残らない。sonnet では、同じ応答の票は割れず、表の行を消した負例（`behavior-propose-records` の `table-lists-all`）は `FAIL` になった
 - `tool_used` の採点器で「1回も呼ばない」を見るときは、`min: 0` と `max: 0` の両方を書く。`max: 0` だけでは、下限が 1 のままになり、常に不合格になる
 - `regex` の採点器は、`match: not_contains` で、文字列が無いことを見られる。`target` に `source: file` を指すと、エージェントが書いたファイルも、字面のパスで読める。名前が実行のたびに変わるファイルは読めないので、依頼文で置き場を指定するか、書いた入力を trace で見る
 - `shared-memory` の `behavior-promote-confidential` は、新しい記録の名前が時刻で決まる。記録に仕込んだ文字列が残っていないことは、`--keep-temp` で残った作業ディレクトリ（`<残ったディレクトリ>/home/cwd/`）を検索して確かめる
@@ -238,17 +239,12 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
   apt-get update && apt-get install -y bubblewrap socat
   ```
 
-- Bash のサンドボックスの中では、作業ディレクトリと `TMPDIR`（`mktemp -d` の既定の置き場）への書き込みが EROFS で失敗する。`Write`・`Edit` の道具はサンドボックスの外で動くので、作業ディレクトリへ書ける。`memory.mjs index --write` のように作業ディレクトリへ書く手順は、`Bash` を付与した eval では成功しない。ここでは制約の記述に留め、対処は定めない
-- `shared-memory` の手順では、`memory.mjs index --write` が上の EROFS で失敗し、終了コード 2 で終わる。手順はそこで止まると定めるので、索引が変わる経路は手書きだけになる。停止の後の `check` も走らない。索引と、その後の `check` を見る採点器は、手書きして先へ進む逸脱で合格し、手順どおりの停止で不合格になる。このため、この実行系では、作り直した索引の中身と、索引を作り直した後の検査を測る採点器は無い。次の採点器を `.md.off` で外し、`behavior-replace-record` の `report-lists-changes` からは検査の結果（違反の件数）の条件を外した。`index --write` の呼び出しを数える `index-regenerated` は、失敗しても合格するので残してある
-  - `behavior-replace-record`: `index-drops-old`（作り直した索引の中身）
-  - `behavior-replace-record`: `check-after-evolution`（evolution の後の検査）
-  - `behavior-propose-records`: `index-drops-superseded`（作り直した索引の中身）
-  - `behavior-propose-records`: `check-after-draft`（下書きの後の検査）
-  - `behavior-propose-records`: `check-result-reported`（検査の結果の報告）
-- `behavior-replace-record` の `index-not-handwritten` と `index-not-edited` は、外さずに残してある。前者は索引への `Write`、後者は索引への `Edit` が無いことを見る。手順どおりに止まれば両方が合格し、索引を手で書いて進めばどちらかが不合格になるので、向きが正しく、この実行系でも測れる
-- `index --write` の終了コード 2 は、`Exit code 2` と EROFS の標準エラーの形で、エージェントに見える。それでも、止まる回と、サンドボックスの不具合とみて索引を `Write` で書いて先へ進む回がある
-- `shared-memory` の `behavior-promote-confidential` では、手順の `mktemp -d` が失敗した。原因は上の `TMPDIR` の EROFS で、計測の3回とも失敗した。エージェントは、`Write` で別の場所に置き場を作って回避した。作業ツリーの中の追跡外に作った回があり、手順の「どちらのリポジトリの追跡下にもない」から外れる。置き場の後に来る採点器は、この手順に無い回避を通ったときだけ合格する。`new-record-written`・`check-ran-on-destination`・`sources-form`・`pr-body-*` が当たる。`mktemp -d` が失敗したときの扱いを、手順はまだ定めていない。扱いは別の Issue で決める
-- 成功した Bash のコマンドが、終了コード 1 と表示されることがある（標準出力は正しい）。いまの採点器は終了コードを見ないので、採点はこの表示に左右されない。作業ディレクトリの EROFS とは別で、上の `TMPDIR` の EROFS による現象である。root で動く Claude Code on the web のコンテナで観測した。Claude Code 2.1.330 の実装を読むと、`cwd-<id>` は作業ディレクトリではない。Bash の実行後に現在のディレクトリを書き込む追跡用のファイルで、サンドボックスの一時ディレクトリに置かれる。出力の末尾に `cwd-<id>: Read-only file system` の行が出るので、終了コード 1 はこのファイルを書けないためである。手順が終了コードで分岐するかは、分岐の後の道具の呼び出しで測る。たとえば、終了コード 2 で止まったかは、`index-not-handwritten` と `index-not-edited` が索引への `Write`・`Edit` の有無で見る
+- `claude plugin eval` は、一時の根を `TMPDIR` の下に作り、子のセッションのサンドボックスへ、その根の `home`（作業ディレクトリ `home/cwd` を含む）と `tmp` を `allowWrite` として渡す。一方、`denyWrite` には `/tmp`・`/var/tmp`・`/dev/shm` が入り、禁止は許可より強い。根がこれらの下に在ると、Bash のサンドボックスの中から作業ディレクトリと `TMPDIR` へ書けず、EROFS で失敗する。Linux の既定の `TMPDIR` は `/tmp` なので、そのまま起動すると必ずこうなる。`--keep-temp` で残る `config/settings.json` で、渡された設定を確かめられる
+  - 現れ方は3つある。`mktemp -d` の失敗、`memory.mjs index --write` のような作業ディレクトリへの書き込みの失敗、成功した Bash が終了コード 1 と表示される現象（Bash の実行後に現在のディレクトリを書く追跡用のファイル `cwd-<id>` が `TMPDIR` に在り、書けないため）である
+  - `Write`・`Edit` の道具はサンドボックスの外で動くので、この状態でも書ける。手順の失敗をエージェントが `Write` で回避すると、手順に無い経路で採点器が合格する
+- `scripts/run-plugin-eval.sh` は、`TMPDIR` を `${XDG_CACHE_HOME:-$HOME/.cache}/claude-plugin-eval/` の下の実行ごとの作業場所へ向けて `claude plugin eval` を起動し、上の制約を除く。置き場がリポジトリの作業ツリーの下でないのは、題材が `.git` を持たないケースで、子のセッションの git がこのリポジトリへ遡って見つけるためである。置き場が `/tmp`・`/var/tmp`・`/dev/shm` の下に解決されるときは、スクリプトが理由を示して止まる。スクリプト経由の起動では、子のセッションの Bash の出力に `home/.bashrc: Permission denied` の警告が出るが、結果には影響しない
+- `--keep-temp` を付けると、スクリプトは作業場所（プラグインの複製・eval の一時の根・親の `claude` の一時ディレクトリを含む）を消さずに残し、場所と消し方を標準エラーへ示す。root で動く実行系では、eval が作業場所の書き込みの権限を閉じるので、`chmod -R u+rwX <作業場所> && rm -rf <作業場所>` で消す。付けないときは、スクリプトが同じ形で消す
+- `behavior-replace-record` の `index-not-handwritten` と `index-not-edited` は、索引への `Write`・`Edit` が無いことを見る。`index --write` が通れば索引を手で書く理由は無く、失敗して止まる回でも、手で書いて進めば不合格になる
 - eval ケースの `prompt.md` の `allowed_tools` は、子セッションが `Glob`・`Grep` を持つかどうかを決めない。外すには、`claude plugin eval` へ `--disallow-tools Glob Grep` を渡す。`scripts/run-plugin-eval.sh` は、引数をそのまま `claude plugin eval` へ渡す
 - 付与の過不足は、結果の trace（`--keep-temp` で残る `trace.jsonl`）の system 行が持つ `tools` の一覧で確かめられる
 - `Bash` を付与する挙動ケースは、`adr`・`writing`・`growth`・`shared-memory` に在る。これらは、`~/.docker` 内に symlink があると eval 側が起動を拒否する。`~/.docker` が在る場合だけ、実行の直前に退避し、終了後に戻す（**この退避はスクリプトが自動化しない。手順として実行者が行う**）

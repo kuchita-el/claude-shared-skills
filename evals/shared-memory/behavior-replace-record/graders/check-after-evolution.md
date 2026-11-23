@@ -3,8 +3,6 @@
 # 前半は、Write の1回の入力の中で、題材でない識別子のパスと type: evolution がそろうことを見る。
 # 後半は、コマンドの入力（command）に錨を打ち、検査器の直後の語が check であることを見る。
 # Read した参照の本文や、応答の文に在る「type: evolution」「memory.mjs … check」では通らない
-# この実行系では index --write が EROFS で失敗し、手順は終了コード 2 で止まって、この後の check が走らない。
-# 手順どおりの停止で不合格になり、索引を手で書いて先へ進む逸脱で合格になるので、外した（test-execution.md §7.2）
 type: regex
 target: trace
 pattern: '"name"\s*:\s*"Write"[^\n]{0,400}?records/MEM-(?!202611010000-)\d{12}-\d{2}-[a-z0-9-]+\.md[^\n]{0,8000}?type: evolution[\s\S]*command\\?"\s*:\s*\\?"[^\n]{0,300}?memory\.mjs[\\"]{0,4}\s+check\b'
