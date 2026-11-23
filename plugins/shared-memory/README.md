@@ -54,7 +54,7 @@ node scripts/memory.mjs carry <Project Memory の根> <Global Memory の根> --p
 
 どのスキルも、前の段を通っていなくても起動できる。ただし、`replace-record` が新しい記録に使えるのは、その起動で書く記録か、同じブランチの上に在って、まだ既定のブランチに入っていない記録である。どちらも既に既定のブランチに在る2件の記録の食い違いは、`replace-record` の対象の外である。
 
-`promote-record`・`crosscheck-records`・`replace-record` も、commit・push・PR の作成を事前に許可しない。出し方は、その根の規則に従う。`promote-record` は、PR を出せないとき、記録と PR の本文を Project Memory の根の `tasks/` へ2つのファイルとして置く。運んだ者が、昇格先で PR にして消す。
+`promote-record`・`crosscheck-records`・`replace-record` も、commit・push・PR の作成を事前に許可しない。出し方は、その根の規則に従う。別のリポジトリへ送るものは、`outbox/` を通す。Global Memory へ送る下書きは、Project Memory の根の `outbox/` に書く（`references/format.md`）。`promote-record` の手順は、まだこの形に揃っていない。
 
 ## サブエージェントの実行パラメータ
 

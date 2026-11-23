@@ -1211,14 +1211,86 @@ global_with_record() {
   [ "$output" = "outbox/$D1-first.md:copied: candidates/$D1-first.md へ写した" ]
 }
 
-@test "carry: ローカルのブランチを起点に渡すと照合せず、その木の outbox から読む" {
+@test "carry: Project の起点が既定のブランチでないと、読まずに exit 2 で止まる（ローカルの枝・HEAD・タグ・コミット・ほかの枝）" {
   init_project
   draft_in "$PUP/docs/memory" "$D1" first
   commit "$PUP" p1
+  git -C "$PUP" checkout -q -b other
   draft_in "$PUP/docs/memory" "$D2" second
   commit "$PUP" p2
+  git -C "$PUP" checkout -q main
+  clone_project
   global_with_record
-  run --separate-stderr node "$SUT" carry "$PUP/docs/memory" "$GM" --project-ref main~1 --global-ref main
+  # 作業中のブランチに、未承認の下書きをコミットする。
+  git -C "$PJ" checkout -q -b topic
+  draft_in "$PROOT" "$D3" third
+  commit "$PJ" topic
+  git -C "$PJ" tag v1
+  local ref
+  for ref in main topic HEAD v1 main~0 "$(git -C "$PJ" rev-parse HEAD)" "$(git -C "$PJ" rev-parse --short origin/main)" \
+    origin/other refs/remotes/origin/other; do
+    run --separate-stderr node "$SUT" carry "$PROOT" "$GM" --project-ref "$ref"
+    [ "$status" -eq 2 ]
+    [ -z "$output" ]
+    [[ "$stderr" == *"既定のブランチ（origin の main）からしか読まない"* ]]
+  done
+  [ ! -e "$GM/candidates" ]
+}
+
+@test "carry: FETCH_HEAD は、origin の既定のブランチだけを取り直したときに限り、Project の起点に通す" {
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  commit "$PUP" p1
+  git -C "$PUP" checkout -q -b other
+  draft_in "$PUP/docs/memory" "$D2" second
+  commit "$PUP" p2
+  git -C "$PUP" checkout -q main
+  clone_project
+  global_with_record
+  git -C "$PJ" fetch -q origin other
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM" --project-ref FETCH_HEAD
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"既定のブランチ（origin の main）からしか読まない"* ]]
+  # 同じ名前の枝を、origin でない URL から取り直した FETCH_HEAD も通さない。
+  git clone -q --bare "file://$PUP" "$BATS_TEST_TMPDIR/mirror.git"
+  git -C "$BATS_TEST_TMPDIR/mirror.git" update-ref refs/heads/main "$(git -C "$PUP" rev-parse other)"
+  git -C "$PJ" fetch -q "file://$BATS_TEST_TMPDIR/mirror.git" main
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM" --project-ref FETCH_HEAD
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"既定のブランチ（origin の main）からしか読まない"* ]]
+  [ ! -e "$GM/candidates" ]
+  git -C "$PJ" fetch -q origin main
+  local ref
+  for ref in FETCH_HEAD origin/main refs/remotes/origin/main origin/HEAD; do
+    rm -rf "$GM/candidates"
+    run --separate-stderr node "$SUT" carry "$PROOT" "$GM" --project-ref "$ref"
+    [ "$status" -eq 0 ]
+    [ "$output" = "outbox/$D1-first.md:copied: candidates/$D1-first.md へ写した" ]
+  done
+}
+
+@test "carry: refs/remotes/origin/HEAD が無いか枝を指さないと、既定のブランチを決められず exit 2 で止まり、set-head を案内する" {
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  commit "$PUP" p1
+  clone_project
+  global_with_record
+  git -C "$PJ" remote set-head origin -d
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM" --project-ref FETCH_HEAD
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"git remote set-head origin"* ]]
+  git -C "$PJ" update-ref --no-deref refs/remotes/origin/HEAD "$(git -C "$PJ" rev-parse origin/main)"
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"git remote set-head origin"* ]]
+  [ ! -e "$GM/candidates" ]
+  git -C "$PJ" update-ref -d refs/remotes/origin/HEAD
+  git -C "$PJ" remote set-head origin main
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
   [ "$status" -eq 0 ]
   [ "$output" = "outbox/$D1-first.md:copied: candidates/$D1-first.md へ写した" ]
 }
