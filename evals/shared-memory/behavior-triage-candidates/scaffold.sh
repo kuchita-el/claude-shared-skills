@@ -8,9 +8,10 @@
 #   R2 MEM-202611010000-02  records/。リンターは CI の警告から入れる
 #   C1 MEM-202611150000-01  candidates/。R1 と同じことを言い、補うものが無い（重なる）
 #   C2 MEM-202611150000-02  candidates/。R2 と食い違う。確かめていない
-#   C3 MEM-202611150000-03  candidates/。既存と触れ合わない新しい主張
+#   C3 MEM-202611150000-03  candidates/。記録とは触れ合わない。C4 と食い違い、根拠は C4 より強い
+#   C4 MEM-202611150000-04  candidates/。C3 とだけ食い違う。確かめていない
 #
-# 索引は、C3 の行を意図して欠く。検査器は index.md:index: の1行だけを出す（記録・候補の形式は通る）。
+# 索引は、C3 の行を意図して欠く（C4 の行は在る）。検査器は index.md:index: の1行だけを出す（記録・候補の形式は通る）。
 # スキルは、この1行を報告に付して進み、索引を作り直さない（手順2）。この点は scripts/tests/shared-memory-check.bats が確かめる。
 set -euo pipefail
 
@@ -145,6 +146,26 @@ updated: 2026-11-15
 2.3 より後の版は、確かめていない。
 REC
 
+cat > global-memory/candidates/MEM-202611150000-04-job-name-length-128.md <<'REC'
+---
+id: MEM-202611150000-04
+type: knowledge
+title: tokei-cron のジョブ名は、128 文字まで登録できる
+author: ai
+verification: unverified
+confidence: low
+applies-when: tokei-cron へ、長い名前のジョブを登録するとき
+sources:
+  - 設定画面の入力欄の表示の印象
+created: 2026-11-15
+updated: 2026-11-15
+---
+
+## 言えること
+
+ジョブ名は 128 文字まで登録できる。
+REC
+
 cat > global-memory/index.md <<'IDX'
 # 索引
 
@@ -161,4 +182,5 @@ cat > global-memory/index.md <<'IDX'
 |---|---|---|---|---|
 | [MEM-202611150000-01](candidates/MEM-202611150000-01-cron-utc-again.md) | experience | tokei-cron は、cron 式の時刻を UTC として解釈する | tokei-cron の定期ジョブの起動時刻を、cron 式で指定するとき | verified |
 | [MEM-202611150000-02](candidates/MEM-202611150000-02-linter-precommit-first.md) | belief | リンターは、既存の違反が多いコードでも、最初から pre-commit のフックへ入れる | 違反を多く抱えた既存のコードへ、リンターを後から導入するとき | unverified |
+| [MEM-202611150000-04](candidates/MEM-202611150000-04-job-name-length-128.md) | knowledge | tokei-cron のジョブ名は、128 文字まで登録できる | tokei-cron へ、長い名前のジョブを登録するとき | unverified |
 IDX

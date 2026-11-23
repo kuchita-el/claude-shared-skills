@@ -15,6 +15,8 @@ allowed_tools:
   - Bash(date -u*)
   - Bash(git status*)
   - Bash(git rev-parse --show-toplevel*)
+  - Bash(git rev-parse HEAD)
+  - Bash(git rev-parse refs/remotes/origin/HEAD)
   - Bash(git switch -c *)
   - Bash(git mv *candidates/*)
   - Bash(git rm *candidates/*)
