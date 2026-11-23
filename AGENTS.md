@@ -15,7 +15,7 @@
 
 ### 送り出し
 
-- Global Memory へ送る記録は、`docs/memory/outbox/` に、送り出しの下書きとして置く。送り出しの報告を `docs/memory/outbox/reports/` に、同じ変更で置く。形は `plugins/shared-memory/references/format.md` に従う。
+- Global Memory へ送る記録は、`docs/memory/outbox/` に、送り出しの下書きとして置く。送り出しの報告を `docs/memory/outbox/reports/` に、同じ変更で置く。下書きの形は `plugins/shared-memory/references/format.md` に、報告の形と取り下げは `plugins/shared-memory/references/outbox-report.md` に従う。
 - `outbox/` を変える変更は、人間のレビューを経て既定のブランチへ入れる。既定のブランチの `outbox/` に在ることが、送り出しの承認を表す。承認の後に、下書きを書き換えない。
 - 運ぶ前に誤りが分かったら、下書きと報告を消して取り下げる。元の記録の `sent-as` から、その識別子を同じ変更で外す。直すときは、新しい識別子の下書きを足す。
 
