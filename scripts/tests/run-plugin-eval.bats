@@ -24,6 +24,34 @@ SUT="$REPO_ROOT/scripts/run-plugin-eval.sh"
 setup() {
   STUB_DIR="$BATS_TEST_TMPDIR/stub-bin"
   mkdir -p "$STUB_DIR"
+  # 作業場所の置き場は /tmp の外でなければならない（スクリプトが拒む）。BATS_TEST_TMPDIR は
+  # /tmp の下に在りうるので、ホームの下にテストごとの置き場を作り、teardown で消す
+  export XDG_CACHE_HOME="$HOME/.cache/run-plugin-eval-bats.$$.$BATS_TEST_NUMBER"
+}
+
+teardown() {
+  if [ -n "${XDG_CACHE_HOME:-}" ] && [ -d "$XDG_CACHE_HOME" ]; then
+    chmod -R u+rwX "$XDG_CACHE_HOME" 2>/dev/null
+    rm -rf "$XDG_CACHE_HOME"
+  fi
+}
+
+# スタブ claude を作る。呼ばれた時点の TMPDIR と複製先のパスをログへ記録する。
+# 加えて、eval が root で権限を閉じた状態を真似て、TMPDIR の下に書き込みを閉じた
+# ディレクトリを作る（後始末が権限を戻してから消すことを見るため。root では権限が書き込みを
+# 妨げないので、権限を戻す処理の欠落はこの検査では赤くならない）
+make_stub_claude_tmpdir() {
+  cat >"$STUB_DIR/claude" <<'EOF'
+#!/usr/bin/env bash
+log="$BATS_TEST_TMPDIR/tmpdir.log"
+printf 'TMPDIR\t%s\n' "$TMPDIR" >"$log"
+printf 'CLONE\t%s\n' "$3" >>"$log"
+if [ -d "$TMPDIR" ]; then printf 'FACT\ttmpdir-exists\n' >>"$log"; fi
+mkdir -p "$TMPDIR/claude-eval-stub/home/cwd" && touch "$TMPDIR/claude-eval-stub/home/cwd/x"
+chmod 555 "$TMPDIR/claude-eval-stub/home/cwd" "$TMPDIR/claude-eval-stub/home"
+exit 0
+EOF
+  chmod +x "$STUB_DIR/claude"
 }
 
 # スタブ claude を作る。呼ばれた引数を1行1引数でログへ、
@@ -147,4 +175,44 @@ EOF
   run env PATH="/usr/bin:/bin" "$(command -v bash)" "$SUT" dependency-insight --output-dir "$BATS_TEST_TMPDIR/out"
   [ "$status" -ne 0 ]
   [[ "$output" == *"claude を PATH 上に解決できません"* ]]
+}
+
+@test "TMPDIR: /tmp の外の作業場所の tmp を TMPDIR にして claude を呼び、終わったら作業場所ごと消す" {
+  make_stub_claude_tmpdir
+  PATH="$STUB_DIR:$PATH" run bash "$SUT" dependency-insight --runs 1 --output-dir "$BATS_TEST_TMPDIR/out"
+  [ "$status" -eq 0 ]
+
+  log="$BATS_TEST_TMPDIR/tmpdir.log"
+  tmpdir="$(sed -n 's/^TMPDIR\t//p' "$log")"
+  clone="$(sed -n 's/^CLONE\t//p' "$log")"
+  physical_cache="$(cd "$XDG_CACHE_HOME" && pwd -P)"
+  [[ "$tmpdir" == "$physical_cache/claude-plugin-eval/run."*"/tmp" ]]
+  case "$tmpdir/" in /tmp/* | /var/tmp/* | /dev/shm/*) false ;; esac
+  run grep -Fq $'FACT\ttmpdir-exists' "$log"; [ "$status" -eq 0 ]
+  # 複製も同じ作業場所に在る
+  [ "$(dirname "$clone")" = "$(dirname "$tmpdir")" ]
+  # 書き込みを閉じたディレクトリが在っても、作業場所ごと消えている
+  [ ! -e "$(dirname "$tmpdir")" ]
+}
+
+@test "TMPDIR: 作業場所の置き場が /tmp の下なら、理由付きで非0終了し、claude を呼ばない" {
+  make_stub_claude_tmpdir
+  XDG_CACHE_HOME="/tmp/run-plugin-eval-bats.$$.$BATS_TEST_NUMBER" PATH="$STUB_DIR:$PATH" \
+    run bash "$SUT" dependency-insight --runs 1 --output-dir "$BATS_TEST_TMPDIR/out"
+  rm -rf "/tmp/run-plugin-eval-bats.$$.$BATS_TEST_NUMBER"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"/tmp・/var/tmp・/dev/shm の下に在ります"* ]]
+  [ ! -e "$BATS_TEST_TMPDIR/tmpdir.log" ]
+}
+
+@test "--keep-temp: 作業場所を残し、場所と消し方を示す" {
+  make_stub_claude_tmpdir
+  PATH="$STUB_DIR:$PATH" run bash "$SUT" dependency-insight --runs 1 --keep-temp --output-dir "$BATS_TEST_TMPDIR/out"
+  [ "$status" -eq 0 ]
+
+  tmpdir="$(sed -n 's/^TMPDIR\t//p' "$BATS_TEST_TMPDIR/tmpdir.log")"
+  work_dir="$(dirname "$tmpdir")"
+  [ -d "$work_dir" ]
+  [[ "$output" == *"作業場所を残しました: $work_dir"* ]]
+  [[ "$output" == *"chmod -R u+rwX '$work_dir' && rm -rf '$work_dir'"* ]]
 }
