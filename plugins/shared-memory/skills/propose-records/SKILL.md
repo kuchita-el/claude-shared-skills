@@ -14,7 +14,7 @@ allowed-tools:
   - Bash(git -C * log -1*)       # 別のリポジトリに在る根の、先頭のコミット
   - Bash(git remote get-url *)   # 機密の語（リポジトリの名前）を得る
   - Bash(git -C * remote get-url *)              # 同上。Project の根が別のリポジトリに在るとき
-  - Bash(git -C * rev-parse --show-toplevel*)    # 根が別のリポジトリに在るかの判定と、remote が無いときの語
+  - Bash(git -C * rev-parse --show-toplevel*)    # 根が別のリポジトリに在るかの判定、remote が無いときの語、置き場が作業ツリーの外かの確かめ
   - Bash(mktemp -d*)             # 根の外の一時の置き場を作る
   - Bash(date -u*)
   - Bash(node *scripts/memory.mjs*)
@@ -117,8 +117,9 @@ Project の根が別のリポジトリに在るかは、2つの出力を比べ�
    - Project の下書きは、Project の根の `records/` へ書く。
    - Global の下書きは、機密の確認（手順7）を通るまで、Global の根へ書かない。根の外の一時の置き場へ、決めたファイル名で書く。Global の既存の記録への変更（追記と、置き換えで足す `superseded-by`）も、確認を通るまで行わない。
      - 置き場は、`mktemp -d` をこの形のまま実行して作る。置き場は、Global の根のリポジトリの作業ツリーの外に在ることが要る。確認を通る前の下書きを、Global の根へ書かないためである（`confidentiality.md`「いつ行うか」）。
-     - `mktemp -d` の置き場は、Project の作業ツリーにも入らない。これは機密とは別の理由で、下書きがプロジェクトのコミットに混ざらないためである。
-     - `mktemp -d` が失敗したら止め、そのエラーを報告する。置き場を別の手段で作らない。作業ツリーの中にも作らない。
+     - 置き場は、Project の作業ツリーにも入れない。これは機密とは別の理由で、下書きがプロジェクトのコミットに混ざらないためである。
+     - 作った置き場で `git -C <置き場> rev-parse --show-toplevel` を実行し、どの作業ツリーにも入っていないことを確かめる。`TMPDIR` によっては、`mktemp -d` の置き場が作業ツリーの中にできるためである。パスが出たら（終了コード 0）、置き場はそのパスの作業ツリーの中に在るので、止めてそのパスを報告する。`not a git repository` で終わる（終了コード 128）なら、どの作業ツリーにも入っていない。
+     - `mktemp -d` が失敗したとき、または上の確かめで止めたときは、置き場を別の手段で作らない。作業ツリーの中にも作らない。
    - 記録の版は、`node "${CLAUDE_PLUGIN_ROOT}/scripts/memory.mjs" version <根> <識別子> --ref <起点>` で得る。起点の決め方と、`--ref` を省く場合と、版を得られないときの扱いは、`drafting.md` の「出典と版」が定める。このスキルは履歴を取り直さない。取り直していない起点は、検査器が終了コード 2 で拒む。別のコマンドで版を数えない。
    - 確かめていないことは `verification: unverified` とする。AI の提案や推測を `verified` にしない。別の文脈が観測し、この文脈が確かめていないものも、`unverified` とする。何を自分で確かめたとするかは、`drafting.md` が定める。
    - `belief` を `author: human` にするのは、本人の明示の発言が材料に在るときだけである。

@@ -27,6 +27,12 @@ setup() {
   # 作業場所の置き場は /tmp の外でなければならない（スクリプトが拒む）。BATS_TEST_TMPDIR は
   # /tmp の下に在りうるので、ホームの下にテストごとの置き場を作り、teardown で消す
   export XDG_CACHE_HOME="$HOME/.cache/run-plugin-eval-bats.$$.$BATS_TEST_NUMBER"
+  # HOME 自体が拒否される範囲に在る実行系では、スクリプトが全ての正常系を拒むので、理由を示して飛ばす
+  case "$HOME/" in
+    /tmp/* | /var/tmp/* | /dev/shm/*)
+      skip "HOME（$HOME）が /tmp・/var/tmp・/dev/shm の下に在り、作業場所の置き場をその外に作れない"
+      ;;
+  esac
 }
 
 teardown() {
@@ -215,4 +221,17 @@ EOF
   [ -d "$work_dir" ]
   [[ "$output" == *"作業場所を残しました: $work_dir"* ]]
   [[ "$output" == *"chmod -R u+rwX '$work_dir' && rm -rf '$work_dir'"* ]]
+}
+
+@test "TMPDIR: 作業場所の置き場が /tmp の下を指す symlink なら、物理パスで判定して理由付きで非0終了する" {
+  make_stub_claude_tmpdir
+  target="/tmp/run-plugin-eval-bats-target.$$.$BATS_TEST_NUMBER"
+  mkdir -p "$target" "$XDG_CACHE_HOME"
+  # 字面のパス（$XDG_CACHE_HOME/claude-plugin-eval）は /tmp の外で、実体だけが /tmp の下に在る
+  ln -s "$target" "$XDG_CACHE_HOME/claude-plugin-eval"
+  PATH="$STUB_DIR:$PATH" run bash "$SUT" dependency-insight --runs 1 --output-dir "$BATS_TEST_TMPDIR/out"
+  rm -rf "$target"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"/tmp・/var/tmp・/dev/shm の下に在ります"* ]]
+  [ ! -e "$BATS_TEST_TMPDIR/tmpdir.log" ]
 }
