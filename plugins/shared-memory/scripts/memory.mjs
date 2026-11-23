@@ -457,7 +457,9 @@ function requireDefaultBranch(root, ref) {
   const target = head.stdout.trim();
   const prefix = `${TRACKING}origin/`;
   if (head.status !== 0 || !target.startsWith(prefix) || target.length === prefix.length) {
-    throw new Unusable(`既定のブランチを決められない（${DEFAULT_REF} が無いか、origin の枝を指すシンボリックな ref でない）。git remote set-head origin <既定のブランチ> で作る。この形は、ネットワークへ出ない`);
+    const remotes = gitOutput(root, ['remote']).split('\n').map((n) => n.trim());
+    const rename = remotes.includes('origin') ? '' : '。carry は、プロジェクトの remote が origin という名前であることを前提にする。別の名前なら git remote rename <名前> origin で改める（origin を同じ URL で足してもよい）';
+    throw new Unusable(`既定のブランチを決められない（${DEFAULT_REF} が無いか、origin の枝を指すシンボリックな ref でない）。git remote set-head origin <既定のブランチ> で作る。この形は、ネットワークへ出ない${rename}`);
   }
   if (ref === undefined) return;
   const branch = target.slice(prefix.length);

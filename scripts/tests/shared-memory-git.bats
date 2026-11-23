@@ -1365,3 +1365,18 @@ global_with_record() {
   [ "$status" -eq 0 ]
   [ "$output" = "outbox/$D1-first.md:carried: 同じ内容のファイルが Global Memory の履歴に在る: candidates/$D1-first.md" ]
 }
+
+@test "carry: Project の remote が origin でないと exit 2 で止まり、何も書かず、origin への改名を示す" {
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  commit "$PUP" p1
+  git clone -q -o upstream "file://$PUP" "$PJ"
+  git -C "$PJ" fetch -q upstream main
+  global_with_record
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"origin"* ]]
+  [[ "$stderr" == *"rename"* ]]
+  [ ! -e "$GM/candidates" ] || [ -z "$(ls -A "$GM/candidates")" ]
+}
