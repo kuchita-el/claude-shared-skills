@@ -20,6 +20,7 @@ allowed-tools:
   - Bash(git -C * fetch --deepen=*)              # 以下は、承認済みの下書きを運ぶ（手順8）
   - Bash(git -C * status --porcelain*)
   - Bash(git -C * branch --show-current*)
+  - Bash(git -C * rev-parse --verify --quiet refs/*)
   - Bash(git -C * switch --detach FETCH_HEAD)
   - Bash(git -C * switch -c carry/*)
   - Bash(git -C * add -- candidates/*)
@@ -139,7 +140,7 @@ Project の根が別のリポジトリに在るかは、2つの出力を比べ�
    - 定義済みのエージェントを起動できなければ、汎用のサブエージェントへ同じ入力を渡し、定義のファイル（`${CLAUDE_PLUGIN_ROOT}/agents/record-crosschecker.md`）を読んで従うよう伝える。別の文脈を作れなければ、同じ文脈の読みで代えない。報告の読みを `未実施` とし、先へ進む。
    - 指摘が返ったら、箇所を読んで確かめ（`Read`）、下書きか報告を書き換えて、手順6 の検査からやり直す。やり直しは2回までとする。残れば、報告に残っていると書き、表にもそう書く。
 8. **出し方。** 記録・送り出しの下書き・報告・作り直した索引を、作業中のブランチの変更として残して終える。commit・push・PR の作成は、プロジェクトの工程に従う。送り出しの下書きは、プロジェクトの PR で承認された後に、Global Memory へ運ばれる。PR は出さない。
-   - Global の根が在れば、続けて `${CLAUDE_PLUGIN_ROOT}/references/carrying.md` を読み、その手順で、Project の既定のブランチの `outbox/` に在り、まだ運んでいない下書きを運ぶ。検査器は `node "${CLAUDE_PLUGIN_ROOT}/scripts/memory.mjs"` の形で実行する。この起動で書いた下書きは、まだ承認されていないので運ばれない。
+   - Global の根が在れば、続けて `${CLAUDE_PLUGIN_ROOT}/references/carrying.md` を読み、その手順（前提の、Global の利用規則が運ぶことを定めているかを含む）で、Project の既定のブランチの `outbox/` に在り、まだ運んでいない下書きを運ぶ。検査器は `node "${CLAUDE_PLUGIN_ROOT}/scripts/memory.mjs"` の形で実行する。この起動で書いた下書きは、まだ承認されていないので運ばれない。
 
 ## 出力
 

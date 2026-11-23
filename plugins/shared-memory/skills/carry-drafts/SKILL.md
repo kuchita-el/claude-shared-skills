@@ -10,6 +10,7 @@ allowed-tools:
   - Bash(git -C * fetch --deepen=*)
   - Bash(git -C * status --porcelain*)
   - Bash(git -C * branch --show-current*)
+  - Bash(git -C * rev-parse --verify --quiet refs/*)
   - Bash(git -C * switch --detach FETCH_HEAD)
   - Bash(git -C * switch -c carry/*)
   - Bash(git -C * add -- candidates/*)
@@ -41,7 +42,7 @@ allowed-tools:
 ## 手順
 
 1. `${CLAUDE_PLUGIN_ROOT}/references/carrying.md` と、`${CLAUDE_PLUGIN_ROOT}/references/format.md` の「下書きを運ぶ」を読む。
-2. Global の根の利用規則を読む。在りかは、`format.md` の「記憶の根」が定める順で決める。remote と既定のブランチの名前と、運ぶことについての定めを、そこから得る。
+2. Global の根の利用規則を読む。在りかは、`format.md` の「記憶の根」が定める順で決める。remote と既定のブランチの名前と、運ぶことについての定めを、そこから得る。定めが無ければ、`carrying.md` の前提に従って止まる。
 3. `carrying.md` の手順どおりに運ぶ。検査器は `node "${CLAUDE_PLUGIN_ROOT}/scripts/memory.mjs"` の形で実行する。
 
 コマンドは、`carrying.md` に書いた形のまま、1回に1つずつ実行する。`&&`・`;`・パイプ・`2>&1` や、`cd`・`echo` でつないだ形は、許可した型に当たらず、拒まれる。終了コードは、足した `echo` ではなく、結果から読む。手順に無いコマンド（`ls`・`printenv` など）は Bash で使わず、パスは `Read` で読む。

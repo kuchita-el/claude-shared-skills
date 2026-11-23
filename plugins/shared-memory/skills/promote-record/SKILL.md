@@ -17,6 +17,7 @@ allowed-tools:
   - Bash(git -C * fetch --deepen=*)              # 以下は、承認済みの下書きを運ぶ（手順10）
   - Bash(git -C * status --porcelain*)
   - Bash(git -C * branch --show-current*)
+  - Bash(git -C * rev-parse --verify --quiet refs/*)
   - Bash(git -C * switch --detach FETCH_HEAD)
   - Bash(git -C * switch -c carry/*)
   - Bash(git -C * add -- candidates/*)
@@ -103,7 +104,7 @@ Project の根が別のリポジトリに在るかは、2つの出力を比べ�
 9. **指摘を扱い、報告を仕上げる。**
    - 指摘の箇所を、自分で読んで確かめる（`Read`）。下書きか報告を書き換えて全て解消し、手順6〜8 をやり直す。やり直しは2回までとする。残れば、報告に残っていると書いて止める。
    - 報告の残りの3つの節を書く。続けて、`outbox-report.md` の「書く順序」の6を行う。
-10. **承認済みの下書きを運ぶ。** `${CLAUDE_PLUGIN_ROOT}/references/carrying.md` を読み、その手順で、Project の既定のブランチの `outbox/` に在り、まだ運んでいない下書きを運ぶ。検査器は `node "${CLAUDE_PLUGIN_ROOT}/scripts/memory.mjs"` の形で実行する。この起動で書いた下書きは、まだ承認されていないので運ばれない。運べずに止まっても、手順9 までの成果物はそのまま残す。
+10. **承認済みの下書きを運ぶ。** `${CLAUDE_PLUGIN_ROOT}/references/carrying.md` を読み、その手順（前提の、Global の利用規則が運ぶことを定めているかを含む）で、Project の既定のブランチの `outbox/` に在り、まだ運んでいない下書きを運ぶ。検査器は `node "${CLAUDE_PLUGIN_ROOT}/scripts/memory.mjs"` の形で実行する。この起動で書いた下書きは、まだ承認されていないので運ばれない。運べずに止まっても、手順9 までの成果物はそのまま残す。
 
 ## 下書きの中身
 
