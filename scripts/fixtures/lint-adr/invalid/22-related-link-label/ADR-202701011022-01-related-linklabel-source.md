@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202701011022-01-related-linklabel-source: リンクラベルが説明文の Related が退役ADRを指す source
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用（invalid/22）。`Related:` のリンクラベルが説明文で ADR stem がパス部にのみ現れる書式（`[詳細はこちら](./ADR-X.md)`）でも、`Related:` 以降で最初に現れる ADR stem を抽出して退役参照違反を検出することを確認する（書式非依存の適用範囲＝リンクラベル書式）。

@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202604021004-01-drift-second-decision: drift検証用2件目の決定
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用の drift 検証 ADR（2件目）。同梱 index.md には意図的にこの ADR を含めず、

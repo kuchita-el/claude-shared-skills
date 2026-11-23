@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202611131019-01-related-retired-link-new: 後継（有効）
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用（invalid/19）。ADR-202611121019-01 を上書きした後継。レイヤ3双方向を満たすため本文で Supersedes を宣言する。本 ADR の Related は持たない（source は ADR-202611111019-01 のみ）。

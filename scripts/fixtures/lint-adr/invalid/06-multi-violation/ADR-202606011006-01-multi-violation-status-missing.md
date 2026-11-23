@@ -3,10 +3,6 @@ validity: 有効
 ---
 # ADR-202606011006-01-multi-violation-status-missing: 複数違反fixture・ステータス欠落側
 
-## Status
-
-（front-matter に status キーが存在しない状態を再現する fixture）
-
 ## Context
 
 fixture 用。複数 ADR 同時違反の回帰テスト用の ADR 群（06-multi-violation）の1件目。

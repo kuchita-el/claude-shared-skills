@@ -5,10 +5,6 @@ superseded-by: ADR-202612161035-01-layer-order-forward-new
 ---
 # ADR-202612151035-01-layer-order-forward-old: 出力順 fixture のレイヤ3 forward 違反（旧決定）
 
-## Status
-
-承認済み（上書き済み）
-
 ## Context
 
 fixture 用（invalid/35）。front-matter に superseded-by を持つが、後継

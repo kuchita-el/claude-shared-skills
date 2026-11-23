@@ -4,10 +4,6 @@ validity: 上書き済み
 ---
 # ADR-202602031003-01-missing-superseded-by-decision: 後継欠落の決定
 
-## Status
-
-承認済み（上書き済み）
-
 ## Context
 
 fixture 用。`validity: 上書き済み` だが front-matter が `superseded-by` キーを持たない ADR。

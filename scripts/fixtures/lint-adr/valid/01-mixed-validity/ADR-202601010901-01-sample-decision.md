@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202601010901-01-sample-decision: サンプル決定
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用のサンプル ADR。有効な状態を表す。

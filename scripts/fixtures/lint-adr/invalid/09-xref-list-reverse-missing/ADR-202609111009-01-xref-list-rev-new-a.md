@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202609111009-01-xref-list-rev-new-a: reverse検証用の後継A（列挙済み・整合）
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用。09 の後継A。old の superseded-by に列挙され、本文でも Supersedes を宣言する整合側。

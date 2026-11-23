@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202604011004-01-drift-first-decision: drift検証用1件目の決定
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用の drift 検証 ADR（1件目）。front-matter は完備しレイヤ1は通過する。

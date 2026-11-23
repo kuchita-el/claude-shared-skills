@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202602010903-01-trailing-space-decision: 末尾空白検証用決定
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用。front-matter の validity 値に末尾空白（半角スペース1個）を持つ ADR。

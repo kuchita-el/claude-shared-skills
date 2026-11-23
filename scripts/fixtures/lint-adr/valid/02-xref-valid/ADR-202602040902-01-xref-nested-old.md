@@ -5,10 +5,6 @@ superseded-by: ADR-202602050902-01-xref-nested-new
 ---
 # ADR-202602040902-01-xref-nested-old: 入れ子バレット相互参照検証用の旧決定
 
-## Status
-
-承認済み（上書き済み）
-
 ## Context
 
 fixture 用。相互参照検証専用の ADR 群（02-xref-valid）の旧 ADR。

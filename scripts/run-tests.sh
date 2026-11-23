@@ -98,6 +98,7 @@ EXPECTED_BATS=(
     adr-portability.bats
     eval-placement.bats
     gen-adr-index.bats
+    lint-adr-body-rules.bats
     lint-adr-layers.bats
     lint-adr-old-bash.bats
     lint-adr-stem.bats

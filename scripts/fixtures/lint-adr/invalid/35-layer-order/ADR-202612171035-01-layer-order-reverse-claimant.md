@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202612171035-01-layer-order-reverse-claimant: 出力順 fixture のレイヤ3 reverse 違反（宣言側）
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用（invalid/35）。本文で上書きを宣言するが、参照先

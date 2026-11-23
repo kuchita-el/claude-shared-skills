@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202611111019-01-related-retired-link-source: リンク形式 Related が退役ADRを指す source
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用（invalid/19）。穴2（markdown リンク形式）の `Related:` 行が退役（上書き済み）ADR を指す。レイヤ4 がリンク先頭の `[` を吸収して stem を抽出し退役参照違反を検出することを確認する。参照先の退役ペアはレイヤ3双方向を満たし、退役違反のみを分離する。

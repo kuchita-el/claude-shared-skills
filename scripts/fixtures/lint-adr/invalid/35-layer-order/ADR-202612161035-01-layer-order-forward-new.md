@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202612161035-01-layer-order-forward-new: 出力順 fixture のレイヤ3 forward 違反（後継）
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用（invalid/35）。ADR-202612151035-01-layer-order-forward-old から superseded-by で
