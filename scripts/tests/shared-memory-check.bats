@@ -867,6 +867,14 @@ C=MEM-202611140000-04
   assert_scaffold_root "$CASE_DIR/global-memory" 2 MEM-202610150000-01-tls-min-version-handshake.md
   # 題材を作る push は、採点器が読む記録に残さない。
   [ ! -e "$CASE_DIR/.remotes/global.git/push.log" ]
+  # 題材は、どちらの根でも FETCH_HEAD を持たない。取り直さずに carry を実行すると、終了コード 2 で止まる。
+  [ ! -e "$CASE_DIR/.git/FETCH_HEAD" ]
+  run --separate-stderr node "$SUT" carry "$CASE_DIR/docs/memory" "$CASE_DIR/global-memory" --project-ref FETCH_HEAD --global-ref FETCH_HEAD
+  [ "$status" -eq 2 ]
+  # Global だけを取り直しても、Project を取り直さなければ止まる。
+  git -C "$CASE_DIR/global-memory" fetch -q --deepen=1000 origin main
+  run --separate-stderr node "$SUT" carry "$CASE_DIR/docs/memory" "$CASE_DIR/global-memory" --project-ref FETCH_HEAD --global-ref FETCH_HEAD
+  [ "$status" -eq 2 ]
   # 運ぶ手順（carrying.md）と同じ取り直しの後に、carry が題材の狙いどおりに判定する。
   git -C "$CASE_DIR/docs/memory" fetch -q --deepen=1000 origin main
   git -C "$CASE_DIR/global-memory" fetch -q --deepen=1000 origin main
@@ -879,6 +887,10 @@ C=MEM-202611140000-04
   [ -f "$CASE_DIR/docs/memory/outbox/MEM-202611200900-03-unpinned-linter-flaky.md" ]
   # 採点器は、題材と同じファイル名で -02 を見る。
   graders="$REPO_ROOT/evals/shared-memory/behavior-carry-drafts/graders"
+  # 取り直しの採点器は、根ごとに分かれている。
+  grep -Fq 'docs/memory' "$graders/fetched-project.md"
+  grep -Fq 'global-memory' "$graders/fetched-global.md"
+  [ ! -e "$graders/fetched-both.md" ]
   grep -Fq 'MEM-202611200900-02-cron-evaluated-in-scheduler-zone' "$graders/pushed-candidate.md"
   grep -Fq 'MEM-202611200900-02-cron-evaluated-in-scheduler-zone' "$graders/pushed-only-candidate.md"
 }

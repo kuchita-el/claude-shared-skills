@@ -227,7 +227,8 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
     'Bash(git log*)' 'Bash(git diff*)' 'Bash(git -C * log -1*)' 'Bash(git remote get-url *)' 'Bash(date -u*)' \
     'Bash(grep -i -F *)' 'Bash(git -C * remote get-url *)' 'Bash(git -C * rev-parse --show-toplevel*)' \
     'Bash(git -C * fetch --deepen=*)' 'Bash(git -C * status --porcelain*)' 'Bash(git -C * branch --show-current*)' \
-    'Bash(git -C * switch *)' 'Bash(git -C * add -- candidates/*)' 'Bash(git -C * ls-tree *)' \
+    'Bash(git -C * switch --detach FETCH_HEAD)' 'Bash(git -C * switch -c carry/*)' \
+    'Bash(git -C * add -- candidates/*)' 'Bash(git -C * ls-tree *)' \
     'Bash(git -C * commit *)' 'Bash(git -C * push *)'
   ```
 - `shared-memory` の `behavior-carry-drafts` は、題材の Global の remote（`.remotes/global.git`）の post-receive フックが、push された ref ごとに、`main` から分かれた点からの変更を `.remotes/global.git/push.log` へ平文で書く。採点器は、そのファイルで、候補を足すだけのブランチを push したかを見る。題材に CI は無いので、取り込みは起きない

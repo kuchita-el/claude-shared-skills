@@ -20,7 +20,8 @@ allowed-tools:
   - Bash(git -C * fetch --deepen=*)              # 以下は、承認済みの下書きを運ぶ（手順8）
   - Bash(git -C * status --porcelain*)
   - Bash(git -C * branch --show-current*)
-  - Bash(git -C * switch *)
+  - Bash(git -C * switch --detach FETCH_HEAD)
+  - Bash(git -C * switch -c carry/*)
   - Bash(git -C * add -- candidates/*)
   - Bash(git -C * ls-tree *)
 ---

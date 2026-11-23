@@ -204,6 +204,8 @@ git_c commit -q -m "seed"
 git -c push.negotiate=false push -q origin main
 git fetch -q origin main
 git remote set-head origin main
+# 題材を作る取り直しは、運ぶ側の取り直しに数えない。取り直さなければ carry は終了コード 2 で止まる。
+rm -f .git/FETCH_HEAD
 
 # 作業中のブランチ。承認されていない下書きを持つ。
 git switch -q -c work
