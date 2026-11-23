@@ -893,3 +893,235 @@ C=MEM-202611140000-04
   assert_scaffold_root "$CASE_DIR/docs/memory" 2 \
     MEM-202611010000-01-failed-job-retried-three-times.md MEM-202611010000-02-job-log-kept-thirty-days.md
 }
+
+# ここから下は、送り出しの下書き（outbox/）と選別の前の候補（candidates/）の試験である。
+
+# 形式に合う下書きか候補を1件書く。$1 は置き場（outbox か candidates）、$2 は識別子、$3 は名前、$4 以降は front-matter へ足す行。
+draft() {
+  local dir="$1" id="$2" name="$3"
+  shift 3
+  mkdir -p "$ROOT/$dir"
+  {
+    printf '%s\n' '---' "id: $id" 'type: knowledge' "title: $name の主張" 'author: ai' \
+      'verification: unverified' 'confidence: medium' 'applies-when: いつでも' 'sources:' '  - 2026-11-20 に手元で実測した'
+    printf '%s\n' 'created: 2026-11-20' 'updated: 2026-11-20'
+    [ "$#" -eq 0 ] || printf '%s\n' "$@"
+    printf '%s\n' '---' '' '本文。'
+  } >"$ROOT/$dir/$id-$name.md"
+}
+
+D1=MEM-202611200000-01
+D2=MEM-202611200000-02
+
+@test "下書きと候補: 形式に合う下書きと候補は通り、下書きは索引に載らず、候補は記録の後ろの候補の表に載る" {
+  record "$B" second
+  draft outbox "$D1" outgoing
+  draft candidates "$D2" arrived
+  draft candidates "$A" earlier
+  write_index
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  run node "$SUT" index "$ROOT"
+  [[ "$output" != *"outbox/"* ]]
+  [[ "$output" != *"$D1"* ]]
+  # 記録の表の後ろに、見出しと、記録の表と同じ列の候補の表が続く。候補も識別子の順に並ぶ。
+  local expected
+  expected=$(printf '%s\n' \
+    "| [$B](records/$B-second.md) | knowledge | second の主張 | いつでも | verified |" \
+    '' '## 候補' '' \
+    '| 識別子 | 種類 | 主張 | 当てはまる条件 | 検証 |' \
+    '|---|---|---|---|---|' \
+    "| [$A](candidates/$A-earlier.md) | knowledge | earlier の主張 | いつでも | unverified |" \
+    "| [$D2](candidates/$D2-arrived.md) | knowledge | arrived の主張 | いつでも | unverified |")
+  [ "$(tail -n 8 "$ROOT/index.md")" = "$expected" ]
+}
+
+@test "下書きと候補: 候補が無い根の索引は、候補の表を持たず、記録だけの索引とバイトで同じである" {
+  record "$A" first
+  write_index
+  cp "$ROOT/index.md" "$BATS_TEST_TMPDIR/before.md"
+  draft outbox "$D1" outgoing
+  mkdir -p "$ROOT/candidates"
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 0 ]
+  write_index
+  cmp "$ROOT/index.md" "$BATS_TEST_TMPDIR/before.md"
+  [[ "$(cat "$ROOT/index.md")" != *"## 候補"* ]]
+}
+
+@test "下書きと候補: 候補だけが在り索引が無い根は index で落ちる" {
+  draft candidates "$D1" arrived
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [ "$output" = "index.md:index: 索引が無い。index --write で作る" ]
+  write_index
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 0 ]
+}
+
+@test "下書きと候補: 下書きだけが在る根は、索引が無くても通る" {
+  draft outbox "$D1" outgoing
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "下書きと候補: Project の出典は draft で落ち、Global の記録の識別子だけの出典は通る" {
+  local dir
+  for dir in outbox candidates; do
+    rm -rf "$ROOT/outbox" "$ROOT/candidates" "$ROOT/index.md"
+    draft "$dir" "$D1" first
+    draft "$dir" "$D2" second
+    sed -i "s|^  - 2026-11-20 に手元で実測した\$|&\n  - Project $A@1a2b3c4|" "$ROOT/$dir/$D1-first.md"
+    sed -i "s|^  - 2026-11-20 に手元で実測した\$|&\n  - $A|" "$ROOT/$dir/$D2-second.md"
+    write_index
+    run node "$SUT" check "$ROOT"
+    [ "$status" -eq 1 ]
+    [ "${#lines[@]}" -eq 1 ]
+    [[ "$output" == "$dir/$D1-first.md:draft: 下書きと候補は Project の出典を持たない。"* ]]
+  done
+}
+
+@test "下書きと候補: 置き換えの項目と evolution は、どれも draft で落ち、evolution の規則では出さない" {
+  local dir
+  for dir in outbox candidates; do
+    rm -rf "$ROOT/outbox" "$ROOT/candidates" "$ROOT/index.md"
+    draft "$dir" "$D1" superseded "superseded-by: $D2"
+    draft "$dir" "$D2" moved 'moved-to: 指示ファイル'
+    draft "$dir" "$E" evolved 'from:' "  - $A" 'to:' "  - $B"
+    sed -i 's/^type: knowledge/type: evolution/' "$ROOT/$dir/$E-evolved.md"
+    write_index
+    run node "$SUT" check "$ROOT"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"$dir/$D1-superseded.md:draft: 下書きと候補は superseded-by を持たない"* ]]
+    [[ "$output" == *"$dir/$D2-moved.md:draft: 下書きと候補は moved-to を持たない"* ]]
+    [[ "$output" == *"$dir/$E-evolved.md:draft: 下書きと候補は from を持たない"* ]]
+    [[ "$output" == *"$dir/$E-evolved.md:draft: 下書きと候補は to を持たない"* ]]
+    [[ "$output" == *"$dir/$E-evolved.md:draft: 下書きと候補は evolution にしない"* ]]
+    [[ "$output" != *":evolution:"* ]]
+    [[ "$output" != *":dangling:"* ]]
+    [ "${#lines[@]}" -eq 5 ]
+  done
+}
+
+@test "下書きと候補: from だけ・type: evolution だけの下書きも draft で落ちる" {
+  draft outbox "$D1" from-only 'from:' "  - $A"
+  draft outbox "$D2" evolution-only
+  sed -i 's/^type: knowledge/type: evolution/' "$ROOT/outbox/$D2-evolution-only.md"
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [ "$output" = "$(printf '%s\n' "outbox/$D1-from-only.md:draft: 下書きと候補は from を持たない" "outbox/$D2-evolution-only.md:draft: 下書きと候補は evolution にしない")" ]
+}
+
+@test "下書きと候補: records の記録は、Project の出典と置き換えの項目を持っても draft にしない" {
+  record "$A" first "superseded-by: $B"
+  record "$B" second
+  record "$E" evolution 'from:' "  - $A" 'to:' "  - $B"
+  edit "$E-evolution.md" 's/^type: knowledge/type: evolution/'
+  edit "$B-second.md" "s|^  - 出典|  - Project $D1@1a2b3c4|"
+  write_index
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "sent-as: 識別子を並べた sent-as は通り、0件・識別子でない値は value、1行の値は front-matter で落ちる" {
+  record "$A" first 'sent-as:' "  - $D1" "  - $D2"
+  write_index
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  edit "$A-first.md" "/^  - $D2/d; s/^  - $D1/  - outbox の下書き/"
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [ "$output" = "records/$A-first.md:value: sent-as は MEM-<12桁>-<2桁> の形の識別子を並べる: outbox の下書き" ]
+  edit "$A-first.md" '/^  - outbox の下書き/d'
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [ "$output" = "records/$A-first.md:value: sent-as は下書きの識別子を1件以上書く" ]
+  edit "$A-first.md" "s/^sent-as:\$/sent-as: $D1/"
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"records/$A-first.md:front-matter: sent-as は「- 値」の行で書く"* ]]
+}
+
+@test "sent-as: 指す下書きが outbox に無くても違反にしない" {
+  record "$A" first 'sent-as:' "  - $D1"
+  write_index
+  [ ! -e "$ROOT/outbox" ]
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 0 ]
+}
+
+@test "duplicate-id: records・outbox・candidates をまたぐ同じ識別子は duplicate-id で落ち、識別子が違えば通る" {
+  record "$A" first
+  draft outbox "$D1" outgoing
+  draft candidates "$D2" arrived
+  write_index
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 0 ]
+  draft outbox "$A" copied-id
+  draft candidates "$D1" same-as-draft
+  draft candidates "$A" same-as-record
+  write_index
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"outbox/$A-copied-id.md:duplicate-id: $A は records/$A-first.md と重複している"* ]]
+  [[ "$output" == *"candidates/$D1-same-as-draft.md:duplicate-id: $D1 は outbox/$D1-outgoing.md と重複している"* ]]
+  [[ "$output" == *"candidates/$A-same-as-record.md:duplicate-id: $A は records/$A-first.md と重複している"* ]]
+  [ "${#lines[@]}" -eq 3 ]
+}
+
+@test "下書きと候補: 記録の形式の規則（required・value・filename・front-matter）も掛かる" {
+  draft outbox "$D1" missing
+  sed -i '/^applies-when:/d' "$ROOT/outbox/$D1-missing.md"
+  draft candidates "$D2" Bad_Name
+  draft candidates "$E" wrong-type
+  sed -i 's/^type: knowledge/type: memo/' "$ROOT/candidates/$E-wrong-type.md"
+  mkdir -p "$ROOT/outbox"
+  printf '%s\n' '本文だけ。' >"$ROOT/outbox/$A-no-front-matter.md"
+  write_index
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"outbox/$D1-missing.md:required: applies-when が無い"* ]]
+  [[ "$output" == *"candidates/$D2-Bad_Name.md:filename: ファイル名は"* ]]
+  [[ "$output" == *"candidates/$E-wrong-type.md:value: type は"* ]]
+  [[ "$output" == *"outbox/$A-no-front-matter.md:front-matter: 1行目が --- でない"* ]]
+}
+
+@test "下書きと候補: 記録の superseded-by が候補を指すと dangling で落ちる（関係は記録の間だけで見る）" {
+  record "$A" first "superseded-by: $D1"
+  record "$E" evolution 'from:' "  - $A" 'to:' "  - $D1"
+  edit "$E-evolution.md" 's/^type: knowledge/type: evolution/'
+  draft candidates "$D1" arrived
+  write_index
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"records/$A-first.md:dangling: superseded-by が指す記録が無い: $D1"* ]]
+  [[ "$output" == *"records/$E-evolution.md:dangling: to が指す記録が無い: $D1"* ]]
+}
+
+@test "下書きと候補: outbox の下の階層（送り出しの報告）と candidates の下の階層は読まない" {
+  draft outbox "$D1" outgoing
+  mkdir -p "$ROOT/outbox/reports" "$ROOT/candidates/old"
+  printf '%s\n' '報告。front-matter は無い。' >"$ROOT/outbox/reports/$D1.md"
+  printf '%s\n' '本文だけ。' >"$ROOT/candidates/old/note.md"
+  run node "$SUT" check "$ROOT"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "下書きと候補: outbox か candidates がディレクトリでないと、検査できない入力として exit 2 で終わる" {
+  local name
+  for name in outbox candidates; do
+    rm -rf "$ROOT/outbox" "$ROOT/candidates"
+    : >"$ROOT/$name"
+    run --separate-stderr node "$SUT" check "$ROOT"
+    [ "$status" -eq 2 ]
+    [ -z "$output" ]
+    [[ "$stderr" == *"$name がディレクトリでない"* ]]
+    run --separate-stderr node "$SUT" index "$ROOT"
+    [ "$status" -eq 2 ]
+  done
+}
