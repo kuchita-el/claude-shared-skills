@@ -2,8 +2,9 @@
 # ADR drift-lint（plugins/adr/scripts/lint-adr.sh）のうち、ADR 本文の規約を見る3つの検査のテスト。
 #
 #   - レイヤ1 種別10: front-matter を持つ ADR の本文に `## Status` 節を置かない
-#   - レイヤ5 H1 形式: 有効な ADR の H1 が `# ADR-<識別子>: <タイトル>` の形である
-#   - レイヤ3 forward: 上書き済みの原 ADR の本文が、superseded-by の全後継を `Superseded by:` に挙げる
+#   - レイヤ5 H1 形式: 有効な ADR の H1 から、index 生成器と同じ条件でタイトルを取り出せる
+#   - レイヤ3 forward: 原 ADR の本文が `Superseded by:` を書いているなら、superseded-by の全後継を挙げる
+#     （行が1行も無い原 ADR は対象外。凍結された旧い ADR に直せない違反を課さない）
 #
 # これらは以前 manage-adr の手順書（散文）だけが保証していた。検査器の側へ移したので、
 # 退行すれば赤になることと、赤にしてはならない入力（退役・提案中の ADR、コードフェンス内の
@@ -54,6 +55,16 @@ mutate() {
     sed "$2" "$1" >"$1.tmp" && mv "$1.tmp" "$1"
 }
 
+# ファイル $1 の、行全体が $2 に一致する行の直前へ、$3 の行を挿入する（BSD sed の `\n` 差を避けるため awk）。
+insert_before() {
+    awk -v pat="$2" -v ins="$3" '$0 == pat { print ins } { print }' "$1" >"$1.tmp" && mv "$1.tmp" "$1"
+}
+
+# ファイル $1 の、行全体が $2 に一致する行の直後へ、$3 の行を挿入する。
+insert_after() {
+    awk -v pat="$2" -v ins="$3" '{ print } $0 == pat { print ins }' "$1" >"$1.tmp" && mv "$1.tmp" "$1"
+}
+
 @test "前提: 被テスト検査器と fixture の ADR 群が存在する" {
     assert_preconditions_met
 }
@@ -84,7 +95,10 @@ mutate() {
     collect_contains "$output" "$RETIRED_STATUS: 本文に \"## Status\" 節があります" \
         "変異: 退役を有効へ変えると状態節が違反になる"
     dir="$(copy_valid13)"
-    mutate "$dir/$RETIRED_STATUS" 's/^validity: 廃止済み$/validity: 上書き済み/; s/^status: 承認済み$/status: 承認済み\nsuperseded-by: ADR-202701031013-01-plain-new/'
+    mutate "$dir/$RETIRED_STATUS" 's/^validity: 廃止済み$/validity: 上書き済み/'
+    insert_after "$dir/$RETIRED_STATUS" "validity: 上書き済み" "superseded-by: ADR-202701031013-01-plain-new"
+    collect_equals "$(grep -c '^superseded-by: ADR-202701031013-01-plain-new$' "$dir/$RETIRED_STATUS")" "1" \
+        "前提: 変異した ADR が上書き済みと superseded-by を持つ（持たないと下の免除の確認が空振りする）"
     run_sut "$dir"
     collect_not_contains "$output" "$RETIRED_STATUS: 本文に \"## Status\" 節があります" \
         "上書き済みの ADR の状態節も免除する"
@@ -168,6 +182,21 @@ mutate() {
     run_sut "$dir"
     collect_contains "$output" "$NEW: H1 形式違反" "変異: コロンの後に空白が無い H1 は違反"
 
+    # 検出側の変異: ": " はあるがタイトルが空白だけの H1 は、タイトル欄が空になるので違反
+    dir="$(copy_valid13)"
+    mutate "$dir/$NEW" 's/^# ADR-202701031013-01: .*$/# ADR-202701031013-01:   /'
+    run_sut "$dir"
+    collect_contains "$output" "$NEW: H1 形式違反" "変異: タイトルが空白だけの H1 は違反"
+
+    # 受理する形: 識別子部とコロンのあいだに空白があっても、get_title は ": " 以降を取り出せる
+    # （index 生成器が正しく扱う形を違反にしない）。index は再生成して同期させる。
+    dir="$(copy_valid13)"
+    mutate "$dir/$NEW" 's/^# ADR-202701031013-01: /# ADR-202701031013-01 : /'
+    bash "$PLUGIN_ROOT/scripts/gen-adr-index.sh" "$dir" >"$dir/index.md"
+    run_sut "$dir"
+    collect_rc 0 "識別子部の後ろに空白を置いた \"ID : タイトル\" の H1 は受理する"
+    collect_contains "$(cat "$dir/index.md")" "$NEW" "前提: 再生成した index が当該 ADR を載せている"
+
     # 識別子の不一致は従来どおり H1 整合違反だけが出る（形式違反を重ねない）
     dir="$(copy_valid13)"
     mutate "$dir/$NEW" 's/^# ADR-202701031013-01: .*$/# ADR-209901010000-01 別の識別子/'
@@ -190,9 +219,9 @@ mutate() {
 
     run_sut "$CORPUS_DIR/invalid/39-superseded-by-not-listed"
     collect_rc 1 "後継の一部しか挙げない原 ADR は exit 1"
-    collect_contains "$output" "ADR-202701011039-01-split-old.md: 相互参照違反（原 ADR 自身の本文 \"## 関連ADR\" の \"Superseded by:\" 行に後継 ADR-202701031039-01-split-new-b が挙がっていません）" \
+    collect_contains "$output" "ADR-202701011039-01-split-old.md: 相互参照違反（原 ADR 自身の本文 \"## 関連ADR\" の \"Superseded by:\" 行が後継 ADR-202701031039-01-split-new-b を挙げていません。後継の一部だけが書かれています）" \
         "挙がっていない後継を名指しして報告する"
-    collect_not_contains "$output" "後継 ADR-202701021039-01-split-new-a が挙がっていません" \
+    collect_not_contains "$output" "後継 ADR-202701021039-01-split-new-a を挙げていません" \
         "挙がっている後継は報告しない"
     collect_equals "$(printf '%s\n' "$output" | grep -c '相互参照違反')" "1" "報告は1件ちょうど（Supersedes 側の双方向は揃っている）"
 
@@ -203,40 +232,49 @@ mutate() {
     collect_rc 0 "1行へ並べた形は受理する"
 
     local dir
-    # 検出側の変異: バレットを1つ消すと、その後継が報告される
+    # 検出側の変異: バレットを1つ消すと（もう1つは残る）、消した後継が報告される
     dir="$(copy_valid13)"
     mutate "$dir/$OLD" '/^- Superseded by: ADR-202701031013-01-plain-new$/d'
     run_sut "$dir"
     collect_rc 1 "変異: 後継のバレットを1つ消すと exit 1"
-    collect_contains "$output" "後継 ADR-202701031013-01-plain-new が挙がっていません" "変異: 消した後継が報告される"
-    collect_not_contains "$output" "後継 ADR-202701021013-01-fence-and-quo が挙がっていません" "変異: 残した後継は報告されない"
+    collect_contains "$output" "後継 ADR-202701031013-01-plain-new を挙げていません" "変異: 消した後継が報告される"
+    collect_not_contains "$output" "後継 ADR-202701021013-01-fence-and-quo を挙げていません" "変異: 残した後継は報告されない"
+
+    # 免除（対の側）: Superseded by: の行が1行も無い原 ADR は、凍結された旧い ADR を想定して違反にしない
+    dir="$(copy_valid13)"
+    mutate "$dir/$OLD" '/^- Superseded by: /d'
+    collect_equals "$(grep -c 'Superseded by:' "$dir/$OLD")" "0" "前提: 変異した原 ADR に Superseded by: の行が無い"
+    run_sut "$dir"
+    collect_rc 0 "Superseded by: の行が1行も無い原 ADR は違反にしない"
 
     # 観測する量（Superseded by: の行の数）を保ったまま中身を変える変異: 後継の stem を別の ADR へ差し替える
     dir="$(copy_valid13)"
     mutate "$dir/$OLD" 's/^- Superseded by: ADR-202701031013-01-plain-new$/- Superseded by: ADR-202701021013-01-fence-and-quo/'
     run_sut "$dir"
-    collect_contains "$output" "後継 ADR-202701031013-01-plain-new が挙がっていません" \
+    collect_contains "$output" "後継 ADR-202701031013-01-plain-new を挙げていません" \
         "変異: 行数を保ったまま後継を差し替えても報告される"
 
     # 完全一致: 後継の stem を前方に含む別の長い stem は、後継を挙げたことにならない
     dir="$(copy_valid13)"
     mutate "$dir/$OLD" 's/^- Superseded by: ADR-202701031013-01-plain-new$/- Superseded by: ADR-202701031013-01-plain-new-extra/'
     run_sut "$dir"
-    collect_contains "$output" "後継 ADR-202701031013-01-plain-new が挙がっていません" \
+    collect_contains "$output" "後継 ADR-202701031013-01-plain-new を挙げていません" \
         "変異: 後継の stem を前方に含む別の stem では挙げたことにならない"
 
-    # ラベルの綴りを変えると挙げたことにならない（Superseded by: の語に依存する）
+    # ラベルの綴りを変えると、その行は Superseded by: の行ではなくなる（もう1行は残るので部分記載）
     dir="$(copy_valid13)"
     mutate "$dir/$OLD" 's/^- Superseded by: ADR-202701031013-01-plain-new$/- Replaced by: ADR-202701031013-01-plain-new/'
     run_sut "$dir"
-    collect_contains "$output" "後継 ADR-202701031013-01-plain-new が挙がっていません" "変異: 別のラベルでは挙げたことにならない"
+    collect_contains "$output" "後継 ADR-202701031013-01-plain-new を挙げていません" "変異: 別のラベルでは挙げたことにならない"
 
-    # 節の外の行は数えない: 関連ADR 節の見出しを別の名前へ変えると、節の外の行になる
+    # 節の外の行は数えない: 2つ目のバレットを、後続の別の節（## 補足）の側へ移す
     dir="$(copy_valid13)"
-    mutate "$dir/$OLD" 's/^## 関連ADR$/## 補足/'
+    insert_before "$dir/$OLD" "- Superseded by: ADR-202701031013-01-plain-new" "## 補足"
+    insert_before "$dir/$OLD" "- Superseded by: ADR-202701031013-01-plain-new" ""
+    collect_equals "$(grep -c '^## 補足$' "$dir/$OLD")" "1" "前提: 変異した原 ADR に ## 補足 の節がある"
     run_sut "$dir"
-    collect_contains "$output" "後継 ADR-202701021013-01-fence-and-quo が挙がっていません" "変異: 関連ADR 節の外の Superseded by: は数えない"
-    collect_contains "$output" "後継 ADR-202701031013-01-plain-new が挙がっていません" "変異: 関連ADR 節の外の行は全後継について数えない"
+    collect_contains "$output" "後継 ADR-202701031013-01-plain-new を挙げていません" "変異: 関連ADR 節の外の Superseded by: は数えない"
+    collect_not_contains "$output" "後継 ADR-202701021013-01-fence-and-quo を挙げていません" "変異: 節の内側に残した後継は報告されない"
 
     # 独立起動: レイヤ3 forward の単位が持つ
     run_sut_layer check_layer3_forward "$CORPUS_DIR/invalid/39-superseded-by-not-listed"
@@ -257,7 +295,8 @@ mutate() {
     collect_contains "$header" "10. 本文に \`## Status\` 節がある" "レイヤ1 の違反種別10 が列挙されている"
     collect_contains "$header" "種別10 を持つのは" "種別10 の採用理由が成文化されている"
     collect_contains "$header" "H1 形式違反:" "レイヤ5 の H1 形式違反の条件が成文化されている"
-    collect_contains "$header" "行に、全後継" "レイヤ3 forward の原 ADR 本文の照合が成文化されている"
+    collect_contains "$header" "行が1行も無い原 ADR は違反にしない" "レイヤ3 forward の対象外（行が無い原 ADR）が成文化されている"
+    collect_contains "$header" "全後継 Bi を" "レイヤ3 forward の原 ADR 本文の照合が成文化されている"
 
     collect_finish
 }
