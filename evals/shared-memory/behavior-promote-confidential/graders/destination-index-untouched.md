@@ -1,5 +1,5 @@
 ---
-# 昇格先の索引を書かない（題材の利用規則は、索引を PR に含めないと定める）: 索引の記録の行が1件のままである
+# Global Memory の根の索引を書かない（送り出しは Global Memory の根へ書かない）: 索引の記録の行が1件のままである
 type: regex
 target:
   source: file

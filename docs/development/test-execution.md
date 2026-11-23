@@ -224,14 +224,13 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
   ```bash
   --allow-tools Write Edit 'Bash(node *scripts/memory.mjs*)' 'Bash(git rev-parse*)' 'Bash(git status*)' \
     'Bash(git log*)' 'Bash(git diff*)' 'Bash(git -C * log -1*)' 'Bash(git remote get-url *)' 'Bash(date -u*)' \
-    'Bash(grep -i -F *)' 'Bash(git -C * remote get-url *)' 'Bash(git -C * rev-parse --verify *)' \
-    'Bash(git -C * rev-parse --show-toplevel*)' 'Bash(mktemp -d*)'
+    'Bash(grep -i -F *)' 'Bash(git -C * remote get-url *)' 'Bash(git -C * rev-parse --show-toplevel*)'
   ```
 
 - `shared-memory` は、`--judge-model sonnet` を付ける。`llm` の採点器の1票は、判定器が1語で答えた文に `PASS` が在り、`FAIL` の語が無いときだけ合格になり、3票の多数で決まる。既定の haiku は、表を含む日本語の最終応答で、同じ応答に `PASS` と `FAIL` を返し、票が割れることがある。判定の理由は結果に残らない。sonnet では、同じ応答の票は割れず、表の行を消した負例（`behavior-propose-records` の `table-lists-all`）は `FAIL` になった
 - `tool_used` の採点器で「1回も呼ばない」を見るときは、`min: 0` と `max: 0` の両方を書く。`max: 0` だけでは、下限が 1 のままになり、常に不合格になる
 - `regex` の採点器は、`match: not_contains` で、文字列が無いことを見られる。`target` に `source: file` を指すと、エージェントが書いたファイルも、字面のパスで読める。名前が実行のたびに変わるファイルは読めないので、依頼文で置き場を指定するか、書いた入力を trace で見る
-- `shared-memory` の `behavior-promote-confidential` は、新しい記録の名前が時刻で決まる。記録に仕込んだ文字列が残っていないことは、`--keep-temp` で残った作業ディレクトリ（`<残ったディレクトリ>/home/cwd/`）を検索して確かめる
+- `shared-memory` の `behavior-promote-confidential` は、送り出しの下書きと報告の名前が時刻で決まる。採点器は、書いた入力を trace で見るので、一度書いた語を後で取り除いた回も不合格になる。不合格が出たら、`--keep-temp` で残った作業ディレクトリ（`<残ったディレクトリ>/home/cwd/`）の `docs/memory/outbox/` を検索し、最後の内容に語が残っているかを分ける
 
 - `Bash` を付与するケースは、サンドボックスの道具（`bubblewrap` と `socat`）が無い Linux では、起動を拒まれる。root で次のとおり入れる。apt のパッケージリストが空のコンテナでは、`apt-get update` を先に行わないと「Unable to locate package」になる。クラウドの環境では、同じコマンドを環境のセットアップスクリプトへ置ける
 
