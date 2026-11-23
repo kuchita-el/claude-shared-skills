@@ -14,11 +14,12 @@ claude --plugin-dir <このディレクトリ>
 - **検査器**（`scripts/memory.mjs`）: 記録・送り出しの下書き・候補・台帳の形式を検査し、索引を生成する。記録と候補の版を返し、採用した記録の変化を報告する。送り出しの下書きを、運び済みかを判定して候補へ写す。Task Memory の残留を検出する。Node 22 以上で動く。Node の組み込みのほかに依存は無い。ただし、`version`・`adopted`・`carry` は git を要する。
 - **スキル `propose-records`**（`/shared-memory:propose-records`）: タスクの材料から、学びの候補を挙げる。既存の記録と照らして、足す・直す・捨てるに分ける。足すものと直すものは、Project Memory の記録か、Global Memory へ送り出す下書きにして検査する。捨てた候補も、理由つきで示す。
 - **スキル `promote-record`**（`/shared-memory:promote-record`）: Project Memory の記録を一般化し、Global Memory へ送り出す下書きにする。下書きは Project Memory の根の `outbox/` に書き、元の記録に `sent-as` を書く。機密の確認と、Global Memory の記録・候補との重なりの照合を行い、結果を送り出しの報告に書く。機密の確認は、利用規則で外せない。
+- **スキル `carry-drafts`**（`/shared-memory:carry-drafts`）: プロジェクトの既定のブランチの `outbox/` に在る承認済みの下書きを、手を加えずに Global Memory の `candidates/` へ運ぶ。検査器で運び済みかを判定して写し、候補を足すだけのブランチを git で push する。既定のブランチへの取り込みは、Global Memory の CI が行う。
 - **スキル `replace-record`**（`/shared-memory:replace-record`）: 置き換えると決まった記録について、置き換えの3つをそろえ、検査器で確かめる。置き換えるかどうかは決めない。
 - **スキル `crosscheck-records`**（`/shared-memory:crosscheck-records`）: 記録を、書いた文脈とは別の文脈で突き合わせる。相手は、既に在る記録である。食い違いと重なりを報告し、記録は直さない。
 - **サブエージェント `record-matcher`**（`agents/record-matcher.md`）: 主張を、既存の記録・候補・送り出しの下書きと照らす。候補の提案と、送り出しの重なりの照合に使う。読み取り専用である。
 - **サブエージェント `record-crosschecker`**（`agents/record-crosschecker.md`）: 突き合わせと、送り出しの機密の読みに使う。読み取り専用である。照合の手順は、`record-matcher` と同じ参照を読む。語を渡されたときは、機密の混入の疑いも探す。
-- **共有の参照**: `references/matching.md` は、照合の手順と、返す形を定める。`references/confidentiality.md` は、記録がリポジトリの境界を越えるときの、機密の確認を定める。`references/outbox-report.md` は、送り出しの報告の形と、書く順序を定める。`references/replacement.md` は、置き換えの3つをそろえる順序と、確かめ方を定める。
+- **共有の参照**: `references/matching.md` は、照合の手順と、返す形を定める。`references/confidentiality.md` は、記録がリポジトリの境界を越えるときの、機密の確認を定める。`references/outbox-report.md` は、送り出しの報告の形と、書く順序を定める。`references/replacement.md` は、置き換えの3つをそろえる順序と、確かめ方を定める。`references/carrying.md` は、承認済みの下書きを運ぶ手順を定める。
 
 ```bash
 node scripts/memory.mjs check <記憶の根>
@@ -37,8 +38,9 @@ node scripts/memory.mjs carry <Project Memory の根> <Global Memory の根> --p
 - 候補は、Project Memory へ置く。次を全て満たす候補だけを、Global Memory へ送り出す下書きにする。Project Memory と Global Memory の根が、どちらも在る。主張と当てはまる条件が、プロジェクトに依らない。機密の情報を含めずに書ける。
 - 確かめていない候補は、捨てずに `verification: unverified` と書く。検証状況は、置く層を分けない。別の文脈が観測し、スキルを実行する文脈が確かめていないものも、`unverified` と書き、出典に誰が観測したかを書く。
 - 下書きにする候補が、置く先（Project Memory の記録と、送り出しの下書き）ごとに目安の数を超えるときは、次の行動の変化が大きい順に、上位だけを下書きにする。残りは、見送りとして、理由つきで表に残す。目安の数はスキルが持ち、利用先の規則で変えられる。
-- スキルが自分の道具で行うのは、下書きと検査までである。commit・push・PR の作成を、スキルは事前に許可しない。出し方は、その根の規則（プロジェクトの指示ファイルと、記憶の利用規則）に従う。
+- スキルが自分の道具で行うのは、下書きと検査までである（終わりに運ぶことを除く）。commit・push・PR の作成を、スキルは事前に許可しない。出し方は、その根の規則（プロジェクトの指示ファイルと、記憶の利用規則）に従う。
 - 送り出しの下書きは、Project Memory の根の `outbox/` に書く。Global Memory の根へは書かない。機密の確認の結果を、送り出しの報告として同じ変更に入れる。この確認は、利用規則で外せない。
+- 終わりに、Global Memory の根が在れば、プロジェクトの既定のブランチに在る承認済みの下書きを、`references/carrying.md` の手順で運ぶ。この起動で書いた下書きは、まだ承認されていないので運ばない。
 - Global Memory の記録への追記と置き換えは行わない。食い違いか補うものを本文に書いた下書きを、送り出す。
 - Project Memory では、作り直した索引を同じ変更に含める。索引を変更に含めないと規則が定める根では、索引を書かない。
 
@@ -48,14 +50,16 @@ node scripts/memory.mjs carry <Project Memory の根> <Global Memory の根> --p
 
 1. 下書きと送り出しの報告を、プロジェクトの PR に載せる。
 2. 人間が、報告を見てレビューし、マージする。マージが、送り出しの承認になる。プロジェクトの既定のブランチの `outbox/` に在ることが、承認を表す。
-3. 承認された下書きは、Global Memory の `candidates/` へ候補として運ばれる。
+3. 承認された下書きを、`carry-drafts` で Global Memory の `candidates/` へ候補として運ぶ。`propose-records` と `promote-record` も、終わりに同じ手順で運ぶ。Global Memory の CI が、候補を足すだけのブランチを既定のブランチへ取り込む。
 4. 候補は、Global Memory の側で選別する。食い違いの裁定と置き換えも、選別で行う。置き換えには `replace-record` を使う。
 
 運ぶ前に誤りが分かったら、下書きと報告を `outbox/` から消して取り下げる。元の記録の `sent-as` から、その識別子を同じ変更で外す。
 
 どのスキルも、前の段を通っていなくても起動できる。`replace-record` が新しい記録に使えるのは、その起動で書く記録か、同じブランチの上に在って、まだ既定のブランチに入っていない記録である。どちらも既に既定のブランチに在る2件の記録の食い違いは、`replace-record` の対象の外である。
 
-`propose-records`・`promote-record`・`crosscheck-records`・`replace-record` は、commit・push・PR の作成を行わない。出し方は、その根の規則に従う。
+`propose-records`・`promote-record`・`crosscheck-records`・`replace-record` は、プロジェクトへの commit・push・PR の作成を行わない。出し方は、その根の規則に従う。Global Memory のリポジトリへ commit・push するのは、運ぶ手順（`carry-drafts` と、`propose-records`・`promote-record` の終わり）だけである。どのスキルも、commit と push を事前に許可しない。了承は、ホストの許可の確認に任せる。PR は出さない。
+
+運ぶには、検査器と git の push が要る。検査器を使えないホストと、push できないホストでは、運ばずに止まる。git だけで運ぶ予備の手順は持たない。下書きは `outbox/` に残り、次に運ぶ者が運ぶ。push が成功しても、取り込まれたことは、既定のブランチを取り直して確かめるまで報告しない。
 
 ## サブエージェントの実行パラメータ
 

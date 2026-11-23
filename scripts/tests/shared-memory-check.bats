@@ -860,6 +860,29 @@ C=MEM-202611140000-04
     MEM-202611010000-01-failed-job-retried-three-times.md MEM-202611010000-02-job-log-kept-thirty-days.md
 }
 
+@test "eval の題材: 運ぶ題材の2つの根は通り、carry は -01 を運び済み、-02 を写すとし、-03 を見ない" {
+  local CASE_DIR="$BATS_TEST_TMPDIR/behavior-carry-drafts" graders
+  scaffold_case behavior-carry-drafts
+  assert_scaffold_root "$CASE_DIR/docs/memory" 0
+  assert_scaffold_root "$CASE_DIR/global-memory" 2 MEM-202610150000-01-tls-min-version-handshake.md
+  # 題材を作る push は、採点器が読む記録に残さない。
+  [ ! -e "$CASE_DIR/.remotes/global.git/push.log" ]
+  # 運ぶ手順（carrying.md）と同じ取り直しの後に、carry が題材の狙いどおりに判定する。
+  git -C "$CASE_DIR/docs/memory" fetch -q --deepen=1000 origin main
+  git -C "$CASE_DIR/global-memory" fetch -q --deepen=1000 origin main
+  run --separate-stderr node "$SUT" carry "$CASE_DIR/docs/memory" "$CASE_DIR/global-memory" --project-ref FETCH_HEAD --global-ref FETCH_HEAD
+  [ "$status" -eq 0 ]
+  [[ "${lines[0]}" == "outbox/MEM-202611200900-01-bom-breaks-header-match.md:carried: "* ]]
+  [ "${lines[1]}" = "outbox/MEM-202611200900-02-cron-evaluated-in-scheduler-zone.md:copied: candidates/MEM-202611200900-02-cron-evaluated-in-scheduler-zone.md へ写した" ]
+  [ "${#lines[@]}" -eq 2 ]
+  # 承認されていない -03 は、作業中のブランチの作業ツリーにだけ在る。
+  [ -f "$CASE_DIR/docs/memory/outbox/MEM-202611200900-03-unpinned-linter-flaky.md" ]
+  # 採点器は、題材と同じファイル名で -02 を見る。
+  graders="$REPO_ROOT/evals/shared-memory/behavior-carry-drafts/graders"
+  grep -Fq 'MEM-202611200900-02-cron-evaluated-in-scheduler-zone' "$graders/pushed-candidate.md"
+  grep -Fq 'MEM-202611200900-02-cron-evaluated-in-scheduler-zone' "$graders/pushed-only-candidate.md"
+}
+
 # ここから下は、送り出しの下書き（outbox/）と選別の前の候補（candidates/）の試験である。
 
 # 形式に合う下書きか候補を1件書く。$1 は置き場（outbox か candidates）、$2 は識別子、$3 は名前、$4 以降は front-matter へ足す行。

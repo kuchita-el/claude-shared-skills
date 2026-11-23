@@ -21,6 +21,12 @@ allowed_tools:
   - Bash(date -u*)
   - Bash(grep -i -F *)
   - Bash(node *scripts/memory.mjs*)
+  - Bash(git -C * fetch --deepen=*)
+  - Bash(git -C * status --porcelain*)
+  - Bash(git -C * branch --show-current*)
+  - Bash(git -C * switch *)
+  - Bash(git -C * add -- candidates/*)
+  - Bash(git -C * ls-tree *)
 ---
 
 propose-records スキルを使って、notes/task-notes.md の作業メモから、学びの候補を記録として提案して。Global Memory の根は global-memory ディレクトリ（--global-root global-memory）。このあと席を外すので、途中で質問はせずに最後まで進めて、判断したことは最後にまとめて報告して。
