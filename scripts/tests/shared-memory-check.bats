@@ -894,13 +894,21 @@ C=MEM-202611140000-04
     MEM-202611010000-01-failed-job-retried-three-times.md MEM-202611010000-02-job-log-kept-thirty-days.md
 }
 
-@test "eval の題材: 選別の根は check を通り、記録2件と候補3件を持つ" {
+@test "eval の題材: 選別の根は、索引の行を1つ欠く違反だけを出し、記録2件と候補3件を持つ" {
   local CASE_DIR="$BATS_TEST_TMPDIR/behavior-triage-candidates"
   scaffold_case behavior-triage-candidates
-  assert_scaffold_root "$CASE_DIR/global-memory" 2 \
-    MEM-202611010000-01-cron-evaluated-in-utc.md MEM-202611010000-02-linter-ci-before-precommit.md
-  [ "$(find "$CASE_DIR/global-memory/candidates" -name 'MEM-*.md' | wc -l)" -eq 3 ]
-  run node "$SUT" index "$CASE_DIR/global-memory"
+  local root="$CASE_DIR/global-memory"
+  [ "$(find "$root/records" -name 'MEM-*.md' | wc -l)" -eq 2 ]
+  [ "$(find "$root/candidates" -name 'MEM-*.md' | wc -l)" -eq 3 ]
+  run node "$SUT" check "$root"
+  [ "$status" -eq 1 ]
+  [ "$(printf '%s\n' "$output" | grep -c .)" -eq 1 ]
+  [[ "$output" == "index.md:index:"* ]]
+  # 索引が欠くのは C3 の行だけである。検査器の出力には C3 が在る。
+  [ "$(grep -c '^| \[MEM-202611150000-' "$root/index.md")" -eq 2 ]
+  run grep -c 'MEM-202611150000-03' "$root/index.md"
+  [ "$output" = 0 ]
+  run node "$SUT" index "$root"
   [ "$(printf '%s\n' "$output" | grep -c '^| \[MEM-202611150000-')" -eq 3 ]
 }
 

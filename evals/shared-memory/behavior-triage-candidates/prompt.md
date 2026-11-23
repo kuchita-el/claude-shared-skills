@@ -14,6 +14,7 @@ allowed_tools:
   - Bash(node *scripts/memory.mjs*)
   - Bash(date -u*)
   - Bash(git status*)
+  - Bash(git rev-parse --show-toplevel*)
   - Bash(git switch -c *)
   - Bash(git mv *candidates/*)
   - Bash(git rm *candidates/*)

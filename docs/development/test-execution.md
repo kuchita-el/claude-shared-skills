@@ -225,7 +225,7 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
   --allow-tools Write Edit 'Bash(node *scripts/memory.mjs*)' 'Bash(git rev-parse*)' 'Bash(git status*)' \
     'Bash(git log*)' 'Bash(git diff*)' 'Bash(git -C * log -1*)' 'Bash(git remote get-url *)' 'Bash(date -u*)' \
     'Bash(grep -i -F *)' 'Bash(git -C * remote get-url *)' 'Bash(git -C * rev-parse --verify *)' \
-    'Bash(git -C * rev-parse --show-toplevel*)' 'Bash(mktemp -d*)' 'Bash(git switch -c *)' \
+    'Bash(git -C * rev-parse --show-toplevel*)' 'Bash(git rev-parse --show-toplevel*)' 'Bash(mktemp -d*)' 'Bash(git switch -c *)' \
     'Bash(git mv *candidates/*)' 'Bash(git rm *candidates/*)'
   ```
 - `shared-memory` の `behavior-triage-candidates` は、スキルが持つ `Write`・`Edit`・ブランチを切る Bash も付与したまま走らせる。頼まれていない選別の変更を、採点器が道具の呼び出しの回数と、題材のファイルの残りで見るためである

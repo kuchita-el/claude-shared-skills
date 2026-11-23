@@ -12,6 +12,7 @@ allowed_tools:
   - Glob
   - Bash(node *scripts/memory.mjs*)
   - Bash(date -u*)
+  - Bash(git rev-parse --show-toplevel*)
   - Bash(git mv *candidates/*)
 ---
 

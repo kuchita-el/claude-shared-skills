@@ -10,8 +10,8 @@
 #   C2 MEM-202611150000-02  candidates/。R2 と食い違う。確かめていない
 #   C3 MEM-202611150000-03  candidates/。既存と触れ合わない新しい主張
 #
-# 根は check を 0 で通る。この点は scripts/tests/shared-memory-check.bats が確かめる。
-# 索引は検査器の出力と同じ字面で書く。
+# 索引は、C3 の行を意図して欠く。検査器は index.md:index: の1行だけを出す（記録・候補の形式は通る）。
+# スキルは、この1行を報告に付して進み、索引を作り直さない（手順2）。この点は scripts/tests/shared-memory-check.bats が確かめる。
 set -euo pipefail
 
 git init -q -b main .
@@ -161,5 +161,4 @@ cat > global-memory/index.md <<'IDX'
 |---|---|---|---|---|
 | [MEM-202611150000-01](candidates/MEM-202611150000-01-cron-utc-again.md) | experience | tokei-cron は、cron 式の時刻を UTC として解釈する | tokei-cron の定期ジョブの起動時刻を、cron 式で指定するとき | verified |
 | [MEM-202611150000-02](candidates/MEM-202611150000-02-linter-precommit-first.md) | belief | リンターは、既存の違反が多いコードでも、最初から pre-commit のフックへ入れる | 違反を多く抱えた既存のコードへ、リンターを後から導入するとき | unverified |
-| [MEM-202611150000-03](candidates/MEM-202611150000-03-job-name-length-limit.md) | knowledge | tokei-cron のジョブ名は、64 文字を超えると登録が拒まれる | tokei-cron へ、長い名前のジョブを登録するとき | verified |
 IDX

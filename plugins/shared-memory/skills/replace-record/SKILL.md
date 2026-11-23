@@ -8,6 +8,7 @@ allowed-tools:
   - Glob
   - Bash(node *scripts/memory.mjs*)
   - Bash(date -u*)
+  - Bash(git rev-parse --show-toplevel*)
   - Bash(git mv *candidates/*)
 ---
 
@@ -51,7 +52,7 @@ allowed-tools:
      ```bash
      node "${CLAUDE_PLUGIN_ROOT}/scripts/memory.mjs" version <根> <新しい記録の識別子> --ref <起点>
      ```
-3. **3つをそろえる。** `replacement.md` の手順の順に書く。候補を新しい記録にするときは、`replacement.md` の「候補を受け取るとき」に従い、先に `records/` へ移す。識別子の時刻は `date -u +%Y%m%d%H%M`、日付は `date -u +%Y-%m-%d` で得る。
+3. **3つをそろえる。** `replacement.md` の手順の順に書く。候補を新しい記録にするときは、先に `git rev-parse --show-toplevel` の出力を根の絶対パスと比べる。等しくなければ、`git mv` を使わず、根のリポジトリで起動し直すよう伝えて止まる。等しければ、`replacement.md` の「候補を受け取るとき」に従い、`records/` へ移す。識別子の時刻は `date -u +%Y%m%d%H%M`、日付は `date -u +%Y-%m-%d` で得る。
 4. **検査する。** 通るまで、手順5 へ進まない。
    - 索引を変更に含める根（その根の規則が、含めないと定めていない根）では、次の2つを順に実行する。2つ目の違反の行（`パス:規則: 説明`）が0行なら、通過とする。
 
