@@ -16,8 +16,9 @@ claude --plugin-dir <このディレクトリ>
 - **スキル `promote-record`**（`/shared-memory:promote-record`）: 記録を一般化し、Global Memory へ提案する。元にできるのは、既定のブランチに在る Project Memory の記録である。出す前に、機密の情報の混入と、既存の記録との矛盾を確かめる。5つの確認の結果を、PR の本文に書く。機密の確認は、利用規則で外せない。確認を通るまで、記録は昇格先の根へ書かない。
 - **スキル `replace-record`**（`/shared-memory:replace-record`）: 置き換えると決まった記録について、置き換えの3つをそろえ、検査器で確かめる。置き換えるかどうかは決めない。
 - **スキル `crosscheck-records`**（`/shared-memory:crosscheck-records`）: 記録を、書いた文脈とは別の文脈で突き合わせる。相手は、既に在る記録である。食い違いと重なりを報告し、記録は直さない。
+- **スキル `triage-candidates`**（`/shared-memory:triage-candidates`）: Global Memory の `candidates/` の候補を、既存の記録とほかの候補と別の文脈で突き合わせ、採る・まとめる・捨てる・補う・置き換えるの案を、受け入れの4観点とともに出す。既定は、識別子の古い順に10件である。頼まれたときだけ、選別の変更を新しいブランチに用意する。別の文脈を作れないときは、案を出さず、未実施と書く。
 - **サブエージェント `record-matcher`**（`agents/record-matcher.md`）: 主張を、既存の記録と照らす。読み取り専用である。
-- **サブエージェント `record-crosschecker`**（`agents/record-crosschecker.md`）: 昇格と突き合わせに使う。読み取り専用である。照合の手順は、`record-matcher` と同じ参照を読む。語を渡されたときは、機密の混入の疑いも探す。
+- **サブエージェント `record-crosschecker`**（`agents/record-crosschecker.md`）: 昇格・突き合わせ・候補の選別に使う。読み取り専用である。照合の手順は、`record-matcher` と同じ参照を読む。語を渡されたときは、機密の混入の疑いも探す。
 - **共有の参照**: `references/matching.md` は、照合の手順と、返す形を定める。`references/confidentiality.md` は、記録がリポジトリの境界を越えるときの、機密の確認を定める。`references/replacement.md` は、置き換えの3つをそろえる順序と、確かめ方を定める。
 
 ```bash

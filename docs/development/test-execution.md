@@ -218,15 +218,17 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
 - `domain-design` は `--allow-tools Write` を付ける。スキルの `allowed-tools` に Write があっても、eval の子セッションには付与されない。付けないと挙動ケースが成果物を書けずに止まり、不合格になる
 - `growth` は `--allow-tools Write 'Bash(git rev-parse *)' 'Bash(date *)' 'Bash(rm ~/.claude/projects/*/growth/captures-*.md)'` を付ける（Write と、distill の `allowed-tools` と同じ Bash パターン）
 - `growth` の `behavior-distill` の採点器のうち `cursor-advanced`・`example-entry-hypothesized`・`upsert-preserves-existing` は、拒否された Write の試みの内容で判定する。拒否後に書き込みを試みるかは回ごとに揺れるため、不合格が出たら trace の最終応答で判断の中身を確かめてから退行と判定する
-- `shared-memory` は、次の `--allow-tools` を付ける。`Write`・`Edit` と、4つのスキルの `allowed-tools` に在る Bash パターンの和集合である
+- `shared-memory` は、次の `--allow-tools` を付ける。`Write`・`Edit` と、5つのスキルの `allowed-tools` に在る Bash パターンの和集合である
 - `shared-memory` の `behavior-crosscheck-contradiction` も、スキルが使わない `Write`・`Edit` を付与したまま走らせる。書き換えないことを、採点器が道具の呼び出しの回数で見るためである
 
   ```bash
   --allow-tools Write Edit 'Bash(node *scripts/memory.mjs*)' 'Bash(git rev-parse*)' 'Bash(git status*)' \
     'Bash(git log*)' 'Bash(git diff*)' 'Bash(git -C * log -1*)' 'Bash(git remote get-url *)' 'Bash(date -u*)' \
     'Bash(grep -i -F *)' 'Bash(git -C * remote get-url *)' 'Bash(git -C * rev-parse --verify *)' \
-    'Bash(git -C * rev-parse --show-toplevel*)' 'Bash(mktemp -d*)'
+    'Bash(git -C * rev-parse --show-toplevel*)' 'Bash(git -C * rev-parse --show-prefix*)' 'Bash(git rev-parse --show-toplevel*)' 'Bash(git rev-parse HEAD)' 'Bash(git rev-parse refs/remotes/origin/HEAD)' 'Bash(mktemp -d*)' 'Bash(git switch -c *)' \
+    'Bash(git mv *candidates/*)' 'Bash(git rm *candidates/*)'
   ```
+- `shared-memory` の `behavior-triage-candidates` は、スキルが持つ `Write`・`Edit`・ブランチを切る Bash も付与したまま走らせる。頼まれていない選別の変更を、採点器が道具の呼び出しの回数と、題材のファイルの残りで見るためである
 
 - `shared-memory` は、`--judge-model sonnet` を付ける。`llm` の採点器の1票は、判定器が1語で答えた文に `PASS` が在り、`FAIL` の語が無いときだけ合格になり、3票の多数で決まる。既定の haiku は、表を含む日本語の最終応答で、同じ応答に `PASS` と `FAIL` を返し、票が割れることがある。判定の理由は結果に残らない。sonnet では、同じ応答の票は割れず、表の行を消した負例（`behavior-propose-records` の `table-lists-all`）は `FAIL` になった
 - `tool_used` の採点器で「1回も呼ばない」を見るときは、`min: 0` と `max: 0` の両方を書く。`max: 0` だけでは、下限が 1 のままになり、常に不合格になる
