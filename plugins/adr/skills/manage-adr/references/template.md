@@ -28,7 +28,7 @@ superseded-by:
 <!--
 ファイル名は ADR-YYYYMMDDHHMM-NN-<slug>.md の形にする（例の slug: cache-layer-replacement）。
 識別子 ADR-YYYYMMDDHHMM-NN は、同梱の next-adr-id.sh が発番する。
-時刻部・連番部・slug の規則は、manage-adr スキルの adr-model.md「採番方式」が定める。
+時刻部・連番部・slug の規則は、「ADR の状態モデルと識別子規約」の「採番方式」が定める。
 -->
 
 ## Context
