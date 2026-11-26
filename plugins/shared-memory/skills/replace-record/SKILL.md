@@ -9,6 +9,8 @@ allowed-tools:
   - Bash(node *scripts/memory.mjs*)
   - Bash(date -u*)
   - Bash(git rev-parse --show-toplevel*)
+  - Bash(git -C * rev-parse --show-toplevel*)
+  - Bash(git -C * rev-parse --show-prefix*)
   - Bash(git mv *candidates/*)
 ---
 
@@ -47,12 +49,12 @@ allowed-tools:
 
    その根の利用規則が在れば、それも読む。在りかは、`format.md` の「記憶の根」が定める順で決める。
 2. **前提を確かめる。** 旧い記録を `<根>/records/<識別子>-*.md` で探して読み、`replacement.md` の前提に照らす。当たれば、何も書かずに止める。
-   - 新しい記録を識別子で渡されたら、既定のブランチの `records/` に在るかを、次のコマンドで確かめる。出力が ` candidate` で終わるときは、候補である。`--ref` を渡されていなければ、`--ref <起点>` を付けずに実行する。このスキルは履歴を取り直さない。取り直していない起点は、検査器が終了コード 2 で拒む。結果の扱いは、`replacement.md` の「新しい記録を識別子で受け取るとき」が定める。
+   - 新しい記録を識別子で渡されたら、既定のブランチの `records/` に在るかを、次のコマンドで確かめる。標準出力が ` candidate` で終わるときは、候補である。`--ref` を渡されていなければ、`--ref <起点>` を付けずに実行する。このスキルは履歴を取り直さない。取り直していない起点は、検査器が終了コード 2 で拒む。結果の扱いは、`replacement.md` の「新しい記録を識別子で受け取るとき」が定める。
 
      ```bash
      node "${CLAUDE_PLUGIN_ROOT}/scripts/memory.mjs" version <根> <新しい記録の識別子> --ref <起点>
      ```
-3. **3つをそろえる。** `replacement.md` の手順の順に書く。候補を新しい記録にするときは、先に `git rev-parse --show-toplevel` の出力を根の絶対パスと比べる。等しくなければ、`git mv` を使わず、根のリポジトリで起動し直すよう伝えて止まる。等しければ、`replacement.md` の「候補を受け取るとき」に従い、`records/` へ移す。識別子の時刻は `date -u +%Y%m%d%H%M`、日付は `date -u +%Y-%m-%d` で得る。
+3. **3つをそろえる。** `replacement.md` の手順の順に書く。候補を新しい記録にするときは、先に `git -C <根> rev-parse --show-toplevel` の出力と、`git rev-parse --show-toplevel` の出力を比べ、`git -C <根> rev-parse --show-prefix` の出力が空であることを確かめる。比べる2つが等しくない、または `--show-prefix` が空でなければ、`git mv` を使わず、根のリポジトリの最上位で起動し直すよう伝えて止まる。等しければ、`replacement.md` の「候補を受け取るとき」に従い、`records/` へ移す。識別子の時刻は `date -u +%Y%m%d%H%M`、日付は `date -u +%Y-%m-%d` で得る。
 4. **検査する。** 通るまで、手順5 へ進まない。
    - 索引を変更に含める根（その根の規則が、含めないと定めていない根）では、次の2つを順に実行する。2つ目の違反の行（`パス:規則: 説明`）が0行なら、通過とする。
 

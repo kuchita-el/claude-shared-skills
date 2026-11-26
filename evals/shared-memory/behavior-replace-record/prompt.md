@@ -13,6 +13,8 @@ allowed_tools:
   - Bash(node *scripts/memory.mjs*)
   - Bash(date -u*)
   - Bash(git rev-parse --show-toplevel*)
+  - Bash(git -C * rev-parse --show-toplevel*)
+  - Bash(git -C * rev-parse --show-prefix*)
   - Bash(git mv *candidates/*)
 ---
 
