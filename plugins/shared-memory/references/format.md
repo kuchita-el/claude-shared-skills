@@ -93,7 +93,7 @@ updated: 2026-11-14
 - 値は1行で書く。`sources`・`sent-as`・`from`・`to` は、項目の次の行から「`- 値`」を並べる。
 - 値に「`: `」や「` #`」を含むときは、引用符で囲む。
 - 値が次の記号で始まるときも、引用符で囲む。``[ ] { } , # & * ! | > ' " % @ ` ``と、後ろに空白が続く `-`・`?`・`:` である。YAML が別の意味に読むためである。
-- 改行は LF でも CRLF でもよい。
+- 改行は LF でも CRLF でもよい。ただし、送り出しの下書きと候補は LF だけにする（「送り出しの下書きと候補」）。
 
 ## 送り出しの下書きと候補
 
@@ -105,7 +105,7 @@ updated: 2026-11-14
 - `superseded-by`・`moved-to`
 - `type: evolution`・`from`・`to`
 
-下書きと候補の改行は LF だけにする（記録は CRLF でもよい）。運び済みかを blob の識別子で判定するため、Global 側が改行を正規化すると、CRLF の下書きは運び済みと判定されなくなる。検査器の `draft` の規則が、`\r` を含む下書きと候補を落とす。
+下書きと候補の改行は LF だけにする（記録は CRLF でもよい）。運び済みかを blob の識別子で判定するため、Global 側が改行を正規化すると、CRLF の下書きは運び済みと判定されなくなる。検査器の `draft` の規則が、`\r` を含む下書きと候補を落とす。`check` は作業ツリーのファイルを読むので、git が取り出すときに改行を変える設定（`core.autocrlf=true` など）では、LF で保存した下書きも違反になる。そのような環境では、記憶の根に置いた `.gitattributes` に、`outbox/*.md text eol=lf` と `candidates/*.md text eol=lf` を書く。
 
 識別子は、新しく発番する。元の記録の写しではないためである。識別子の重複は、`records/`・`outbox/`・`candidates/` を合わせて見る。
 
@@ -314,7 +314,7 @@ Task Memory は、1つのタスクの間だけ持つ覚え書きである。記�
 | `value` | 値が上の表の範囲に無い。`superseded-by` と `moved-to` を同時に書いている。`belief` の `author` が `joint` である。`sent-as` が0件である、識別子の形でない値を持つ。台帳では、`record`・`version`・`adopted` が形に合わない |
 | `filename` | ファイル名が形に合わない。ファイル名の識別子が `id` と一致しない。台帳では、ファイル名が `<record>.md` でない |
 | `duplicate-id` | 同じ `id` が、`records/`・`outbox/`・`candidates/` を合わせて2件以上ある |
-| `draft` | 下書きか候補が、`Project` の出典・`superseded-by`・`moved-to`・`type: evolution`・`from`・`to` のどれかを持つ |
+| `draft` | 下書きか候補が、`Project` の出典（大文字小文字を問わない）・`superseded-by`・`moved-to`・`type: evolution`・`from`・`to` のどれかを持つ。改行に CR を含む |
 | `dangling` | `superseded-by`・`from`・`to` が指す記録が無い |
 | `evolution` | `evolution` が `from` か `to` を持たない。`evolution` でない記録が `from` か `to` を持つ |
 | `replacement` | `superseded-by` を持つ記録に、その置き換えを説明する `evolution` が無い。`evolution` の `from` の記録が、`to` の記録を `superseded-by` で指していない。`superseded-by` を辿ると元の記録へ戻る |
