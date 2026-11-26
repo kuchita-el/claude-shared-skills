@@ -987,6 +987,22 @@ global_with_record() {
   [ "$(git -C "$GM" rev-parse HEAD)" = "$(git -C "$UP" rev-parse HEAD)" ]
 }
 
+@test "carry: CI をすり抜けた CRLF の下書きも、形式を検査せずにバイトの単位で同じに写す" {
+  # carry は下書きの形式を検査しない（Project の check と Global の取り込みの検査が見る）。
+  # CRLF の下書きを書き換えて写すと、承認したものと運ぶものが一致しなくなる。
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  sed -i 's/$/\r/' "$PUP/docs/memory/outbox/$D1-first.md"
+  grep -q $'\r' "$PUP/docs/memory/outbox/$D1-first.md"
+  commit "$PUP" p1
+  clone_project
+  global_with_record
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 0 ]
+  [ "$output" = "outbox/$D1-first.md:copied: candidates/$D1-first.md へ写した" ]
+  cmp "$PUP/docs/memory/outbox/$D1-first.md" "$GM/candidates/$D1-first.md"
+}
+
 @test "carry: 写した後にもう一度運ぶと、同じバイトのファイルは書き直さず copied とする（冪等）" {
   init_project
   draft_in "$PUP/docs/memory" "$D1" first
