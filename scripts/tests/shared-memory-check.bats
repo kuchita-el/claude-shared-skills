@@ -988,6 +988,32 @@ D2=MEM-202611200000-02
   done
 }
 
+@test "下書きと候補: 小文字の project の出典も draft で落ちる" {
+  local dir
+  for dir in outbox candidates; do
+    rm -rf "$ROOT/outbox" "$ROOT/candidates" "$ROOT/index.md"
+    draft "$dir" "$D1" first
+    sed -i "s|^  - 2026-11-20 に手元で実測した\$|&\n  - project $A@1a2b3c4|" "$ROOT/$dir/$D1-first.md"
+    write_index
+    run node "$SUT" check "$ROOT"
+    [ "$status" -eq 1 ]
+    [[ "$output" == "$dir/$D1-first.md:draft: 下書きと候補は Project の出典を持たない。"* ]]
+  done
+}
+
+@test "下書きと候補: CRLF は draft で落ち、records の CRLF は通る" {
+  local dir
+  for dir in outbox candidates; do
+    rm -rf "$ROOT/outbox" "$ROOT/candidates" "$ROOT/index.md"
+    draft "$dir" "$D1" first
+    sed -i 's/$/\r/' "$ROOT/$dir/$D1-first.md"
+    write_index
+    run node "$SUT" check "$ROOT"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"$dir/$D1-first.md:draft: 下書きと候補の改行は LF だけにする"* ]]
+  done
+}
+
 @test "下書きと候補: 置き換えの項目と evolution は、どれも draft で落ち、evolution の規則では出さない" {
   local dir
   for dir in outbox candidates; do
@@ -1129,4 +1155,15 @@ D2=MEM-202611200000-02
     run --separate-stderr node "$SUT" index "$ROOT"
     [ "$status" -eq 2 ]
   done
+}
+
+@test "送り出しの報告: 評価の採点器が見る5つの節の見出しは、outbox-report.md が定める見出しと一致する" {
+  local grader="$REPO_ROOT/evals/shared-memory/behavior-promote-confidential/graders/report-sections.md"
+  local source="$REPO_ROOT/plugins/shared-memory/references/outbox-report.md"
+  local heading count=0
+  while IFS= read -r heading; do
+    count=$((count + 1))
+    grep -qxF "## $heading" "$source" || { echo "見出しが無い: $heading"; return 1; }
+  done < <(grep -o '## [^)]*' "$grader" | grep -v '^## *$' | sed 's/^## //' | awk '!seen[$0]++')
+  [ "$count" -eq 5 ]
 }
