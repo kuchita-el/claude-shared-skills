@@ -227,7 +227,7 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
     'Bash(git log*)' 'Bash(git diff*)' 'Bash(git -C * log -1*)' 'Bash(git remote get-url *)' 'Bash(date -u*)' \
     'Bash(grep -i -F *)' 'Bash(git -C * remote get-url *)' 'Bash(git -C * rev-parse --show-toplevel*)' \
     'Bash(git -C * fetch --deepen=*)' 'Bash(git -C * status --porcelain*)' 'Bash(git -C * branch --show-current*)' \
-    'Bash(git -C * rev-parse --verify --quiet refs/*)' \
+    'Bash(git -C * rev-parse --verify --quiet refs/*)' 'Bash(git -C * ls-remote --heads origin carry/*)' \
     'Bash(git -C * switch --detach FETCH_HEAD)' 'Bash(git -C * switch -c carry/*)' \
     'Bash(git -C * add -- candidates/*)' 'Bash(git -C * ls-tree *)' \
     'Bash(git -C * commit *)' 'Bash(git -C * push *)'

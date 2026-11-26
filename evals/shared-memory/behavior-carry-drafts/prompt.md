@@ -15,6 +15,7 @@ allowed_tools:
   - Bash(git -C * status --porcelain*)
   - Bash(git -C * branch --show-current*)
   - Bash(git -C * rev-parse --verify --quiet refs/*)
+  - Bash(git -C * ls-remote --heads origin carry/*)
   - Bash(git -C * switch --detach FETCH_HEAD)
   - Bash(git -C * switch -c carry/*)
   - Bash(git -C * add -- candidates/*)
