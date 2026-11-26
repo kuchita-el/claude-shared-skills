@@ -944,10 +944,10 @@ init_project() {
 }
 
 # 下書きを1件書く。$1 は outbox/ を持つ記憶の根、$2 は識別子、$3 は名前、$4 は本文。
-# CRLF と、末尾の改行の無い行を混ぜる。写したものがバイトの単位で同じかを、改行の扱いの違いまで見るためである。
+# 改行は LF にする（下書きと候補は LF だけ）。末尾の改行の無い行を混ぜ、写したものがバイトの単位で同じかを見る。
 draft_in() {
   mkdir -p "$1/outbox"
-  printf '%s\r\n' '---' "id: $2" 'type: knowledge' "title: $3 の主張" 'author: ai' 'verification: unverified' \
+  printf '%s\n' '---' "id: $2" 'type: knowledge' "title: $3 の主張" 'author: ai' 'verification: unverified' \
     'confidence: medium' 'applies-when: いつでも' 'sources:' '  - 2026-11-20 に手元で実測した' \
     'created: 2026-11-20' 'updated: 2026-11-20' '---' '' >"$1/outbox/$2-$3.md"
   printf '%s' "${4:-本文。}" >>"$1/outbox/$2-$3.md"

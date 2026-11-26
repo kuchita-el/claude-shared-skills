@@ -45,7 +45,7 @@ const ADOPTED_DIR = 'adopted';
 const OUTBOX_DIR = 'outbox';
 const CANDIDATES_DIR = 'candidates';
 // 下書きと候補が持たない出典の形。層の名前 Project で始まる値である。
-const PROJECT_SOURCE = /^Project(?:\s|$)/;
+const PROJECT_SOURCE = /^Project(?:\s|$)/i;
 // Global Memory の履歴のうち、運び済みの判定に使うファイル。candidates/ と records/ の直下の .md である。
 const CARRY_SEEN = /^(?:candidates|records)\/[^/]+\.md$/;
 // 通常のファイルの mode。リンクとサブモジュールは、運ぶ対象にも運び済みの判定にも数えない。
@@ -193,8 +193,10 @@ function loadDir(root, name) {
     const path = `${name}/${file}`;
     const report = (rule, message) => violations.push(`${path}:${rule}: ${message}`);
     let fields;
+    let text = '';
     try {
-      ({ fields } = frontMatter(readFileSync(join(dir, file), 'utf8'), RECORD_KEYS));
+      text = readFileSync(join(dir, file), 'utf8');
+      ({ fields } = frontMatter(text, RECORD_KEYS));
     } catch (error) {
       if (!(error instanceof Unreadable)) throw error;
       report('front-matter', error.message);
@@ -239,6 +241,7 @@ function loadDir(root, name) {
         if (fields.has(key)) report('draft', `下書きと候補は ${key} を持たない`);
       }
       if (isEvolution) report('draft', '下書きと候補は evolution にしない');
+      if (text.includes('\r')) report('draft', '下書きと候補の改行は LF だけにする（CR を含む）');
       for (const source of fields.get('sources') ?? []) {
         if (PROJECT_SOURCE.test(source)) report('draft', `下書きと候補は Project の出典を持たない。誰でも辿れる出典を書く: ${source}`);
       }
@@ -459,7 +462,7 @@ function requireDefaultBranch(root, ref) {
   if (head.status !== 0 || !target.startsWith(prefix) || target.length === prefix.length) {
     const remotes = gitOutput(root, ['remote']).split('\n').map((n) => n.trim());
     const rename = remotes.includes('origin') ? '' : '。carry は、プロジェクトの remote が origin という名前であることを前提にする。別の名前なら git remote rename <名前> origin で改める（origin を同じ URL で足してもよい）';
-    throw new Unusable(`既定のブランチを決められない（${DEFAULT_REF} が無いか、origin の枝を指すシンボリックな ref でない）。git remote set-head origin <既定のブランチ> で作る。この形は、ネットワークへ出ない${rename}`);
+    throw new Unusable(`既定のブランチを決められない（${DEFAULT_REF} が無いか、origin の枝を指すシンボリックな ref でない）。まず git remote set-head origin -a で作る（remote に問い合わせて既定のブランチを設定する）。名前が remote か指示ファイルで分かっているときだけ、git remote set-head origin <既定のブランチ> でもよい（ネットワークへ出ない）${rename}`);
   }
   if (ref === undefined) return;
   const branch = target.slice(prefix.length);
