@@ -1,7 +1,7 @@
 ---
-# 保護3類型(2) 検証ゲート: Project の根を検査した（SKILL.md 手順6）。下書きと元の記録の識別子の重複は、ここで止まる。採点器は終了コードに頼らない
-type: tool_used
-tool: Bash
-input_match: 'memory\.mjs[^\n]{0,160}check[^\n]{0,160}docs/memory'
-min: 1
+# 保護3類型(2) 検証ゲート: 下書きを書いた後に、Project の根の check が走った（SKILL.md 手順6）。手順1 の check だけでは通らない。
+# 下書きは outbox/ の直下の名前つきのファイルで、報告（outbox/reports/）と元の記録（records/）は数えない。Write の入力に在る下書きのパスの後に、check が来る順を見る
+type: regex
+target: trace
+pattern: '"name"\s*:\s*"Write"[^\n]{0,400}?outbox/MEM-(?!202611010000-)\d{12}-\d{2}-[a-z0-9-]+\.md[\s\S]*memory\.mjs[^\n]{0,160}check[^\n]{0,160}docs/memory'
 ---

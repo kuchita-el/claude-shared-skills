@@ -1095,3 +1095,14 @@ D2=MEM-202611200000-02
     [ "$status" -eq 2 ]
   done
 }
+
+@test "送り出しの報告: 評価の採点器が見る5つの節の見出しは、outbox-report.md が定める見出しと一致する" {
+  local grader="$REPO_ROOT/evals/shared-memory/behavior-promote-confidential/graders/report-sections.md"
+  local source="$REPO_ROOT/plugins/shared-memory/references/outbox-report.md"
+  local heading count=0
+  while IFS= read -r heading; do
+    count=$((count + 1))
+    grep -qxF "## $heading" "$source" || { echo "見出しが無い: $heading"; return 1; }
+  done < <(grep -o '## [^)]*' "$grader" | grep -v '^## *$' | sed 's/^## //' | awk '!seen[$0]++')
+  [ "$count" -eq 5 ]
+}
