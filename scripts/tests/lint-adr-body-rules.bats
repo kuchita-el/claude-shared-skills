@@ -1,13 +1,13 @@
 #!/usr/bin/env bats
 # ADR drift-lint（plugins/adr/scripts/lint-adr.sh）のうち、ADR 本文の規約を見る3つの検査のテスト。
 #
-#   - レイヤ1 種別10: front-matter を持つ ADR の本文に `## Status` 節を置かない
-#   - レイヤ5 H1 形式: 有効な ADR の H1 から、index 生成器と同じ条件でタイトルを取り出せる
+#   - レイヤ1 種別10: front-matter を持つ ADR（退役した ADR を含む）の本文に `## Status` 節を置かない
+#   - レイヤ5 H1 形式: 有効な ADR の H1 から、index 生成器と同じ関数（adr-body.sh）でタイトルを取り出せる
 #   - レイヤ3 forward: 原 ADR の本文が `Superseded by:` を書いているなら、superseded-by の全後継を挙げる
-#     （行が1行も無い原 ADR は対象外。凍結された旧い ADR に直せない違反を課さない）
+#     （行が1行も無い原 ADR は対象外。行を書く手順の前に退役した導入先の原 ADR を一斉に赤にしない、移行の判断）
 #
 # これらは以前 manage-adr の手順書（散文）だけが保証していた。検査器の側へ移したので、
-# 退行すれば赤になることと、赤にしてはならない入力（退役・提案中の ADR、コードフェンス内の
+# 退行すれば赤になることと、赤にしてはならない入力（提案中の ADR、コードフェンス内の
 # 見出しの例、別の語の見出し）が緑のままであることを、組で固定する。免除の側を壊す変異
 # （免除の条件を外すと正例が赤に転じる）と検出の側を壊す変異の双方を、一時ディレクトリへ写した
 # ADR 群で確かめる（共有 fixture を書き換えない）。
@@ -30,9 +30,11 @@ PRECONDITION_PATHS=(
     "$CORPUS_DIR/invalid/37-body-status-section"
     "$CORPUS_DIR/invalid/38-h1-title-missing"
     "$CORPUS_DIR/invalid/39-superseded-by-not-listed"
+    "$CORPUS_DIR/invalid/40-status-after-mismatched-fence"
 )
 
-# valid/13 の ADR（退役した原 ADR・コードフェンスを持つ有効 ADR・後継・提案中）
+# valid/13 の ADR（退役した原 ADR・コードフェンスを持つ有効 ADR・後継・提案中）。
+# 退役した ADR の状態節は invalid/37 が持つ。
 OLD="ADR-202701011013-01-retired-old.md"
 FENCE="ADR-202701021013-01-fence-and-quo.md"
 NEW="ADR-202701031013-01-plain-new.md"
@@ -79,29 +81,33 @@ insert_after() {
         "有効な ADR の状態節を、行番号つきで報告する"
     collect_contains "$output" "ADR-202701021037-01-body-status-proposed.md: 本文に \"## Status\" 節があります" \
         "提案中の ADR の状態節も報告する（コロン付きの見出しを含む）"
-    collect_equals "$(printf '%s\n' "$output" | grep -c '本文に "## Status" 節があります')" "2" \
-        "報告は2件ちょうど（他の検査と重ならない）"
+    collect_contains "$output" "ADR-202701031037-01-body-status-retired.md: 本文に \"## Status\" 節があります（7 行目" \
+        "退役した（廃止済みの）ADR の状態節も報告する。節を除くのは凍結の射程外である"
+    collect_equals "$(printf '%s\n' "$output" | grep -c '本文に "## Status" 節があります')" "3" \
+        "報告は3件ちょうど（他の検査と重ならない）"
     collect_not_contains "$output" "H1 形式違反" "状態節の ADR 群で H1 形式違反は出ない"
 
-    # 免除: コードフェンス内の見出しの例、別の語の見出し（## Status quo）、退役した ADR の状態節は赤にならない
+    # 免除: コードフェンス内の見出しの例と、別の語の見出し（## Status quo）は赤にならない
     run_sut "$CORPUS_DIR/valid/13-body-rules"
-    collect_rc 0 "コードフェンス内の ## Status、## Status quo、退役 ADR の ## Status は違反にしない"
+    collect_rc 0 "コードフェンス内の ## Status と ## Status quo は違反にしない"
 
-    # 免除側の変異（正例が赤へ転じる）: 退役を有効へ変えると、同じ状態節が違反になる
-    local dir RETIRED_STATUS="ADR-202701051013-01-retired-with-status.md"
-    dir="$(copy_valid13)"
-    mutate "$dir/$RETIRED_STATUS" 's/^validity: 廃止済み$/validity: 有効/'
-    run_sut "$dir"
-    collect_contains "$output" "$RETIRED_STATUS: 本文に \"## Status\" 節があります" \
-        "変異: 退役を有効へ変えると状態節が違反になる"
-    dir="$(copy_valid13)"
+    # 退役は免除ではない: 上書き済みの ADR の状態節も報告する（退役を有効へ変える変異ではなく、そのままの形で赤）
+    local dir RETIRED_STATUS="ADR-202701031037-01-body-status-retired.md"
+    dir="$(mktemp -d "$BATS_TEST_TMPDIR/body-rules.XXXXXX")"
+    cp "$CORPUS_DIR/valid/13-body-rules/"* "$dir/"
+    cp "$CORPUS_DIR/invalid/37-body-status-section/$RETIRED_STATUS" "$dir/"
     mutate "$dir/$RETIRED_STATUS" 's/^validity: 廃止済み$/validity: 上書き済み/'
     insert_after "$dir/$RETIRED_STATUS" "validity: 上書き済み" "superseded-by: ADR-202701031013-01-plain-new"
     collect_equals "$(grep -c '^superseded-by: ADR-202701031013-01-plain-new$' "$dir/$RETIRED_STATUS")" "1" \
-        "前提: 変異した ADR が上書き済みと superseded-by を持つ（持たないと下の免除の確認が空振りする）"
+        "前提: 変異した ADR が上書き済みと superseded-by を持つ（持たないと下の確認が空振りする）"
+    run_sut "$dir"
+    collect_contains "$output" "$RETIRED_STATUS: 本文に \"## Status\" 節があります" \
+        "上書き済みの ADR の状態節も報告する"
+    mutate "$dir/$RETIRED_STATUS" '/^## Status:$/,/^Deprecated$/d'
+    collect_equals "$(grep -c '^## Status' "$dir/$RETIRED_STATUS")" "0" "前提: 変異で状態節を除いた"
     run_sut "$dir"
     collect_not_contains "$output" "$RETIRED_STATUS: 本文に \"## Status\" 節があります" \
-        "上書き済みの ADR の状態節も免除する"
+        "節を除けば退役した ADR も違反にならない（直し方が成り立つ）"
 
     # 免除側の変異（正例が赤へ転じる）: フェンスの開閉行を消すと、内側の見出しが節になる
     dir="$(copy_valid13)"
@@ -115,6 +121,40 @@ insert_after() {
     mutate "$dir/$FENCE" 's/^## Status quo$/## Status/'
     run_sut "$dir"
     collect_rc 1 "変異: 見出しを Status だけにすると exit 1"
+
+    # コードフェンスの開閉は CommonMark の規則に従う。~~~ の内側の ``` の行はフェンスを閉じないので、
+    # その後ろの本物の ## Status は節として報告される。
+    run_sut "$CORPUS_DIR/invalid/40-status-after-mismatched-fence"
+    collect_rc 1 "~~~ のフェンスの内側の3連のバッククォートで閉じたとみなさず、後ろの本物の ## Status を報告する"
+    collect_contains "$output" "ADR-202701011040-01-fence-mismatch.md: 本文に \"## Status\" 節があります（17 行目" \
+        "フェンスを抜けた後の ## Status を、行番号つきで報告する（フェンス内の見出しは数えない）"
+
+    # 長さと文字: 開いた連なりより短い連なりでは閉じず、別の文字でも閉じず、閉じ行の後ろに文字があっても
+    # 閉じない。同じ文字で長さが同じか長い連なりで閉じる。表は B を ` に置き換えて使う（awk -v の
+    # エスケープとシェルのバッククォートを避けるため）。各行は、開き・内側の行・閉じ・期待の順で、
+    # 内側と閉じ行の後ろに ## Status を置く（green はフェンスの内側に留まり緑、red は閉じていて赤）。
+    local bt fence_case open inner close expect
+    bt=$(printf '\140')
+    while IFS='|' read -r fence_case open inner close expect; do
+        open="${open//B/$bt}" inner="${inner//B/$bt}" close="${close//B/$bt}"
+        dir="$(copy_valid13)"
+        insert_before "$dir/$NEW" "## Consequences" "$open\n$inner\n## Status\n$close\n## Status\n"
+        run_sut "$dir"
+        if [ "$expect" = green ]; then
+            collect_rc 0 "フェンス($fence_case): 閉じない間の ## Status は節とみなさない"
+        else
+            collect_rc 1 "フェンス($fence_case): 閉じた後の ## Status は節とみなす"
+            collect_contains "$output" "$NEW: 本文に \"## Status\" 節があります" "フェンス($fence_case): 報告される"
+        fi
+    done <<'CASES'
+4連の開きは3連の行で閉じない|BBBB|BBB|BBBB 説明|green
+4連の開きを3連で閉じない|BBBB|x|BBB|green
+別の文字では閉じない|BBB|x|~~~|green
+閉じ行の後ろに文字があれば閉じない|~~~|x|~~~ 説明|green
+同じ長さで閉じる|~~~|x|~~~|red
+長い連なりで閉じる|BBB|x|BBBBB|red
+前後の空白つきの閉じ行で閉じる|~~~|x|  ~~~  |red
+CASES
 
     # 見出しの揺れ（大文字小文字・全角コロン・括弧書き）も節とみなす。観測する量（違反の件数）は
     # 保ったまま見出しの綴りだけを変える変異であり、パターンを `Status` 完全一致へ狭める退行を拾う。
@@ -136,7 +176,7 @@ insert_after() {
     # 独立起動: 種別10 はレイヤ1 の単位が持ち、他のレイヤの単位は出さない
     run_sut_layer check_layer1_frontmatter_schema "$CORPUS_DIR/invalid/37-body-status-section"
     collect_rc 0 "状態節の ADR 群へレイヤ1 だけを起動できる"
-    collect_contains "$output" "[violations=2]" "レイヤ1 の単独起動が状態節を数える"
+    collect_contains "$output" "[violations=3]" "レイヤ1 の単独起動が状態節を数える"
     run_sut_layer check_layer5_filename_and_identifier "$CORPUS_DIR/invalid/37-body-status-section"
     collect_contains "$output" "[violations=0]" "レイヤ5 の単独起動は状態節を数えない"
 
@@ -188,7 +228,7 @@ insert_after() {
     run_sut "$dir"
     collect_contains "$output" "$NEW: H1 形式違反" "変異: タイトルが空白だけの H1 は違反"
 
-    # 受理する形: 識別子部とコロンのあいだに空白があっても、get_title は ": " 以降を取り出せる
+    # 受理する形: 識別子部とコロンのあいだに空白があっても、index 生成器は ": " 以降を取り出せる
     # （index 生成器が正しく扱う形を違反にしない）。index は再生成して同期させる。
     dir="$(copy_valid13)"
     mutate "$dir/$NEW" 's/^# ADR-202701031013-01: /# ADR-202701031013-01 : /'
@@ -240,7 +280,7 @@ insert_after() {
     collect_contains "$output" "後継 ADR-202701031013-01-plain-new を挙げていません" "変異: 消した後継が報告される"
     collect_not_contains "$output" "後継 ADR-202701021013-01-fence-and-quo を挙げていません" "変異: 残した後継は報告されない"
 
-    # 免除（対の側）: Superseded by: の行が1行も無い原 ADR は、凍結された旧い ADR を想定して違反にしない
+    # 免除（対の側）: Superseded by: の行が1行も無い原 ADR は、移行の判断で違反にしない（行を書く手順の前に退役した原 ADR を一斉に赤にしない）
     dir="$(copy_valid13)"
     mutate "$dir/$OLD" '/^- Superseded by: /d'
     collect_equals "$(grep -c 'Superseded by:' "$dir/$OLD")" "0" "前提: 変異した原 ADR に Superseded by: の行が無い"
@@ -295,6 +335,7 @@ insert_after() {
     collect_contains "$header" "10. 本文に \`## Status\` 節がある" "レイヤ1 の違反種別10 が列挙されている"
     collect_contains "$header" "種別10 を持つのは" "種別10 の採用理由が成文化されている"
     collect_contains "$header" "H1 形式違反:" "レイヤ5 の H1 形式違反の条件が成文化されている"
+    collect_contains "$header" "移行の判断である" "レイヤ3 forward の免除の理由が移行の判断として成文化されている"
     collect_contains "$header" "行が1行も無い原 ADR は違反にしない" "レイヤ3 forward の対象外（行が無い原 ADR）が成文化されている"
     collect_contains "$header" "全後継 Bi を" "レイヤ3 forward の原 ADR 本文の照合が成文化されている"
 
@@ -333,6 +374,46 @@ insert_after() {
     mutate "$dir/$OLD" 's/^superseded-by: \(.*\)$/superseded-by: \1 # 説明/'
     run_sut "$dir"
     collect_rc 1 "superseded-by の値の末尾コメントは exit 1"
+
+    collect_finish
+}
+
+@test "面⑥: H1 は index 生成器と検査器が同じ条件（front-matter とコードフェンスを除く最初の H1）で読む" {
+    collect_init
+
+    local dir
+    # front-matter の中の `# memo: x` は H1 ではない。本文の H1 にタイトルが無ければ、index のタイトル欄は
+    # 空になり、検査器は H1 形式違反を報告する（front-matter の行をタイトルとして拾わない）。
+    dir="$(copy_valid13)"
+    insert_after "$dir/$NEW" "validity: 有効" "# memo: x"
+    mutate "$dir/$NEW" 's/^# ADR-202701031013-01: .*$/# ADR-202701031013-01 タイトルの区切りが無い/'
+    collect_equals "$(grep -c '^# memo: x$' "$dir/$NEW")" "1" "前提: front-matter に # memo: x がある"
+    collect_equals "$(sed -n '/^---$/,/^---$/p' "$dir/$NEW" | grep -c '^# memo: x$')" "1" "前提: # memo: x は front-matter の内側にある"
+    run bash "$PLUGIN_ROOT/scripts/gen-adr-index.sh" "$dir"
+    collect_rc 0 "index 生成器は front-matter の中の # 行で止まらない"
+    collect_not_contains "$output" ": x" "index のタイトルに front-matter の # memo: x を拾わない"
+    collect_contains "$output" "[ADR-202701031013-01-plain-new](./ADR-202701031013-01-plain-new.md): " \
+        "本文の H1 にタイトルが無いので、index のタイトル欄は空になる"
+    bash "$PLUGIN_ROOT/scripts/gen-adr-index.sh" "$dir" >"$dir/index.md"
+    run_sut "$dir"
+    collect_contains "$output" "$NEW: H1 形式違反" "検査器も同じ H1 を読み、H1 形式違反を報告する"
+
+    # 本文の H1 が正しければ、front-matter の # memo: x があっても、index のタイトルは本文の H1 と一致する
+    dir="$(copy_valid13)"
+    insert_after "$dir/$NEW" "validity: 有効" "# memo: x"
+    bash "$PLUGIN_ROOT/scripts/gen-adr-index.sh" "$dir" >"$dir/index.md"
+    collect_contains "$(cat "$dir/index.md")" "plain-new.md): 後継の決定" "index のタイトルは本文の H1 の後ろの部分になる"
+    run_sut "$dir"
+    collect_rc 0 "front-matter の # memo: x があっても、本文の H1 が正しければ緑"
+
+    # コードフェンスの内側の `# note: y` は H1 ではない。本文の最初の H1（フェンスの後ろ）が読まれる。
+    dir="$(copy_valid13)"
+    insert_before "$dir/$NEW" "# ADR-202701031013-01: 後継の決定" "~~~\n# note: y\n~~~"
+    bash "$PLUGIN_ROOT/scripts/gen-adr-index.sh" "$dir" >"$dir/index.md"
+    collect_not_contains "$(cat "$dir/index.md")" "note" "フェンスの内側の # 行をタイトルに拾わない"
+    collect_contains "$(cat "$dir/index.md")" "plain-new.md): 後継の決定" "フェンスの後ろの本文の H1 がタイトルになる"
+    run_sut "$dir"
+    collect_rc 0 "フェンスの内側の # note: y があっても、検査器は本文の H1 を読んで緑"
 
     collect_finish
 }
