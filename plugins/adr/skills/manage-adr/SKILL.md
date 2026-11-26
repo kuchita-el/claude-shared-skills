@@ -22,7 +22,7 @@ allowed-tools:
 - **対象範囲**: 指定されたADRと許可された遷移・編集分類だけを扱う。
 - **成果物**: front-matter、本文、相互参照をスキーマに沿って必要十分に更新する。
 - **停止条件**: 遷移条件、参照整合、lintのいずれかが未決・不合格なら状態を進めない。
-- **変更境界**: 対象ADR以外を変更せず、別判断を黙って混ぜない。ただし次の2つは、対象ADR以外の変更として許容する。1つは、遷移手順（`transitions.md`「共通: 退役に伴う inbound `Related:` の点検・付け替え」節）が付け替えを指示する相互参照相手である。相手は、対象ADRを指す他の `validity-active` のADRの`Related:`行と、非ADR文書である。もう1つは、自己検証で再生成する`index.md`である。
+- **変更境界**: 対象ADR以外を変更せず、別判断を黙って混ぜない。ただし次の2つは、対象ADR以外の変更として許容する。1つは、遷移手順（`transitions.md`「共通: 退役に伴う inbound `Related:` の点検・付け替え」節）が付け替えを指示する箇所である。箇所は、対象ADRを指す他の `validity-active` のADRの`Related:`行と本文の散文引用、および非ADR文書であり、同節が指示する範囲に限る。もう1つは、自己検証で再生成する`index.md`である。
 - **変更境界（取り消し）**: `transitions.md`「取り消し（誤った退役の訂正）」節が編集を指示する後継ADRと`Related:`行も、対象ADR以外の変更として許容する。
 
 ADR の各遷移（起票・承認・上書き・廃止・却下）と既存 ADR の編集で、front-matter と相互参照の節を正しく書き込む。front-matter のキーは `status`/`validity`/`superseded-by` であり、相互参照の節は `## <xref-heading>` である。手順の実体は本スキルが持ち、手作業で組み立てずスキル経由で一貫した状態遷移を実行し、各操作の締めに drift-lint で自己検証する。
@@ -80,7 +80,7 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 - **非core** → 直接編集＋本文 `## 変更履歴` に1行追記（front-matter は不変）。節を持たない ADR で新設する場合の配置は後掲の雛形が定める
 - **些末** → 直接編集のみ（front-matter・`## 変更履歴` 不変、履歴は git）
 
-分類はスキルが自動判定せず、必ず利用者へ問う。判定基準・問い設計・分岐の詳細は `${CLAUDE_SKILL_DIR}/references/edit-decision.md` を参照する。`validity-superseded`／`validity-abandoned` に退役した ADR は凍結された歴史的成果物であり本文編集しない。
+分類はスキルが自動判定せず、利用者へ問う。問う前の識別で問いが不要と振り分けられる場合は問わない（`edit-decision.md`「AskUserQuestion の問い設計」）。判定基準・問い設計・分岐の詳細は `${CLAUDE_SKILL_DIR}/references/edit-decision.md` を参照する。`validity-superseded`／`validity-abandoned` に退役した ADR は凍結された歴史的成果物であり本文編集しない。
 
 ### ADR 化要否の判定（起票の前段）
 

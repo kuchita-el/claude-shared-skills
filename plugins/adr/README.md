@@ -108,7 +108,7 @@ ADR に書く語のうち言語に依存するものと、対象の ADR ディ�
 
 ### 設定の誤り
 
-次の場合、`lint-adr.sh`・`gen-adr-index.sh`・`print-adr-config.sh`・commit 前ゲートは、原因を示して exit 2 で止まる。ADR は扱わない。設定の誤りを、ADR の違反として報告しない。
+次の場合、原因を示して exit 2 で止まる。止まるのは、`lint-adr.sh`・`gen-adr-index.sh`・`print-adr-config.sh`・`next-adr-id.sh`・commit 前ゲートである。ADR は扱わない。設定の誤りを、ADR の違反として報告しない。
 
 - 知らないキーがある（綴りの誤りを含む）
 - 同じキーが2回ある
