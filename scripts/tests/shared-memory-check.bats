@@ -983,6 +983,32 @@ D2=MEM-202611200000-02
   done
 }
 
+@test "下書きと候補: 小文字の project の出典も draft で落ちる" {
+  local dir
+  for dir in outbox candidates; do
+    rm -rf "$ROOT/outbox" "$ROOT/candidates" "$ROOT/index.md"
+    draft "$dir" "$D1" first
+    sed -i "s|^  - 2026-11-20 に手元で実測した\$|&\n  - project $A@1a2b3c4|" "$ROOT/$dir/$D1-first.md"
+    write_index
+    run node "$SUT" check "$ROOT"
+    [ "$status" -eq 1 ]
+    [[ "$output" == "$dir/$D1-first.md:draft: 下書きと候補は Project の出典を持たない。"* ]]
+  done
+}
+
+@test "下書きと候補: CRLF は draft で落ち、records の CRLF は通る" {
+  local dir
+  for dir in outbox candidates; do
+    rm -rf "$ROOT/outbox" "$ROOT/candidates" "$ROOT/index.md"
+    draft "$dir" "$D1" first
+    sed -i 's/$/\r/' "$ROOT/$dir/$D1-first.md"
+    write_index
+    run node "$SUT" check "$ROOT"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"$dir/$D1-first.md:draft: 下書きと候補の改行は LF だけにする"* ]]
+  done
+}
+
 @test "下書きと候補: 置き換えの項目と evolution は、どれも draft で落ち、evolution の規則では出さない" {
   local dir
   for dir in outbox candidates; do
