@@ -7,7 +7,7 @@
 次のどれかに当たれば、何も書かずに止めて、理由を報告する。
 
 - SKILL.md の手順4（別の文脈へ委ねる）が「未実施」だった。案が無い。
-- 根が、現在のディレクトリのリポジトリの最上位でない。`git -C <根> rev-parse --show-toplevel` の出力と、`git rev-parse --show-toplevel` の出力を比べる（どちらも正規化されたパスで、相対パスの根や symlink 経由の根でも比べられる）。あわせて、`git -C <根> rev-parse --show-prefix` の出力が空であること（根が最上位であること）を確かめる。比べる2つが等しくない、または `--show-prefix` が空でなければ、何も書かず、Global Memory のリポジトリでスキルを起動し直すよう利用者へ伝える。変更する `git switch -c`・`git mv`・`git rm` は、現在のディレクトリのリポジトリに働き、`cd` と `-C` を使えないためである。
+- 根が、現在のディレクトリのリポジトリの最上位でない。`git -C <根> rev-parse --show-toplevel` の出力と、`git rev-parse --show-toplevel` の出力を比べる（どちらも正規化されたパスで、相対パスの根や symlink 経由の根でも比べられる）。あわせて、`git -C <根> rev-parse --show-prefix` の出力が空であること（根が最上位であること）を確かめる。3つのコマンドのどれかが失敗した、比べる2つが等しくない、または `--show-prefix` が空でなければ、何も書かず、Global Memory のリポジトリでスキルを起動し直すよう利用者へ伝える。変更する `git switch -c`・`git mv`・`git rm` は、現在のディレクトリのリポジトリに働き、`cd` と `-C` を使えないためである。
 - 起点が、既定のブランチの先端でない。`git rev-parse HEAD` と `git rev-parse refs/remotes/origin/HEAD` の出力が等しくなければ、何も書かず、既定のブランチの先端から起動し直すよう利用者へ伝える。通信はしない。後者が解決できなくても止める。
 - `git status --porcelain` に当たるものが在る。作業ツリーが汚れている。
 
