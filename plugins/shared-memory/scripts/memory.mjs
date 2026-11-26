@@ -1,38 +1,55 @@
-// 共有の記憶（Shared Memory）の検査器。記録と採用の台帳の形式を検査し、索引を生成する。
-// 記録の版を返し、採用した記録の変化を報告する。Task Memory の残留を検出する。
+// 共有の記憶（Shared Memory）の検査器。記録・送り出しの下書き・候補・採用の台帳の形式を検査し、索引を生成する。
+// 記録と候補の版を返し、採用した記録の変化を報告する。下書きを候補へ写す。Task Memory の残留を検出する。
 // 形式の正本は references/format.md であり、ここはその規則に従う実装である。
 // 規則を変えるときは、format.md を先に改める。
 //
 // 使い方は USAGE を見る。違反は「パス:規則: 説明」の形で標準出力へ出す。
 import { spawnSync } from 'node:child_process';
-import { existsSync, lstatSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 const USAGE = `usage: memory.mjs check ROOT [--no-task-memory]
        memory.mjs index ROOT [--write]
        memory.mjs version ROOT ID [--ref REF]
        memory.mjs adopted ROOT GLOBAL_ROOT [--ref REF]
-  ROOT: 記憶の根。records/ を直下に持つディレクトリ。index.md と adopted/（採用の台帳）も直下に置く。
-  check: 記録と採用の台帳の形式と、index.md が記録と一致することを検査する。
+       memory.mjs carry ROOT GLOBAL_ROOT [--project-ref REF] [--global-ref REF]
+  ROOT: 記憶の根。records/ を直下に持つディレクトリ。index.md・outbox/（送り出しの下書き）・candidates/（候補）・
+        adopted/（採用の台帳）も直下に置く。
+  check: 記録・下書き・候補・採用の台帳の形式と、index.md が記録と候補に一致することを検査する。
   --no-task-memory: ROOT/tasks/ の直下に何か在れば違反にする。既定のブランチへ入るツリーに使う。
   index: 索引を標準出力へ出す。--write を付けると ROOT/index.md へ書く。
-  version: 記録 ID の版を「ID@コミットの省略形」で標準出力へ出す。版は、REF でその記録を最後に変えたコミット。
+  version: ID の版を「ID@コミットの省略形」で標準出力へ出す。版は、REF でそのファイルを最後に変えたコミット。
+           records/ と candidates/ を探し、候補なら後ろに「 candidate」を足す。
   adopted: ROOT の台帳の1件ごとに、GLOBAL_ROOT の REF と比べた結果を「パス:結果: 説明」で標準出力へ出す。
            結果は unchanged / changed / superseded / moved / missing。
+  carry: ROOT の起点の outbox/ の下書きを、GLOBAL_ROOT の作業ツリーの candidates/ へ写す。
+         下書きの1件ごとに「outbox/ファイル名:結果: 説明」を標準出力へ出す。結果は copied / carried / stopped。
   --ref REF: 版を数える起点。省くと refs/remotes/origin/HEAD。作業中の HEAD は使わない。
            remote 追跡の ref（省いたときの既定を含む）と FETCH_HEAD は、最後に取り直した結果（FETCH_HEAD）と照合する。
-  version と adopted は git を要する。fetch のようにネットワークへ出る git のコマンドは呼ばない。
+  --project-ref REF / --global-ref REF: carry の、ROOT と GLOBAL_ROOT の起点。決め方と照合は --ref と同じ。
+           --project-ref は、origin の既定のブランチ（refs/remotes/origin/HEAD が指す枝）の remote 追跡の ref か、
+           その枝だけを取り直した FETCH_HEAD に限る。ほかの起点は exit 2 で止める。
+  version・adopted・carry は git を要する。fetch のようにネットワークへ出る git のコマンドは呼ばない。
   履歴の浅い checkout と、起点が最後に取り直した結果と食い違う checkout では、exit 2 で止まる。
   終了コード:
     check / index: 0 違反なし、1 違反あり、2 引数の誤りか検査できない入力。
-    version: 0 版を返した、1 REF にその記録が1件に決まらない、2 引数の誤りか版を決められない状態。
-    adopted: 0 missing も台帳の違反も無い、1 missing か台帳の違反が在る、2 引数の誤りか検査できない状態。`;
+    version: 0 版を返した、1 REF にその記録と候補が合わせて1件に決まらない、2 引数の誤りか版を決められない状態。
+    adopted: 0 missing も台帳の違反も無い、1 missing か台帳の違反が在る、2 引数の誤りか検査できない状態。
+    carry: 0 stopped が無い、1 stopped が在る、2 引数の誤りか判定できない状態。`;
 
 const ID = /^MEM-[0-9]{12}-[0-9]{2}$/;
 const FILE_NAME = /^(MEM-[0-9]{12}-[0-9]{2})-[a-z0-9]+(?:-[a-z0-9]+)*\.md$/;
 const DATE = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
 const COMMIT = /^[0-9a-f]{7,64}$/;
 const ADOPTED_DIR = 'adopted';
+const OUTBOX_DIR = 'outbox';
+const CANDIDATES_DIR = 'candidates';
+// 下書きと候補が持たない出典の形。層の名前 Project で始まる値である。
+const PROJECT_SOURCE = /^Project(?:\s|$)/i;
+// Global Memory の履歴のうち、運び済みの判定に使うファイル。candidates/ と records/ の直下の .md である。
+const CARRY_SEEN = /^(?:candidates|records)\/[^/]+\.md$/;
+// 通常のファイルの mode。リンクとサブモジュールは、運ぶ対象にも運び済みの判定にも数えない。
+const REGULAR_FILE = ['100644', '100755'];
 const ADOPTED_FILE = /^(MEM-[0-9]{12}-[0-9]{2})\.md$/;
 const DEFAULT_REF = 'refs/remotes/origin/HEAD';
 const FETCH_HEAD = 'FETCH_HEAD';
@@ -53,7 +70,7 @@ const ENUMS = {
 };
 const SCALARS = ['id', 'type', 'title', 'author', 'verification', 'confidence', 'applies-when', 'created', 'updated'];
 const OPTIONAL_SCALARS = ['superseded-by', 'moved-to'];
-const LISTS = ['sources', 'from', 'to'];
+const LISTS = ['sources', 'sent-as', 'from', 'to'];
 const RECORD_KEYS = { scalars: [...SCALARS, ...OPTIONAL_SCALARS], lists: LISTS };
 const ADOPTED_SCALARS = ['record', 'version', 'adopted'];
 const ADOPTED_KEYS = { scalars: ADOPTED_SCALARS, lists: ['decisions'] };
@@ -61,6 +78,14 @@ const INDEX_HEADER = [
   '# 索引',
   '',
   '<!-- 検査器が生成する。手で編集しない。作り直すには index --write を使う。 -->',
+  '',
+  '| 識別子 | 種類 | 主張 | 当てはまる条件 | 検証 |',
+  '|---|---|---|---|---|',
+];
+// 候補の表。候補が1件以上あるときだけ、記録の表の後ろへ出す。無い根の索引は、この表を持たない。
+const CANDIDATE_HEADER = [
+  '',
+  '## 候補',
   '',
   '| 識別子 | 種類 | 主張 | 当てはまる条件 | 検証 |',
   '|---|---|---|---|---|',
@@ -131,20 +156,47 @@ function frontMatter(source, keys) {
 }
 
 /**
- * 記録を1件ずつ読み、1件の中で決まる違反を集める。
+ * 記録・下書き・候補を読み、1件の中で決まる違反を集める。outbox/ と candidates/ は、無ければ0件である。
  * @param {string} root
- * @returns {{ records: { path: string, file: string, fields: Map<string, string | string[]> }[], violations: string[] }}
+ * @returns {{ records: Entry[], drafts: Entry[], candidates: Entry[], violations: string[] }}
  */
 function load(root) {
-  const dir = join(root, 'records');
+  const violations = [];
+  const read = (name) => {
+    const { entries, violations: found } = loadDir(root, name);
+    violations.push(...found);
+    return entries;
+  };
+  return { records: read('records'), drafts: read(OUTBOX_DIR), candidates: read(CANDIDATES_DIR), violations };
+}
+
+/**
+ * @typedef {{ path: string, file: string, fields: Map<string, string | string[]> }} Entry
+ */
+
+/**
+ * 1つの置き場の直下の .md を、記録の形式で読む。records/ のほかは、下書きと候補として draft の規則も掛ける。
+ * @param {string} root
+ * @param {string} name records・outbox・candidates のどれか
+ * @returns {{ entries: Entry[], violations: string[] }}
+ */
+function loadDir(root, name) {
+  const dir = join(root, name);
   const violations = [];
   const records = [];
-  for (const file of readdirSync(dir).filter((name) => name.endsWith('.md')).sort()) {
-    const path = `records/${file}`;
+  const isRecord = name === 'records';
+  if (!isRecord) {
+    if (!existsSync(dir)) return { entries: records, violations };
+    if (!statSync(dir).isDirectory()) throw new Unusable(`${name} がディレクトリでない: ${dir}`);
+  }
+  for (const file of readdirSync(dir).filter((entry) => entry.endsWith('.md')).sort()) {
+    const path = `${name}/${file}`;
     const report = (rule, message) => violations.push(`${path}:${rule}: ${message}`);
     let fields;
+    let text = '';
     try {
-      ({ fields } = frontMatter(readFileSync(join(dir, file), 'utf8'), RECORD_KEYS));
+      text = readFileSync(join(dir, file), 'utf8');
+      ({ fields } = frontMatter(text, RECORD_KEYS));
     } catch (error) {
       if (!(error instanceof Unreadable)) throw error;
       report('front-matter', error.message);
@@ -171,15 +223,32 @@ function load(root) {
     if (fields.get('type') === 'belief' && fields.get('author') === 'joint') {
       report('value', 'belief の author は human か ai のどちらかにする');
     }
+    const sentAs = fields.get('sent-as');
+    if (sentAs !== undefined && sentAs.length === 0) report('value', 'sent-as は下書きの識別子を1件以上書く');
+    for (const value of sentAs ?? []) {
+      if (!ID.test(value)) report('value', `sent-as は MEM-<12桁>-<2桁> の形の識別子を並べる: ${value}`);
+    }
     const isEvolution = fields.get('type') === 'evolution';
-    for (const key of ['from', 'to']) {
-      const listed = fields.get(key) ?? [];
-      if (isEvolution && listed.length === 0) report('evolution', `evolution は ${key} に記録を1件以上書く`);
-      if (!isEvolution && fields.has(key)) report('evolution', `${key} は evolution だけが持つ`);
+    if (isRecord) {
+      for (const key of ['from', 'to']) {
+        const listed = fields.get(key) ?? [];
+        if (isEvolution && listed.length === 0) report('evolution', `evolution は ${key} に記録を1件以上書く`);
+        if (!isEvolution && fields.has(key)) report('evolution', `${key} は evolution だけが持つ`);
+      }
+    } else {
+      // 下書きと候補は、置き換えを持たない。Global Memory の置き換えは、選別で行う。
+      for (const key of ['superseded-by', 'moved-to', 'from', 'to']) {
+        if (fields.has(key)) report('draft', `下書きと候補は ${key} を持たない`);
+      }
+      if (isEvolution) report('draft', '下書きと候補は evolution にしない');
+      if (text.includes('\r')) report('draft', '下書きと候補の改行は LF だけにする（CR を含む）');
+      for (const source of fields.get('sources') ?? []) {
+        if (PROJECT_SOURCE.test(source)) report('draft', `下書きと候補は Project の出典を持たない。誰でも辿れる出典を書く: ${source}`);
+      }
     }
     records.push({ path, file, fields });
   }
-  return { records, violations };
+  return { entries: records, violations };
 }
 
 /**
@@ -378,15 +447,49 @@ function unresolvedTracking(root, ref) {
 }
 
 /**
+ * 起点が、origin の既定のブランチを指す ref であることを確かめる。carry の Project の起点に使う。
+ * 既定のブランチは、refs/remotes/origin/HEAD が指す枝である。通すのは、省いたとき、その枝の remote 追跡の ref、
+ * その枝を origin から取り直した1行だけを持つ FETCH_HEAD である。最後に取り直した結果との照合は、requireFetched が重ねて行う。
+ * 解決できない起点は、ここでは止めず、呼び出す側の解決で止める。
+ * @param {string} root
+ * @param {string | undefined} ref
+ */
+function requireDefaultBranch(root, ref) {
+  const head = git(root, ['symbolic-ref', '-q', DEFAULT_REF]);
+  if (head.status > 1) throw new Unusable(`git symbolic-ref が失敗した（exit ${head.status}）: ${head.stderr.trim()}`);
+  const target = head.stdout.trim();
+  const prefix = `${TRACKING}origin/`;
+  if (head.status !== 0 || !target.startsWith(prefix) || target.length === prefix.length) {
+    const remotes = gitOutput(root, ['remote']).split('\n').map((n) => n.trim());
+    const rename = remotes.includes('origin') ? '' : '。carry は、プロジェクトの remote が origin という名前であることを前提にする。別の名前なら git remote rename <名前> origin で改める（origin を同じ URL で足してもよい）';
+    throw new Unusable(`既定のブランチを決められない（${DEFAULT_REF} が無いか、origin の枝を指すシンボリックな ref でない）。まず git remote set-head origin -a で作る（remote に問い合わせて既定のブランチを設定する）。名前が remote か指示ファイルで分かっているときだけ、git remote set-head origin <既定のブランチ> でもよい（ネットワークへ出ない）${rename}`);
+  }
+  if (ref === undefined) return;
+  const branch = target.slice(prefix.length);
+  const refuse = () => new Unusable(`carry は、プロジェクトの既定のブランチ（origin の ${branch}）からしか読まない。--project-ref は、省くか、${target} か、git fetch origin ${branch} の直後の FETCH_HEAD を渡す: ${ref}`);
+  if (ref === FETCH_HEAD) {
+    const lines = fetchedBranches(root);
+    const url = comparableUrl(gitOutput(root, ['ls-remote', '--get-url', 'origin']));
+    if (lines.length === 1 && (lines[0].branch !== branch || comparableUrl(lines[0].url) !== url)) throw refuse();
+    return;
+  }
+  if (git(root, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]).status !== 0) return;
+  const symbolic = git(root, ['rev-parse', '--symbolic-full-name', ref]);
+  if (symbolic.status !== 0 || symbolic.stdout.trim() !== target) throw refuse();
+}
+
+/**
  * 履歴が揃っていることを確かめ、起点の ref をコミットへ解決する。git を使う最初の手順である。
  * 起点が remote 追跡の ref か FETCH_HEAD なら、最後に取り直した結果と照合する（requireFetched）。
  * @param {string} root
  * @param {string | undefined} ref
+ * @param {boolean} [defaultOnly] 真なら、起点を既定のブランチに限る（requireDefaultBranch）
  * @returns {string} 起点のコミット
  */
-function startingCommit(root, ref) {
+function startingCommit(root, ref, defaultOnly = false) {
   const probe = git(root, ['rev-parse', '--is-shallow-repository']);
   if (probe.status !== 0) throw new Unusable(`git の作業ツリーの中に無い: ${root}\n${probe.stderr.trim()}`);
+  if (defaultOnly) requireDefaultBranch(root, ref);
   const shallow = probe.stdout.trim();
   const name = ref ?? DEFAULT_REF;
   const symbolic = git(root, ['rev-parse', '--symbolic-full-name', name]);
@@ -394,7 +497,7 @@ function startingCommit(root, ref) {
   const tracked = fullName.startsWith(TRACKING) ? trackedBranch(root, fullName) : undefined;
   if (shallow === 'true') {
     const target = tracked === undefined ? 'origin <既定のブランチ>' : `${tracked.remote} ${tracked.branch}`;
-    throw new Unusable(`履歴が浅く、版を決められない。git fetch --deepen=1000 ${target} で履歴を取り直す。まだ浅ければ、深さを増やす: ${root}`);
+    throw new Unusable(`履歴が浅く、履歴を辿る判定ができない。git fetch --deepen=1000 ${target} で履歴を取り直す。まだ浅ければ、深さを増やす: ${root}`);
   }
   if (shallow !== 'false') throw new Unusable(`履歴が浅いかどうかを git が答えない。git を新しくする: ${shallow}`);
   const resolved = git(root, ['rev-parse', '--verify', '--quiet', `${name}^{commit}`]);
@@ -410,18 +513,31 @@ function startingCommit(root, ref) {
 }
 
 /**
- * あるコミットでの、識別子に当たる記録を探す。records/ の直下のファイルだけを見る。
+ * あるコミットの木の、置き場の直下の項目を読む。パスは根からの相対である。
+ * @param {string} root
+ * @param {string} commit
+ * @param {string} dir records・candidates・outbox のどれか
+ * @returns {{ mode: string, type: string, blob: string, path: string }[]}
+ */
+function treeAt(root, commit, dir) {
+  return gitOutput(root, ['ls-tree', '-z', commit, `${dir}/`]).split('\0').filter((entry) => entry !== '').map((entry) => {
+    const tab = entry.indexOf('\t');
+    const [mode, type, blob] = entry.slice(0, tab).split(' ');
+    return { mode, type, blob, path: entry.slice(tab + 1) };
+  });
+}
+
+/**
+ * あるコミットでの、識別子に当たるファイルを、置き場の直下から探す。
  * @param {string} root
  * @param {string} commit
  * @param {string} id
+ * @param {string} [dir] 省くと records
  * @returns {{ path: string, blob: string }[]} ちょうど1件のときだけ、記録が在る
  */
-function recordsAt(root, commit, id) {
-  return gitOutput(root, ['ls-tree', '-z', commit, 'records/']).split('\0').filter((entry) => entry !== '').map((entry) => {
-    const tab = entry.indexOf('\t');
-    const [, type, blob] = entry.slice(0, tab).split(' ');
-    return { type, blob, path: entry.slice(tab + 1) };
-  }).filter((entry) => entry.type === 'blob' && entry.path.startsWith(`records/${id}-`) && entry.path.endsWith('.md'));
+function recordsAt(root, commit, id, dir = 'records') {
+  return treeAt(root, commit, dir)
+    .filter((entry) => entry.type === 'blob' && entry.path.startsWith(`${dir}/${id}-`) && entry.path.endsWith('.md'));
 }
 
 /**
@@ -439,18 +555,20 @@ function versionAt(root, commit, id, path) {
 }
 
 /**
- * version コマンド。
+ * version コマンド。records/ と candidates/ を合わせて探し、候補なら出力の後ろに candidate を足す。
  * @returns {number} 終了コード
  */
 function version(root, id, ref) {
   const start = startingCommit(root, ref);
-  const found = recordsAt(root, start, id);
+  const found = [...recordsAt(root, start, id), ...recordsAt(root, start, id, CANDIDATES_DIR)];
   if (found.length !== 1) {
-    console.error(`memory: ${ref ?? DEFAULT_REF} に、${id} の記録が${found.length === 0 ? '無い' : '複数在る'}`);
+    const where = found.length === 0 ? '' : `（${found.map((entry) => entry.path).join('、')}）`;
+    console.error(`memory: ${ref ?? DEFAULT_REF} に、${id} の記録が${found.length === 0 ? '無い' : '複数在る'}${where}`);
     return 1;
   }
   const [{ path, blob }] = found;
-  const result = versionAt(root, start, id, path);
+  const candidate = path.startsWith(`${CANDIDATES_DIR}/`);
+  const result = `${versionAt(root, start, id, path)}${candidate ? ' candidate' : ''}`;
   const file = join(root, path);
   const same = existsSync(file) && statSync(file).isFile() && gitOutput(root, ['hash-object', '--', path]).trim() === blob;
   console.log(result);
@@ -516,8 +634,116 @@ function adopted(root, globalRoot, ref) {
 }
 
 /**
- * 記録どうしの関係で決まる違反を集める。
- * @param {ReturnType<typeof load>['records']} records
+ * git を実行し、成功したときの標準出力をバイトのまま返す。下書きを、手を加えずに写すために使う。
+ * @param {string} root
+ * @param {string[]} args
+ * @returns {Buffer}
+ */
+function gitBytes(root, args) {
+  const result = spawnSync('git', ['--literal-pathspecs', '-C', root, ...args], { env: GIT_ENV, maxBuffer: 64 * 1024 * 1024 });
+  if (result.error) throw new Unusable(`git を実行できない: ${result.error.message}`);
+  if (result.status !== 0) throw new Unusable(`git ${args[0]} が失敗した（exit ${result.status}）: ${String(result.stderr).trim()}`);
+  return result.stdout;
+}
+
+/**
+ * Global Memory の起点から辿れる全てのコミットに現れた、candidates/ と records/ の直下の .md を集める。
+ * パスで絞らずに全履歴を読む。パスで絞ると、git は履歴を単純化することがあり、枝の上で足して消した候補を見落とす。
+ * マージは親ごとの差分を読む。マージで新しく出来た内容も拾うためである。
+ * @param {string} root
+ * @param {string} start 起点のコミット
+ * @returns {{ path: string, blob: string }[]}
+ */
+function historyFiles(root, start) {
+  const raw = gitOutput(root, ['log', '--root', '--diff-merges=separate', '--raw', '-z', '--no-renames', '--no-abbrev',
+    '--no-show-signature', '--relative', '--format=', start]);
+  const tokens = raw.split('\0');
+  const seen = [];
+  for (let at = 0; at < tokens.length; at += 1) {
+    const meta = tokens[at].replace(/^\n+/, '');
+    if (!meta.startsWith(':')) continue;
+    const path = tokens[at + 1];
+    at += 1;
+    if (path === undefined || !CARRY_SEEN.test(path)) continue;
+    const [oldMode, newMode, oldBlob, newBlob] = meta.slice(1).split(' ');
+    if (REGULAR_FILE.includes(oldMode)) seen.push({ path, blob: oldBlob });
+    if (REGULAR_FILE.includes(newMode)) seen.push({ path, blob: newBlob });
+  }
+  return seen;
+}
+
+/**
+ * 下書き1件の行き先を決める。写すものは、書くバイトも返す。
+ * @returns {{ result: 'copied' | 'carried' | 'stopped', detail: string, write?: { target: string, bytes: Buffer } }}
+ */
+function carryOne(projectRoot, globalRoot, draft, history) {
+  const file = draft.path.slice(OUTBOX_DIR.length + 1);
+  const same = history.find((entry) => entry.blob === draft.blob);
+  if (same !== undefined) return { result: 'carried', detail: `同じ内容のファイルが Global Memory の履歴に在る: ${same.path}` };
+  const named = file.match(FILE_NAME);
+  if (!named) return { result: 'stopped', detail: 'ファイル名から識別子を読めない。<id>-<名前>.md の形にする' };
+  const clash = history.find((entry) => entry.path.slice(entry.path.indexOf('/') + 1).startsWith(`${named[1]}-`));
+  if (clash !== undefined) {
+    return {
+      result: 'stopped',
+      detail: `同じ識別子で内容の違うファイルが Global Memory の履歴に在る: ${clash.path}。別のプロジェクトの記録と識別子が重なったか、承認の後に下書きを書き換えた。人間が決める`,
+    };
+  }
+  const path = `${CANDIDATES_DIR}/${file}`;
+  const target = join(globalRoot, path);
+  const bytes = gitBytes(projectRoot, ['cat-file', 'blob', draft.blob]);
+  const found = lstatSync(target, { throwIfNoEntry: false });
+  if (found === undefined) return { result: 'copied', detail: `${path} へ写した`, write: { target, bytes } };
+  if (found.isFile() && readFileSync(target).equals(bytes)) return { result: 'copied', detail: `${path} に同じ内容のファイルが既に在る` };
+  return { result: 'stopped', detail: `Global Memory の作業ツリーの ${path} が、下書きと内容が違う。書かない` };
+}
+
+/**
+ * carry コマンド。下書きは Project Memory の起点の木から、運び済みの判定は Global Memory の起点からの履歴から読む。
+ * Project Memory の起点は、既定のブランチに限る。承認されていない下書きを運ばないためである。
+ * 両方の作業ツリーのうち、読むのは Global Memory の candidates/ だけである。書くのも、そこだけである。
+ * @returns {number} 終了コード
+ */
+function carry(projectRoot, globalRoot, projectRef, globalRef) {
+  const projectStart = startingCommit(projectRoot, projectRef, true);
+  const globalStart = startingCommit(globalRoot, globalRef);
+  const dir = join(globalRoot, CANDIDATES_DIR);
+  const existing = lstatSync(dir, { throwIfNoEntry: false });
+  if (existing !== undefined && !existing.isDirectory()) throw new Unusable(`${CANDIDATES_DIR} がディレクトリでない: ${dir}`);
+  const drafts = treeAt(projectRoot, projectStart, OUTBOX_DIR)
+    .filter((entry) => entry.type === 'blob' && REGULAR_FILE.includes(entry.mode) && entry.path.endsWith('.md'))
+    .sort((a, b) => (a.path < b.path ? -1 : 1));
+  const history = drafts.length === 0 ? [] : historyFiles(globalRoot, globalStart);
+  const outcomes = drafts.map((draft) => ({ draft, ...carryOne(projectRoot, globalRoot, draft, history) }));
+  for (const { write } of outcomes) {
+    if (write === undefined) continue;
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(write.target, write.bytes);
+  }
+  for (const { draft, result, detail } of outcomes) console.log(`${draft.path}:${result}: ${detail}`);
+  return outcomes.some((outcome) => outcome.result === 'stopped') ? 1 : 0;
+}
+
+/**
+ * 識別子の重複を、records/・outbox/・candidates/ を合わせて集める。
+ * @param {Entry[]} entries
+ * @returns {string[]}
+ */
+function duplicates(entries) {
+  const violations = [];
+  const byId = new Map();
+  for (const entry of entries) {
+    const id = entry.fields.get('id');
+    if (id === undefined) continue;
+    if (byId.has(id)) violations.push(`${entry.path}:duplicate-id: ${id} は ${byId.get(id).path} と重複している`);
+    else byId.set(id, entry);
+  }
+  return violations;
+}
+
+/**
+ * 記録どうしの関係で決まる違反を集める。下書きと候補は入れない。識別子の重複は duplicates が集める。
+ * @param {Entry[]} records
  * @returns {string[]}
  */
 function relations(records) {
@@ -525,9 +751,7 @@ function relations(records) {
   const byId = new Map();
   for (const record of records) {
     const id = record.fields.get('id');
-    if (id === undefined) continue;
-    if (byId.has(id)) violations.push(`${record.path}:duplicate-id: ${id} は ${byId.get(id).path} と重複している`);
-    else byId.set(id, record);
+    if (id !== undefined && !byId.has(id)) byId.set(id, record);
   }
   const evolutions = records.filter((record) => record.fields.get('type') === 'evolution');
   for (const record of records) {
@@ -570,12 +794,12 @@ function cell(text) {
 }
 
 /**
- * 索引の本文を作る。置き換え済みの記録と、記憶の外へ移した記録は載せない。
- * @param {ReturnType<typeof load>['records']} records
- * @returns {string}
+ * 索引の表の行を作る。置き換え済みの記録と、記憶の外へ移した記録は載せない。
+ * @param {Entry[]} entries
+ * @returns {string[]}
  */
-function renderIndex(records) {
-  const rows = records
+function indexRows(entries) {
+  return entries
     .filter((record) => !record.fields.has('superseded-by') && !record.fields.has('moved-to'))
     .filter((record) => ['id', 'type', 'title', 'applies-when', 'verification'].every((key) => record.fields.has(key)))
     .sort((a, b) => (a.fields.get('id') < b.fields.get('id') ? -1 : 1))
@@ -583,7 +807,18 @@ function renderIndex(records) {
       const field = (key) => cell(record.fields.get(key));
       return `| [${field('id')}](${record.path}) | ${field('type')} | ${field('title')} | ${field('applies-when')} | ${field('verification')} |`;
     });
-  return [...INDEX_HEADER, ...rows, ''].join('\n');
+}
+
+/**
+ * 索引の本文を作る。候補の表は、候補の行が1件以上あるときだけ足す。下書きは載せない。
+ * @param {Entry[]} records
+ * @param {Entry[]} candidates
+ * @returns {string}
+ */
+function renderIndex(records, candidates) {
+  const candidateRows = indexRows(candidates);
+  const candidateTable = candidateRows.length === 0 ? [] : [...CANDIDATE_HEADER, ...candidateRows];
+  return [...INDEX_HEADER, ...indexRows(records), ...candidateTable, ''].join('\n');
 }
 
 /**
@@ -611,7 +846,25 @@ function requireRoot(root) {
 }
 
 // コマンドごとの、位置で決まる引数の数。
-const POSITIONALS = { check: 1, index: 1, version: 2, adopted: 2 };
+const POSITIONALS = { check: 1, index: 1, version: 2, adopted: 2, carry: 2 };
+
+/**
+ * carry の起点の引数を読む。--project-ref と --global-ref を、それぞれ値と組で0回か1回、どちらが先でも受ける。
+ * @param {string[]} options
+ * @returns {{ project?: string, global?: string } | undefined} 形に合わなければ undefined
+ */
+function carryRefs(options) {
+  const names = { '--project-ref': 'project', '--global-ref': 'global' };
+  const refs = {};
+  if (options.length % 2 !== 0) return undefined;
+  for (let at = 0; at < options.length; at += 2) {
+    const key = names[options[at]];
+    const value = options[at + 1];
+    if (key === undefined || Object.hasOwn(refs, key) || value === '' || value.startsWith('-')) return undefined;
+    refs[key] = value;
+  }
+  return refs;
+}
 
 function main(argv) {
   const [command, ...rest] = argv;
@@ -622,12 +875,17 @@ function main(argv) {
   const noTaskMemory = command === 'check' && options.length === 1 && options[0] === '--no-task-memory';
   const takesRef = command === 'version' || command === 'adopted';
   const ref = takesRef && options.length === 2 && options[0] === '--ref' && options[1] !== '' && !options[1].startsWith('-') ? options[1] : undefined;
-  if (count === 0 || positionals.length !== count || !(options.length === 0 || write || noTaskMemory || ref !== undefined)) {
+  const refs = command === 'carry' ? carryRefs(options) : undefined;
+  if (count === 0 || positionals.length !== count || !(options.length === 0 || write || noTaskMemory || ref !== undefined || refs !== undefined)) {
     console.error(USAGE);
     return 2;
   }
   const [root, second] = positionals;
   requireRoot(root);
+  if (command === 'carry') {
+    requireRoot(second);
+    return carry(root, second, refs.project, refs.global);
+  }
   if (command === 'version') {
     if (!ID.test(second)) throw new Unusable(`識別子は MEM-<12桁>-<2桁> の形で書く: ${second}`);
     return version(root, second, ref);
@@ -636,19 +894,21 @@ function main(argv) {
     requireRoot(second);
     return adopted(root, second, ref);
   }
-  const { records, violations } = load(root);
+  const { records, drafts, candidates, violations } = load(root);
   const indexPath = join(root, 'index.md');
+  const index = renderIndex(records, candidates);
   if (command === 'index') {
-    if (write) writeFileSync(indexPath, renderIndex(records));
-    else process.stdout.write(renderIndex(records));
+    if (write) writeFileSync(indexPath, index);
+    else process.stdout.write(index);
     return 0;
   }
+  violations.push(...duplicates([...records, ...drafts, ...candidates]));
   violations.push(...relations(records));
   const ledger = loadAdopted(root);
   const hasIndex = existsSync(indexPath);
-  if (records.length > 0 || hasIndex) {
+  if (records.length > 0 || candidates.length > 0 || hasIndex) {
     if (!hasIndex) violations.push('index.md:index: 索引が無い。index --write で作る');
-    else if (readFileSync(indexPath, 'utf8').replaceAll('\r\n', '\n') !== renderIndex(records)) {
+    else if (readFileSync(indexPath, 'utf8').replaceAll('\r\n', '\n') !== index) {
       violations.push('index.md:index: 索引が記録と一致しない。index --write で作り直す');
     }
   }

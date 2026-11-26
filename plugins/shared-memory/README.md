@@ -10,8 +10,8 @@ claude --plugin-dir <このディレクトリ>
 
 いま在るのは次のとおりである。
 
-- **記録の形式**（`references/format.md`）: 記録・索引・採用の台帳の形、置き換えでそろえる3つ、記録の版の書き方、採用した記録の変化の判定、検査器が違反とするもの。Task Memory の置き場も定める。
-- **検査器**（`scripts/memory.mjs`）: 記録と台帳の形式を検査し、索引を生成する。記録の版を返し、採用した記録の変化を報告する。Task Memory の残留を検出する。Node 22 以上で動く。Node の組み込みのほかに依存は無い。ただし、`version` と `adopted` は git を要する。
+- **記録の形式**（`references/format.md`）: 記録・送り出しの下書き・候補・索引・採用の台帳の形を定める。置き換えでそろえる3つ、記録の版の書き方、下書きを運ぶときの判定、採用した記録の変化の判定、検査器が違反とするものも定める。Task Memory の置き場も定める。
+- **検査器**（`scripts/memory.mjs`）: 記録・送り出しの下書き・候補・台帳の形式を検査し、索引を生成する。記録と候補の版を返し、採用した記録の変化を報告する。送り出しの下書きを、運び済みかを判定して候補へ写す。Task Memory の残留を検出する。Node 22 以上で動く。Node の組み込みのほかに依存は無い。ただし、`version`・`adopted`・`carry` は git を要する。
 - **スキル `propose-records`**（`/shared-memory:propose-records`）: タスクの材料から、学びの候補を挙げる。既存の記録と照らして、足す・直す・捨てるに分ける。足すものと直すものは、記録の下書きにして検査する。捨てた候補も、理由つきで示す。
 - **スキル `promote-record`**（`/shared-memory:promote-record`）: 記録を一般化し、Global Memory へ提案する。元にできるのは、既定のブランチに在る Project Memory の記録である。出す前に、機密の情報の混入と、既存の記録との矛盾を確かめる。5つの確認の結果を、PR の本文に書く。機密の確認は、利用規則で外せない。確認を通るまで、記録は昇格先の根へ書かない。
 - **スキル `replace-record`**（`/shared-memory:replace-record`）: 置き換えると決まった記録について、置き換えの3つをそろえ、検査器で確かめる。置き換えるかどうかは決めない。
@@ -26,9 +26,10 @@ node scripts/memory.mjs check <記憶の根> --no-task-memory
 node scripts/memory.mjs index <記憶の根> --write
 node scripts/memory.mjs version <記憶の根> <識別子> --ref <ref>
 node scripts/memory.mjs adopted <プロジェクト側の記憶の根> <Global Memory の根> --ref <ref>
+node scripts/memory.mjs carry <Project Memory の根> <Global Memory の根> --project-ref <ref> --global-ref <ref>
 ```
 
-`version` と `adopted` の前に、記録が在るリポジトリで既定のブランチを取り直す。検査器は、remote 追跡の ref と `FETCH_HEAD` を最後に取り直した結果と照合し、取り直していない起点を終了コード 2 で拒む。取り直しの手順と照合の範囲は、`references/format.md` の「記録の版」が定める。
+`version` と `adopted` の前に、記録が在るリポジトリで既定のブランチを取り直す。`carry` の前は、2つのリポジトリの両方で取り直す。検査器は、remote 追跡の ref と `FETCH_HEAD` を最後に取り直した結果と照合し、取り直していない起点を終了コード 2 で拒む。取り直しの手順と照合の範囲は、`references/format.md` の「記録の版」が定める。
 
 ## スキル `propose-records`
 
@@ -52,7 +53,7 @@ node scripts/memory.mjs adopted <プロジェクト側の記憶の根> <Global M
 
 どのスキルも、前の段を通っていなくても起動できる。ただし、`replace-record` が新しい記録に使えるのは、その起動で書く記録か、同じブランチの上に在って、まだ既定のブランチに入っていない記録である。どちらも既に既定のブランチに在る2件の記録の食い違いは、`replace-record` の対象の外である。
 
-`promote-record`・`crosscheck-records`・`replace-record` も、commit・push・PR の作成を事前に許可しない。出し方は、その根の規則に従う。`promote-record` は、PR を出せないとき、記録と PR の本文を Project Memory の根の `tasks/` へ2つのファイルとして置く。運んだ者が、昇格先で PR にして消す。
+`promote-record`・`crosscheck-records`・`replace-record` も、commit・push・PR の作成を事前に許可しない。出し方は、その根の規則に従う。別のリポジトリへ送るものは、`outbox/` を通す。Global Memory へ送る下書きは、Project Memory の根の `outbox/` に書く（`references/format.md`）。`promote-record` の手順は、まだこの形に揃っていない。
 
 ## サブエージェントの実行パラメータ
 

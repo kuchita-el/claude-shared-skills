@@ -857,3 +857,542 @@ three_commits() {
   [ "$status" -eq 0 ]
   [ "$output" = "adopted/$B.md:changed: $B@$V1 -> $B@$V2" ]
 }
+
+# ---- version の候補 ----
+
+# 形式に合う候補を、$1 の記憶の根の candidates/ へ1件書く。$2 は識別子、$3 は名前。
+candidate() {
+  mkdir -p "$1/candidates"
+  printf '%s\n' '---' "id: $2" 'type: knowledge' "title: $3 の主張" 'author: ai' 'verification: unverified' \
+    'confidence: medium' 'applies-when: いつでも' 'sources:' '  - 2026-11-20 に手元で実測した' \
+    'created: 2026-11-20' 'updated: 2026-11-20' '---' '' '本文。' >"$1/candidates/$2-$3.md"
+}
+
+@test "version: candidates の候補は、版の後ろに candidate を足して返し、records の記録はいまの形で返す" {
+  three_commits
+  candidate "$UP" "$C" arrived
+  commit "$UP" c4
+  local v4
+  v4=$(short "$UP")
+  : >"$UP/later.txt"
+  commit "$UP" c5
+  clone_global
+  run --separate-stderr node "$SUT" version "$GM" "$C"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$C@$v4 candidate" ]
+  [ -z "$stderr" ]
+  run --separate-stderr node "$SUT" version "$GM" "$B"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$B@$V2" ]
+}
+
+@test "version: 起点の records と candidates の両方に同じ識別子が在ると、1件に決まらず exit 1 で終わる" {
+  three_commits
+  candidate "$UP" "$A" arrived
+  commit "$UP" c4
+  run --separate-stderr node "$SUT" version "$UP" "$A" --ref main
+  [ "$status" -eq 1 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"の記録が複数在る"* ]]
+  [[ "$stderr" == *"records/$A-first.md"* ]]
+  [[ "$stderr" == *"candidates/$A-arrived.md"* ]]
+}
+
+@test "version: 作業ツリーの候補が版と違うと、版はそのまま返し、標準エラーへ知らせる" {
+  three_commits
+  candidate "$UP" "$C" arrived
+  commit "$UP" c4
+  local v4
+  v4=$(short "$UP")
+  clone_global
+  printf '%s\n' '手元の変更。' >>"$GM/candidates/$C-arrived.md"
+  run --separate-stderr node "$SUT" version "$GM" "$C"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$C@$v4 candidate" ]
+  [[ "$stderr" == *"candidates/$C-arrived.md"* ]]
+}
+
+@test "adopted: 候補は採用の対象にせず、candidates に在っても missing で exit 1" {
+  three_commits
+  candidate "$UP" "$C" arrived
+  commit "$UP" c4
+  adopt "$C" "$(short "$UP")"
+  run --separate-stderr node "$SUT" adopted "$PM" "$UP" --ref main
+  [ "$status" -eq 1 ]
+  [[ "$output" == "adopted/$C.md:missing: "*"版に記録が無い"* ]]
+}
+
+# ---- carry ----
+
+# プロジェクトのリポジトリ。上流（PUP）の docs/memory を記憶の根にし、clone（PJ）から運ぶ。
+# 根をリポジトリの下位に置き、パスを根からの相対で扱うことも確かめる。
+PUP_NAME=project-upstream
+PJ_NAME=project-clone
+D1=MEM-202611200000-01
+D2=MEM-202611200000-02
+D3=MEM-202611200000-03
+
+# 上流のプロジェクトを作る。記憶の根に空の records/ を置き、最初のコミットまで行う。
+init_project() {
+  PUP="$BATS_TEST_TMPDIR/$PUP_NAME"
+  PJ="$BATS_TEST_TMPDIR/$PJ_NAME"
+  PROOT="$PJ/docs/memory"
+  git init -q -b main "$PUP"
+  mkdir -p "$PUP/docs/memory/records" "$PUP/docs/memory/outbox"
+  : >"$PUP/docs/memory/records/.gitkeep"
+  commit "$PUP" p0
+}
+
+# 下書きを1件書く。$1 は outbox/ を持つ記憶の根、$2 は識別子、$3 は名前、$4 は本文。
+# 改行は LF にする（下書きと候補は LF だけ）。末尾の改行の無い行を混ぜ、写したものがバイトの単位で同じかを見る。
+draft_in() {
+  mkdir -p "$1/outbox"
+  printf '%s\n' '---' "id: $2" 'type: knowledge' "title: $3 の主張" 'author: ai' 'verification: unverified' \
+    'confidence: medium' 'applies-when: いつでも' 'sources:' '  - 2026-11-20 に手元で実測した' \
+    'created: 2026-11-20' 'updated: 2026-11-20' '---' '' >"$1/outbox/$2-$3.md"
+  printf '%s' "${4:-本文。}" >>"$1/outbox/$2-$3.md"
+}
+
+# 上流のプロジェクトを clone し、取り直す。
+clone_project() {
+  git clone -q "$@" "file://$PUP" "$PJ"
+  git -C "$PJ" fetch -q origin main
+}
+
+# 上流の Global Memory に記録を1件置いて clone し、取り直す。運ぶ試験の Global Memory の既定の形である。
+global_with_record() {
+  record "$UP" "$A" first
+  commit "$UP" g1
+  clone_global
+}
+
+@test "carry: 起点の outbox の下書きを、Global の作業ツリーの candidates へバイトの単位で同じに写す" {
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  draft_in "$PUP/docs/memory" "$D2" second '末尾に改行の無い本文'
+  mkdir -p "$PUP/docs/memory/outbox/reports"
+  printf '%s\n' '送り出しの報告。' >"$PUP/docs/memory/outbox/reports/$D1.md"
+  commit "$PUP" p1
+  clone_project
+  global_with_record
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 0 ]
+  [ -z "$stderr" ]
+  [ "$output" = "$(printf '%s\n' "outbox/$D1-first.md:copied: candidates/$D1-first.md へ写した" "outbox/$D2-second.md:copied: candidates/$D2-second.md へ写した")" ]
+  cmp "$PUP/docs/memory/outbox/$D1-first.md" "$GM/candidates/$D1-first.md"
+  cmp "$PUP/docs/memory/outbox/$D2-second.md" "$GM/candidates/$D2-second.md"
+  # 送り出しの報告（outbox の下の階層）は写さない。
+  [ "$(ls -A "$GM/candidates")" = "$(printf '%s\n' "$D1-first.md" "$D2-second.md")" ]
+  # commit はしない。
+  [ "$(git -C "$GM" rev-parse HEAD)" = "$(git -C "$UP" rev-parse HEAD)" ]
+}
+
+@test "carry: CI をすり抜けた CRLF の下書きも、形式を検査せずにバイトの単位で同じに写す" {
+  # carry は下書きの形式を検査しない（Project の check と Global の取り込みの検査が見る）。
+  # CRLF の下書きを書き換えて写すと、承認したものと運ぶものが一致しなくなる。
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  sed -i 's/$/\r/' "$PUP/docs/memory/outbox/$D1-first.md"
+  grep -q $'\r' "$PUP/docs/memory/outbox/$D1-first.md"
+  commit "$PUP" p1
+  clone_project
+  global_with_record
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 0 ]
+  [ "$output" = "outbox/$D1-first.md:copied: candidates/$D1-first.md へ写した" ]
+  cmp "$PUP/docs/memory/outbox/$D1-first.md" "$GM/candidates/$D1-first.md"
+}
+
+@test "carry: 写した後にもう一度運ぶと、同じバイトのファイルは書き直さず copied とする（冪等）" {
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  commit "$PUP" p1
+  clone_project
+  global_with_record
+  run node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 0 ]
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 0 ]
+  [ "$output" = "outbox/$D1-first.md:copied: candidates/$D1-first.md に同じ内容のファイルが既に在る" ]
+  cmp "$PUP/docs/memory/outbox/$D1-first.md" "$GM/candidates/$D1-first.md"
+}
+
+@test "carry: Global の作業ツリーの同じパスに違うバイトのファイルが在ると、書かずに stopped で exit 1" {
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  commit "$PUP" p1
+  clone_project
+  global_with_record
+  mkdir -p "$GM/candidates"
+  printf '%s\n' '手元の別の内容。' >"$GM/candidates/$D1-first.md"
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 1 ]
+  [ "$output" = "outbox/$D1-first.md:stopped: Global Memory の作業ツリーの candidates/$D1-first.md が、下書きと内容が違う。書かない" ]
+  [ "$(cat "$GM/candidates/$D1-first.md")" = '手元の別の内容。' ]
+}
+
+@test "carry: 運んで取り込まれた後も outbox に残っている下書きは、carried として写さない" {
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  commit "$PUP" p1
+  clone_project
+  global_with_record
+  run node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 0 ]
+  # Global の CI が取り込んだ形を、上流へ同じファイルをコミットして作る。
+  mkdir -p "$UP/candidates"
+  cp "$GM/candidates/$D1-first.md" "$UP/candidates/"
+  commit "$UP" g2
+  rm -rf "$GM/candidates"
+  git -C "$GM" fetch -q origin main
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 0 ]
+  [ "$output" = "outbox/$D1-first.md:carried: 同じ内容のファイルが Global Memory の履歴に在る: candidates/$D1-first.md" ]
+  [ ! -e "$GM/candidates" ]
+}
+
+@test "carry: 選別で捨てて Global の今のツリーに無い候補も、履歴に在れば carried として運び直さない" {
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  draft_in "$PUP/docs/memory" "$D2" second
+  commit "$PUP" p1
+  clone_project
+  record "$UP" "$A" first
+  # D1: 既定のブランチで足して、後で捨てた。
+  mkdir -p "$UP/candidates"
+  cp "$PUP/docs/memory/outbox/$D1-first.md" "$UP/candidates/"
+  commit "$UP" g1
+  git -C "$UP" rm -q "candidates/$D1-first.md"
+  commit "$UP" g2
+  # D2: 枝の上で足して捨て、マージした。パスで絞った履歴の単純化では、この枝が見えなくなる。
+  git -C "$UP" checkout -q -b triage
+  mkdir -p "$UP/candidates"
+  cp "$PUP/docs/memory/outbox/$D2-second.md" "$UP/candidates/"
+  commit "$UP" g3
+  git -C "$UP" rm -q "candidates/$D2-second.md"
+  commit "$UP" g4
+  git -C "$UP" checkout -q main
+  : >"$UP/later.txt"
+  commit "$UP" g5
+  git -C "$UP" -c core.hooksPath=/dev/null merge -q --no-ff --no-edit triage
+  clone_global
+  [ ! -e "$GM/candidates" ]
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$(printf '%s\n' "outbox/$D1-first.md:carried: 同じ内容のファイルが Global Memory の履歴に在る: candidates/$D1-first.md" "outbox/$D2-second.md:carried: 同じ内容のファイルが Global Memory の履歴に在る: candidates/$D2-second.md")" ]
+  [ ! -e "$GM/candidates" ]
+}
+
+@test "carry: 言い回しを直して records へ採った候補の下書きも、運んだときの内容が履歴に在るので carried" {
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  commit "$PUP" p1
+  clone_project
+  mkdir -p "$UP/candidates"
+  cp "$PUP/docs/memory/outbox/$D1-first.md" "$UP/candidates/"
+  commit "$UP" g1
+  git -C "$UP" mv "candidates/$D1-first.md" "records/$D1-first.md"
+  printf '\n%s\n' '言い回しを直した。' >>"$UP/records/$D1-first.md"
+  commit "$UP" g2
+  clone_global
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 0 ]
+  [ "$output" = "outbox/$D1-first.md:carried: 同じ内容のファイルが Global Memory の履歴に在る: candidates/$D1-first.md" ]
+}
+
+@test "carry: 同じ識別子で内容の違うファイルが Global の履歴に在ると、写さずに stopped で exit 1 とし、ほかの下書きは写す" {
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  draft_in "$PUP/docs/memory" "$D2" second
+  draft_in "$PUP/docs/memory" "$D3" third
+  commit "$PUP" p1
+  clone_project
+  # D1: 別のプロジェクトが同じ識別子の記録を送り、records に在る（名前も違う）。
+  record "$UP" "$D1" other-project
+  # D3: 同じファイル名で内容の違う候補が、かつて在った（承認の後に書き換えた下書き）。
+  mkdir -p "$UP/candidates"
+  draft_in "$BATS_TEST_TMPDIR/rewritten" "$D3" third '書き換える前の本文。'
+  cp "$BATS_TEST_TMPDIR/rewritten/outbox/$D3-third.md" "$UP/candidates/"
+  commit "$UP" g1
+  git -C "$UP" rm -q "candidates/$D3-third.md"
+  commit "$UP" g2
+  clone_global
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 1 ]
+  [ "${lines[0]}" = "outbox/$D1-first.md:stopped: 同じ識別子で内容の違うファイルが Global Memory の履歴に在る: records/$D1-other-project.md。別のプロジェクトの記録と識別子が重なったか、承認の後に下書きを書き換えた。人間が決める" ]
+  [ "${lines[1]}" = "outbox/$D2-second.md:copied: candidates/$D2-second.md へ写した" ]
+  [[ "${lines[2]}" == "outbox/$D3-third.md:stopped: 同じ識別子で内容の違うファイルが Global Memory の履歴に在る: candidates/$D3-third.md。"* ]]
+  [ "${#lines[@]}" -eq 3 ]
+  [ "$(ls -A "$GM/candidates")" = "$D2-second.md" ]
+}
+
+@test "carry: 下書きは Project の起点の木から読み、作業ツリーと作業中のブランチは読まない" {
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  commit "$PUP" p1
+  clone_project
+  global_with_record
+  # 作業中のブランチで、承認済みの下書きを書き換え、未承認の下書きを足す。作業ツリーにも未コミットの下書きを置く。
+  git -C "$PJ" checkout -q -b topic
+  printf '%s\n' '承認の後の書き換え。' >>"$PROOT/outbox/$D1-first.md"
+  draft_in "$PROOT" "$D2" second
+  commit "$PJ" topic
+  draft_in "$PROOT" "$D3" third
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 0 ]
+  [ "$output" = "outbox/$D1-first.md:copied: candidates/$D1-first.md へ写した" ]
+  cmp "$PUP/docs/memory/outbox/$D1-first.md" "$GM/candidates/$D1-first.md"
+  [ "$(ls -A "$GM/candidates")" = "$D1-first.md" ]
+}
+
+@test "carry: outbox が起点に無いと、何も出さずに exit 0" {
+  init_project
+  clone_project
+  global_with_record
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ -z "$stderr" ]
+  [ ! -e "$GM/candidates" ]
+}
+
+@test "carry: ファイル名から識別子を読めない下書きは、写さずに stopped" {
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  mv "$PUP/docs/memory/outbox/$D1-first.md" "$PUP/docs/memory/outbox/Draft_One.md"
+  commit "$PUP" p1
+  clone_project
+  global_with_record
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 1 ]
+  [ "$output" = "outbox/Draft_One.md:stopped: ファイル名から識別子を読めない。<id>-<名前>.md の形にする" ]
+  [ ! -e "$GM/candidates" ]
+}
+
+@test "carry: どちらかの履歴が浅いと、何も出さず何も書かずに exit 2 で止まり、取り直し方を示す" {
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  commit "$PUP" p1
+  : >"$PUP/later.txt"
+  commit "$PUP" p2
+  clone_project --depth 1
+  global_with_record
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"git fetch --deepen=1000 origin main"* ]]
+  [[ "$stderr" == *"$PROOT"* ]]
+  [ ! -e "$GM/candidates" ]
+  git -C "$PJ" fetch -q --deepen=1000 origin main
+  rm -rf "$GM"
+  : >"$UP/later.txt"
+  commit "$UP" g2
+  clone_global --depth 1
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"git fetch --deepen=1000 origin main"* ]]
+  [[ "$stderr" == *"$GM"* ]]
+  [ ! -e "$GM/candidates" ]
+  git -C "$GM" fetch -q --deepen=1000 origin main
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 0 ]
+  [ "$output" = "outbox/$D1-first.md:copied: candidates/$D1-first.md へ写した" ]
+}
+
+@test "carry: 起点が最後に取り直した結果と食い違うと、リポジトリごとに照合して exit 2 で止まる" {
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  commit "$PUP" p1
+  clone_project
+  global_with_record
+  : >"$UP/later.txt"
+  commit "$UP" g2
+  git -C "$GM" fetch -q origin main
+  # Project の remote 追跡の ref を、下書きを足す前へ戻す。
+  git -C "$PJ" update-ref refs/remotes/origin/main "$(git -C "$PUP" rev-parse HEAD~1)"
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"git fetch origin main"* ]]
+  git -C "$PJ" update-ref refs/remotes/origin/main "$(git -C "$PUP" rev-parse HEAD)"
+  rewind_tracking "$GM" HEAD~1
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [ ! -e "$GM/candidates" ]
+  # 取り直した直後の FETCH_HEAD を、それぞれの起点に渡せば通る。引数の順は問わない。
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM" --global-ref FETCH_HEAD --project-ref FETCH_HEAD
+  [ "$status" -eq 0 ]
+  [ "$output" = "outbox/$D1-first.md:copied: candidates/$D1-first.md へ写した" ]
+}
+
+@test "carry: Project の起点が既定のブランチでないと、読まずに exit 2 で止まる（ローカルの枝・HEAD・タグ・コミット・ほかの枝）" {
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  commit "$PUP" p1
+  git -C "$PUP" checkout -q -b other
+  draft_in "$PUP/docs/memory" "$D2" second
+  commit "$PUP" p2
+  git -C "$PUP" checkout -q main
+  clone_project
+  global_with_record
+  # 作業中のブランチに、未承認の下書きをコミットする。
+  git -C "$PJ" checkout -q -b topic
+  draft_in "$PROOT" "$D3" third
+  commit "$PJ" topic
+  git -C "$PJ" tag v1
+  local ref
+  for ref in main topic HEAD v1 main~0 "$(git -C "$PJ" rev-parse HEAD)" "$(git -C "$PJ" rev-parse --short origin/main)" \
+    origin/other refs/remotes/origin/other; do
+    run --separate-stderr node "$SUT" carry "$PROOT" "$GM" --project-ref "$ref"
+    [ "$status" -eq 2 ]
+    [ -z "$output" ]
+    [[ "$stderr" == *"既定のブランチ（origin の main）からしか読まない"* ]]
+  done
+  [ ! -e "$GM/candidates" ]
+}
+
+@test "carry: FETCH_HEAD は、origin の既定のブランチだけを取り直したときに限り、Project の起点に通す" {
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  commit "$PUP" p1
+  git -C "$PUP" checkout -q -b other
+  draft_in "$PUP/docs/memory" "$D2" second
+  commit "$PUP" p2
+  git -C "$PUP" checkout -q main
+  clone_project
+  global_with_record
+  git -C "$PJ" fetch -q origin other
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM" --project-ref FETCH_HEAD
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"既定のブランチ（origin の main）からしか読まない"* ]]
+  # 同じ名前の枝を、origin でない URL から取り直した FETCH_HEAD も通さない。
+  git clone -q --bare "file://$PUP" "$BATS_TEST_TMPDIR/mirror.git"
+  git -C "$BATS_TEST_TMPDIR/mirror.git" update-ref refs/heads/main "$(git -C "$PUP" rev-parse other)"
+  git -C "$PJ" fetch -q "file://$BATS_TEST_TMPDIR/mirror.git" main
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM" --project-ref FETCH_HEAD
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"既定のブランチ（origin の main）からしか読まない"* ]]
+  [ ! -e "$GM/candidates" ]
+  git -C "$PJ" fetch -q origin main
+  local ref
+  for ref in FETCH_HEAD origin/main refs/remotes/origin/main origin/HEAD; do
+    rm -rf "$GM/candidates"
+    run --separate-stderr node "$SUT" carry "$PROOT" "$GM" --project-ref "$ref"
+    [ "$status" -eq 0 ]
+    [ "$output" = "outbox/$D1-first.md:copied: candidates/$D1-first.md へ写した" ]
+  done
+}
+
+@test "carry: refs/remotes/origin/HEAD が無いか枝を指さないと、既定のブランチを決められず exit 2 で止まり、set-head を案内する" {
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  commit "$PUP" p1
+  clone_project
+  global_with_record
+  git -C "$PJ" remote set-head origin -d
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM" --project-ref FETCH_HEAD
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"git remote set-head origin"* ]]
+  git -C "$PJ" update-ref --no-deref refs/remotes/origin/HEAD "$(git -C "$PJ" rev-parse origin/main)"
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"git remote set-head origin"* ]]
+  [ ! -e "$GM/candidates" ]
+  git -C "$PJ" update-ref -d refs/remotes/origin/HEAD
+  git -C "$PJ" remote set-head origin main
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 0 ]
+  [ "$output" = "outbox/$D1-first.md:copied: candidates/$D1-first.md へ写した" ]
+}
+
+@test "carry: Global の作業ツリーの candidates がディレクトリでないと、何も出さずに exit 2" {
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  commit "$PUP" p1
+  clone_project
+  global_with_record
+  : >"$GM/candidates"
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"candidates がディレクトリでない"* ]]
+}
+
+@test "carry: 記憶の根でない引数と、形に合わない引数は exit 2 で終わる" {
+  init_project
+  clone_project
+  global_with_record
+  mkdir -p "$BATS_TEST_TMPDIR/plain"
+  run --separate-stderr node "$SUT" carry "$PROOT" "$BATS_TEST_TMPDIR/plain"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  local args
+  for args in "$PROOT" "$PROOT $GM extra" "$PROOT $GM --ref main" "$PROOT $GM --project-ref" \
+    "$PROOT $GM --project-ref main --project-ref main" "$PROOT $GM --global-ref -main" \
+    "$PROOT $GM --project-ref=main" "--project-ref main $PROOT $GM"; do
+    # shellcheck disable=SC2086
+    run --separate-stderr node "$SUT" carry $args
+    [ "$status" -eq 2 ]
+    [ -z "$output" ]
+  done
+  run --separate-stderr node "$SUT" version "$PROOT" "$A" --project-ref main
+  [ "$status" -eq 2 ]
+}
+
+@test "carry: 継承した GIT_DIR に左右されず、渡した2つの根のリポジトリを読む" {
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  commit "$PUP" p1
+  clone_project
+  global_with_record
+  run --separate-stderr env "GIT_DIR=$PUP/.git" node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 0 ]
+  [ "$output" = "outbox/$D1-first.md:copied: candidates/$D1-first.md へ写した" ]
+}
+
+@test "carry: マージのコミットで初めて出来た内容も、履歴に在るものとして carried" {
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  commit "$PUP" p1
+  clone_project
+  record "$UP" "$A" first
+  commit "$UP" g1
+  git -C "$UP" checkout -q -b side
+  : >"$UP/side.txt"
+  commit "$UP" g2
+  git -C "$UP" checkout -q main
+  : >"$UP/main.txt"
+  commit "$UP" g3
+  # 下書きの内容は、マージを解決するときにだけ足し、起点まで残す。マージでない差分には、一度も現れない。
+  git -C "$UP" -c core.hooksPath=/dev/null merge -q --no-ff --no-commit side
+  mkdir -p "$UP/candidates"
+  cp "$PUP/docs/memory/outbox/$D1-first.md" "$UP/candidates/"
+  commit "$UP" merge
+  : >"$UP/later.txt"
+  commit "$UP" g4
+  clone_global
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 0 ]
+  [ "$output" = "outbox/$D1-first.md:carried: 同じ内容のファイルが Global Memory の履歴に在る: candidates/$D1-first.md" ]
+}
+
+@test "carry: Project の remote が origin でないと exit 2 で止まり、何も書かず、origin への改名を示す" {
+  init_project
+  draft_in "$PUP/docs/memory" "$D1" first
+  commit "$PUP" p1
+  git clone -q -o upstream "file://$PUP" "$PJ"
+  git -C "$PJ" fetch -q upstream main
+  global_with_record
+  run --separate-stderr node "$SUT" carry "$PROOT" "$GM"
+  [ "$status" -eq 2 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"origin"* ]]
+  [[ "$stderr" == *"rename"* ]]
+  [ ! -e "$GM/candidates" ] || [ -z "$(ls -A "$GM/candidates")" ]
+}
