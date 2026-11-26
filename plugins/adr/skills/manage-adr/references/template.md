@@ -26,11 +26,9 @@ superseded-by:
 # ADR-YYYYMMDDHHMM-NN: <Title>
 
 <!--
-ファイル名規則: ADR-YYYYMMDDHHMM-NN-<slug>.md
-- `YYYYMMDDHHMM` は起票時刻（分粒度・ローカル時刻）。同梱の next-adr-id.sh が発番する
-- `-NN` は同一時刻部内の連番。`01` 始まりの2桁ゼロ埋めで、1件目にも `-01` を付与
-- `<slug>` は内容を表す短い名前。小文字英数字（a-z, 0-9）を単一のハイフンでつなぐ（例: cache-layer-replacement）
-詳細は manage-adr スキルを参照
+ファイル名は ADR-YYYYMMDDHHMM-NN-<slug>.md の形にする（例の slug: cache-layer-replacement）。
+識別子 ADR-YYYYMMDDHHMM-NN は、同梱の next-adr-id.sh が発番する。
+時刻部・連番部・slug の規則は、manage-adr スキルの adr-model.md「採番方式」が定める。
 -->
 
 ## Context
