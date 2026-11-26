@@ -105,6 +105,8 @@ updated: 2026-11-14
 - `superseded-by`・`moved-to`
 - `type: evolution`・`from`・`to`
 
+下書きと候補の改行は LF だけにする（記録は CRLF でもよい）。運び済みかを blob の識別子で判定するため、Global 側が改行を正規化すると、CRLF の下書きは運び済みと判定されなくなる。検査器の `draft` の規則が、`\r` を含む下書きと候補を落とす。
+
 識別子は、新しく発番する。元の記録の写しではないためである。識別子の重複は、`records/`・`outbox/`・`candidates/` を合わせて見る。
 
 - 送り出しの報告は、`outbox/reports/<下書きの識別子>.md` に置く。1件の下書きにつき1ファイルである。中身の形は、送り出しの手順が定める。検査器は読まず、運ぶコマンドも写さない。
@@ -189,7 +191,8 @@ node scripts/memory.mjs carry <Project Memory の根> <Global Memory の根> [--
 
 - 起点の決め方は、2つのリポジトリのそれぞれについて、「記録の版」と同じである。`--project-ref` と `--global-ref` を省いたときの既定、取り直した結果との照合、履歴が浅いときの扱い、ネットワークの扱いも同じである。
 - ただし、Project Memory の起点は、origin の既定のブランチに限る。この側の remote は、「記録の版」の「置き換える」の対象外で、名前が `origin` でなければならない。別の名前のときは、`git remote rename <名前> origin` で改める（`origin` を同じ URL で足してもよい）。既定のブランチは、`refs/remotes/origin/HEAD` が指す枝である。`--project-ref` に通すのは、次の2つである。その枝の remote 追跡の ref（`refs/remotes/origin/HEAD` を含む）と、その枝を origin から取り直した1行だけを持つ `FETCH_HEAD` である。ほかの起点は、読まずに終了コード 2 で止める。ローカルのブランチ・HEAD・タグ・コミット・ほかの枝の remote 追跡の ref と、ほかの枝か別の URL から取り直した `FETCH_HEAD` が、これに当たる。承認されていない下書きを運ばないためである。
-- `refs/remotes/origin/HEAD` が無いか、origin の枝を指すシンボリックな ref でないときは、既定のブランチを決められず、終了コード 2 で止まる。`git remote set-head origin <既定のブランチ>` で作る。この形は、ネットワークへ出ない。
+- `refs/remotes/origin/HEAD` が無いか、origin の枝を指すシンボリックな ref でないときは、既定のブランチを決められず、終了コード 2 で止まる。まず `git remote set-head origin -a` を使う。remote に問い合わせて、既定のブランチを設定する。名前が remote か指示ファイルで分かっているときだけ、`git remote set-head origin <既定のブランチ>` で作る。後者は、ネットワークへ出ない。
+- この判定は、起点の渡し間違いを防ぐためのものである。ローカルの `refs/remotes/origin/HEAD` を意図して付け替える者は防げない。承認の保証は、プロジェクトのレビューに在る。
 - 下書きは、Project Memory の起点のコミットの木の、`outbox/` の直下の `.md` から読む。リンクは読まない。作業ツリーと、作業中のブランチは読まない。承認されていないものを運ばないためである。
 - `outbox/` の下の階層は写さない。送り出しの報告は、運ばない。
 - 下書きの形式は検査しない。形式は、Project Memory の `check` が既定のブランチで見ており、Global Memory の取り込みの前にも見るためである。
