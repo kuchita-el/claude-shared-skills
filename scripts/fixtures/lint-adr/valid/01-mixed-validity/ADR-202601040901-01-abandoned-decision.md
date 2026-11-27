@@ -4,10 +4,6 @@ validity: 廃止済み
 ---
 # ADR-202601040901-01-abandoned-decision: 廃止済みの決定
 
-## Status
-
-承認済み（廃止済み）
-
 ## Context
 
 fixture 用の廃止済み ADR。後継 ADR なしで ADR としての効力を終えた。

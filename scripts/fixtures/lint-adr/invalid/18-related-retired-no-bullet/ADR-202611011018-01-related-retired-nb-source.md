@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202611011018-01-related-retired-nb-source: バレット無し Related が退役ADRを指す source
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用（invalid/18）。穴1（行頭バレット無し）の `Related:` 行が退役（上書き済み）ADR を指す。レイヤ4 が書式非依存に先頭 stem を抽出し退役参照違反を検出することを確認する。

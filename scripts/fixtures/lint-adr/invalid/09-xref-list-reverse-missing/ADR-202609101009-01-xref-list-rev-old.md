@@ -5,10 +5,6 @@ superseded-by: ADR-202609111009-01-xref-list-rev-new-a, ADR-202609121009-01-xref
 ---
 # ADR-202609101009-01-xref-list-rev-old: reverse列挙欠落（リスト）検証用の旧決定
 
-## Status
-
-承認済み（上書き済み）
-
 ## Context
 
 fixture 用。superseded-by に A・B のみ列挙するが、列挙されない第三の ADR C が本文で

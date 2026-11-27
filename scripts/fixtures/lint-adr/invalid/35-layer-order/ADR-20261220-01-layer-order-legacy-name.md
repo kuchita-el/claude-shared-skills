@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-20261220-01-layer-order-legacy-name: 出力順 fixture のレイヤ5 違反
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用（invalid/35）。ファイル名の時刻部が旧規約の8桁であり、

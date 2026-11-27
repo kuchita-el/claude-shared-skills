@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202607011007-01-xref-reverse-missing-old: 相互参照逆方向欠落の旧決定
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用。後継 ADR-202607021007-01-xref-reverse-missing-new の本文が

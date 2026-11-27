@@ -5,10 +5,6 @@ superseded-by: ADR-202610111010-01-xref-list-fm-new-a, ADR-202610121010-01-xref-
 ---
 # ADR-202610101010-01-xref-list-fm-old: forward参照先ファイル不在（リスト）検証用の旧決定
 
-## Status
-
-承認済み（上書き済み）
-
 ## Context
 
 fixture 用。superseded-by のうち後継A は実ファイルとして存在するが、後継B は

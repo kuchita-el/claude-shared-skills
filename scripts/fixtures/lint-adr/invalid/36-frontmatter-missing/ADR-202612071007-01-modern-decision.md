@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202612071007-01: 新形式で共存する有効ADR
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用（invalid/36）。front-matter を持たない ADR と同一ディレクトリに置かれた、front-matter を持つ有効 ADR。この ADR 自体は違反を起こさず、index に載る。

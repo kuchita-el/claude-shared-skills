@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202605021005-01-xref-missing-new: 相互参照欠落の後継決定
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用。ADR-202605011005-01-xref-missing-old を上書きする後継 ADR だが、

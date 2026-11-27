@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202612131034-01-xref-reverse-dangling-new: 逆方向の参照先そのものが実在しない後継決定
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用。本文の `## 関連ADR` で `Supersedes:` を宣言しているが、その宣言の

@@ -5,10 +5,6 @@ superseded-by: ADR-202605021005-01-xref-missing-new
 ---
 # ADR-202605011005-01-xref-missing-old: 相互参照欠落の旧決定
 
-## Status
-
-承認済み（上書き済み）
-
 ## Context
 
 fixture 用。`superseded-by: ADR-202605021005-01-xref-missing-new` を持つが、
@@ -22,3 +18,7 @@ fixture 用のため実質的な決定内容は無い。
 ## Consequences
 
 index には現れない（validity が有効でないため）。
+
+## 関連ADR
+
+- Superseded by: ADR-202605021005-01-xref-missing-new

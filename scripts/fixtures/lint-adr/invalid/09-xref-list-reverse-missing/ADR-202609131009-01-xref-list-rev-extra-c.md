@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202609131009-01-xref-list-rev-extra-c: reverse検証用の非列挙後継C（違反側）
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用。09 の第三の後継C。本文で old を Supersedes 宣言するが、old の

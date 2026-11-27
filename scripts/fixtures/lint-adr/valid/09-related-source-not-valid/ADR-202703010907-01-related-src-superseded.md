@@ -5,10 +5,6 @@ superseded-by: ADR-202703020907-01-related-src-successor
 ---
 # ADR-202703010907-01-related-src-superseded: 実在しない参照先を指す上書き済みの source
 
-## Status
-
-承認済み（上書き済み）
-
 ## Context
 
 fixture 用（valid/09）。`validity: 上書き済み` の source が、`## 関連ADR` の `Related:` で実在しない ADR を指す。レイヤ4 の source は有効 ADR に限るため、この参照は検査されず違反にならないことを確認する。

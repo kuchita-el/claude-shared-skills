@@ -3,10 +3,6 @@ status: 承認済み
 ---
 # ADR-202602021002-01-missing-validity-decision: 有効性欠落の決定
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用。`status: 承認済み` だが front-matter が `validity` キーを持たない ADR。

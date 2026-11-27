@@ -5,10 +5,6 @@ superseded-by: ADR-202608111008-01-xref-list-fwd-new-a, ADR-202608121008-01-xref
 ---
 # ADR-202608101008-01-xref-list-fwd-old: forward逆参照欠落（リスト）検証用の旧決定
 
-## Status
-
-承認済み（上書き済み）
-
 ## Context
 
 fixture 用。リスト値 superseded-by のうち後継Bが本文逆参照（Supersedes）を欠く異常系の ADR 群（08）の分割元 ADR。

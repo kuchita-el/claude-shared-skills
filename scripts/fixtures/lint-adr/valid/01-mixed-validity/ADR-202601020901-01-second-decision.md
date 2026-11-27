@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202601020901-01-second-decision: 2件目の有効決定
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用の2件目の有効 ADR。

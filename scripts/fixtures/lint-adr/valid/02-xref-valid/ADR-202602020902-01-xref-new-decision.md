@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202602020902-01-xref-new-decision: 相互参照検証用の後継決定
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用。相互参照検証専用の ADR 群（02-xref-valid）の後継 ADR。

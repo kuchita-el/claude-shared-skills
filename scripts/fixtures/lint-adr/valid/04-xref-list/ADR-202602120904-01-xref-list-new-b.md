@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202602120904-01-xref-list-new-b: リスト値相互参照検証用の後継B
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用。04-xref-list の後継 ADR（2本目）。ADR-202602100904-01-xref-list-old を上書きする。
