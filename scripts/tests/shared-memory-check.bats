@@ -864,6 +864,24 @@ C=MEM-202611140000-04
     MEM-202611010000-01-failed-job-retried-three-times.md MEM-202611010000-02-job-log-kept-thirty-days.md
 }
 
+@test "eval の題材: 選別の根は、索引の行を1つ欠く違反だけを出し、記録2件と候補4件を持つ" {
+  local CASE_DIR="$BATS_TEST_TMPDIR/behavior-triage-candidates"
+  scaffold_case behavior-triage-candidates
+  local root="$CASE_DIR/global-memory"
+  [ "$(find "$root/records" -name 'MEM-*.md' | wc -l)" -eq 2 ]
+  [ "$(find "$root/candidates" -name 'MEM-*.md' | wc -l)" -eq 4 ]
+  run node "$SUT" check "$root"
+  [ "$status" -eq 1 ]
+  [ "$(printf '%s\n' "$output" | grep -c .)" -eq 1 ]
+  [[ "$output" == "index.md:index:"* ]]
+  # 索引が欠くのは C3 の行だけである。検査器の出力には C3 が在る。
+  [ "$(grep -c '^| \[MEM-202611150000-' "$root/index.md")" -eq 3 ]
+  run grep -c 'MEM-202611150000-03' "$root/index.md"
+  [ "$output" = 0 ]
+  run node "$SUT" index "$root"
+  [ "$(printf '%s\n' "$output" | grep -c '^| \[MEM-202611150000-')" -eq 4 ]
+}
+
 # ここから下は、送り出しの下書き（outbox/）と選別の前の候補（candidates/）の試験である。
 
 # 形式に合う下書きか候補を1件書く。$1 は置き場（outbox か candidates）、$2 は識別子、$3 は名前、$4 以降は front-matter へ足す行。
