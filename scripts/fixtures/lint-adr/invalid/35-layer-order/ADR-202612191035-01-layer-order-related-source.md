@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202612191035-01-layer-order-related-source: 出力順 fixture のレイヤ4 違反（参照元）
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用（invalid/35）。有効な ADR から、退役（上書き済み）の

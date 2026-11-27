@@ -13,6 +13,10 @@
 # front-matter を唯一の権威としたうえで一覧をその導出ビューへ閉じ込めることで、
 # 「本文を読めば確実」（確実性）と「一覧で探せる」（検索性）を drift させずに両立させるためである。
 #
+# タイトル欄の取り出し（H1 の探し方と `: ` 以降の切り出し）は、同梱の adr-body.sh が持つ。
+# lint-adr.sh の H1 形式検査（レイヤ5）が同じ関数を使うため、index に載るタイトルと検査が見る
+# タイトルは同じ条件で決まる。
+#
 # 言語に依存する語（有効を表す validity の値・index の題名・冒頭の注記）は、設定から読む。
 # 設定の解決と誤りの扱いは同梱の adr-config.sh が持ち、キーと既定値は adr-config.default が
 # 持つ。本ファイルのコメントに現れる値（`有効` 等）は、既定値での綴りである。設定の解決の
@@ -41,6 +45,9 @@ if [ ! -d "$ADR_DIR" ]; then
 fi
 
 adr_config_load "$ADR_DIR" || exit 2
+
+# shellcheck source=adr-body.sh
+source "$(dirname "${BASH_SOURCE[0]}")/adr-body.sh"
 
 # 前後の空白（スペース・タブ）をトリムする（lint-adr.sh の trim と同一実装）
 trim() {
@@ -82,23 +89,13 @@ get_validity() {
     printf '%s' "$value"
 }
 
-# 本文 H1 見出し `# <stem>: <タイトル>` からタイトル部分（最初の ": " 以降）を取得
+# 本文 H1 見出し `# <stem>: <タイトル>` からタイトル部分（最初の ": " 以降）を取得する。
+# H1 は本文の最初の `# ` 行であり、front-matter 区間とコードフェンスの内側は読まない。
+# 取り出しの条件は adr-body.sh が持ち、lint-adr.sh の H1 形式検査（レイヤ5）と同じ関数を使う。
+# 取り出せなければ空文字を返す。
 get_title() {
-    local file="$1"
-    local line
-    local rest
-
-    while IFS= read -r line || [ -n "$line" ]; do
-        if [[ "$line" =~ ^#[[:space:]] ]]; then
-            rest="${line#\# }"
-            if [[ "$rest" == *": "* ]]; then
-                printf '%s' "${rest#*: }"
-                return
-            fi
-        fi
-    done <"$file"
-
-    printf '%s' ""
+    adr_find_h1 "$1"
+    adr_h1_title "$ADR_H1_LINE" || true
 }
 
 # ファイル名昇順で走査対象を収集

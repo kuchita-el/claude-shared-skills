@@ -6,7 +6,7 @@ superseded-by:
 
 <!--
 状態の記述規約:
-- 本文に `## Status` 節を置かない。front-matter を唯一の権威とする規約とその理由は「ADR の状態モデルと識別子規約」に従い、本雛形に再掲しない。
+- 本文の `## Status` 節は、drift-lint が違反として報告する。front-matter を唯一の権威とする規約とその理由は「ADR の状態モデルと識別子規約」に従い、本雛形に再掲しない。
 - front-matter 内には値の説明・トレーリングコメントを書かない（純粋な `key: value` のみ、lint パーサが行全体を値として取り込むため）。
 - 値域（各軸の値とその定義）は本雛形に再掲しない。
 - 合法な front-matter を表す状態の型は本雛形に再掲しない。
@@ -26,11 +26,9 @@ superseded-by:
 # ADR-YYYYMMDDHHMM-NN: <Title>
 
 <!--
-ファイル名規則: ADR-YYYYMMDDHHMM-NN-<slug>.md
-- `YYYYMMDDHHMM` は起票時刻（分粒度・ローカル時刻）。同梱の next-adr-id.sh が発番する
-- `-NN` は同一時刻部内の連番。`01` 始まりの2桁ゼロ埋めで、1件目にも `-01` を付与
-- `<slug>` は内容を表す短い英数字ハイフン区切り（例: cache-layer-replacement）
-詳細は manage-adr スキルを参照
+ファイル名は ADR-YYYYMMDDHHMM-NN-<slug>.md の形にする（例の slug: cache-layer-replacement）。
+識別子 ADR-YYYYMMDDHHMM-NN は、同梱の next-adr-id.sh が発番する。
+時刻部・連番部・slug の規則は、「ADR の状態モデルと識別子規約」の「採番方式」が定める。
 -->
 
 ## Context

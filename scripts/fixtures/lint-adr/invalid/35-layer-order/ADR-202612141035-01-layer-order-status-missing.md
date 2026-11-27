@@ -3,10 +3,6 @@ validity: 有効
 ---
 # ADR-202612141035-01-layer-order-status-missing: 出力順 fixture のレイヤ1 違反
 
-## Status
-
-（front-matter に status キーが存在しない状態を再現する fixture）
-
 ## Context
 
 fixture 用（invalid/35）。本 ADR 群は6つの検査単位を1本ずつ同時に発火させ、違反の

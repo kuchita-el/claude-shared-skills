@@ -3,10 +3,6 @@ status: 却下
 ---
 # ADR-202601050901-01-rejected-decision: 却下された決定
 
-## Status
-
-却下
-
 ## Context
 
 fixture 用の却下 ADR。承認に至らず終了した（validity キー自体を持たない）。

@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202703110907-01-related-empty-source: validity が空の参照先を指す有効な source
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用（valid/10）。有効な source が、`## 関連ADR` の `Related:` で `validity` が空の実在 ADR（提案中・却下）を指す。参照先退役違反は `validity` が上書き済みと完全一致する参照先だけを対象とし、空値はどの退役語彙とも一致しないため違反にならない（fail-open）ことを確認する。

@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202608121008-01-xref-list-fwd-new-b: forward検証用の後継B（逆参照欠落・違反側）
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用。08 の後継B。本文 `## 関連ADR` に Supersedes 逆参照を書き忘れた（欠落）側。

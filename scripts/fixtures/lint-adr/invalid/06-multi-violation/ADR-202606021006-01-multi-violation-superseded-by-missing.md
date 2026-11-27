@@ -4,10 +4,6 @@ validity: 上書き済み
 ---
 # ADR-202606021006-01-multi-violation-superseded-by-missing: 複数違反fixture・後継欠落側
 
-## Status
-
-承認済み（上書き済み）
-
 ## Context
 
 fixture 用。複数 ADR 同時違反の回帰テスト用の ADR 群（06-multi-violation）の2件目。

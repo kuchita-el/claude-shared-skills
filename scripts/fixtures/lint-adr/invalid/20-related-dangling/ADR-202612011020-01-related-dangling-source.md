@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202612011020-01-related-dangling-source: Related が非存在 slug を指す source
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用（invalid/20）。`Related:` の参照先ファイルが存在しない（dangling）。レイヤ4 が実在チェックで dangling 参照違反（AC8 の「解決不能な参照先」＝fail-safe をここに統合）を報告することを確認する。

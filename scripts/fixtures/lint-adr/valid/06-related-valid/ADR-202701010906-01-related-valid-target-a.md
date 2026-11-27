@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202701010906-01-related-valid-target-a: 有効な参照先 A
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用（valid/06）。source から `Related:` される有効な参照先。

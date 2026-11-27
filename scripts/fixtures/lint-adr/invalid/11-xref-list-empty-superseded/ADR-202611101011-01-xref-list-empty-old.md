@@ -5,10 +5,6 @@ superseded-by: ,
 ---
 # ADR-202611101011-01-xref-list-empty-old: 空要素のみの superseded-by（病的値）検証用
 
-## Status
-
-承認済み（上書き済み）
-
 ## Context
 
 fixture 用。superseded-by がカンマ・空白のみで有効な参照先 stem を1つも含まない病的値の ADR 群（11）。

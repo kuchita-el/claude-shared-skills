@@ -13,6 +13,12 @@
 - 決定は記録にせず、ADR に書く。`type: decision` は使わない。
 - `verification: unverified` の記録は、確かめていない仮説として扱う。事実として引用しない。
 
+### 送り出し
+
+- Global Memory へ送る記録は、`docs/memory/outbox/` に、送り出しの下書きとして置く。送り出しの報告を `docs/memory/outbox/reports/` に、同じ変更で置く。下書きの形は `plugins/shared-memory/references/format.md` に、報告の形と取り下げは `plugins/shared-memory/references/outbox-report.md` に従う。
+- `outbox/` を変える変更は、人間のレビューを経て既定のブランチへ入れる。既定のブランチの `outbox/` に在ることが、送り出しの承認を表す。承認の後に、下書きを書き換えない。
+- 運ぶ前に誤りが分かったら、下書きと報告を消して取り下げる。元の記録の `sent-as` から、その識別子を同じ変更で外す。直すときは、新しい識別子の下書きを足す。
+
 ### Task Memory
 
 - タスクの間だけ持つ覚え書きは、`docs/memory/tasks/` に、タスクごとに1ファイルで置く。名前は、ブランチの名前の `/` を `-` に置き換えたものに `.md` を付ける。形式は自由であり、確かめていない仮説を書いてよい。

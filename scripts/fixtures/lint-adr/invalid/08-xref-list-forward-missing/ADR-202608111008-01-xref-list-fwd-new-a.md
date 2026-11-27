@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202608111008-01-xref-list-fwd-new-a: forward検証用の後継A（逆参照あり・充足側）
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用。08 の後継A。本文に Supersedes 逆参照を持つため forward 違反にならない充足側。

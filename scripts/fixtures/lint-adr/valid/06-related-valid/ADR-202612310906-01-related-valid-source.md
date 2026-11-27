@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202612310906-01-related-valid-source: 全書式の Related が有効先を指す source
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用（valid/06）。バレット有無×リンク有無の4書式の `Related:` がいずれも有効 ADR を先頭 stem に持つ。散文が実在しない slug を引用しても先頭 stem が有効なら誤検出しないことを確認する。加えて、先頭 stem が後継を持たずに退役した（`廃止済み`）ADR である `Related:` 行を1本持つ。差し替え先が存在せず建設的な是正が無いため、この参照は退役検査の対象外であり違反にならないことを確認する。

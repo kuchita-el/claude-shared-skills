@@ -4,10 +4,6 @@ validity: 有効
 ---
 # ADR-202602030902-01-xref-unknown-label-example: 相互参照検証用の未知ラベル例
 
-## Status
-
-承認済み
-
 ## Context
 
 fixture 用。`superseded-by` を持たず、本文 `## 関連ADR` に生存語彙

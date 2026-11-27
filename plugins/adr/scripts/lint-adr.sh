@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ADR drift-lint: ADR 群が満たすべき機械検査可能な不変条件をレイヤ単位で検査する。
-# 検査対象は front-matter スキーマ、導出ビュー（index）との同期、ADR 間参照の
-# 双方向性・生存性・実在性、ファイル名と識別子の規約適合および識別子の一意性と
-# H1 見出しとの整合。
+# 検査対象は front-matter スキーマと、本文に状態節を置かないこと、導出ビュー（index）との
+# 同期、ADR 間参照の双方向性・生存性・実在性、ファイル名と識別子の規約適合および識別子の
+# 一意性と H1 見出しとの整合・形式。
 # ここでは検査対象の性質のみを示し、個別レイヤの定義は以下の詳細を正とする
 # （検査対象の性質が既出のいずれかに収まる限り本冒頭は追随不要。既出のどれにも
 # 当たらない性質を検査するレイヤを足す場合は本冒頭の列挙にも加える）。
@@ -47,6 +47,7 @@
 #   7. status=提案中 または 却下 かつ superseded-by が非空
 #   8. validity=有効 または 廃止済み かつ superseded-by が非空
 #   9. front-matter 欠落（先頭行が `---` でない）
+#  10. 本文に `## Status` 節がある（front-matter を持つ ADR。退役した ADR も含む）
 #
 # 種別9 を持つのは、front-matter を持たない ADR が他のどのレイヤにも掛からないため。
 # 状態を読めないのでレイヤ1 の他の種別は判定できず、index には元から載らないので
@@ -55,6 +56,20 @@
 # `Supersedes:` を宣言しない限り発火しない。
 # 違反に数えないと、一般的な ADR テンプレート（`## Status` 形式）で書いた ADR が、
 # スキーマ検証も index も commit ゲートも通らないまま、統治の外へ黙って置かれる。
+#
+# 種別10 を持つのは、front-matter が状態の唯一の権威であり、本文の `## Status` 節が同じ状態の
+# 第二の表現になるため。以後の遷移（承認・上書き・廃止・却下・退役の取り消し）は front-matter
+# だけを書き換えるので、本文の節は取り残されて drift する。
+# 照合は、行頭 `## ` に続く `Status` の語だけの見出し（大文字小文字を問わない。後ろは空白・
+# コロン・括弧書きのみ許す）とし、front-matter 区間とコードフェンスの内側は読まない（節の見出しの
+# 例を示す記述と、`## Status quo` のような別の語の見出しを誤検出しないため）。種別9 の ADR は
+# 状態を読めず本文も移行前の形式なので、重ねて数えない。語は英語に固定しており、設定の語の群に
+# 属さない。検査対象は validity を問わず、退役した ADR（上書き済み・廃止済み）も含む。退役した
+# ADR は凍結されているが、凍結の射程は決定内容の編集であり、状態の重複表示を消す編集は射程外である
+# （manage-adr の edit-decision.md が定める）。節を除けば直せるので、退役した ADR にも課す。
+# 節に固有の情報があれば、先に `## 関連ADR` へ移してから除く。
+# 種別1〜9 が型の制約（adr-model.md「状態の型」）に由来するのに対し、種別10 は同文書
+# 「front-matter（状態の唯一の権威）」の規約に由来する。
 #
 # 種別4・5（語彙）を空判定と別に持つのは、値が非空でも語彙外なら
 # gen-adr-index.sh の `validity: 有効` 完全一致から外れて index から静かに
@@ -78,9 +93,25 @@
 #     更新を忘れ、T が validity: 有効 のまま index に残るドリフトを検出する）。
 # forward・reverse は互いに独立した検査（片方が満たされればもう片方は
 # 発火しない設計）であり、双方が揃うエッジは違反にしない（二重計上しない）。
-# 本文走査は `Supersedes:` のみを対象にする。
+# 本文走査の対象は `Supersedes:`（forward・reverse）と、forward が併せて見る
+# `Superseded by:`（次項）である。
 # `Supersedes:` 行は行頭空白（入れ子/インデントされたバレット）を許容して
 # 抽出する（forward の照合・reverse の抽出のいずれも同一の緩和を適用）。
+#   - forward（原 ADR の本文）: front-matter に superseded-by: B1, B2, … を持つ ADR A の本文
+#     `## 関連ADR` 節に `Superseded by:` 行が1行以上あるのに、それらの行が全後継 Bi を
+#     挙げていなければ違反（1→N 分割で後継の一部だけを書く部分記載を検出する）。
+#     表記は「後継ごとにバレットを立てる」形と「1行へ並べる」形のいずれも受ける。照合は節内の
+#     `Superseded by:` を含む各行から ADR stem を全て拾い、完全一致で行う。stem の文字は他の
+#     本文走査（`Supersedes:`・`Related:`）と同じ `[A-Za-z0-9-]` に限る（レイヤ5 が stem を
+#     小文字英数字とハイフンへ限るので、これ以外の文字を含む stem は別途ファイル名形式違反になる）。
+#     `Superseded by:` 行が1行も無い原 ADR は違反にしない。これは移行の判断である。行を書く手順の
+#     前に退役した導入先の既存の原 ADR を、一斉に赤にしないためである（凍結を理由にした免除では
+#     ない。行を足す編集は凍結の射程外であり、各導入先が自分のペースで足せる）。行を書く手順
+#     （全後継を書く）はこの検査と独立に残り、検査が捕まえるのは部分記載だけである。
+#     部分記載は front-matter に後継が残るため状態の検査は通り、本文だけを読む消費面から一部の
+#     後継が見えなくなる。ラベルの `Superseded by:` は英語に固定した語であり、節の見出しだけが
+#     設定（xref-heading）に従う。後継が存在しない・superseded-by に有効な stem が無い場合は
+#     上の forward が既に報告するため、重ねて数えない。
 #
 # レイヤ4（Related 参照の生存性・実在性）: 非 Supersede 関係の
 # 参照妥当性を lint する。有効 ADR（validity=有効）の本文
@@ -150,6 +181,14 @@
 #     H1 は識別子部のみの形（`# ADR-X-01: タイトル`）と slug を含む形
 #     （`# ADR-X-01-slug: タイトル`）の双方が ADR 群に実在するため、
 #     照合は識別子部に限る（slug の一致は要求しない）。
+#   - H1 形式違反: validity が有効な ADR の H1 から、gen-adr-index.sh と同じ関数（adr-body.sh の
+#     adr_find_h1 と adr_h1_title）でタイトルを取り出せなければ違反。H1 は本文の最初の `# ` 行で、
+#     front-matter 区間とコードフェンスの内側は読まない。条件は、`# ` を除いた残りに `: ` があり、
+#     最初の `: ` より後ろに空白以外の文字があること（識別子部の直後に限らず、
+#     `# ADR-X-01 : タイトル` も取り出せるので違反にしない）。取り出せないとタイトル欄が空になり、
+#     index 同期（レイヤ2）は再生成と一致するので発火しない。index に載るのは有効な ADR だけなので、
+#     退役・提案中・却下は対象にしない（生成物へ現れないため）。識別子の不一致・欠落は上の H1 整合違反が報告するため、形の
+#     検査は識別子部が一致した場合に限り、重ねて数えない。
 #   - 検査対象は front-matter を持つ ADR のみとする。front-matter を持たない ADR は
 #     レイヤ1 が種別9 として報告する。直し方は front-matter を付けることであり、
 #     ファイル名や H1 の違反として重ねて数えると、同じ欠落を別々の違反として返すことになる。
@@ -204,6 +243,9 @@ set -euo pipefail
 # 読み込むため）。読み込みは関数と定数の定義だけで、設定ファイルはまだ読まない。
 # shellcheck source=adr-config.sh
 source "$(dirname "${BASH_SOURCE[0]}")/adr-config.sh"
+# 本文の見出しとコードフェンスの読み方は、index 生成器と共有する（adr-body.sh が正本）。
+# shellcheck source=adr-body.sh
+source "$(dirname "${BASH_SOURCE[0]}")/adr-body.sh"
 
 # 状態語彙（front-matter の値側）。値は設定から読み、load_config が埋める（読み込みだけを
 # 行った時点では空）。値は導入先ごとに変わりうるため、各値の役割は設定のキー
@@ -249,6 +291,9 @@ ADR_STEM_PATTERN='^ADR-[0-9]{4}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])([01][0-9]
 # 識別子（`ADR-YYYYMMDD-NN`）も拾う。重複検査・H1 整合検査はこの緩い抽出を使う
 # （形式適合を前提にすると旧形式どうしの重複を取り逃すため）。
 ADR_ID_PATTERN='(ADR-[0-9]+(-[0-9]+)?)'
+# レイヤ1 種別10: 本文の状態節の見出し。`Status` の語だけで、後ろは空白・コロン（半角・全角）・
+# 括弧書き（半角・全角）のみ許す。
+STATUS_HEADING_PATTERN='^##[[:space:]]+[Ss][Tt][Aa][Tt][Uu][Ss][[:space:]]*(([:：]|[（(]).*)?$'
 
 # レイヤ2 が起動する index 生成器。解決は「読み込み元のパス」を基準にする（cwd 依存回避）。
 # $0 ではなく BASH_SOURCE を使うのは、読み込みだけを行った場合に $0 が読み込み側のシェル名を
@@ -462,16 +507,40 @@ extract_body_related() {
 # H1_ADR_ID へ格納する（見出しが無い・見出しに ADR 識別子が現れない場合は空文字）。
 # 見出し行全体から最左の識別子トークンを取るため、`# ADR-X-01: タイトル` と
 # `# ADR-X-01-slug: タイトル` の双方から同じ識別子部が得られる。
-# front-matter 区間（先頭行 `---` から閉じ `---` まで）は読み飛ばす。YAML コメント行
-# （`# メモ`）は行頭 `# ` に当たるため、読み飛ばさないと H1 と誤認して識別子が
-# 見つからず偽陽性を報告する。走査規約は extract_frontmatter と揃える。
+# 見出し行の探し方は index 生成器と共有する（adr-body.sh の adr_find_h1。front-matter 区間と
+# コードフェンスの内側は読み飛ばす）。YAML のコメント行（`# メモ`）は行頭 `# ` に当たるため、
+# 読み飛ばさないと H1 と誤認して識別子が見つからず偽陽性を報告する。
+# 見出し行そのものはグローバル変数 H1_LINE へ格納する（見出しが無ければ空文字）。
 extract_h1_adr_id() {
     local file="$1"
-    local line
-    local line_num=0
-    local in_fm=0
 
     H1_ADR_ID=""
+    adr_find_h1 "$file"
+    H1_LINE="$ADR_H1_LINE"
+    if [[ "$H1_LINE" =~ $ADR_ID_PATTERN ]]; then
+        H1_ADR_ID="${BASH_REMATCH[1]}"
+    fi
+}
+
+# H1 見出し行 $1 から、index 生成器と同じ関数（adr-body.sh の adr_h1_title）でタイトルを取り出せる
+# かを判定する。取り出し方を変えるときは adr-body.sh だけを変える。
+# 戻り値: 取り出せれば 0、取り出せなければ 1
+h1_has_title() {
+    adr_h1_title "$1" >/dev/null
+}
+
+# ファイル file の本文（front-matter 区間とコードフェンスの内側を除く）に、行頭 `## ` に
+# 続く `Status` の語だけを見出しとする行があるかを判定する。大文字小文字は問わず、語の後ろは
+# 空白・コロン（半角・全角）・括弧書きだけを許す（`## Status` / `## Status:` / `## Status（旧）`）。
+# `## Status quo` や `## Statuses` のように別の語を続ける見出しは節とみなさない。
+# コードフェンスの開閉は adr-body.sh の adr_fence_skip が決める（同じ文字で、開いた長さ以上の行だけが閉じる）。
+# 戻り値: あれば 0（最初の行番号を STATUS_SECTION_LINE へ格納）、なければ 1
+body_has_status_section() {
+    local file="$1"
+    local line line_num=0 in_fm=0
+
+    STATUS_SECTION_LINE=""
+    ADR_FENCE_MARK=""
 
     while IFS= read -r line || [ -n "$line" ]; do
         line_num=$((line_num + 1))
@@ -485,11 +554,49 @@ extract_h1_adr_id() {
             fi
             continue
         fi
-        if [[ "$line" =~ ^#[[:space:]] ]]; then
-            if [[ "$line" =~ $ADR_ID_PATTERN ]]; then
-                H1_ADR_ID="${BASH_REMATCH[1]}"
-            fi
+        if adr_fence_skip "$line"; then
+            continue
+        fi
+        if [[ "$line" =~ $STATUS_HEADING_PATTERN ]]; then
+            STATUS_SECTION_LINE="$line_num"
             return 0
+        fi
+    done <"$file"
+
+    return 1
+}
+
+# ファイル file の本文 `## 関連ADR` 節（次の `## ` 見出しまたはファイル末尾まで）の
+# `Superseded by:` を含む行から、ADR stem（`ADR-` で始まる最長の英数字・ハイフン列。文字の
+# 範囲は `Supersedes:`・`Related:` の抽出と同じで、それ以外の文字を含む stem はレイヤ5 が
+# ファイル名形式違反として報告する）を全て抽出し、グローバル配列 BODY_SUPERSEDED_BY_TARGETS へ
+# 格納する（0件なら空配列）。ラベルを含む行の数は BODY_SUPERSEDED_BY_LINES へ格納する。
+# 1行に複数の後継を並べる形とバレットを分ける形の双方を受けるため、行内の stem を全て拾う。
+# 説明散文中の stem も拾うが、用途は「後継が挙がっているか」の照合であり、余分な stem は
+# 照合結果に影響しない。
+extract_body_superseded_by() {
+    local file="$1"
+    local line in_section=0 rest
+
+    BODY_SUPERSEDED_BY_TARGETS=()
+    BODY_SUPERSEDED_BY_LINES=0
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        if is_xref_heading "$line"; then
+            in_section=1
+            continue
+        fi
+        if [ "$in_section" -eq 1 ] && [[ "$line" =~ ^##[[:space:]] ]]; then
+            in_section=0
+            continue
+        fi
+        if [ "$in_section" -eq 1 ] && [[ "$line" == *"Superseded by:"* ]]; then
+            BODY_SUPERSEDED_BY_LINES=$((BODY_SUPERSEDED_BY_LINES + 1))
+            rest="${line#*Superseded by:}"
+            while [[ "$rest" =~ (ADR-[A-Za-z0-9-]+) ]]; do
+                BODY_SUPERSEDED_BY_TARGETS+=("${BASH_REMATCH[1]}")
+                rest="${rest#*"${BASH_REMATCH[1]}"}"
+            done
         fi
     done <"$file"
 }
@@ -691,6 +798,15 @@ check_layer1_frontmatter_schema() {
                 violations=$((violations + 1))
             fi
         fi
+
+        # 種別10: 本文の `## Status` 節。front-matter が状態の唯一の権威であり、本文の節は
+        # 以後の遷移で取り残される第二の表現になる。種別9 の ADR（NO_FM_FILES）は対象外。
+        # 退役した ADR（validity が上書き済み・廃止済み）も対象にする。節を除くのは、状態の重複表示を
+        # 除く編集であり、凍結の対象外である（edit-decision.md の凍結の規則）。
+        if body_has_status_section "$file"; then
+            printf '%s: 本文に "## Status" 節があります（%s 行目。状態は front-matter だけに置くため、節を除いてください）\n' "$file" "$STATUS_SECTION_LINE"
+            violations=$((violations + 1))
+        fi
     done
 }
 
@@ -722,7 +838,7 @@ check_layer2_index_sync() {
 # 照合対象を持たないため飛ばす）。
 check_layer3_forward() {
     local dir="$1"
-    local a_file a_stem a_sb b_stem b_file
+    local a_file a_stem a_sb b_stem b_file t_stem listed
 
     require_collected check_layer3_forward "$FACTS_COLLECTED" collect_facts || return 2
 
@@ -756,6 +872,26 @@ check_layer3_forward() {
 
             if ! body_has_supersedes "$b_file" "$a_stem"; then
                 printf '%s: 相互参照違反（%s の本文 "## %s" に "Supersedes: %s" が見つかりません）\n' "$a_file" "$b_file" "$ADR_XREF_HEADING" "$a_stem"
+                violations=$((violations + 1))
+            fi
+        done
+
+        # 原 ADR 自身の本文が `Superseded by:` を書いているなら、全後継を挙げているか。
+        # 行が1行も無い原 ADR は対象にしない（ファイル冒頭のレイヤ3 仕様を参照）。
+        extract_body_superseded_by "$a_file"
+        if [ "$BODY_SUPERSEDED_BY_LINES" -eq 0 ]; then
+            continue
+        fi
+        for b_stem in ${SPLIT_RESULT[@]+"${SPLIT_RESULT[@]}"}; do
+            listed=0
+            for t_stem in ${BODY_SUPERSEDED_BY_TARGETS[@]+"${BODY_SUPERSEDED_BY_TARGETS[@]}"}; do
+                if [ "$t_stem" = "$b_stem" ]; then
+                    listed=1
+                    break
+                fi
+            done
+            if [ "$listed" -eq 0 ]; then
+                printf '%s: 相互参照違反（原 ADR 自身の本文 "## %s" の "Superseded by:" 行が後継 %s を挙げていません。後継の一部だけが書かれています）\n' "$a_file" "$ADR_XREF_HEADING" "$b_stem"
                 violations=$((violations + 1))
             fi
         done
@@ -886,6 +1022,9 @@ check_layer5_filename_and_identifier() {
             violations=$((violations + 1))
         elif [ "$H1_ADR_ID" != "$file_id" ]; then
             printf '%s: H1 整合違反（H1 見出しの識別子部 %s がファイル名の識別子部 %s と一致しません）\n' "$file" "$H1_ADR_ID" "$file_id"
+            violations=$((violations + 1))
+        elif [ "${FM_VALIDITY_BY_STEM[$stem]:-}" = "$ADR_VALIDITY_ACTIVE" ] && ! h1_has_title "$H1_LINE"; then
+            printf '%s: H1 形式違反（有効な ADR の H1 見出しからタイトルを取り出せません。"# ADR-<識別子>: <タイトル>" のように、": " の後ろに空でないタイトルが必要。index のタイトルが空になります）\n' "$file"
             violations=$((violations + 1))
         fi
     done
