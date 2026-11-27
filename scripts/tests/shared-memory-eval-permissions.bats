@@ -20,6 +20,7 @@
 # 【一致の定義】
 #   eval     = 対応するスキルの正本 ∪ そのケースに宣言した「eval だけが足す道具」
 #   ガイド   = GUIDE_EXTRAS ∪ 全てのスキルの正本のうち `Bash(` で始まるもの
+#   （GUIDE_EXTRAS は、Write・Edit と、behavior-carry-drafts が足す commit と push のパターン）
 # どちらも集合として等しいことを見る。写しに余分が在っても、不足が在っても赤にする。
 # 宣言した「eval だけが足す道具」が写しに無い場合と、正本が既に持つ場合も赤にする。
 # 意図した差を、宣言と実体の両方で固定するためである。
@@ -44,20 +45,30 @@ EVALS_REL="evals/shared-memory"
 GUIDE_REL="docs/development/test-execution.md"
 GUIDE_ANCHOR='- `shared-memory` は、次の `--allow-tools` を付ける。'
 
-# 「<ケース>|<スキル>|<eval だけが足す道具。空白で区切る>」
+# 「<ケース>|<スキル>|<eval だけが足す道具。`;` で区切る>」
+# 区切りを `;` にするのは、Bash パターンが空白を含むためである。
 # Skill は、依頼文からスキルを起動するために要る。スキル自身の許可には現れない。
 # behavior-crosscheck-contradiction の Write と Edit は、書き換えないことを、採点器が道具の
-# 呼び出しの回数で見るために足す。理由の正本は、実行ガイドに在る。
+# 呼び出しの回数で見るために足す。behavior-carry-drafts の commit と push は、スキルが事前に
+# 許可しないものを、非対話の子セッションで通すために足す。理由の正本は、実行ガイドに在る。
+CARRY_COMMIT='Bash(git -C * commit *)'
+CARRY_PUSH='Bash(git -C * push *)'
 CASES=(
     "behavior-propose-records|propose-records|Skill"
     "behavior-promote-confidential|promote-record|Skill"
-    "behavior-crosscheck-contradiction|crosscheck-records|Skill Write Edit"
+    "behavior-crosscheck-contradiction|crosscheck-records|Skill;Write;Edit"
     "behavior-replace-record|replace-record|Skill"
+    "behavior-carry-drafts|carry-drafts|Skill;$CARRY_COMMIT;$CARRY_PUSH"
     "behavior-triage-candidates|triage-candidates|Skill"
 )
 
-# ガイドの指定が、Bash パターンのほかに持つ道具。
-GUIDE_EXTRAS="Write Edit"
+# ガイドの指定が、スキルの Bash パターンのほかに持つ道具。`;` で区切る。
+GUIDE_EXTRAS="Write;Edit;$CARRY_COMMIT;$CARRY_PUSH"
+
+# `;` で区切った並びを、1行に1件ずつ出す。
+split_list() {
+    printf '%s\n' "$1" | tr ';' '\n' | sed '/^$/d'
+}
 
 # front-matter の中の、キー $2 の並びの値を、整列して1行ずつ出す。
 # ファイルが無い・キーが無いときは何も出さない（判定は呼び出し側が空集合として行う）。
@@ -139,13 +150,14 @@ case_problems() {
             printf '  - %s/%s/prompt.md から allowed_tools を1件も収集できない\n' "$EVALS_REL" "$case_name"
             continue
         fi
-        for extra in $extras; do
+        while IFS= read -r extra; do
+            [ -n "$extra" ] || continue
             if printf '%s\n' "$skill_tools" | grep -qxF -- "$extra"; then
                 printf '  - %s が足す道具として宣言した %s を、%s の allowed-tools が既に持つ\n' \
                     "$case_name" "$extra" "$skill"
             fi
-        done
-        expected=$({ printf '%s\n' "$skill_tools"; printf '%s\n' $extras; } | sed '/^$/d' | LC_ALL=C sort -u)
+        done < <(split_list "$extras")
+        expected=$({ printf '%s\n' "$skill_tools"; split_list "$extras"; } | sed '/^$/d' | LC_ALL=C sort -u)
         diff_sets "$expected" "$eval_tools" "$EVALS_REL/$case_name/prompt.md" \
             "$skill の allowed-tools と宣言した差"
     done
@@ -173,9 +185,9 @@ guide_problems() {
         printf '  - %s から shared-memory の --allow-tools の指定を収集できない\n' "$GUIDE_REL"
         return 0
     fi
-    expected=$({ printf '%s\n' "$union"; printf '%s\n' $GUIDE_EXTRAS; } | sed '/^$/d' | LC_ALL=C sort -u)
+    expected=$({ printf '%s\n' "$union"; split_list "$GUIDE_EXTRAS"; } | sed '/^$/d' | LC_ALL=C sort -u)
     diff_sets "$expected" "$listed" "$GUIDE_REL の --allow-tools" \
-        "スキルの allowed-tools の Bash パターンと $GUIDE_EXTRAS"
+        "スキルの allowed-tools の Bash パターンと宣言した道具"
     count=$(printf '%s\n' "$skills" | wc -l | tr -d ' ')
     stated=$(printf '%s\n' "$anchor" | sed -n 's/.*[^0-9]\([0-9][0-9]*\)つのスキル.*/\1/p')
     if [ -n "$stated" ]; then
@@ -318,6 +330,14 @@ EVAL_FILE="$EVALS_REL/behavior-propose-records/prompt.md"
     [[ "$output" == *"behavior-propose-records が足す道具として宣言した Skill を、propose-records の allowed-tools が既に持つ"* ]]
 }
 
+@test "変異: 空白を含む「eval だけが足す道具」を eval から消すと、そのパターンを名指して赤になる" {
+    make_fixture
+    mutate "$FIXTURE/$EVALS_REL/behavior-carry-drafts/prompt.md" '/^  - Bash(git -C \* push \*)$/d'
+    run check_permissions "$FIXTURE"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"$EVALS_REL/behavior-carry-drafts/prompt.md に無い（carry-drafts の allowed-tools と宣言した差 に在る）: Bash(git -C * push *)"* ]]
+}
+
 # ---- ガイド ----
 
 @test "変異: ガイドの指定からパターンを消すと赤になる" {
@@ -326,6 +346,14 @@ EVAL_FILE="$EVALS_REL/behavior-propose-records/prompt.md"
     run check_permissions "$FIXTURE"
     [ "$status" -eq 1 ]
     [[ "$output" == *"$GUIDE_REL の --allow-tools に無い"*": Bash(date -u*)"* ]]
+}
+
+@test "変異: ガイドの指定から、宣言した commit のパターンを消すと赤になる" {
+    make_fixture
+    mutate "$FIXTURE/$GUIDE_REL" "s/ 'Bash(git -C \\* commit \\*)'//"
+    run check_permissions "$FIXTURE"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"$GUIDE_REL の --allow-tools に無い"*": Bash(git -C * commit *)"* ]]
 }
 
 @test "変異: ガイドの指定に、Bash パターンでも宣言した道具でもないものを足すと赤になる" {
@@ -342,7 +370,7 @@ EVAL_FILE="$EVALS_REL/behavior-propose-records/prompt.md"
     cp "$FIXTURE/$SKILL_FILE" "$FIXTURE/$SKILLS_REL/added-skill/SKILL.md"
     run check_permissions "$FIXTURE"
     [ "$status" -eq 1 ]
-    [[ "$output" == *"$GUIDE_REL が述べるスキルの件数（5）が、実体の件数（6）と一致しない"* ]]
+    [[ "$output" == *"$GUIDE_REL が述べるスキルの件数（6）が、実体の件数（7）と一致しない"* ]]
 }
 
 # ---- 収集の欠落 ----
@@ -373,7 +401,7 @@ EVAL_FILE="$EVALS_REL/behavior-propose-records/prompt.md"
 
 @test "変異: ガイドの説明が件数を述べなくなると、全てのスキルの名指しを求めて赤になる" {
     make_fixture
-    mutate "$FIXTURE/$GUIDE_REL" 's/、5つのスキルの `allowed-tools` に在る/、スキルの `allowed-tools` に在る/'
+    mutate "$FIXTURE/$GUIDE_REL" 's/、6つのスキルの `allowed-tools` に在る/、スキルの `allowed-tools` に在る/'
     run check_permissions "$FIXTURE"
     [ "$status" -eq 1 ]
     [[ "$output" == *"$GUIDE_REL の指定の説明が、スキル crosscheck-records を名指していない"* ]]

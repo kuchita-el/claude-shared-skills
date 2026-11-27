@@ -14,15 +14,24 @@ allowed-tools:
   - Bash(git -C * remote get-url *)              # 同上。Project の根が別のリポジトリに在るとき
   - Bash(git -C * rev-parse --show-toplevel*)    # 根が別のリポジトリに在るかの判定と、remote が無いときの語
   - Bash(grep -i -F *)           # 機密の語の照合
+  - Bash(git -C * fetch --deepen=*)              # 以下は、承認済みの下書きを運ぶ（手順10）
+  - Bash(git -C * status --porcelain*)
+  - Bash(git -C * branch --show-current*)
+  - Bash(git -C * rev-parse --verify --quiet refs/*)
+  - Bash(git -C * ls-remote --heads origin carry/*)
+  - Bash(git -C * switch --detach FETCH_HEAD)
+  - Bash(git -C * switch -c carry/*)
+  - Bash(git -C * add -- candidates/*)
+  - Bash(git -C * ls-tree *)
 ---
 
 # 記録の昇格
 
-Project Memory の記録を一般化し、Global Memory へ送り出す下書きにする。下書きは Project の根の `outbox/` に書き、送り出しの報告を添える。1回の起動は、下書き1件と報告1件を作る。Global Memory の根へは書かない。下書きは、プロジェクトの PR で承認された後に、Global Memory へ運ばれる。
+Project Memory の記録を一般化し、Global Memory へ送り出す下書きにする。下書きは Project の根の `outbox/` に書き、送り出しの報告を添える。1回の起動は、下書き1件と報告1件を作る。下書きは、Global Memory の根へ書かない。プロジェクトの PR で承認された後に、運ばれる。終わりに、既に承認された下書きを運ぶ。
 
 ## 文脈固有ルール
 
-- **対象範囲**: 引数で渡された記録の送り出しだけを扱う。候補を挙げること、Global Memory へ運ぶこと、選別は扱わない。
+- **対象範囲**: 引数で渡された記録の送り出しだけを扱う。候補を挙げることと選別は扱わない。終わりに、既に承認された下書きを運ぶ（手順10）。
 - **成果物**: `outbox/` の下書き1件、`outbox/reports/` の報告1件、元の記録の `sent-as`。
 - **停止条件**（理由を報告して終える）:
   - 元の記録の識別子が、引数に無い。
@@ -38,9 +47,10 @@ Project Memory の記録を一般化し、Global Memory へ送り出す下書き
   手順6 より前に止まったときは、何も書いていない。
 - **変更境界**:
   - 書くのは、Project の根の `outbox/` の下書きと報告と、元の記録の `sent-as` だけである。
-  - Global Memory の根へは書かない。読むだけである。
+  - Global Memory の根へは、手順10 で運ぶ候補のほかは書かない。
   - 元の記録の、`sent-as` のほかの項目と本文を変えない。ほかの記録・`index.md`・利用規則・採用の台帳を書き換えない。
-  - commit・push・PR の作成は行わない。下書きと報告は、作業中のブランチの変更として残す。出し方は、プロジェクトの工程に従う。
+  - Project では、commit・push・PR の作成を行わない。下書きと報告は、作業中のブランチの変更として残す。出し方は、プロジェクトの工程に従う。
+  - Global へ commit・push するのは、手順10 だけである。事前に許可せず、了承はホストの許可の確認に任せる。
 
 ## 引数
 
@@ -100,6 +110,7 @@ Project の根が別のリポジトリに在るかは、2つの出力を比べ�
 9. **指摘を扱い、報告を仕上げる。**
    - 指摘の箇所を、自分で読んで確かめる（`Read`）。下書きか報告を書き換えて全て解消し、手順6〜8 をやり直す。やり直しは2回までとする。残れば、報告に残っていると書いて止める。
    - 報告の残りの3つの節を書く。続けて、`outbox-report.md` の「書く順序」の6を行う。
+10. **承認済みの下書きを運ぶ。** `${CLAUDE_PLUGIN_ROOT}/references/carrying.md` を読み、その手順（前提の、Global の利用規則が運ぶことを定めているかを含む）で、Project の既定のブランチの `outbox/` に在り、まだ運んでいない下書きを運ぶ。検査器は `node "${CLAUDE_PLUGIN_ROOT}/scripts/memory.mjs"` の形で実行する。この起動で書いた下書きは、まだ承認されていないので運ばれない。運べずに止まっても、手順9 までの成果物はそのまま残す。
 
 ## 下書きの中身
 
@@ -122,4 +133,5 @@ Project の根が別のリポジトリに在るかは、2つの出力を比べ�
 - 重なりの照合: 照らした相手、文脈（別か同じか）、関係ごとの件数、「重なる」「食い違う」の相手、根拠を確かめた行。
 - 機密の確認: 一致の件数、取り除いた件数、残した一致の件数、読みの文脈と指摘の件数。
 - 検査の結果: 実行したコマンドと、下書きが足した違反の件数。
+- 運んだ結果: `carrying.md` の「報告」の項目。
 - 次に要ること: 下書き・報告・`sent-as` を、プロジェクトの PR に載せる。マージが、送り出しの承認になる。承認された下書きは、その後に Global Memory へ運ばれる。手順9 で指摘が残って止めたときは、直すか取り下げるまで、レビューへ出さない。取り下げるときは、同じ変更で、下書き・報告・`sent-as` の識別子を消す（`outbox-report.md` の「下書きを取り下げるとき」）。

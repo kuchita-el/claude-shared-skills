@@ -18,6 +18,15 @@ allowed_tools:
   - Bash(git -C * remote get-url *)
   - Bash(git -C * rev-parse --show-toplevel*)
   - Bash(grep -i -F *)
+  - Bash(git -C * fetch --deepen=*)
+  - Bash(git -C * status --porcelain*)
+  - Bash(git -C * branch --show-current*)
+  - Bash(git -C * rev-parse --verify --quiet refs/*)
+  - Bash(git -C * ls-remote --heads origin carry/*)
+  - Bash(git -C * switch --detach FETCH_HEAD)
+  - Bash(git -C * switch -c carry/*)
+  - Bash(git -C * add -- candidates/*)
+  - Bash(git -C * ls-tree *)
 ---
 
 promote-record スキルで、記録 MEM-202611010000-01 を、Global Memory へ送り出して。元の記録は、このリポジトリの Project Memory（docs/memory）に在る。Global Memory の根は global-memory ディレクトリ（--global-root global-memory）。このあと席を外すので、途中で質問はせずに最後まで進めて、結果を報告して。

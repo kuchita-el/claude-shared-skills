@@ -218,16 +218,23 @@ bash scripts/run-plugin-eval.sh <plugin> [claude plugin eval の引数...]
 - `domain-design` は `--allow-tools Write` を付ける。スキルの `allowed-tools` に Write があっても、eval の子セッションには付与されない。付けないと挙動ケースが成果物を書けずに止まり、不合格になる
 - `growth` は `--allow-tools Write 'Bash(git rev-parse *)' 'Bash(date *)' 'Bash(rm ~/.claude/projects/*/growth/captures-*.md)'` を付ける（Write と、distill の `allowed-tools` と同じ Bash パターン）
 - `growth` の `behavior-distill` の採点器のうち `cursor-advanced`・`example-entry-hypothesized`・`upsert-preserves-existing` は、拒否された Write の試みの内容で判定する。拒否後に書き込みを試みるかは回ごとに揺れるため、不合格が出たら trace の最終応答で判断の中身を確かめてから退行と判定する
-- `shared-memory` は、次の `--allow-tools` を付ける。`Write`・`Edit` と、5つのスキルの `allowed-tools` に在る Bash パターンの和集合である
+- `shared-memory` は、次の `--allow-tools` を付ける。`Write`・`Edit` と、6つのスキルの `allowed-tools` に在る Bash パターンの和集合に、Global へ commit・push するパターンを足したものである
 - `shared-memory` の `behavior-crosscheck-contradiction` も、スキルが使わない `Write`・`Edit` を付与したまま走らせる。書き換えないことを、採点器が道具の呼び出しの回数で見るためである
+- commit と push のパターンは、`behavior-carry-drafts` のために足す。運ぶ手順は、commit と push を事前に許可せず、ホストの許可の確認に任せる。eval の子セッションは非対話なので、付けないと push が拒まれ、運ぶ経路を観測できない。ほかのケースの題材では、運ぶ手順は Global の根が別のリポジトリに無いので、commit の前に止まる
 
   ```bash
   --allow-tools Write Edit 'Bash(node *scripts/memory.mjs*)' 'Bash(git rev-parse*)' 'Bash(git status*)' \
     'Bash(git log*)' 'Bash(git diff*)' 'Bash(git -C * log -1*)' 'Bash(git remote get-url *)' 'Bash(date -u*)' \
     'Bash(grep -i -F *)' 'Bash(git -C * remote get-url *)' 'Bash(git -C * rev-parse --show-toplevel*)' \
+    'Bash(git -C * fetch --deepen=*)' 'Bash(git -C * status --porcelain*)' 'Bash(git -C * branch --show-current*)' \
+    'Bash(git -C * rev-parse --verify --quiet refs/*)' 'Bash(git -C * ls-remote --heads origin carry/*)' \
+    'Bash(git -C * switch --detach FETCH_HEAD)' 'Bash(git -C * switch -c carry/*)' \
+    'Bash(git -C * add -- candidates/*)' 'Bash(git -C * ls-tree *)' \
+    'Bash(git -C * commit *)' 'Bash(git -C * push *)' \
     'Bash(git -C * rev-parse --show-prefix*)' 'Bash(git rev-parse --show-toplevel*)' 'Bash(git rev-parse HEAD)' 'Bash(git rev-parse refs/remotes/origin/HEAD)' 'Bash(git switch -c *)' \
     'Bash(git mv *candidates/*)' 'Bash(git rm *candidates/*)'
   ```
+- `shared-memory` の `behavior-carry-drafts` は、題材の Global の remote（`.remotes/global.git`）の post-receive フックが、push された ref ごとに、`main` から分かれた点からの変更を `.remotes/global.git/push.log` へ平文で書く。採点器は、そのファイルで、候補を足すだけのブランチを push したかを見る。題材に CI は無いので、取り込みは起きない
 - `shared-memory` の `behavior-triage-candidates` は、スキルが持つ `Write`・`Edit`・ブランチを切る Bash も付与したまま走らせる。頼まれていない選別の変更を、採点器が道具の呼び出しの回数と、題材のファイルの残りで見るためである
 
 - `shared-memory` は、`--judge-model sonnet` を付ける。`llm` の採点器の1票は、判定器が1語で答えた文に `PASS` が在り、`FAIL` の語が無いときだけ合格になり、3票の多数で決まる。既定の haiku は、表を含む日本語の最終応答で、同じ応答に `PASS` と `FAIL` を返し、票が割れることがある。判定の理由は結果に残らない。sonnet では、同じ応答の票は割れず、表の行を消した負例（`behavior-propose-records` の `table-lists-all`）は `FAIL` になった
