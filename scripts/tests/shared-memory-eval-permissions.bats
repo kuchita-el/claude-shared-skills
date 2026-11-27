@@ -370,7 +370,7 @@ EVAL_FILE="$EVALS_REL/behavior-propose-records/prompt.md"
     cp "$FIXTURE/$SKILL_FILE" "$FIXTURE/$SKILLS_REL/added-skill/SKILL.md"
     run check_permissions "$FIXTURE"
     [ "$status" -eq 1 ]
-    [[ "$output" == *"$GUIDE_REL が述べるスキルの件数（5）が、実体の件数（6）と一致しない"* ]]
+    [[ "$output" == *"$GUIDE_REL が述べるスキルの件数（6）が、実体の件数（7）と一致しない"* ]]
 }
 
 # ---- 収集の欠落 ----
@@ -401,7 +401,7 @@ EVAL_FILE="$EVALS_REL/behavior-propose-records/prompt.md"
 
 @test "変異: ガイドの説明が件数を述べなくなると、全てのスキルの名指しを求めて赤になる" {
     make_fixture
-    mutate "$FIXTURE/$GUIDE_REL" 's/、5つのスキルの `allowed-tools` に在る/、スキルの `allowed-tools` に在る/'
+    mutate "$FIXTURE/$GUIDE_REL" 's/、6つのスキルの `allowed-tools` に在る/、スキルの `allowed-tools` に在る/'
     run check_permissions "$FIXTURE"
     [ "$status" -eq 1 ]
     [[ "$output" == *"$GUIDE_REL の指定の説明が、スキル crosscheck-records を名指していない"* ]]
