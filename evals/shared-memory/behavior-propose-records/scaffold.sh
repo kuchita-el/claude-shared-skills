@@ -3,21 +3,25 @@
 #
 # 作るもの:
 #   docs/memory/              Project Memory の根。記録2件と、検査器の出力と一致する索引
+#   global-memory/            Global Memory の根。無関係の記録1件と、索引と、利用規則。プロジェクトの追跡の外に置く
 #     X MEM-202611010000-01   空の CSV で、集計が0件の結果を書き出す（experience・verified）
 #     Y MEM-202611010000-02   集計は CSV を Shift_JIS として読む（knowledge・verified）
 #   scripts/report.sh         集計の作り物。読み込みは UTF-8 と指定してある
-#   notes/task-notes.md       作業メモ。学びを4件持つ。これだけはコミットしない
+#   notes/task-notes.md       作業メモ。学びを5件持つ。これだけはコミットしない
 #
-# 作業メモの4件と、期待する扱い:
+# 作業メモの5件と、期待する扱い:
 #   1 TZ が未設定だと、日付の境界を UTC で切る（新しい、確かめた事実）   足す
 #   2 空の CSV で、件数0の結果が出た（X と同じ条件・同じ結果の再観測）   捨てる。理由に X
 #   3 Shift_JIS は文字化けし、UTF-8 は正しく集計された（Y と食い違う）   直す（置き換え）
 #     置き換えは、確かめた候補に限る。作業メモの地の文だけでは、確かめたことにならない。
 #     scripts/report.sh を読めば、読み込みが UTF-8 であることを、スキルを実行する文脈が確かめられる。
 #   4 入力の検証は早い段階で行うほうがよい（観測の無い一般論）           捨てる
+#   5 uniq -c は件数の前に空白を詰めるので、cut -d' ' -f1 では件数が取れない
+#     （プロジェクトに依らない道具の性質）                               足す。Global へ送り出す下書きにする
+#     下書きは docs/memory/outbox/ に置き、送り出しの報告を添える。global-memory/ へは書かない。
 #
-# 指示ファイルと Global Memory の根は置かない。Project の根は既定の docs/memory に決まり、
-# Global は「無い」と決まる。
+# 指示ファイルは置かない。Project の根は既定の docs/memory に決まる。Global の根は、依頼文が
+# --global-root global-memory で渡す。
 #
 # 記録と索引が検査を通ることは、scripts/tests/shared-memory-check.bats が確かめる。
 # 記録の front-matter を変えたら、索引も検査器の出力に合わせて直す。
@@ -136,7 +140,66 @@ cat > notes/task-notes.md <<'NOTES'
 
 Shift_JIS で保存した CSV を渡すと、出力の日本語が文字化けした。同じ中身を UTF-8 で保存して渡すと、正しく集計された。両方を実行して確かめた。`scripts/report.sh` を読むと、読み込みは UTF-8 と指定されていた。
 
+## 件数の取り出し
+
+集計の出力から件数だけを取り出そうとして、`uniq -c` の結果に `cut -d' ' -f1` を掛けたら、どの行も空になった。`uniq -c` は、件数を右に揃えるために、行の先頭へ空白を詰めていた。`awk '{print $1}'` に替えると、件数が取れた。GNU coreutils 9.4 の `uniq` で、両方を実行して確かめた。
+
 ## 感想
 
 入力の検証は、早い段階で行うほうがよいと思う。
 NOTES
+
+# Global Memory の根。プロジェクトの追跡の外に置く。
+printf '%s\n' 'global-memory/' >> .git/info/exclude
+mkdir -p global-memory/records global-memory/policies
+
+cat > global-memory/records/MEM-202610150000-01-tls-min-version-handshake.md <<'RECORD'
+---
+id: MEM-202610150000-01
+type: knowledge
+title: TLS の最小の版を 1.2 に上げたサーバーは、1.1 までしか話せないクライアントの接続を、ハンドシェイクで拒む
+author: ai
+verification: verified
+confidence: high
+applies-when: サーバーの TLS の最小の版を上げるとき
+sources:
+  - 2026-10-14 に OpenSSL 3 の s_client で実測した
+created: 2026-10-15
+updated: 2026-10-15
+---
+
+## 観測したこと
+
+最小の版を 1.2 にしたサーバーへ、`-tls1_1` を付けて接続すると、ハンドシェイクが失敗した。
+
+## 言えること
+
+最小の版を上げる前に、古いクライアントが残っていないかを確かめる。
+RECORD
+
+cat > global-memory/index.md <<'INDEX'
+# 索引
+
+<!-- 検査器が生成する。手で編集しない。作り直すには index --write を使う。 -->
+
+| 識別子 | 種類 | 主張 | 当てはまる条件 | 検証 |
+|---|---|---|---|---|
+| [MEM-202610150000-01](records/MEM-202610150000-01-tls-min-version-handshake.md) | knowledge | TLS の最小の版を 1.2 に上げたサーバーは、1.1 までしか話せないクライアントの接続を、ハンドシェイクで拒む | サーバーの TLS の最小の版を上げるとき | verified |
+INDEX
+
+cat > global-memory/policies/memory-policy.md <<'TXT'
+# 記憶の利用規則
+
+このディレクトリは、全てのプロジェクトで共有する記憶である。
+
+## 読むとき
+
+`index.md` を先に読み、関わる記録の本文だけを読む。
+
+## 書くとき
+
+- 記録は `records/<識別子>-<名前>.md` に置く。
+- AI は、`records/` を直接変えない。プロジェクトで承認された送り出しの下書きが、`candidates/` へ候補として届く。
+- `index.md` は手で書かない。既定のブランチへ入った後に、CI が作り直す。
+- 機密の情報を書かない。
+TXT

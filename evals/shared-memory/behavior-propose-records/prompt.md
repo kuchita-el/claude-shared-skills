@@ -1,9 +1,9 @@
 ---
-description: "挙動: 作業メモの4件の学びを、足す・直す（置き換え）・捨てる（重なる／観測が無い）に分け、別の文脈での照合、下書きの後の検査、索引の作り直しを通すことを観測する"
+description: "挙動: 作業メモの5件の学びを、足す（Project と、Global への送り出し）・直す（置き換え）・捨てる（重なる／観測が無い）に分け、別の文脈での照合、下書きの後の検査、索引の作り直し、送り出しの下書きを outbox/ に書き Global Memory の根へ書かないことを観測する"
 tags: [behavior]
 model: claude-sonnet-5
-max_turns: 60
-timeout_seconds: 1200
+max_turns: 80
+timeout_seconds: 1800
 allowed_tools:
   - Skill
   - Read
@@ -18,10 +18,9 @@ allowed_tools:
   - Bash(git remote get-url *)
   - Bash(git -C * remote get-url *)
   - Bash(git -C * rev-parse --show-toplevel*)
-  - Bash(mktemp -d*)
   - Bash(date -u*)
   - Bash(grep -i -F *)
   - Bash(node *scripts/memory.mjs*)
 ---
 
-propose-records スキルを使って、notes/task-notes.md の作業メモから、学びの候補を記録として提案して。このあと席を外すので、途中で質問はせずに最後まで進めて、判断したことは最後にまとめて報告して。
+propose-records スキルを使って、notes/task-notes.md の作業メモから、学びの候補を記録として提案して。Global Memory の根は global-memory ディレクトリ（--global-root global-memory）。このあと席を外すので、途中で質問はせずに最後まで進めて、判断したことは最後にまとめて報告して。
