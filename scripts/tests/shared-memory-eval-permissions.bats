@@ -59,6 +59,7 @@ CASES=(
     "behavior-crosscheck-contradiction|crosscheck-records|Skill;Write;Edit"
     "behavior-replace-record|replace-record|Skill"
     "behavior-carry-drafts|carry-drafts|Skill;$CARRY_COMMIT;$CARRY_PUSH"
+    "behavior-triage-candidates|triage-candidates|Skill"
 )
 
 # ガイドの指定が、スキルの Bash パターンのほかに持つ道具。`;` で区切る。
@@ -405,6 +406,7 @@ EVAL_FILE="$EVALS_REL/behavior-propose-records/prompt.md"
     [ "$status" -eq 1 ]
     [[ "$output" == *"$GUIDE_REL の指定の説明が、スキル crosscheck-records を名指していない"* ]]
     [[ "$output" == *"$GUIDE_REL の指定の説明が、スキル replace-record を名指していない"* ]]
+    [[ "$output" == *"$GUIDE_REL の指定の説明が、スキル triage-candidates を名指していない"* ]]
 }
 
 @test "変異: 書き換えないことを見るために足した道具を eval から消すと赤になる" {

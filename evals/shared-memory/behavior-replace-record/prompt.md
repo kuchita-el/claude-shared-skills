@@ -12,6 +12,10 @@ allowed_tools:
   - Glob
   - Bash(node *scripts/memory.mjs*)
   - Bash(date -u*)
+  - Bash(git rev-parse --show-toplevel*)
+  - Bash(git -C * rev-parse --show-toplevel*)
+  - Bash(git -C * rev-parse --show-prefix*)
+  - Bash(git mv *candidates/*)
 ---
 
 replace-record スキルで、記憶の根 docs/memory の記録 MEM-202611010000-01 を置き換えて。新しい主張は「tokei-cron は、retries を指定しないジョブを再試行しない」。変わった理由は次のとおり。tokei-cron を 2.4 へ上げた後の今日、retries を指定しない必ず失敗するジョブを登録したら、1回の失敗で止まった。私が実行して確かめた。このあと席を外すので、途中で質問はせずに最後まで進めて、結果を報告して。

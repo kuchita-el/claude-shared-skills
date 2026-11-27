@@ -17,8 +17,9 @@ claude --plugin-dir <このディレクトリ>
 - **スキル `carry-drafts`**（`/shared-memory:carry-drafts`）: プロジェクトの既定のブランチの `outbox/` に在る承認済みの下書きを、手を加えずに Global Memory の `candidates/` へ運ぶ。検査器で運び済みかを判定して写し、候補を足すだけのブランチを git で push する。既定のブランチへの取り込みは、Global Memory の CI が行う。
 - **スキル `replace-record`**（`/shared-memory:replace-record`）: 置き換えると決まった記録について、置き換えの3つをそろえ、検査器で確かめる。置き換えるかどうかは決めない。
 - **スキル `crosscheck-records`**（`/shared-memory:crosscheck-records`）: 記録を、書いた文脈とは別の文脈で突き合わせる。相手は、既に在る記録である。食い違いと重なりを報告し、記録は直さない。
+- **スキル `triage-candidates`**（`/shared-memory:triage-candidates`）: Global Memory の `candidates/` の候補を、既存の記録とほかの候補と別の文脈で突き合わせ、採る・まとめる・捨てる・補う・置き換えるの案を、受け入れの4観点とともに出す。既定は、識別子の古い順に10件である。頼まれたときだけ、選別の変更を新しいブランチに用意する。別の文脈を作れないときは、案を出さず、未実施と書く。
 - **サブエージェント `record-matcher`**（`agents/record-matcher.md`）: 主張を、既存の記録・候補・送り出しの下書きと照らす。候補の提案と、送り出しの重なりの照合に使う。読み取り専用である。
-- **サブエージェント `record-crosschecker`**（`agents/record-crosschecker.md`）: 突き合わせと、送り出しの機密の読みに使う。読み取り専用である。照合の手順は、`record-matcher` と同じ参照を読む。語を渡されたときは、機密の混入の疑いも探す。
+- **サブエージェント `record-crosschecker`**（`agents/record-crosschecker.md`）: 突き合わせ・送り出しの機密の読み・候補の選別に使う。読み取り専用である。照合の手順は、`record-matcher` と同じ参照を読む。語を渡されたときは、機密の混入の疑いも探す。
 - **共有の参照**: `references/matching.md` は、照合の手順と、返す形を定める。`references/confidentiality.md` は、記録がリポジトリの境界を越えるときの、機密の確認を定める。`references/outbox-report.md` は、送り出しの報告の形と、書く順序を定める。`references/replacement.md` は、置き換えの3つをそろえる順序と、確かめ方を定める。`references/carrying.md` は、承認済みの下書きを運ぶ手順を定める。
 
 ```bash
