@@ -47,22 +47,19 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 
 | 操作 | 概要 |
 |---|---|
-| 起票 | 採番規則で新規 ADR ファイルを生成し、状態の型の `status-proposed` の構成子へ置く |
+| 起票 | 発番した識別子で新規 ADR ファイルを生成し、状態の型の `status-proposed` の構成子へ置く |
 | 承認 | `validity-active` の構成子へ移す |
 | 上書き | 旧 ADR を後継を保持する `validity-superseded` の構成子へ移し、後継本文 `## <xref-heading>` に `Supersedes: <旧>`、旧 ADR 本文 `## <xref-heading>` に `Superseded by: <後継>` を書く（双方向） |
 | 廃止 | `validity-abandoned` の構成子へ移す |
 | 却下 | `status-rejected` の構成子へ移す |
 
-各遷移後の front-matter 最終状態は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「状態の型」の構成子として構成できる形にする。採番規則・写入手順・上書きの双方向相互参照の書き込みは `${CLAUDE_SKILL_DIR}/references/transitions.md` を参照する。ADR 本文へ他文書への参照を書く場合（起票時を含む）は、`${CLAUDE_SKILL_DIR}/references/adr-reference-principle.md` に従う。原 ADR の一部決定だけが反転する 1→N（部分上書き）は、5遷移ではなく下記「分割」を扱う。
+各遷移後の front-matter 最終状態は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「状態の型」の構成子として構成できる形にする。写入手順と上書きの双方向相互参照の書き込みは `${CLAUDE_SKILL_DIR}/references/transitions.md` を、採番は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「採番方式」を参照する。ADR 本文へ他文書への参照を書く場合（起票時を含む）は、`${CLAUDE_SKILL_DIR}/references/adr-reference-principle.md` に従う。原 ADR の一部決定だけが反転する 1→N（部分上書き）は、5遷移ではなく下記「分割」を扱う。
 
 ### 分割（多決定 ADR の部分上書き。5遷移とは別軸の構造操作）
 
 複数の決定を束ねた ADR の一部だけが core 反転して残りが生存する場合（1→N の部分上書き）、または束ね ADR を予防的に分解する場合（衛生的分割）に使う。原 ADR 全体を `validity-superseded` にすると生存決定を誤って退役させるため、生存決定を後継へ逐語 restate してから原 ADR を上書きする。後継を立てずに原 ADR へ残してよい生存決定の条件は、後掲の手順の実体が定める。
 
-呼び出しの適用条件は2トリガに分かれる。**既定は分割しない**——既存の多決定 ADR を遡及的に分割せず、下記いずれかのトリガが立ったときにのみ駆動する。
-
-- **反転駆動**: 前段の1→N の部分上書きがこれにあたる。部分 core 反転が実際に当たったときに駆動する（要求される）
-- **衛生的分割**: 前段の予防的な分解がこれにあたる。既定（分割しない）に対する**任意**の例外であり、反転駆動と違って要求されない
+既定は分割しない。分割を駆動するトリガ（反転駆動・衛生的分割）は、`${CLAUDE_SKILL_DIR}/references/transitions.md`「適用条件」が持つ。
 
 新規に起こす ADR が独立に反転しうる core を束ねないための制約は `${CLAUDE_SKILL_DIR}/references/adr-splitting.md` に従う。
 
@@ -100,13 +97,13 @@ Claude Codeではcommit前PreToolUse hookが補助的に同じlintを実行す�
 
 ## 手順の参照（各 references を直接参照）
 
-- `${CLAUDE_SKILL_DIR}/references/adr-model.md` — 状態の2軸の値域・合法な front-matter を表す状態の型・遷移の表・用語集。配置・採番方式・発番スクリプトの契約・index の同期・識別子の一意性・H1 見出しの形式と識別子部の整合・検査項目と正本の対応
+- `${CLAUDE_SKILL_DIR}/references/adr-model.md` — 状態の2軸の値域・front-matter の書き方・合法な front-matter を表す状態の型・遷移の表・用語集。配置・採番方式と発番の手順・発番スクリプトの契約・index の同期・識別子の一意性・H1 見出しの形式と識別子部の整合・検査項目と正本の対応
 - `${CLAUDE_SKILL_DIR}/references/adr-scoping.md` — ADR 化要否の必要条件・4項目の名称・同点処理・判定する入力の値域と定義・閾値とスコア境界・判定に添える申告・起票のタイミング
 - `${CLAUDE_SKILL_DIR}/references/adr-destination.md` — 判定結果の行き先（ADR 化する側／しない側の分岐）
 - `${CLAUDE_SKILL_DIR}/references/adr-splitting.md` — 新規に起こす ADR へ何を束ねてよいかの制約
 - `${CLAUDE_SKILL_DIR}/references/adr-demotion.md` — 既存 ADR の格下げ（退役）判定の条件・判定形式・安全側の向き・格下げ固有の入力の採否・起動
 - `${CLAUDE_SKILL_DIR}/references/template.md` — 新規 ADR の雛形（front-matter＋見出し骨格。起票時にこの構成へ準拠する）と、`## 変更履歴` 節の配置規約（節を持たない ADR で新設するときに従う単一出典）
-- `${CLAUDE_SKILL_DIR}/references/transitions.md` — 5遷移と分割の実行手順・取り消し・採番規則・双方向相互参照の書き込み・index の再生成
+- `${CLAUDE_SKILL_DIR}/references/transitions.md` — 5遷移と分割の実行手順（分割の適用条件を含む）・取り消し・双方向相互参照の書き込み・退役に伴う参照の付け替え・隔離検証
 - `${CLAUDE_SKILL_DIR}/references/edit-decision.md` — core／非core／些末 の判定と問い設計・操作分岐。参照の深さの数え方も持つ
 - `${CLAUDE_SKILL_DIR}/references/adr-reference-principle.md` — ADR 本文へ参照を書く／直す際の判定（記録の参照原則。起票時にも適用する）
 - `${CLAUDE_SKILL_DIR}/references/cross-references.md` — 相互参照の関係語彙・`Related:` の書式規約・検査範囲・是正手段。相互参照を書くときに従う

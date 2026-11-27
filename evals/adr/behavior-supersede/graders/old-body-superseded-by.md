@@ -1,5 +1,5 @@
 ---
-# 正しい完了: 旧 ADR 本文 `## 関連ADR` に `Superseded by:` が追記されている（transitions.md:70-71。lint が素通りする項目）
+# 正しい完了: 旧 ADR 本文 `## 関連ADR` に `Superseded by:` が追記されている（transitions.md「上書き（上書き済み・双方向相互参照）」の手順3。行を1行も書かない場合は lint が検出しない）
 type: regex
 target:
   source: file

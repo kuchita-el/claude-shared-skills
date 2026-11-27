@@ -1,5 +1,5 @@
 ---
-# adr-01（過剰な付け替えの検出）: 旧 ADR を指す退役済み ADR（凍結）は編集されていない（transitions.md:178「参照元が上書き済み / 廃止済みの行は凍結原則により編集しない」）
+# adr-01（過剰な付け替えの検出）: 旧 ADR を指す退役済み ADR（凍結）は編集されていない（transitions.md「共通: 退役に伴う inbound `Related:` の点検・付け替え」の「対象の特定」。参照元が退役 ADR の行は凍結の下にあるため編集しない）
 type: regex
 target:
   source: file

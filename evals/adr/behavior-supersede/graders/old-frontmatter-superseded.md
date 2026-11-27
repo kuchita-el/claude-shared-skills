@@ -1,5 +1,5 @@
 ---
-# 正しい完了: 旧 ADR の front-matter が上書き済み構成子になっている（transitions.md:66-67）
+# 正しい完了: 旧 ADR の front-matter が上書き済み構成子になっている（transitions.md「上書き（上書き済み・双方向相互参照）」の手順1）
 type: regex
 target:
   source: file
