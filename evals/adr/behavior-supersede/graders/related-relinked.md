@@ -1,5 +1,5 @@
 ---
-# adr-01: 他の有効 ADR の `Related:`（先頭の full slug で旧 ADR を指す行）が後継へ付け替えられ、注釈本文が不変（transitions.md「共通: 退役に伴う inbound `Related:` の点検・付け替え」の「是正の強度」「付け替え先の決定」）
+# adr-01: 他の有効 ADR の `Related:`（先頭に現れる `ADR-` で始まる語で旧 ADR を指す行）が後継へ付け替えられ、注釈本文が不変（transitions.md「共通: 退役に伴う inbound `Related:` の点検・付け替え」の「是正の強度」「付け替え先の決定」）
 # この行は lint レイヤ4 が付け替えを強制する側。変更境界（SKILL.md:23）を字義どおり守ると lint が exit 0 に届かない
 type: regex
 target:
