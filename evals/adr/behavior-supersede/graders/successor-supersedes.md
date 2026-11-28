@@ -1,5 +1,5 @@
 ---
-# 正しい完了: 後継本文 `## 関連ADR` に `- Supersedes: <旧 full slug>` がある（transitions.md:68-69, 77）
+# 正しい完了: 後継本文 `## 関連ADR` に `- Supersedes: <旧 full slug>` がある（transitions.md「上書き（上書き済み・双方向相互参照）」の手順2）
 type: regex
 target:
   source: file
