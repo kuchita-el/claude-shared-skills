@@ -92,7 +92,7 @@ ADR 本文へ他文書への参照を書く場合（起票時を含む）は、`
 
 以降の手順に現れる `<対象ディレクトリ>` の解決は、`${CLAUDE_SKILL_DIR}/references/adr-model.md`「配置」に従う。利用者が対象ディレクトリを明示しないときは、後掲「書き込む値の取得」の出力の `adr-dir:` 行の値を使う。
 
-識別子の発番の実行形は `bash ${CLAUDE_PLUGIN_ROOT}/scripts/next-adr-id.sh <対象ディレクトリ>` である。発番の手順は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「採番衝突時の解消手順」に従う。
+識別子の発番の実行形は `bash ${CLAUDE_PLUGIN_ROOT}/scripts/next-adr-id.sh <対象ディレクトリ>` である。時刻の取得と発番の手順は `${CLAUDE_SKILL_DIR}/references/adr-model.md`「採番方式」に従う。
 
 ### 書き込む値の取得
 
@@ -102,10 +102,10 @@ ADR を操作するときは、最初に設定の値を取得する。実行形�
 
 各遷移・編集操作の完了後、対象ディレクトリを直接対象として次を実行する。index の再生成と lint の `<対象ディレクトリ>` には、同じ解決結果を渡す。
 
-1. **index 同期**: `${CLAUDE_SKILL_DIR}/references/adr-model.md`「遷移の表」で `validity` を変える操作の後に、`bash ${CLAUDE_PLUGIN_ROOT}/scripts/gen-adr-index.sh <対象ディレクトリ>` の出力で `<対象ディレクトリ>/index.md` を再生成する。lint の前に行う。飛ばすと、lint の index 同期の検査が違反を出す。
+1. **index 同期**: `${CLAUDE_SKILL_DIR}/references/adr-model.md`「遷移の表」で `validity` を変える操作の後に行う。`bash ${CLAUDE_PLUGIN_ROOT}/scripts/gen-adr-index.sh <対象ディレクトリ>` の出力で、`<対象ディレクトリ>/index.md` を再生成する。lint の前に行う。飛ばすと、lint の index 同期の検査が違反を出す。
 2. **lint 実行**: `bash ${CLAUDE_PLUGIN_ROOT}/scripts/lint-adr.sh <対象ディレクトリ>` を実行し、exit 0 を確認する。この exit 0 が合否基準である。
-3. **フィードバックループ**（exit 0 以外）: lint-adr の出力を利用者へ提示する。報告された検査項目を `${CLAUDE_SKILL_DIR}/references/adr-model.md`「検査項目と正本の対応」で引き、指された正本の是正手段に従って ADR を直す。再度 lint-adr を実行し、exit 0 になるまで反復する。exit 0 を得られないまま操作を完了扱いにしない。
+3. **フィードバックループ**（exit 0 以外）: lint-adr の出力を利用者へ提示する。exit 2 は前提の失敗であり、ADR を直しても解消しない。標準エラーの原因を示して止まる。違反の報告（exit 1）では、次のとおり直す。報告された検査項目を `${CLAUDE_SKILL_DIR}/references/adr-model.md`「検査項目と正本の対応」で引き、指された正本の是正手段に従って ADR を直す。再度 lint-adr を実行し、exit 0 になるまで反復する。exit 0 を得られないまま操作を完了扱いにしない。
 
 commit 前ゲートは、ホストのツール経由の `git commit` にだけ掛かる PreToolUse フックである。端末や IDE から直接打つ commit には掛からず、ゲートを持たないホストもある。そのため、ゲートに委ねず、ホストを問わずに本節を実行する。
 
-**方式の根拠**: 直接検証を既定とするのは、操作結果と対象ディレクトリ全体の整合を同時に検査でき、隔離コピーのように相互参照相手を漏らして自ら false negative を生むことがないためである。操作の前から対象ディレクトリが red で、正しい操作でも exit 0 に達しない場合に限り、`${CLAUDE_SKILL_DIR}/references/transitions.md`「隔離検証（baseline red のときのフォールバック）」に従って隔離検証を用いる。
+**方式の根拠**: 直接検証を既定とするのは、操作結果と対象ディレクトリ全体の整合を同時に検査できるためである。隔離コピーのように、相互参照相手を漏らして自ら false negative を生むこともない。操作の前から対象ディレクトリが違反を持つ場合の扱いは、`transitions.md`「隔離検証（baseline red のときのフォールバック）」が持つ。
