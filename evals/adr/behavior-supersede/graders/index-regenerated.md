@@ -1,5 +1,5 @@
 ---
-# 正しい完了: index.md が再生成され、旧 ADR が消え後継が残っている（SKILL.md:108）
+# 正しい完了: index.md が再生成され、旧 ADR が消え後継が残っている（SKILL.md「各操作後の自己検証（必須）」の index 同期）
 type: regex
 target:
   source: file
